@@ -550,13 +550,11 @@ static void M_PoolReset( void )
 	Dod_MohaaDropPool();
 }
 
-/* Up to want bytes from the arena tail; *got says how many. Other residents can split the tail into gaps
- * smaller than want (m5l2b: 856 KB free, no gap of 384 KB), so it steps down to half of want before giving up. */
-static void *M_PoolCarve( size_t want, size_t *got )
+/* One piece of up to want bytes from the arena tail, the largest it has in 32 KB steps (down to 32 KB). */
+static void *M_PoolPiece( size_t want, size_t *got )
 {
-	size_t bytes;
 	*got = 0;
-	for( bytes = want; bytes >= want / 2 && bytes >= 32u * 1024u; bytes -= 32u * 1024u ) {
+	for( size_t bytes = want & ~(size_t)( 32u * 1024u - 1 ); bytes >= 32u * 1024u; bytes -= 32u * 1024u ) {
 		size_t at = GC_MapArenaFind( bytes + 32 );
 		unsigned char *p;
 		if( at == (size_t)-1 )
@@ -564,11 +562,33 @@ static void *M_PoolCarve( size_t want, size_t *got )
 		p = (unsigned char *)GC_MapLoadBufferTailAlloc( at, bytes + 32 );
 		if( !p )
 			continue;
-		GC_SetMapArenaResetHook( M_PoolReset );
 		*got = bytes;
 		return (void *)( ( (unsigned long)p + 31 ) & ~31UL );
 	}
 	return NULL;
+}
+
+/* Script memory from the arena tail: one region when a gap holds it all, else up to 8 pieces, largest first (other
+ * residents split the tail: m5l2b had 856 KB free and no 384 KB gap, and later no 192 KB one). The pool spans them. */
+static size_t M_PoolCarve( size_t want, DodMohaaBackend *b )
+{
+	size_t total = 0, got;
+	void *p = M_PoolPiece( want, &got );
+	if( !p )
+		return 0;
+	b->pool = p;
+	b->pool_size = got;
+	total = got;
+	for( int r = 0; r < 7 && total + 32u * 1024u <= want; r++ ) {
+		p = M_PoolPiece( want - total, &got );
+		if( !p )
+			break;
+		b->pool_more[r] = p;
+		b->pool_more_size[r] = got;
+		total += got;
+	}
+	GC_SetMapArenaResetHook( M_PoolReset );
+	return total;
 }
 #endif
 
@@ -618,19 +638,21 @@ void DodGC_MohaaLevelInit( void )
 		snprintf( scr, sizeof( scr ), "maps/%s.scr", STRING( gpGlobals->mapname ) );
 		/* only a level with a script spends arena on it */
 		if( budget && g_engfuncs.pfnGetFileSize && g_engfuncs.pfnGetFileSize( scr ) > 0 ) {
-			b.pool = M_PoolCarve( budget, &b.pool_size );
-			if( !b.pool )
-				ALERT( at_console, "mohaa: no gap of %u KiB or more in the map arena for script memory, using the heap\n",
-					(unsigned)( budget / 2048u ) );
-			else if( b.pool_size < budget )
-				budget = b.pool_size;	/* the log line below says what it got */
+			const size_t got = M_PoolCarve( budget, &b );
+			if( !got )
+				ALERT( at_console, "mohaa: no gap of 32 KiB or more in the map arena for script memory, using the heap\n" );
+			else
+				budget = got;	/* the log line below says what it got */
 		}
 	}
 #endif
 	if( Dod_MohaaLevelInit( &b, STRING( gpGlobals->mapname ), gpGlobals->time, budget ) ) {
 		DodGrunts_PrecacheBodies();	/* the mission's soldiers wear the sides' player bodies */
-		ALERT( at_console, "mohaa: running maps/%s.scr (budget %u KiB, %s)\n", STRING( gpGlobals->mapname ),
-			(unsigned)( budget / 1024u ), b.pool ? "map arena" : "heap" );
+		int pieces = b.pool ? 1 : 0;
+		for( int r = 0; r < 7; r++ )
+			pieces += b.pool_more[r] != NULL;
+		ALERT( at_console, "mohaa: running maps/%s.scr (budget %u KiB, %s, %d piece%s)\n", STRING( gpGlobals->mapname ),
+			(unsigned)( budget / 1024u ), b.pool ? "map arena" : "heap", pieces, pieces == 1 ? "" : "s" );
 	}
 }
 

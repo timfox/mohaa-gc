@@ -89,6 +89,9 @@ typedef struct DodMohaaBackend {
 	   gone. NULL: malloc. */
 	void *pool;
 	size_t pool_size;
+	/* more regions for the same pool, when no single gap held it all (0 size: unused) */
+	void *pool_more[7];
+	size_t pool_more_size[7];
 } DodMohaaBackend;
 
 typedef struct DodMohaaStats {
@@ -105,7 +108,7 @@ int Dod_MohaaLevelInit(const DodMohaaBackend *backend, const char *mapname, floa
 /* Every server frame: sends "prespawn" then "spawn" to level, runs threads, finishes moves. */
 void Dod_MohaaThink(float now);
 void Dod_MohaaShutdown(void);
-/* A map entity's key that only scripts read (MOHAA "#set", "#group", ...): the script sees it as $ent.#set.
+/* A map entity's key that only scripts read (MOHAA "#set", "#group", ...): the script sees it as $ent.set (MOHAA drops the '#').
  * Numbers become numbers. Ignored when no script runs. */
 void Dod_MohaaEntityKey(uint32_t id, const char *key, const char *value);
 /* The backend replaced entity from with to (a mohaa_actor placeholder became a grunt): to keeps from's script
