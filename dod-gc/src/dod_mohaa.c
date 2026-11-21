@@ -451,6 +451,14 @@ static int h_get_field(void *user, const ms_value *l, const char *name, ms_value
 		*out = ms_string(S.vm, s ? s : "");
 		return 1;
 	}
+	if (!strcmp(name, "target")) {
+		/* the map's target; with none, a target the script set itself (an entity var) */
+		const char *s = S.be.get_str(l->u.id, DOD_MOHAA_TARGET);
+		if (!s || !*s)
+			return 0;
+		*out = ms_string(S.vm, s);
+		return 1;
+	}
 	return 0;
 }
 
@@ -1076,8 +1084,13 @@ static int c_soundtrack(ms_call *c)
 		n++;
 	}
 	name[n] = 0;
-	if (!moods_load(name))
-		return ms_call_error(c, "no music/%s.mood", name);
+	if (!moods_load(name)) {
+		/* no music staged for this map (tools/music.py output): play on without, as a missing sound does */
+		char msg[128];
+		snprintf(msg, sizeof(msg), "mohaa: no music/%s.mood, the level plays without music\n", name);
+		S.be.print(DOD_MOHAA_PRINT_CONSOLE, msg);
+		return 0;
+	}
 	S.mood = mood_find("normal");
 	S.cue[0] = 0;	/* a cue never says when it ended; a new soundtrack ends it */
 	music_apply();
