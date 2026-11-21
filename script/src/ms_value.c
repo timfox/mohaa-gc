@@ -398,6 +398,28 @@ int ms_array_size(const ms_value *arr)
     return 0;
 }
 
+const ms_value *ms_array_item(const ms_value *arr, int i)
+{
+    if (i < 0)
+        return NULL;
+    if (arr->type == MS_CARRAY)
+        return i < arr->u.c->n ? &arr->u.c->items[i] : NULL;
+    if (arr->type == MS_ARRAY) {
+        for (int32_t k = 0; k < arr->u.a->n; k++) {
+            if (arr->u.a->slots[k].val.type == MS_NIL)
+                continue;
+            if (i-- == 0)
+                return &arr->u.a->slots[k].val;
+        }
+    }
+    return NULL;
+}
+
+const char *ms_string_text(const ms_value *v)
+{
+    return v->type == MS_STRING ? v->u.s->data : NULL;
+}
+
 int ms_truthy(ms_vm *vm, const ms_value *v)
 {
     switch (v->type) {
