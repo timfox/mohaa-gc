@@ -103,6 +103,9 @@ def build(version: int = 19) -> bytes:
 		'{\n"classname" "info_player_allied"\n"origin" "0 0 16"\n}\n'
 		'{\n"classname" "func_door"\n"model" "*1"\n"targetname" "door1"\n}\n'
 		'{\n"classname" "actor"\n"origin" "128 0 16"\n}\n'
+		'{\n"classname" "info_pathnode"\n"origin" "64 64 16"\n}\n'
+		'{\n"classname" "info_pathnode"\n"origin" "128 64 16"\n}\n'
+		'{\n"classname" "light"\n"origin" "0 0 128"\n}\n'
 	).encode() + b"\0"
 
 	lumps = {i: b"" for i in range(b19.HEADER_LUMPS)}

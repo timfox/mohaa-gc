@@ -34,14 +34,15 @@ class ReaderTest(unittest.TestCase):
 		self.assertEqual(bsp.num_lightmaps, 2)
 		self.assertEqual(bsp.num_leafs, 3)
 		self.assertEqual([e["classname"] for e in bsp.entities],
-		                 ["worldspawn", "info_player_allied", "func_door", "actor"])
+		                 ["worldspawn", "info_player_allied", "func_door", "actor",
+		                  "info_pathnode", "info_pathnode", "light"])
 		self.assertEqual(bsp.terrain[1].heights[8], 2 * 32)  # base 0 + 2 * (8 * 4)
 
 	def test_v17_lump_shift(self):
 		bsp = b19.load_bytes(make_sample_bsp.build(17), "beta")
 		self.assertEqual(len(bsp.models), 2)
 		self.assertEqual(len(bsp.terrain), 3)
-		self.assertEqual(len(bsp.entities), 4)
+		self.assertEqual(len(bsp.entities), 7)
 		self.assertEqual(bsp.static_models, [])
 
 	def test_rejects_other_formats(self):
@@ -86,6 +87,14 @@ class ReportTest(unittest.TestCase):
 		# floor top + 6 crate faces + 6 door faces + 6 water faces; caulk skipped
 		self.assertEqual(r["checks"]["faces_est"]["value"], 1 + 6 + 6 + 6)
 		self.assertEqual(r["verdict"], "OK")
+
+	def test_edicts_skip_pathnodes_and_lights(self):
+		r = self.analyse()
+		self.assertEqual(r["counts"]["pathnodes"], 2)
+		self.assertEqual(r["checks"]["edicts_est"]["value"], 3)  # player start, door, actor
+		cb = r["clipnodes_by_source"]
+		self.assertEqual(cb["brushes"] + cb["patch_proxies"] + cb["terrain_proxies"], r["checks"]["clipnodes"]["value"])
+		self.assertEqual(cb["terrain_proxies"], round(r["proxies"]["terrain_wedge_brushes"] * 5 * 0.5))
 
 	def test_bounds_scaled(self):
 		r = self.analyse(scale=0.5)
