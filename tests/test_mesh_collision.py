@@ -37,6 +37,21 @@ def roundtrip(col):
 
 
 class MeshCollisionTest(unittest.TestCase):
+	def test_start_just_inside_counts_as_touching(self):
+		col = mc.Collision()
+		faces = conv.brush_faces(box_planes((-256, -256, -64), (256, 256, 0)))
+		col.add_brush([(n, d) for n, d, _, _ in faces], [p for _, _, w, _ in faces for p in w])
+		m = roundtrip(col)
+		feet = 36 - 0.01  # 0.01 into the floor
+		frac, _, solid = mc.trace_box(m, (0, 0, feet), (64, 0, feet), *PLAYER)
+		self.assertFalse(solid)
+		self.assertEqual(frac, 1.0)  # slides along it
+		frac, n, solid = mc.trace_box(m, (0, 0, feet), (0, 0, feet - 8), *PLAYER)
+		self.assertFalse(solid)
+		self.assertEqual((frac, n[2]), (0.0, 1.0))  # can't go further in
+		frac, _, solid = mc.trace_box(m, (0, 0, 36 - 0.5), (64, 0, 36 - 0.5), *PLAYER)
+		self.assertTrue(solid)  # deeper is still inside
+
 	def test_box_hit_and_miss(self):
 		col = mc.Collision()
 		faces = conv.brush_faces(box_planes((0, 0, 0), (64, 64, 64)))
