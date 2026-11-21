@@ -498,6 +498,26 @@ def terrain_seal_brushes(bsp, scale, stats, gap=8.0, base=16.0):
 	return out
 
 
+def seal_box_brushes(bsp, scale, stats, margin=256.0, wall=16.0):
+	"""Six NULL slabs enclosing the whole map. A last resort for maps that leak through
+	gaps we can't find: the space between the map and the box counts as inside, so
+	outward faces are kept and VIS has more to chew on, but hull 0 seals."""
+	m = bsp.models[0]
+	lo = [max(-WORLD_LIMIT + wall, m.mins[i] * scale - margin) for i in range(3)]
+	hi = [min(WORLD_LIMIT - wall, m.maxs[i] * scale + margin) for i in range(3)]
+	out = []
+	for ax in range(3):
+		for side in (0, 1):
+			blo, bhi = [c - wall for c in lo], [c + wall for c in hi]
+			if side == 0:
+				bhi[ax] = lo[ax]
+			else:
+				blo[ax] = hi[ax]
+			out.append(_box_brush(blo, bhi, "NULL"))
+	stats["seal_box_brushes"] += len(out)
+	return out
+
+
 def kv_block(keys, brushes=()):
 	lines = ["{"]
 	for k, v in keys.items():
@@ -509,7 +529,7 @@ def kv_block(keys, brushes=()):
 
 def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = None,
             terrain: bool = False, terrain_tol: float = 8.0, terrain_tex: str = "CLIP",
-            terrain_seal: bool = True):
+            terrain_seal: bool = True, detail_world: bool = False, seal_box: bool = False):
 	namer = TextureNamer()
 	stats = Counter()
 	world = bsp.entities[0] if bsp.entities else {"classname": "worldspawn"}
@@ -523,6 +543,8 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 	world_brushes = []
 	detail = []
 	for cls, txt in model_brushes(bsp, 0, scale, (0.0, 0.0, 0.0), namer, stats):
+		if cls == "detail" and detail_world:
+			cls = "solid"  # MOHAA detail can be part of the shell; func_detail never seals in SDHLT
 		if cls == "detail" and " sky [" in txt:
 			cls = "solid"  # SDHLT rejects sky inside func_detail too
 			stats["detail_sky_to_world"] += 1
@@ -530,6 +552,8 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 		stats["world_brushes_written"] += 1
 	if terrain_seal:
 		world_brushes.extend(terrain_seal_brushes(bsp, scale, stats))
+	if seal_box:
+		world_brushes.extend(seal_box_brushes(bsp, scale, stats))
 	if terrain:
 		detail.extend(terrain_brushes(bsp, scale, terrain_tol, terrain_tex, stats))
 	blocks = [kv_block(ws_keys, world_brushes)]
@@ -668,13 +692,17 @@ def main(argv=None) -> int:
 	                help="texture for terrain brushes: CLIP (player hulls only; default, keeps hull 0 small) or NULL")
 	ap.add_argument("--no-terrain-seal", action="store_true",
 	                help="don't write the NULL columns under terrain that stop it leaking")
+	ap.add_argument("--detail-world", action="store_true",
+	                help="write MOHAA detail brushes into worldspawn (they seal; func_detail does not)")
+	ap.add_argument("--seal-box", action="store_true",
+	                help="enclose the map in a NULL box so hull 0 can't leak (last resort)")
 	args = ap.parse_args(argv)
 
 	name, data = read_source(args.source)
 	bsp = b19.load_bytes(data, name)
 	wad_key = str(args.wad.resolve()) if args.wad else None
 	text, namer, stats, skipped = convert(bsp, args.scale, wad_key, args.terrain_brushes, args.terrain_tol, args.terrain_tex,
-	                                         not args.no_terrain_seal)
+	                                         not args.no_terrain_seal, args.detail_world, args.seal_box)
 	args.out.write_text(text)
 	if args.wad:
 		write_wad(args.wad, list(namer.by_shader.values()) + sorted(namer.special_used))
