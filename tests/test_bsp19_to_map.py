@@ -99,11 +99,13 @@ class CompileSafetyTest(unittest.TestCase):
 		self.assertEqual(stats["brushes_outside_world"], 1)
 		self.assertEqual(stats["world_brushes_written"], 1)
 
-	def test_one_unit_beam_dropped(self):
+	def test_one_unit_beam_thickened(self):
 		bsp = tiny_bsp([((-2000, 5351, 12), (2000, 5352, 13), 0), ((0, 0, 0), (64, 64, 64), 0)], [])
-		_, _, stats, _ = conv.convert(bsp, scale=1.0)
-		self.assertEqual(stats["brushes_too_thin"], 1)
-		self.assertEqual(stats["world_brushes_written"], 1)
+		text, _, stats, _ = conv.convert(bsp, scale=1.0)
+		self.assertEqual(stats["brushes_thickened"], 1)
+		self.assertEqual(stats["world_brushes_written"], 2)
+		self.assertIn("5350.9", text)  # pushed out by (1.1 - 1) / 2 + 0.05 = 0.1 per side
+		self.assertIn("5352.1", text)
 
 	def test_tilted_near_coplanar_side_dropped(self):
 		# sdHLCSG tests the new side's first point against the old plane, not the distances

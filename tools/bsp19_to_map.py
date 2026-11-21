@@ -49,8 +49,10 @@ WORLD_LIMIT = 32000.0  # SDHLT rejects brushes past +/-32768; keep a margin
 CSG_DIR_EPS = 2 * 0.0001
 CSG_DIST_EPS = 2 * 0.04
 # Brushes thinner than this (GoldSrc units, along any of their own side normals)
-# are dropped: SDHLT turns 1-unit slivers into +/-80000 "outside world" brushes.
+# are inflated to it: SDHLT turns 1-unit slivers into +/-80000 "outside world"
+# brushes, and dropping them instead opens leaks (thin glass and fences seal rooms).
 MIN_THICKNESS = 1.1
+DROP_THICKNESS = 0.05  # flatter than this is a zero-volume brush; drop it
 
 # ---------------------------------------------------------------- geometry
 
@@ -314,6 +316,12 @@ def csg_safe_sides(sides, stats):
 	return kept
 
 
+def brush_thickness(faces):
+	"""Smallest extent of a convex brush measured along its own side normals."""
+	verts = [p for _, _, w, _ in faces for p in w]
+	return min(d - min(_dot(p, n) for p in verts) for n, d, _, _ in faces)
+
+
 def brush_text(bsp, brush, scale, offset, namer, stats, cls, entity=False):
 	planes = []
 	for si in range(brush.first_side, brush.first_side + brush.num_sides):
@@ -335,10 +343,18 @@ def brush_text(bsp, brush, scale, offset, namer, stats, cls, entity=False):
 		# Unbounded or runaway brush (MOHAA keeps a few); SDHLT would abort on it.
 		stats["brushes_outside_world"] += 1
 		return None
-	verts = [p for _, _, w, _ in faces for p in w]
-	if min(d - min(_dot(p, n) for p in verts) for n, d, _, _ in faces) < MIN_THICKNESS:
+	t = brush_thickness(faces)
+	if t < DROP_THICKNESS:
 		stats["brushes_too_thin"] += 1
 		return None
+	if t < MIN_THICKNESS:
+		# Push every side out by the same amount: the brush stays convex and keeps its shape.
+		grow = (MIN_THICKNESS - t) / 2 + 0.05
+		faces = brush_faces([(n, d + grow, sh) for n, d, _, sh in faces])
+		if len(faces) < 4 or brush_thickness(faces) < MIN_THICKNESS:
+			stats["brushes_too_thin"] += 1
+			return None
+		stats["brushes_thickened"] += 1
 	sides = []
 	for n, d, w, sh in faces:
 		tex = side_texture(sh, namer, cls)
