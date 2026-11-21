@@ -187,6 +187,27 @@ class CompileSafetyTest(unittest.TestCase):
 		world = text.split('"classname" "func_wall"')[0]
 		self.assertEqual(world.count(" CLIP ["), 12)  # both still collide
 
+	def test_brush_volume(self):
+		faces = conv.brush_faces(box_planes((0, 0, 0), (64, 32, 16)))
+		self.assertAlmostEqual(conv.brush_volume(faces), 64 * 32 * 16, places=3)
+
+	def test_angled_collision_aabb_and_reach(self):
+		s2 = 2 ** -0.5
+		planes = box_planes((0, 0, 0), (128, 128, 64))
+		planes.append(((s2, 0.0, s2), 160 * s2, None))  # trims one top edge: still fills its box
+		faces = conv.brush_faces(planes)
+		stats, vox = conv.Counter(), set()
+		box = conv.angled_collision(faces, vox, (64, 16), stats, aabb_fill=0.4)
+		self.assertIsNotNone(box)
+		self.assertEqual(stats["collision_aabb"], 1)
+		self.assertFalse(vox)
+		far = conv.ReachIndex([(5000.0, 5000.0, 0.0)], 512)
+		near = conv.ReachIndex([(300.0, 64.0, 0.0)], 512)
+		self.assertIsNone(conv.angled_collision(faces, vox, 16, stats, reach=far))
+		self.assertEqual(stats["collision_unreachable"], 1)
+		conv.angled_collision(faces, vox, 16, stats, reach=near)
+		self.assertTrue(vox)  # reachable and no aabb option: voxelized
+
 	def test_tilted_near_coplanar_side_dropped(self):
 		# sdHLCSG tests the new side's first point against the old plane, not the distances
 		stats = conv.Counter()

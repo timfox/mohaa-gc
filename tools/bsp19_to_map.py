@@ -573,6 +573,69 @@ def is_axial_brush(faces):
 	return all(sum(1 for c in n if abs(c) > 1e-6) == 1 for n, _, _, _ in faces)
 
 
+def brush_volume(faces):
+	verts = [p for _, _, w, _ in faces for p in w]
+	c = tuple(sum(p[i] for p in verts) / len(verts) for i in range(3))
+	return sum(winding_area(w) * (d - _dot(n, c)) for n, d, w, _ in faces) / 3.0
+
+
+def brush_aabb(faces):
+	verts = [p for _, _, w, _ in faces for p in w]
+	return (tuple(min(p[i] for p in verts) for i in range(3)),
+	        tuple(max(p[i] for p in verts) for i in range(3)))
+
+
+class ReachIndex:
+	"""Where players can be: MOHAA path nodes and player starts. Angled detail far from
+	all of them never touches a player hull, so it needs no player collision (bullets
+	still hit its hull-0 copy). up/down bound how far above/below a point counts."""
+
+	def __init__(self, points, radius, up=256.0, down=512.0):
+		self.r, self.up, self.down = radius, up, down
+		self.cells = {}
+		for p in points:
+			self.cells.setdefault((int(math.floor(p[0] / radius)), int(math.floor(p[1] / radius))), []).append(p)
+
+	def reaches(self, lo, hi):
+		r = self.r
+		for cx in range(int(math.floor((lo[0] - r) / r)), int(math.floor((hi[0] + r) / r)) + 1):
+			for cy in range(int(math.floor((lo[1] - r) / r)), int(math.floor((hi[1] + r) / r)) + 1):
+				for p in self.cells.get((cx, cy), ()):
+					dx = max(lo[0] - p[0], 0.0, p[0] - hi[0])
+					dy = max(lo[1] - p[1], 0.0, p[1] - hi[1])
+					if dx * dx + dy * dy <= r * r and p[2] + self.up >= lo[2] and p[2] - self.down <= hi[2]:
+						return True
+		return False
+
+
+def reach_points(bsp, scale):
+	pts = []
+	for e in bsp.entities[1:]:
+		cn = e.get("classname", "").lower()
+		if cn in ("info_pathnode", "info_grav_pathnode") or cn in PLAYER_STARTS:
+			pts.append(tuple(c * scale for c in parse_vec(e.get("origin", ""))))
+	return pts
+
+
+def angled_collision(faces, voxels, grid, stats, aabb_fill=0.0, reach=None):
+	"""Player collision for an angled brush: nothing if no player can reach it, its own
+	axial bounding box if that box is nearly as tight as the brush (or the brush is
+	smaller than a cell), else grid voxels. Returns a CLIP brush or None."""
+	lo, hi = brush_aabb(faces)
+	if reach is not None and not reach.reaches(lo, hi):
+		stats["collision_unreachable"] += 1
+		return None
+	if aabb_fill > 0:
+		g = _grid3(grid)
+		ext = [hi[i] - lo[i] for i in range(3)]
+		box_vol = ext[0] * ext[1] * ext[2]
+		if all(ext[i] <= g[i] for i in range(3)) or (box_vol > 0 and brush_volume(faces) / box_vol >= aabb_fill):
+			stats["collision_aabb"] += 1
+			return _box_brush(tuple(math.floor(c) for c in lo), tuple(math.ceil(c) for c in hi), "CLIP")
+	voxelize_brush(faces, voxels, grid)
+	return None
+
+
 def _grid3(grid):
 	"""A grid is one cell size or (xy, z) / (x, y, z)."""
 	if isinstance(grid, (int, float)):
@@ -651,7 +714,8 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
             terrain: bool = False, terrain_tol: float = 8.0, terrain_tex: str = "CLIP",
             terrain_seal: bool = True, detail_world: bool = False, seal_box: bool = False,
             simplify_collision: bool = False, collision_grid: float = 16.0, thin_walls: bool = True,
-            detail_walls: bool = False, wall_cell: float = THIN_WALL_CELL):
+            detail_walls: bool = False, wall_cell: float = THIN_WALL_CELL,
+            collision_aabb: float = 0.0, collision_reach: float = 0.0):
 	namer = TextureNamer()
 	stats = Counter()
 	world = bsp.entities[0] if bsp.entities else {"classname": "worldspawn"}
@@ -667,6 +731,12 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 	noclip_detail = []
 	voxels = set()
 	thin = []
+	reach = None
+	if simplify_collision and collision_reach > 0:
+		pts = reach_points(bsp, scale)
+		if len(pts) >= 8:  # too few points (some MP maps): keep collision everywhere
+			reach = ReachIndex(pts, collision_reach)
+		stats["collision_reach_points"] += len(pts)
 	for cls, txt, faces in model_brushes(bsp, 0, scale, (0.0, 0.0, 0.0), namer, stats):
 		if cls == "thin_detail":
 			if " sky [" in txt or not thin_walls:
@@ -675,7 +745,9 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 				thin.append((txt, faces))
 				stats["thin_detail_to_wall"] += 1
 				if simplify_collision and not is_axial_brush(faces):
-					voxelize_brush(faces, voxels, collision_grid)
+					box = angled_collision(faces, voxels, collision_grid, stats, collision_aabb, reach)
+					if box:
+						world_brushes.append(box)
 				else:
 					world_brushes.append(clip_copy(txt))
 					namer.special_used.add("CLIP")
@@ -683,7 +755,9 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 				continue
 		sky_detail = cls == "detail" and " sky [" in txt  # SDHLT: no sky in any entity, so world
 		if simplify_collision and cls in ("detail", "clip") and not sky_detail and not is_axial_brush(faces):
-			voxelize_brush(faces, voxels, collision_grid)
+			box = angled_collision(faces, voxels, collision_grid, stats, collision_aabb, reach)
+			if box:
+				world_brushes.append(box)
 			if cls == "detail" and detail_walls:
 				thin.append((txt, faces))  # drawn and shot, no world leaves, no player hulls
 				stats["detail_to_wall"] += 1
@@ -865,6 +939,12 @@ def main(argv=None) -> int:
 	ap.add_argument("--collision-grid-z", type=float,
 	                help="vertical cell for --simplify-collision (default: same as --collision-grid); "
 	                     "keep it under 18 so voxel slopes stay climbable while xy is coarser")
+	ap.add_argument("--collision-aabb", type=float, default=0.0, metavar="FILL",
+	                help="under --simplify-collision, an angled brush collides as its own bounding box when it "
+	                     "fills at least FILL of it (e.g. 0.4) or is smaller than a cell; others are voxelized")
+	ap.add_argument("--collision-reach", type=float, default=0.0, metavar="UNITS",
+	                help="under --simplify-collision, angled brushes further than UNITS (xy) from every path "
+	                     "node and player start get no player collision (needs >= 8 such points)")
 	ap.add_argument("--collision-grid", type=float, default=16.0,
 	                help="grid for --simplify-collision, GoldSrc units (default 16, under the 18-unit step)")
 	ap.add_argument("--seal-box", action="store_true",
@@ -887,7 +967,8 @@ def main(argv=None) -> int:
 	                                         not args.no_terrain_seal, args.detail_world, args.seal_box,
 	                                         args.simplify_collision,
 	                                         (args.collision_grid, args.collision_grid_z or args.collision_grid),
-	                                         not args.thin_detail_in_world, args.detail_walls, args.wall_cell)
+	                                         not args.thin_detail_in_world, args.detail_walls, args.wall_cell,
+	                                         args.collision_aabb, args.collision_reach)
 	args.out.write_text(text)
 	if args.wad:
 		write_wad(args.wad, list(namer.by_shader.values()) + sorted(namer.special_used))
