@@ -69,7 +69,7 @@ Writes a Valve-220 .map that SDHLT compiles to BSP30. Stage one only covers brus
 - Every brush is rebuilt from its planes. Bevel and duplicate planes drop out, and the world is scaled by `--scale` (default 72/94).
 - MOHAA detail brushes go into one `func_detail`. Caulk/nodraw becomes `NULL`, clip becomes `CLIP`, sky becomes `sky`, water becomes `!water`.
 - Doors and script objects are written as brush entities. Rotating doors get an `ORIGIN` brush. MOHAA player starts become DoD spawns, lifted onto GoldSrc's hull.
-- Brushes SDHLT would reject are dropped and counted: slivers under 1.1 units thick, runaway brushes past ±32000, and sides that sdHLCSG would read as the same plane as another side. Sky faces on brush entities become `NULL`. Detail brushes with sky stay in the world.
+- Brushes SDHLT would reject are fixed or dropped and counted: slivers under 1.1 units thick are inflated to 1.1 (dropping them opened leaks), flat ones are dropped, runaway brushes past ±32000, and sides that sdHLCSG would read as the same plane as another side. Sky faces on brush entities become `NULL`. Detail brushes with sky stay in the world.
 - MOHAA terrain is not a brush, so every terrain patch gets a `NULL` column underneath it to stop hull 0 leaking. Turn this off with `--no-terrain-seal`. `--terrain-brushes` also writes the terrain surface as `CLIP` wedges. They only affect the player hulls, but they cost a lot of clipnodes: m3l1a needs about 37k extra raw clipnodes even at `--terrain-tol 32`.
 - `--wad` writes placeholder textures (a flat checker per name) so SDHLT can compile without the real art.
 
