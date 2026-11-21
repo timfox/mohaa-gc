@@ -452,9 +452,21 @@ class ConvertTest(unittest.TestCase):
 	def test_name_report(self):
 		self.bsp.entities.append({"classname": "light", "origin": "0 0 0", "targetname": "Lamp1"})
 		text, _, _, _ = conv.convert(self.bsp, scale=0.5)
-		missing, lost = conv.name_report(self.bsp, text, {"door1", "lamp1", "spawned_later"})
-		self.assertEqual(missing, ["lamp1", "spawned_later"])
+		self.bsp.entities.append({"classname": "info_pathnode", "origin": "0 0 0", "targetname": "walk_here"})
+		missing, lost, spawned = conv.name_report(
+			self.bsp, text, {"door1", "lamp1", "spawned_later", "walk_here", "elsewhere"}, {"spawned_later"})
+		self.assertEqual(missing, ["elsewhere", "lamp1"])
 		self.assertEqual(lost, {"lamp1": "light"})
+		self.assertEqual(spawned, ["spawned_later"])
+
+	def test_script_assigned_names(self):
+		src = ('local.t = spawn vehicles/tiger.tik targetname tank1\n'
+		       '$guy.targetname = "guard2"\n'
+		       'local.e = spawn script_origin "targetname" "spot"\n'
+		       'if ($x.targetname == "nope") end\n'
+		       'local.a = spawn actor targetname local.name\n')
+		got = {n.lower() for n in conv.SCRIPT_ASSIGN.findall(src)} - conv._NOT_NAMES
+		self.assertEqual(got, {"tank1", "guard2", "spot"})
 
 	def test_actor_detection_and_nodes(self):
 		self.assertTrue(conv.is_actor("actor", ""))

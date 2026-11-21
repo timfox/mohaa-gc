@@ -1,6 +1,7 @@
 /* MOHAA script binding (dod_mohaa.c) against a mock GoldSrc world. */
 #define _POSIX_C_SOURCE 200809L
 #include "dod_mohaa.h"
+#include "dod_mohaa_pool.h"
 
 #include <assert.h>
 #include <math.h>
@@ -598,6 +599,83 @@ static void test_setthread_and_quiet_commands(void)
 	assert(strstr(log_buf, "[center] Objective: Find the radio\n"));
 }
 
+/* The region allocator: random allocs, grows, shrinks and frees keep every block's bytes, and freeing
+   everything merges the region back into one piece. */
+static void test_pool_allocator(void)
+{
+	static unsigned char region[64 * 1024 + 3];
+	enum { N = 200 };
+	MohaaPool p;
+	unsigned char *ptr[N];
+	size_t len[N];
+	uint32_t rng = 12345u;
+	size_t whole;
+	int i, k;
+	assert(!MohaaPool_Init(&p, region, 8));
+	assert(MohaaPool_Init(&p, region + 3, sizeof(region) - 3));   /* unaligned start is trimmed */
+	whole = MohaaPool_Largest(&p);
+	assert(whole > 63 * 1024);
+	memset(ptr, 0, sizeof(ptr));
+	for (k = 0; k < 20000; k++) {
+		rng = rng * 1103515245u + 12345u;
+		i = (int)((rng >> 8) % N);
+		const size_t want = 1 + (rng >> 20) % 900;
+		if (ptr[i]) {   /* check the block kept its fill byte */
+			size_t j;
+			for (j = 0; j < len[i]; j++)
+				assert(ptr[i][j] == (unsigned char)i);
+		}
+		if (ptr[i] && (rng & 3u) == 0) {
+			MohaaPool_Free(&p, ptr[i]);
+			ptr[i] = NULL;
+		} else {
+			unsigned char *q = (unsigned char *)MohaaPool_Realloc(&p, ptr[i], want);
+			if (!q)
+				continue;   /* full: the old block is untouched */
+			if (want > (ptr[i] ? len[i] : 0))
+				memset(q + (ptr[i] ? len[i] : 0), i, want - (ptr[i] ? len[i] : 0));
+			ptr[i] = q;
+			len[i] = want;
+		}
+	}
+	for (i = 0; i < N; i++)
+		MohaaPool_Free(&p, ptr[i]);
+	assert(p.used == 0 && MohaaPool_Largest(&p) == whole && p.free && !p.free->next);
+	assert(!MohaaPool_Alloc(&p, whole + 1) && MohaaPool_Alloc(&p, whole));
+}
+
+/* A backend region replaces malloc: the level runs in it, and one too small refuses cleanly. */
+static void test_pool_backend(void)
+{
+	static unsigned char region[96 * 1024];
+	DodMohaaBackend b = backend();
+	DodMohaaStats st;
+	reset();
+	add("door1", "func_wall", 0, 0, 0);
+	files[0][0] = "maps/p.scr";
+	files[0][1] =
+		"main:\n"
+		"\tlevel waittill spawn\n"
+		"\tfor (local.i = 0; local.i < 50; local.i++)\n"
+		"\t\tlevel.list[local.i] = \"item \" + local.i\n"
+		"\tprintln \"pooled \" level.list[49] \" \" $door1.origin\n"
+		"end\n";
+	b.pool = region;
+	b.pool_size = sizeof(region);
+	assert(Dod_MohaaLevelInit(&b, "p", 0, 0));
+	run(0.05f, 0.3f);
+	assert(strstr(log_buf, "pooled item 49 (0.000 0.000 0.000)"));
+	Dod_MohaaGetStats(&st);
+	assert(st.errors == 0 && st.memory > 0);
+	Dod_MohaaShutdown();
+	reset();
+	files[0][0] = "maps/p.scr";
+	files[0][1] = "main:\n\tprintln \"x\"\nend\n";
+	b.pool_size = 1024;
+	assert(!Dod_MohaaLevelInit(&b, "p", 0, 0));
+	assert(strstr(log_buf, "script pool") || strstr(log_buf, "cannot create"));
+}
+
 int main(void)
 {
 	test_no_script_no_vm();
@@ -609,6 +687,8 @@ int main(void)
 	test_music();
 	test_routes();
 	test_setthread_and_quiet_commands();
+	test_pool_allocator();
+	test_pool_backend();
 	Dod_MohaaShutdown();
 	assert(Dod_MohaaPathNodes(NULL) == 0);
 	printf("dod_mohaa_test: ok\n");
