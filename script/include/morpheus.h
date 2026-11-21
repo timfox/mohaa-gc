@@ -122,6 +122,9 @@ void ms_frame(ms_vm *vm, float now);
 /* Wake threads waiting on (listener, name): "$door waittill trigger". */
 void ms_notify(ms_vm *vm, const ms_value *listener, const char *name);
 
+/* Set a script variable on an entity, as "$ent.name = v" would (map keys like #set). 0 when out of memory. */
+int ms_set_entity_var(ms_vm *vm, uint32_t id, const char *name, const ms_value *v);
+
 /* Host removed an entity: wake "removed" waiters, kill threads owned by it. */
 void ms_entity_removed(ms_vm *vm, uint32_t id);
 
