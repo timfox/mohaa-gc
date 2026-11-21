@@ -9,11 +9,13 @@ planes pushed out by the box and axial bevels so corners don't snag.
 Terrain (MOHAA LOD terrain patches) is stored as heightfields, the way MOHAA's own
 cm_terrain does: 9 x 9 heights per 8 x 8-cell patch, swept as one wedge brush per
 triangle that the engine builds on the fly. That is about 1% of the size of storing
-the same wedges as brushes.
+the same wedges as brushes. Curved patches are stored as triangle lists (vertices plus
+index triples), each triangle swept as a thin prism built on the fly, the way Quake 3
+collides with patch facets.
 
 File layout, little-endian:
-  header  char magic[4] "MCOL"; int32 version (3); int32 numplanes, numbrushes,
-          numsides, numnodes, numterrain, numtnodes
+  header  char magic[4] "MCOL"; int32 version (4); int32 numplanes, numbrushes,
+          numsides, numnodes, numterrain, numtnodes, numverts, numtris, numtrinodes
   planes  numplanes  x { float normal[3]; float dist; }
   brushes numbrushes x { int32 firstside; int32 numsides; float mins[3]; float maxs[3]; }
           A brush is its six axial planes, which are exactly its bounds (a real axial
@@ -31,6 +33,11 @@ File layout, little-endian:
           bounds (axial, as for brushes), then its top, then its diagonal side.
           zmin/zmax bound the heights.
   tnodes  numtnodes  x node, as above, over terrain patches (stored in leaf order).
+  verts   numverts   x { float xyz[3]; }
+  tris    numtris    x { int32 v[3]; }  stored in leaf order. Triangle abc is the prism
+          from abc back to abc - PATCH_THICKNESS * n, n = normalize((b - a) x (c - a)):
+          planes are its bounds, then front (n), back, and the edges ab, bc, ca.
+  trinodes numtrinodes x node, as above, over triangles.
 
 trace_box() is the reference sweep that the engine port must match.
 """
@@ -39,7 +46,9 @@ from __future__ import annotations
 import struct
 
 MAGIC = b"MCOL"
-VERSION = 3
+VERSION = 4
+PATCH_THICKNESS = 2.0
+TRI_LEAF_SIZE = 8
 TERRAIN_SAMPLES = 9
 TERRAIN_DEPTH = 16.0
 LEAF_SIZE = 4
@@ -102,6 +111,25 @@ def terrain_wedges(t, i, j):
 	return out
 
 
+def triangle_prism(a, b, c):
+	"""(mins, maxs, planes) of the prism behind triangle abc, or None when degenerate."""
+	cr = _cross((b[0] - a[0], b[1] - a[1], b[2] - a[2]), (c[0] - a[0], c[1] - a[1], c[2] - a[2]))
+	if _dot(cr, cr) < 1e-8:
+		return None
+	n = _norm(cr)
+	t = PATCH_THICKNESS
+	planes = [(n, _dot(n, a)), ((-n[0], -n[1], -n[2]), -_dot(n, a) + t)]
+	for p, q, r in ((a, b, c), (b, c, a), (c, a, b)):
+		en = _norm(_cross((q[0] - p[0], q[1] - p[1], q[2] - p[2]), n))
+		if _dot(en, (r[0] - p[0], r[1] - p[1], r[2] - p[2])) > 0:
+			en = (-en[0], -en[1], -en[2])
+		planes.append((en, _dot(en, p)))
+	pts = [a, b, c] + [(p[0] - n[0] * t, p[1] - n[1] * t, p[2] - n[2] * t) for p in (a, b, c)]
+	mins = tuple(min(p[k] for p in pts) for k in range(3))
+	maxs = tuple(max(p[k] for p in pts) for k in range(3))
+	return mins, maxs, planes
+
+
 def _bvh(boxes, leaf_size=LEAF_SIZE):
 	"""Median-split BVH over [(mins, maxs)]: returns (nodes, order) in the file's node format."""
 	nodes, order = [], []
@@ -132,6 +160,22 @@ class Collision:
 	def __init__(self):
 		self.brushes = []  # (planes, mins, maxs)
 		self.terrain = []  # (origin, cell, zscale, zmin, zmax, h)
+		self.verts, self._vix = [], {}
+		self.tris = []  # (i, j, k) into verts
+
+	def add_triangle(self, a, b, c):
+		"""One patch facet. Returns False (and stores nothing) for a degenerate triangle."""
+		if triangle_prism(a, b, c) is None:
+			return False
+		ix = []
+		for p in (a, b, c):
+			key = (round(p[0], 3), round(p[1], 3), round(p[2], 3))
+			if key not in self._vix:
+				self._vix[key] = len(self.verts)
+				self.verts.append(tuple(float(v) for v in p))
+			ix.append(self._vix[key])
+		self.tris.append(tuple(ix))
+		return True
 
 	def add_brush(self, planes, verts):
 		mins = tuple(min(v[i] for v in verts) for i in range(3))
@@ -151,7 +195,8 @@ class Collision:
 		return (origin[0], origin[1], zmin - TERRAIN_DEPTH), (origin[0] + span, origin[1] + span, zmax)
 
 	def build(self):
-		"""Returns (planes, brushes, sides, nodes, terrain, tnodes), items in leaf order."""
+		"""Returns (planes, brushes, sides, nodes, terrain, tnodes, verts, tris, trinodes),
+		items in leaf order."""
 		plane_ix, planes = {}, []
 		nodes, order = _bvh([(b[1], b[2]) for b in self.brushes])
 		brushes, sides = [], []
@@ -167,13 +212,19 @@ class Collision:
 			brushes.append((first, len(bplanes), mins, maxs))
 		tnodes, torder = _bvh([self.terrain_box(t) for t in self.terrain])
 		terrain = [self.terrain[i] for i in torder]
-		return planes, brushes, sides, nodes, terrain, tnodes
+		boxes = []
+		for i, j, k in self.tris:
+			mins, maxs, _ = triangle_prism(self.verts[i], self.verts[j], self.verts[k])
+			boxes.append((mins, maxs))
+		trinodes, triorder = _bvh(boxes, TRI_LEAF_SIZE)
+		tris = [self.tris[i] for i in triorder]
+		return planes, brushes, sides, nodes, terrain, tnodes, list(self.verts), tris, trinodes
 
 	def write(self, path):
-		planes, brushes, sides, nodes, terrain, tnodes = self.build()
+		planes, brushes, sides, nodes, terrain, tnodes, verts, tris, trinodes = self.build()
 		with open(path, "wb") as f:
-			f.write(MAGIC + struct.pack("<7i", VERSION, len(planes), len(brushes), len(sides), len(nodes),
-			                            len(terrain), len(tnodes)))
+			f.write(MAGIC + struct.pack("<10i", VERSION, len(planes), len(brushes), len(sides), len(nodes),
+			                            len(terrain), len(tnodes), len(verts), len(tris), len(trinodes)))
 			for n, d in planes:
 				f.write(struct.pack("<4f", n[0], n[1], n[2], d))
 			for first, num, mins, maxs in brushes:
@@ -186,19 +237,26 @@ class Collision:
 				f.write(struct.pack("<7f", *origin, cell, zscale, zmin, zmax) + h + b"\0\0\0")
 			for mins, maxs, a, b in tnodes:
 				f.write(struct.pack("<6f2i", *mins, *maxs, a, b))
+			for v in verts:
+				f.write(struct.pack("<3f", *v))
+			for t in tris:
+				f.write(struct.pack("<3i", *t))
+			for mins, maxs, a, b in trinodes:
+				f.write(struct.pack("<6f2i", *mins, *maxs, a, b))
 		return len(planes), len(brushes), len(sides), len(nodes)
 
 
 TERRAIN_RECORD = 7 * 4 + 84
+HEADER = 44
 
 
 def read(path):
 	with open(path, "rb") as f:
 		data = f.read()
 	assert data[:4] == MAGIC
-	ver, npl, nbr, nsd, nnd, nte, ntn = struct.unpack_from("<7i", data, 4)
+	ver, npl, nbr, nsd, nnd, nte, ntn, nve, ntr, ntrn = struct.unpack_from("<10i", data, 4)
 	assert ver == VERSION
-	o = 32
+	o = HEADER
 
 	def node_list(o, n):
 		return [((a, b, c), (d, e, f), g, h) for a, b, c, d, e, f, g, h in struct.iter_unpack("<6f2i", data[o:o + 32 * n])]
@@ -217,7 +275,13 @@ def read(path):
 		terrain.append(((x, y, z), cell, zscale, zmin, zmax, data[o + 28:o + 28 + 81]))
 		o += TERRAIN_RECORD
 	tnodes = node_list(o, ntn)
-	return planes, brushes, sides, nodes, terrain, tnodes
+	o += 32 * ntn
+	verts = list(struct.iter_unpack("<3f", data[o:o + 12 * nve]))
+	o += 12 * nve
+	tris = list(struct.iter_unpack("<3i", data[o:o + 12 * ntr]))
+	o += 12 * ntr
+	trinodes = node_list(o, ntrn)
+	return planes, brushes, sides, nodes, terrain, tnodes, verts, tris, trinodes
 
 
 def _walk(nodes, overlaps):
@@ -237,8 +301,8 @@ def trace_box(mcol, start, end, mins, maxs):
 	"""Sweep box (mins, maxs) from start to end. Returns (fraction, normal, startsolid).
 	Quake 3 CM_TraceThroughBrush: each plane is pushed out by the box's support
 	distance; enter/leave fractions are clipped DIST_EPSILON short of the surface.
-	Brushes first, then terrain wedges, in BVH order."""
-	planes, brushes, sides, nodes, terrain, tnodes = mcol
+	Brushes first, then terrain wedges, then patch triangles, each in BVH order."""
+	planes, brushes, sides, nodes, terrain, tnodes, verts, tris, trinodes = mcol
 	best = [1.0, None, False]
 	bmin = [min(start[i], end[i]) + mins[i] for i in range(3)]
 	bmax = [max(start[i], end[i]) + maxs[i] for i in range(3)]
@@ -304,4 +368,10 @@ def trace_box(mcol, start, end, mins, maxs):
 					for wl, wh, extra in terrain_wedges(t, i, j):
 						if overlaps(wl, wh):
 							brush(wl, wh, extra)
+
+	for a, b in _walk(trinodes, overlaps):
+		for i, j, k in tris[a:a + b]:
+			pr = triangle_prism(verts[i], verts[j], verts[k])
+			if pr is not None and overlaps(pr[0], pr[1]):
+				brush(*pr)
 	return tuple(best)
