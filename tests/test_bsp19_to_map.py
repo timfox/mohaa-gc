@@ -177,6 +177,16 @@ class CompileSafetyTest(unittest.TestCase):
 			self.assertNotIn("func_detail", text)
 			self.assertNotIn("func_wall", text)
 
+	def test_nodraw_detail_wall_dropped_keeps_clip(self):
+		bsp = tiny_bsp([((0, 0, 0), (64, 64, 64), 0), ((2000, 0, 0), (2064, 64, 64), 2)], [])
+		bsp.shaders.append(b19.Shader("textures/common/nodraw", b19.SURF_NODRAW, b19.CONTENTS_SOLID, 0))
+		bsp.shaders[0].content_flags |= b19.CONTENTS_DETAIL
+		text, _, stats, _ = conv.convert(bsp, scale=1.0, detail_walls=True)
+		self.assertEqual(stats["nodraw_wall_brushes_dropped"], 1)
+		self.assertEqual(text.count('"classname" "func_wall"'), 1)
+		world = text.split('"classname" "func_wall"')[0]
+		self.assertEqual(world.count(" CLIP ["), 12)  # both still collide
+
 	def test_tilted_near_coplanar_side_dropped(self):
 		# sdHLCSG tests the new side's first point against the old plane, not the distances
 		stats = conv.Counter()

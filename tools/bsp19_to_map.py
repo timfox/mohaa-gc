@@ -437,6 +437,12 @@ def thin_wall_blocks(thin, stats, cell=THIN_WALL_CELL):
 	cost 6-13 world leaves in func_detail) but still block players and traces."""
 	cells = {}
 	for txt, faces in thin:
+		texs = _SIDE_TEXNAME_RE.findall(txt)
+		if texs and all(t == "NULL" for t in texs):
+			# Nothing to draw: as a wall it only adds hull-0 nodes/leaves (BSP size).
+			# Players still collide with its CLIP copy / voxel boxes in the world.
+			stats["nodraw_wall_brushes_dropped"] += 1
+			continue
 		verts = [p for _, _, w, _ in faces for p in w]
 		c = tuple(int(math.floor((min(v[i] for v in verts) + max(v[i] for v in verts)) * 0.5 / cell))
 		          for i in range(3))
@@ -448,6 +454,7 @@ def thin_wall_blocks(thin, stats, cell=THIN_WALL_CELL):
 	        for c in sorted(cells)]
 
 
+_SIDE_TEXNAME_RE = re.compile(r"^\(.*?\) \(.*?\) \(.*?\) (\S+) \[", re.M)
 _SIDE_TEX_RE = re.compile(r"^(\(.*?\) \(.*?\) \(.*?\) )\S+ \[", re.M)
 
 
