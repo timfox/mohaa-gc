@@ -163,6 +163,18 @@ class CompileSafetyTest(unittest.TestCase):
 		world = text.split('"classname" "func_wall"')[0]
 		self.assertEqual(world.count(" CLIP ["), 12)
 
+	def test_angled_sky_detail_stays_in_world_under_simplify(self):
+		# m5l3: an angled detail brush with one sky face ended up in the noclip func_detail.
+		s2 = 2 ** -0.5
+		bsp = tiny_bsp([((0, 0, 0), (64, 64, 64), 1)], [])
+		bsp.planes[0] = (s2, s2, 0.0, 64 * s2 * 1.5)  # tilt the +x side
+		bsp.shaders[0].content_flags |= b19.CONTENTS_DETAIL
+		for walls in (False, True):
+			text, _, stats, _ = conv.convert(bsp, scale=1.0, simplify_collision=True, detail_walls=walls)
+			self.assertEqual(stats["detail_sky_to_world"], 1)
+			self.assertNotIn("func_detail", text)
+			self.assertNotIn("func_wall", text)
+
 	def test_tilted_near_coplanar_side_dropped(self):
 		# sdHLCSG tests the new side's first point against the old plane, not the distances
 		stats = conv.Counter()
