@@ -431,14 +431,14 @@ def model_brushes(bsp, model_index, scale, offset, namer, stats):
 THIN_WALL_CELL = 1024.0  # group thin detail into func_walls per cell so bbox culling still works
 
 
-def thin_wall_blocks(thin, stats):
+def thin_wall_blocks(thin, stats, cell=THIN_WALL_CELL):
 	"""thin: [(txt, faces)]. One func_wall per THIN_WALL_CELL^3 cell (by brush centre).
 	As separate brush models they don't split the world's hull-0 tree (each kept sliver
 	cost 6-13 world leaves in func_detail) but still block players and traces."""
 	cells = {}
 	for txt, faces in thin:
 		verts = [p for _, _, w, _ in faces for p in w]
-		c = tuple(int(math.floor((min(v[i] for v in verts) + max(v[i] for v in verts)) * 0.5 / THIN_WALL_CELL))
+		c = tuple(int(math.floor((min(v[i] for v in verts) + max(v[i] for v in verts)) * 0.5 / cell))
 		          for i in range(3))
 		cells.setdefault(c, []).append(txt)
 	stats["thin_detail_walls"] += len(cells)
@@ -644,7 +644,7 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
             terrain: bool = False, terrain_tol: float = 8.0, terrain_tex: str = "CLIP",
             terrain_seal: bool = True, detail_world: bool = False, seal_box: bool = False,
             simplify_collision: bool = False, collision_grid: float = 16.0, thin_walls: bool = True,
-            detail_walls: bool = False):
+            detail_walls: bool = False, wall_cell: float = THIN_WALL_CELL):
 	namer = TextureNamer()
 	stats = Counter()
 	world = bsp.entities[0] if bsp.entities else {"classname": "worldspawn"}
@@ -716,7 +716,7 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 	if noclip_detail:
 		blocks.append(kv_block({"classname": "func_detail", "zhlt_detaillevel": "1", "zhlt_noclip": "1"}, noclip_detail))
 	if thin:
-		blocks.extend(thin_wall_blocks(thin, stats))
+		blocks.extend(thin_wall_blocks(thin, stats, wall_cell))
 
 	skipped = Counter()
 	for e in bsp.entities[1:]:
@@ -865,6 +865,9 @@ def main(argv=None) -> int:
 	ap.add_argument("--detail-walls", action="store_true",
 	                help="put all MOHAA detail into per-cell zhlt_noclip func_walls (no world hull-0 leaves); "
 	                     "players collide with CLIP copies, or voxel boxes for angled detail under --simplify-collision")
+	ap.add_argument("--wall-cell", type=float, default=THIN_WALL_CELL,
+	                help="cell size for detail/thin func_walls (default 1024); larger means fewer brush "
+	                     "models (SDHLT allows 512) and smaller BSP trees, coarser culling")
 	ap.add_argument("--thin-detail-in-world", action="store_true",
 	                help="keep thickened detail slivers in func_detail (default: per-cell func_walls, "
 	                     "which keeps them out of the world's hull-0 leaves)")
@@ -877,7 +880,7 @@ def main(argv=None) -> int:
 	                                         not args.no_terrain_seal, args.detail_world, args.seal_box,
 	                                         args.simplify_collision,
 	                                         (args.collision_grid, args.collision_grid_z or args.collision_grid),
-	                                         not args.thin_detail_in_world, args.detail_walls)
+	                                         not args.thin_detail_in_world, args.detail_walls, args.wall_cell)
 	args.out.write_text(text)
 	if args.wad:
 		write_wad(args.wad, list(namer.by_shader.values()) + sorted(namer.special_used))

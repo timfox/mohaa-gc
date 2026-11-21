@@ -162,6 +162,8 @@ class CompileSafetyTest(unittest.TestCase):
 		self.assertEqual(text.count('"classname" "func_wall"'), 2)
 		world = text.split('"classname" "func_wall"')[0]
 		self.assertEqual(world.count(" CLIP ["), 12)
+		text, _, stats, _ = conv.convert(bsp, scale=1.0, detail_walls=True, wall_cell=4096)
+		self.assertEqual(text.count('"classname" "func_wall"'), 1)
 
 	def test_angled_sky_detail_stays_in_world_under_simplify(self):
 		# m5l3: an angled detail brush with one sky face ended up in the noclip func_detail.
