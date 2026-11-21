@@ -53,6 +53,8 @@ TERRAIN_SAMPLES = 9
 TERRAIN_DEPTH = 16.0
 LEAF_SIZE = 4
 DIST_EPSILON = 0.03125  # Quake's SURFACE_CLIP_EPSILON
+TOUCH_TOLERANCE = DIST_EPSILON  # a start less than this inside one plane counts as touching it
+TOUCH_SLACK = 1.0 / 1024
 
 
 def _dot(a, b):
@@ -319,6 +321,13 @@ def trace_box(mcol, start, end, mins, maxs):
 			dist = d - _dot(off, n)
 			d1 = _dot(start, n) - dist
 			d2 = _dot(end, n) - dist
+			if -TOUCH_TOLERANCE < d1 <= 0:
+				# a start this close is touching, not inside: float error in a move that ended
+				# on the surface (or another collision path) left it there, and calling it solid
+				# would wedge the box for good (m6l1a: 0.01 into terrain under a rock face)
+				shift = TOUCH_SLACK - d1
+				d1 += shift
+				d2 += shift
 			if d2 > 0:
 				getsout = True
 			if d1 > 0:
