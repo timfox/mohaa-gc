@@ -208,6 +208,18 @@ class CompileSafetyTest(unittest.TestCase):
 		conv.angled_collision(faces, vox, 16, stats, reach=near)
 		self.assertTrue(vox)  # reachable and no aabb option: voxelized
 
+	def test_angled_collision_exact_for_large(self):
+		s2 = 2 ** -0.5
+		planes = box_planes((0, 0, 0), (512, 128, 64))
+		planes.append(((s2, 0.0, s2), 540 * s2, None))
+		faces = conv.brush_faces(planes)
+		txt = "{\n( 0 0 0 ) ( 0 1 0 ) ( 1 0 0 ) concrete [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1\n}"
+		stats, vox = conv.Counter(), set()
+		box = conv.angled_collision(faces, vox, 16, stats, exact_size=256, txt=txt)
+		self.assertIn(" CLIP [", box)
+		self.assertEqual(stats["collision_exact"], 1)
+		self.assertFalse(vox)
+
 	def test_tilted_near_coplanar_side_dropped(self):
 		# sdHLCSG tests the new side's first point against the old plane, not the distances
 		stats = conv.Counter()
