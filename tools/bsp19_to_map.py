@@ -722,6 +722,12 @@ PATH_NODES = ("info_pathnode", "info_grav_pathnode")
 ACTOR_KEYS = ("targetname", "target", "angle", "angles", "model", "health", "spawnflags")
 
 
+def hash_keys(e):
+	"""MOHAA "#" keys (#set, #group ...): script variables of the entity ($x.#set), which
+	dod-gc's DispatchKeyValue hands to the script binding. Passed through unchanged."""
+	return {k: v for k, v in e.items() if k.startswith("#") and len(k) > 1}
+
+
 def is_actor(cn, model):
 	"""MOHAA soldiers: classname "actor", or a human/ tiki as the classname or model."""
 	cn, model = cn.lower(), model.lower()
@@ -731,7 +737,7 @@ def is_actor(cn, model):
 def path_nodes(bsp, scale):
 	"""Path nodes for the <map>.nodes sidecar: one line per node, feet origin scaled.
 	They stay out of the .map so they cost no edicts; dod-gc links them at load."""
-	lines = ["# mohaa path nodes: x y z grav spawnflags targetname"]
+	lines = ["# mohaa path nodes: x y z grav spawnflags targetname [#key=value ...] (spaces in a value as %20)"]
 	for e in bsp.entities[1:]:
 		cn = e.get("classname", "").lower()
 		if cn not in PATH_NODES:
@@ -742,7 +748,9 @@ def path_nodes(bsp, scale):
 		except ValueError:
 			flags = 0
 		name = e.get("targetname", "").strip().lstrip("$") or "-"
-		lines.append(f"{_f(x)} {_f(y)} {_f(z)} {int(cn == 'info_grav_pathnode')} {flags} {name.split()[0]}")
+		extra = "".join(f" {k.replace(' ', '%20')}={v.replace('%', '%25').replace(' ', '%20')}"
+		                for k, v in hash_keys(e).items())
+		lines.append(f"{_f(x)} {_f(y)} {_f(z)} {int(cn == 'info_grav_pathnode')} {flags} {name.split()[0]}{extra}")
 	return "\n".join(lines) + "\n", len(lines) - 1
 
 
@@ -1026,6 +1034,7 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 				for k in TRIGGER_KEYS:
 					if k in e:
 						keys[k] = e[k]
+				keys.update(hash_keys(e))
 				if e.get("setthread"):
 					keys["netname"] = e["setthread"].strip()
 				if keys["classname"] == "trigger_multiple" and "wait" not in keys:
@@ -1060,6 +1069,7 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 			for k in ("targetname", "target", "angle", "angles", "speed", "wait", "lip"):
 				if k in e:
 					keys[k] = e[k]
+			keys.update(hash_keys(e))
 			if gcn in ROTATING:
 				brushes.append(origin_brush(tuple(c * scale for c in o)))
 				namer.special_used.add("ORIGIN")
@@ -1101,6 +1111,7 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 			for k in ACTOR_KEYS:
 				if k in e:
 					keys[k] = e[k]
+			keys.update(hash_keys(e))
 			if "model" not in keys and cn.lower() != "actor":
 				keys["model"] = cn
 			blocks.append(kv_block(keys))
@@ -1118,6 +1129,7 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 			for k in ("target", "angle", "angles"):
 				if k in e:
 					keys[k] = e[k]
+			keys.update(hash_keys(e))
 			blocks.append(kv_block(keys))
 			stats["named_points_written"] += 1
 			continue
