@@ -322,7 +322,7 @@ def brush_thickness(faces):
 	return min(d - min(_dot(p, n) for p in verts) for n, d, _, _ in faces)
 
 
-def brush_text(bsp, brush, scale, offset, namer, stats, cls, entity=False, geom=None):
+def brush_text(bsp, brush, scale, offset, namer, stats, cls, entity=False, geom=None, flags=None):
 	planes = []
 	for si in range(brush.first_side, brush.first_side + brush.num_sides):
 		if si >= len(bsp.brushsides):
@@ -349,12 +349,19 @@ def brush_text(bsp, brush, scale, offset, namer, stats, cls, entity=False, geom=
 		return None
 	if t < MIN_THICKNESS:
 		# Push every side out by the same amount: the brush stays convex and keeps its shape.
+		# Grow all source planes, not just the ones with faces: a sliver's end caps can be
+		# under the area cutoff, and growing only the long sides leaves an open prism.
 		grow = (MIN_THICKNESS - t) / 2 + 0.05
-		faces = brush_faces([(n, d + grow, sh) for n, d, _, sh in faces])
+		faces = brush_faces([(n, d + grow, sh) for n, d, sh in planes])
 		if len(faces) < 4 or brush_thickness(faces) < MIN_THICKNESS:
 			stats["brushes_too_thin"] += 1
 			return None
+		if any(abs(c) > WORLD_LIMIT for _, _, w, _ in faces for p in w for c in p):
+			stats["brushes_outside_world"] += 1
+			return None
 		stats["brushes_thickened"] += 1
+		if flags is not None:
+			flags["thickened"] = True
 	sides = []
 	for n, d, w, sh in faces:
 		tex = side_texture(sh, namer, cls)
@@ -409,10 +416,31 @@ def model_brushes(bsp, model_index, scale, offset, namer, stats):
 		if cls in ("origin", "skip", "nonsolid"):
 			continue
 		faces = []
-		txt = brush_text(bsp, br, scale, offset, namer, stats, cls, entity, faces)
+		flags = {}
+		txt = brush_text(bsp, br, scale, offset, namer, stats, cls, entity, faces, flags)
 		if txt:
+			if cls == "detail" and flags.get("thickened"):
+				cls = "thin_detail"
 			out.append((cls, txt, faces))
 	return out
+
+
+THIN_WALL_CELL = 1024.0  # group thin detail into func_walls per cell so bbox culling still works
+
+
+def thin_wall_blocks(thin, stats):
+	"""thin: [(txt, faces)]. One func_wall per THIN_WALL_CELL^3 cell (by brush centre).
+	As separate brush models they don't split the world's hull-0 tree (each kept sliver
+	cost 6-13 world leaves in func_detail) but still block players and traces."""
+	cells = {}
+	for txt, faces in thin:
+		verts = [p for _, _, w, _ in faces for p in w]
+		c = tuple(int(math.floor((min(v[i] for v in verts) + max(v[i] for v in verts)) * 0.5 / THIN_WALL_CELL))
+		          for i in range(3))
+		cells.setdefault(c, []).append(txt)
+	stats["thin_detail_walls"] += len(cells)
+	return [kv_block({"classname": "func_wall", "mohaa_classname": "thin_detail"}, cells[c])
+	        for c in sorted(cells)]
 
 
 def _face_line(n, w, tex):
@@ -591,7 +619,7 @@ def kv_block(keys, brushes=()):
 def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = None,
             terrain: bool = False, terrain_tol: float = 8.0, terrain_tex: str = "CLIP",
             terrain_seal: bool = True, detail_world: bool = False, seal_box: bool = False,
-            simplify_collision: bool = False, collision_grid: float = 16.0):
+            simplify_collision: bool = False, collision_grid: float = 16.0, thin_walls: bool = True):
 	namer = TextureNamer()
 	stats = Counter()
 	world = bsp.entities[0] if bsp.entities else {"classname": "worldspawn"}
@@ -606,7 +634,16 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 	detail = []
 	noclip_detail = []
 	voxels = set()
+	thin = []
 	for cls, txt, faces in model_brushes(bsp, 0, scale, (0.0, 0.0, 0.0), namer, stats):
+		if cls == "thin_detail":
+			if " sky [" in txt or not thin_walls:
+				cls = "detail"  # sky must go to the world below; otherwise keep the old path
+			else:
+				thin.append((txt, faces))
+				stats["thin_detail_to_wall"] += 1
+				stats["world_brushes_written"] += 1
+				continue
 		if simplify_collision and cls in ("detail", "clip") and not is_axial_brush(faces):
 			voxelize_brush(faces, voxels, collision_grid)
 			if cls == "detail":
@@ -637,6 +674,8 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 		blocks.append(kv_block({"classname": "func_detail", "zhlt_detaillevel": "1"}, detail))
 	if noclip_detail:
 		blocks.append(kv_block({"classname": "func_detail", "zhlt_detaillevel": "1", "zhlt_noclip": "1"}, noclip_detail))
+	if thin:
+		blocks.extend(thin_wall_blocks(thin, stats))
 
 	skipped = Counter()
 	for e in bsp.entities[1:]:
@@ -777,6 +816,9 @@ def main(argv=None) -> int:
 	                help="grid for --simplify-collision, GoldSrc units (default 16, under the 18-unit step)")
 	ap.add_argument("--seal-box", action="store_true",
 	                help="enclose the map in a NULL box so hull 0 can't leak (last resort)")
+	ap.add_argument("--thin-detail-in-world", action="store_true",
+	                help="keep thickened detail slivers in func_detail (default: per-cell func_walls, "
+	                     "which keeps them out of the world's hull-0 leaves)")
 	args = ap.parse_args(argv)
 
 	name, data = read_source(args.source)
@@ -784,7 +826,8 @@ def main(argv=None) -> int:
 	wad_key = str(args.wad.resolve()) if args.wad else None
 	text, namer, stats, skipped = convert(bsp, args.scale, wad_key, args.terrain_brushes, args.terrain_tol, args.terrain_tex,
 	                                         not args.no_terrain_seal, args.detail_world, args.seal_box,
-	                                         args.simplify_collision, args.collision_grid)
+	                                         args.simplify_collision, args.collision_grid,
+	                                         not args.thin_detail_in_world)
 	args.out.write_text(text)
 	if args.wad:
 		write_wad(args.wad, list(namer.by_shader.values()) + sorted(namer.special_used))

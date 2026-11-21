@@ -107,6 +107,29 @@ class CompileSafetyTest(unittest.TestCase):
 		self.assertIn("5350.9", text)  # pushed out by (1.1 - 1) / 2 + 0.05 = 0.1 per side
 		self.assertIn("5352.1", text)
 
+	def test_sliver_with_tiny_caps_stays_closed(self):
+		# m2l1: a 0.06-thick strip whose end caps fall under the face-area cutoff. Growing
+		# only the faces that survived left a 4-sided prism SDHLT clipped to +/-80000.
+		bsp = tiny_bsp([((-2000, 5351, 12), (2000, 5351.06, 13.2), 0), ((0, 0, 0), (64, 64, 64), 0)], [])
+		text, _, stats, _ = conv.convert(bsp, scale=1.0)
+		self.assertEqual(stats["brushes_thickened"], 1)
+		self.assertEqual(stats["brushes_outside_world"], 0)
+		sliver = text.split("{")[2].split("}")[0]
+		self.assertEqual(len([l for l in sliver.splitlines() if l.startswith("(")]), 6)
+
+	def test_thin_detail_goes_to_func_wall(self):
+		bsp = tiny_bsp([((0, 0, 0), (64, 64, 0.5), 0), ((3000, 0, 0), (3064, 0.5, 64), 0),
+		                ((0, 0, 100), (64, 64, 164), 0)], [])
+		bsp.shaders[0].content_flags |= b19.CONTENTS_DETAIL
+		text, _, stats, _ = conv.convert(bsp, scale=1.0)
+		self.assertEqual(stats["thin_detail_to_wall"], 2)
+		self.assertEqual(stats["thin_detail_walls"], 2)  # different 1024-unit cells
+		self.assertEqual(text.count('"classname" "func_wall"'), 2)
+		self.assertIn("func_detail", text)  # the thick brush stays detail
+		text, _, stats, _ = conv.convert(bsp, scale=1.0, thin_walls=False)
+		self.assertEqual(stats["thin_detail_to_wall"], 0)
+		self.assertNotIn('"func_wall"', text)
+
 	def test_tilted_near_coplanar_side_dropped(self):
 		# sdHLCSG tests the new side's first point against the old plane, not the distances
 		stats = conv.Counter()
