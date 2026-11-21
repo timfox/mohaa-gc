@@ -313,7 +313,11 @@ class ConvertTest(unittest.TestCase):
 		text, namer, stats, skipped = conv.convert(self.bsp, scale=0.5, wad_name="x.wad")
 		self.assertEqual(stats["world_brushes_written"], 9)
 		self.assertEqual(stats["brush_entities_written"], 1)
-		self.assertEqual(skipped["info_pathnode"], 2)
+		self.assertNotIn("info_pathnode", skipped)
+		self.assertEqual(stats["path_nodes_to_sidecar"], 2)
+		self.assertEqual(stats["actors_written"], 1)
+		# the actor keeps its feet origin (dod-gc lifts it onto the grunt hull)
+		self.assertIn('"classname" "mohaa_actor"\n"origin" "64 0 8"', text)
 		texes = set()
 		for line in text.splitlines():
 			m = FACE_RE.match(line)
@@ -338,12 +342,31 @@ class ConvertTest(unittest.TestCase):
 		self.assertNotEqual(a, b)
 		self.assertEqual(n.name("textures/a/very_long_texture_name_here"), a)
 
+	def test_actor_detection_and_nodes(self):
+		self.assertTrue(conv.is_actor("actor", ""))
+		self.assertTrue(conv.is_actor("human/german_soldier", ""))
+		self.assertTrue(conv.is_actor("script_model", "models/human/allied_pilot.tik"))
+		self.assertFalse(conv.is_actor("script_model", "models/static/tree.tik"))
+		self.bsp.entities.append({"classname": "info_grav_pathnode", "origin": "10 20 30",
+		                          "targetname": "$nodeA", "spawnflags": "4"})
+		self.bsp.entities.append({"classname": "human/german_soldier", "origin": "0 0 0",
+		                          "targetname": "guard"})
+		ntext, n = conv.path_nodes(self.bsp, 0.5)
+		self.assertEqual(n, 3)
+		self.assertEqual(ntext.splitlines()[1:], ["32 32 8 0 0 -", "64 32 8 0 0 -", "5 10 15 1 4 nodeA"])
+		text, _, stats, _ = conv.convert(self.bsp, scale=0.5)
+		self.assertEqual(stats["actors_written"], 2)
+		self.assertIn('"model" "human/german_soldier"', text)
+		# reach_points still sees the nodes for --collision-reach
+		self.assertEqual(len(conv.reach_points(self.bsp, 1.0)), 4)
+
 	def test_cli_and_wad(self):
 		with tempfile.TemporaryDirectory() as td:
 			td = Path(td)
 			(td / "in.bsp").write_bytes(make_sample_bsp.build(19))
 			rc = conv.main([str(td / "in.bsp"), "-o", str(td / "out.map"), "--wad", str(td / "out.wad")])
 			self.assertEqual(rc, 0)
+			self.assertEqual(len((td / "out.nodes").read_text().splitlines()), 3)
 			wad = (td / "out.wad").read_bytes()
 			self.assertEqual(wad[:4], b"WAD3")
 			count, ofs = struct.unpack_from("<ii", wad, 4)
