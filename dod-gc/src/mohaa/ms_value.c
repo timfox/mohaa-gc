@@ -748,6 +748,38 @@ int ms_set_entity_var(ms_vm *vm, uint32_t id, const char *name, const ms_value *
     return 1;
 }
 
+void ms_move_entity_vars(ms_vm *vm, uint32_t from, uint32_t to)
+{
+    ms_entvars **pp, *src = NULL;
+    if (from == to)
+        return;
+    for (pp = &vm->entvars; *pp; pp = &(*pp)->next)
+        if ((*pp)->id == from) {
+            src = *pp;
+            break;
+        }
+    if (!src)
+        return;
+    ms_table *dst = ms_entity_vars(vm, to, 0);
+    if (!dst) {
+        src->id = to;
+        return;
+    }
+    for (uint32_t i = 0; i < src->vars.cap; i++) {
+        ms_value *slot;
+        if (src->vars.keys[i] == MS_NAME_NONE || ms_table_get(dst, src->vars.keys[i]))
+            continue;
+        slot = ms_table_slot(vm, dst, src->vars.keys[i]);
+        if (slot) {
+            ms_retain(src->vars.vals[i]);
+            *slot = src->vars.vals[i];
+        }
+    }
+    *pp = src->next;
+    ms_table_free(vm, &src->vars);
+    ms_free(vm, src);
+}
+
 /* ------------------------------------------------------------------ */
 /* operators                                                            */
 /* ------------------------------------------------------------------ */

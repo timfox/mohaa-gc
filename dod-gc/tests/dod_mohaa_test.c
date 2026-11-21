@@ -436,10 +436,11 @@ static void test_sounds(void)
 	assert(Dod_MohaaLevelInit(&b, "s", 0, 0));
 	/* each sample precached once, even when two aliases share it */
 	assert(!strcmp(precached, "mohaa/door_01.wav;mohaa/door_02.wav;mohaa/alarm.wav;"));
+	Dod_MohaaThink(0.0f);   /* main runs on the first frame */
 	assert(strstr(log_buf, "<sound door mohaa/door_0"));
 	assert(strstr(log_buf, "<sound siren mohaa/alarm.wav 1 1.00 0.25 1>\n"
 		"<sound siren mohaa/alarm.wav -1 0.00 0.00 0>\n<sound siren mohaa/alarm.wav 1 1.00 0.25 1>\n"));
-	run(0.05f, 1.2f);
+	run(0.05f, 1.3f);
 	assert(strstr(log_buf, "<sound siren mohaa/alarm.wav -1"));
 	assert(strstr(ents[1].sound, "stop:mohaa/alarm.wav"));
 	/* an unknown alias is reported once and plays nothing */
@@ -455,6 +456,7 @@ static void test_sounds(void)
 		Dod_MohaaShutdown();
 		files[0][1] = "main:\n\t$door playsound door_open\n\t$door playsound DOOR_SHUT\nend\n";
 		assert(Dod_MohaaLevelInit(&b, "s", (float)i, 0));
+		Dod_MohaaThink((float)i);
 		a += strstr(log_buf, "mohaa/door_01.wav 0 0.80 0.80 0") != NULL;
 		bb += strstr(log_buf, "mohaa/door_02.wav 0 0.70 0.40 2") != NULL;
 		assert(strstr(log_buf, "mohaa/door_01.wav 0 0.50 2.00 3"));   /* case-insensitive alias */
@@ -611,6 +613,32 @@ static void test_setthread_and_quiet_commands(void)
 	assert(strstr(log_buf, "set 4 group left side\n"));
 	assert(strstr(log_buf, "spawned set 4\n"));
 	assert(strstr(log_buf, "left (-1.000 ") && strstr(log_buf, " up (0.000 0.000 1.000)") );
+}
+
+/* main waits for the first frame (the map's entities spawn after the VM, during level load); a placeholder's
+   map keys go with the entity that replaces it, also through an id no entity has (a soldier waiting for a slot). */
+static void test_late_entities_and_moved_keys(void)
+{
+	DodMohaaBackend b = backend();
+	int holder, grunt;
+	reset();
+	files[0][0] = "maps/l.scr";
+	files[0][1] =
+		"main:\n"
+		"\tprintln (\"late \" + $late.targetname + \" set \" + $soldier.#set + \" type \" + $soldier.#friendtype)\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "l", 0, 0));
+	assert(!strstr(log_buf, "late "));
+	add("late", "info_target", 0, 0, 0);            /* spawns after the world, before the first frame */
+	holder = add("", "mohaa_actor", 0, 0, 0);
+	Dod_MohaaEntityKey(make_id(holder), "#set", "2");
+	Dod_MohaaEntityKey(make_id(holder), "#friendtype", "1");
+	Dod_MohaaEntityMoved(make_id(holder), 7u << 12);   /* parked while it waits */
+	grunt = add("soldier", "actor", 0, 0, 0);
+	Dod_MohaaEntityKey(make_id(grunt), "#friendtype", "4");   /* the new body's own value wins */
+	Dod_MohaaEntityMoved(7u << 12, make_id(grunt));
+	Dod_MohaaThink(0.05f);
+	assert(strstr(log_buf, "late late set 2 type 4\n"));
 }
 
 /* Walk the region block by block and the free list: tags agree, no two free blocks touch, the list is in
@@ -782,6 +810,7 @@ int main(void)
 	test_music();
 	test_routes();
 	test_setthread_and_quiet_commands();
+	test_late_entities_and_moved_keys();
 	test_pool_allocator();
 	test_pool_backend();
 	Dod_MohaaShutdown();

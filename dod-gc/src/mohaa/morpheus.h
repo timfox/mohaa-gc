@@ -125,6 +125,10 @@ void ms_notify(ms_vm *vm, const ms_value *listener, const char *name);
 /* Set a script variable on an entity, as "$ent.name = v" would (map keys like #set). 0 when out of memory. */
 int ms_set_entity_var(ms_vm *vm, uint32_t id, const char *name, const ms_value *v);
 
+/* Hand an entity's script variables to another id (the host replaced the entity: a placeholder became the real
+   thing). Variables the new id already has win. */
+void ms_move_entity_vars(ms_vm *vm, uint32_t from, uint32_t to);
+
 /* Host removed an entity: wake "removed" waiters, kill threads owned by it. */
 void ms_entity_removed(ms_vm *vm, uint32_t id);
 
