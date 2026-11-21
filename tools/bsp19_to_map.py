@@ -987,6 +987,9 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 	skipped = Counter()
 	static_cells = {}  # cell -> brush texts of unnamed static brush models, merged per cell
 	trigger_groups = {}  # trigger keys -> brush texts, for triggers that merge
+	same_key_models = {}  # sorted keys -> brush texts of brush models with exactly those keys
+	same_key_slots = {}  # sorted keys -> index of the group's block
+	same_key_keys = {}  # sorted keys -> the keys written for the group
 	targeted = {e["target"] for e in bsp.entities if e.get("target")}
 
 	def unused_name(e):
@@ -1060,6 +1063,23 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 			if gcn in ROTATING:
 				brushes.append(origin_brush(tuple(c * scale for c in o)))
 				namer.special_used.add("ORIGIN")
+			elif merge_static_models:
+				# models with the same keys, name included, act as one: MOHAA scripts address them
+				# all at once through $name (m5l2b's "$targetname" exploder pieces put it back over
+				# the 512-model limit once their names were read)
+				# every MOHAA key counts (#set and the like aren't written but tell pieces apart)
+				group = tuple(sorted(keys.items())) + tuple(sorted(
+					(k, v) for k, v in e.items() if k not in keys and k not in ("model", "origin")))
+				if group in same_key_models:
+					same_key_models[group].extend(brushes)
+					stats["same_key_models_merged"] += 1
+					continue
+				same_key_models[group] = brushes
+				same_key_keys[group] = keys
+				blocks.append(None)  # placeholder, filled after the loop with every brush of the group
+				same_key_slots[group] = len(blocks) - 1
+				stats["brush_entities_written"] += 1
+				continue
 			blocks.append(kv_block(keys, brushes))
 			stats["brush_entities_written"] += 1
 			continue
@@ -1112,6 +1132,8 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 			blocks.append(kv_block({"classname": gcn, "origin": " ".join(_f(v) for v in c)}))
 		stats["player_starts_fallback"] += 1
 
+	for group, i in same_key_slots.items():
+		blocks[i] = kv_block(same_key_keys[group], same_key_models[group])
 	for keys, brushes in trigger_groups.items():
 		blocks.append(kv_block(dict(keys), brushes))
 		stats["triggers_written"] += 1

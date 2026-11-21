@@ -401,6 +401,15 @@ class StaticBrushModelTest(unittest.TestCase):
 			self.assertIn("bunker_", words)
 			self.assertIsNone(conv.script_names([d], "nope"))
 
+	def test_same_name_same_keys_merge(self):
+		bsp = self.bsp()
+		for i in (1, 2, 4):
+			bsp.entities[i]["targetname"] = "chunk"
+		bsp.entities[4]["#set"] = "2"  # another exploder set: stays apart
+		text, _, stats, _ = conv.convert(bsp, scale=1.0, merge_static_models=True)
+		self.assertEqual(stats["same_key_models_merged"], 1)
+		self.assertEqual(text.count('"targetname" "chunk"'), 2)
+
 	def test_off_keeps_every_model(self):
 		text, _, stats, _ = conv.convert(self.bsp(), scale=1.0)
 		self.assertEqual(stats["static_brush_models_merged"], 0)
