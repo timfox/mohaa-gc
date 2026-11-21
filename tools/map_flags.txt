@@ -13,7 +13,7 @@ obj_team4 --detail-walls --seal-box
 mohdm5    --detail-walls --seal-box --simplify-collision --collision-grid 32 --collision-grid-z 16
 m5l1b     --simplify-collision --collision-grid 32 --collision-grid-z 16
 m5l3      --simplify-collision --collision-grid 80 --collision-grid-z 16
-m4l2      --simplify-collision --collision-grid 64 --collision-grid-z 16
+m4l2      --simplify-collision --collision-grid 32 --collision-grid-z 16 --collision-aabb 0.4 --collision-reach 768
 # world leaves over 8192: detail into walls
 m6l1c     --detail-walls
 m2l1      --detail-walls
@@ -26,7 +26,7 @@ m4l3      --detail-walls --simplify-collision --collision-grid 32 --collision-gr
 mohdm3    --detail-walls --simplify-collision --collision-grid 32 --collision-grid-z 16
 m4l1      --detail-walls --simplify-collision --collision-grid 64 --collision-grid-z 16
 m3l3      --detail-walls --simplify-collision --collision-grid 64 --collision-grid-z 16
-obj_team2 --detail-walls --simplify-collision --collision-grid 64 --collision-grid-z 16
+obj_team2 --detail-walls --simplify-collision --collision-grid 16 --collision-grid-z 16 --collision-reach 768
 m6l2a     --detail-walls --simplify-collision --collision-grid 64 --collision-grid-z 16
 m6l2b     --detail-walls --simplify-collision --collision-grid 64 --collision-grid-z 16
 m6l1a     --detail-walls --simplify-collision --collision-grid 96 --collision-grid-z 16
