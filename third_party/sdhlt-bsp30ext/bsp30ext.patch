@@ -178,8 +178,65 @@ index 3e31d29..3878448 100644
  
  bclipnode_t *ExpandClipnodes_r (bclipnode_t *bclipnodes, int &numbclipnodes, const dclipnode_t *clipnodes, int headnode)
  {
+diff --git a/src/sdhlt/sdHLBSP/bsp5.h b/src/sdhlt/sdHLBSP/bsp5.h
+index 3c7c286..c6d9949 100644
+--- a/src/sdhlt/sdHLBSP/bsp5.h
++++ b/src/sdhlt/sdHLBSP/bsp5.h
+@@ -288,6 +288,7 @@ extern bool     g_nofill;
+ extern bool		g_noinsidefill;
+ extern bool     g_notjunc;
+ extern bool		g_nobrink;
++extern bool		g_hull2alias;
+ extern bool		g_noclipnodemerge;
+ extern bool     g_watervis;
+ extern bool     g_chart;
+diff --git a/src/sdhlt/sdHLBSP/qbsp.cpp b/src/sdhlt/sdHLBSP/qbsp.cpp
+index 86beeed..61c3f16 100644
+--- a/src/sdhlt/sdHLBSP/qbsp.cpp
++++ b/src/sdhlt/sdHLBSP/qbsp.cpp
+@@ -61,6 +61,9 @@ bool            g_nofill = DEFAULT_NOFILL;      // dont fill "-nofill"
+ bool			g_noinsidefill = DEFAULT_NOINSIDEFILL;
+ bool            g_notjunc = DEFAULT_NOTJUNC;
+ bool			g_nobrink = DEFAULT_NOBRINK;
++// mohaa-gc: hull 2 (64x64x64) shares hull 1's clipnodes. Saves about a third of
++// the clipnodes on games that never trace large entities against the world.
++bool			g_hull2alias = false;
+ bool            g_noclip = DEFAULT_NOCLIP;      // no clipping hull "-noclip"
+ bool            g_chart = DEFAULT_CHART;        // print out chart? "-chart"
+ bool            g_estimate = DEFAULT_ESTIMATE;  // estimate mode "-estimate"
+@@ -1280,6 +1283,11 @@ static bool     ProcessModel()
+     {
+         surfs = ReadSurfs(polyfiles[g_hullnum]);
+ 		detailbrushes = ReadBrushes (brushfiles[g_hullnum]);
++		if (g_hull2alias && g_hullnum == 2)
++		{
++			model->headnode[2] = model->headnode[1];  // hull 1 is always built first
++			continue;
++		}
+ 		{
+ 			int hullnum = g_hullnum;
+ 			if (surfs->mins[0] > surfs->maxs[0])
+@@ -1389,6 +1397,7 @@ static void     Usage(const char* paramWarning = 0, bool mapfileWarning = false)
+     Log("    -maxnodesize # : Sets the maximum portal node size\n\n");
+     Log("    -notjunc       : Don't break edges on t-junctions   (not for final runs)\n");
+ 	Log("    -nobrink       : Don't smooth brinks                (not for final runs)\n");
++	Log("    -hull2alias    : Hull 2 reuses hull 1's clipnodes (no large-monster hull)\n");
+     Log("    -noclip        : Don't process the clipping hull    (not for final runs)\n");
+     Log("    -nofill        : Don't fill outside (masks LEAKs)   (not for final runs)\n");
+ 	Log("    -noinsidefill  : Don't fill empty spaces\n");
+@@ -1682,6 +1691,10 @@ int             main(const int argc, char** argv)
+ 		{
+ 			g_nobrink = true;
+ 		}
++		else if (!strcasecmp (argv[i], "-hull2alias"))
++		{
++			g_hull2alias = true;
++		}
+         else if (!strcasecmp(argv[i], "-noclip"))
+         {
+             g_noclip = true;
 diff --git a/src/sdhlt/sdHLBSP/writebsp.cpp b/src/sdhlt/sdHLBSP/writebsp.cpp
-index babe8af..677281f 100644
+index babe8af..3760818 100644
 --- a/src/sdhlt/sdHLBSP/writebsp.cpp
 +++ b/src/sdhlt/sdHLBSP/writebsp.cpp
 @@ -304,7 +304,12 @@ static void     WriteFace(face_t* f)
@@ -196,3 +253,38 @@ index babe8af..677281f 100644
  	df->side = f->planenum & 1;
      df->firstedge = g_numsurfedges;
      df->numedges = f->numpoints;
+@@ -770,7 +775,7 @@ void            FinishBSPFile()
+ 			Developer (DEVELOPER_LEVEL_MESSAGE, " model %d\n", i);
+ 			for (j = 1; j < NUM_HULLS; j++)
+ 			{
+-				brinkinfo[i][j] = CreateBrinkinfo (g_dclipnodes, m->headnode[j]);
++				brinkinfo[i][j] = (g_hull2alias && j == 2) ? NULL : CreateBrinkinfo (g_dclipnodes, m->headnode[j]);
+ 			}
+ 		}
+ 		for (level = BrinkAny; level > BrinkNone; level--)
+@@ -781,11 +786,15 @@ void            FinishBSPFile()
+ 			{
+ 				for (j = 1; j < NUM_HULLS; j++)
+ 				{
++					if (g_hull2alias && j == 2)
++						continue;
+ 					if (!FixBrinks (brinkinfo[i][j], (bbrinklevel_e) level, headnode[i][j], clipnodes, MAX_MAP_CLIPNODES, numclipnodes, numclipnodes))
+ 					{
+ 						break;
+ 					}
+ 				}
++				if (g_hull2alias)
++					headnode[i][2] = headnode[i][1];
+ 				if (j < NUM_HULLS)
+ 				{
+ 					break;
+@@ -800,7 +809,8 @@ void            FinishBSPFile()
+ 		{
+ 			for (j = 1; j < NUM_HULLS; j++)
+ 			{
+-				DeleteBrinkinfo (brinkinfo[i][j]);
++				if (brinkinfo[i][j])
++					DeleteBrinkinfo (brinkinfo[i][j]);
+ 			}
+ 		}
+ 		if (level == BrinkNone)
