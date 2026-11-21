@@ -528,7 +528,7 @@ static void test_routes(void)
 		"\tprintln (\"alive \" + local.a + \" \" + local.d + \" skill \" + (getcvar \"skill\") + \"|\" + (getcvar \"nope\") + \"|\")\n"
 		"\tfadeout 2 0 0 0 1\n"
 		"\tfadein 0.5 1 1 1\n"
-		"\tprintln (\"node set \" + ($west.#set * 2) + \" note \" + $west.#note + \"|\")\n"
+		"\tprintln (\"node set \" + ($west.set * 2) + \" note \" + $west.note + \"|\")\n"
 		"end\n";
 	files[1][0] = "maps/r.nodes";
 	files[1][1] =
@@ -585,14 +585,17 @@ static void test_setthread_and_quiet_commands(void)
 		"\tsetcurrentobjective 1\n"
 		"\texec global/nothere.scr\n"
 		"\tlocal.d = spawn script_origin \"#set\" \"4\" targetname dest\n"
-		"\tprintln (\"spawned set \" + local.d.#set)\n"
+		"\tprintln (\"spawned set \" + local.d.set)\n"
+		"\tlocal.gun = $t_gate queryturretslotentity 0\n"
+		"\tlocal.gun setaimtarget $t_gate\n"
+		"\tprintln (\"turret \" + local.gun.targetname)\n"
 		"\tlocal.p = $t_gate.forwardvector * 128 + $t_gate.origin\n"
 		"\tprintln (\"ahead \" + local.p)\n"
 		"\tprintln (\"left \" + $t_gate.leftvector + \" up \" + $t_gate.upvector)\n"
 		"end\n"
 		"gate_open:\n"
 		"\tprintln (\"gate by \" + self.targetname)\n"
-		"\tprintln (\"set \" + (self.#set + 1) + \" group \" + self.#group)\n"
+		"\tprintln (\"set \" + (self.set + 1) + \" group \" + self.group)\n"
 		"end\n";
 	assert(Dod_MohaaLevelInit(&b, "g", 0, 0));
 	Dod_MohaaEntityKey(make_id(t), "#set", "3");   /* map keys arrive as the map's entities spawn, after the VM starts */
@@ -612,6 +615,7 @@ static void test_setthread_and_quiet_commands(void)
 	assert(strstr(log_buf, "ahead (0.000 128.000 0.000)\n") || strstr(log_buf, "ahead (-0.000 128.000 0.000)\n"));
 	assert(strstr(log_buf, "set 4 group left side\n"));
 	assert(strstr(log_buf, "spawned set 4\n"));
+	assert(strstr(log_buf, "turret t_gate\n"));
 	assert(strstr(log_buf, "left (-1.000 ") && strstr(log_buf, " up (0.000 0.000 1.000)") );
 }
 
@@ -625,7 +629,7 @@ static void test_late_entities_and_moved_keys(void)
 	files[0][0] = "maps/l.scr";
 	files[0][1] =
 		"main:\n"
-		"\tprintln (\"late \" + $late.targetname + \" set \" + $soldier.#set + \" type \" + $soldier.#friendtype)\n"
+		"\tprintln (\"late \" + $late.targetname + \" set \" + $soldier.set + \" type \" + $soldier.friendtype)\n"
 		"end\n";
 	assert(Dod_MohaaLevelInit(&b, "l", 0, 0));
 	assert(!strstr(log_buf, "late "));
@@ -645,26 +649,36 @@ static void test_late_entities_and_moved_keys(void)
    address order and holds exactly the free blocks, and the used count matches. */
 static void pool_check(const MohaaPool *p)
 {
-	const unsigned char *b = p->base;
-	size_t used = 0, nfree = 0, nlist = 0;
-	int prev_free = 0;
+	size_t used = 0, nfree = 0, nlist = 0, total = 0;
+	int r;
 	const MohaaPoolFree *f, *last = NULL;
-	while (b < p->base + p->size) {
-		size_t head, foot;
-		memcpy(&head, b, sizeof(head));
-		memcpy(&foot, b + (head & ~(size_t)1) - sizeof(foot), sizeof(foot));
-		assert(head == foot && (head & ~(size_t)1) >= MP_MIN);
-		if (head & 1u) {
-			used += head & ~(size_t)1;
-			prev_free = 0;
-		} else {
-			assert(!prev_free);
-			prev_free = 1;
-			nfree++;
+	for (r = 0; r < p->nregions; r++) {
+		const unsigned char *b = p->rbase[r];
+		int prev_free = 0;
+		size_t edge;
+		memcpy(&edge, b - sizeof(edge), sizeof(edge));
+		assert(edge == 1);   /* the busy tags at the region's ends */
+		memcpy(&edge, b + p->rsize[r], sizeof(edge));
+		assert(edge == 1);
+		while (b < p->rbase[r] + p->rsize[r]) {
+			size_t head, foot;
+			memcpy(&head, b, sizeof(head));
+			memcpy(&foot, b + (head & ~(size_t)1) - sizeof(foot), sizeof(foot));
+			assert(head == foot && (head & ~(size_t)1) >= MP_MIN);
+			if (head & 1u) {
+				used += head & ~(size_t)1;
+				prev_free = 0;
+			} else {
+				assert(!prev_free);
+				prev_free = 1;
+				nfree++;
+			}
+			b += head & ~(size_t)1;
 		}
-		b += head & ~(size_t)1;
+		assert(b == p->rbase[r] + p->rsize[r]);
+		total += p->rsize[r];
 	}
-	assert(b == p->base + p->size && used == p->used);
+	assert(used == p->used && total == p->size);
 	for (f = p->free; f; f = f->next) {
 		assert(!mp_busy(f) && f->prev == last && (!last || last < f));
 		last = f;
@@ -755,6 +769,28 @@ static void test_pool_allocator(void)
 			MohaaPool_Free(&p, keep[i]);
 		assert(p.used == 0 && p.free && !p.free->next && p.free == p.tail);
 	}
+
+	/* three regions apart (a split arena tail): blocks never merge across a region's edge */
+	{
+		static unsigned char r2[3][8 * 1024 + 5];
+		void *q[64];
+		int n = 0;
+		assert(MohaaPool_Init(&p, r2[1] + 1, sizeof(r2[1]) - 1));
+		assert(MohaaPool_AddRegion(&p, r2[0], sizeof(r2[0])) && MohaaPool_AddRegion(&p, r2[2] + 5, sizeof(r2[2]) - 5));
+		assert(p.nregions == 3 && p.free && p.free->next && p.free->next->next && !p.free->next->next->next);
+		assert(MohaaPool_Largest(&p) < 8 * 1024 && !MohaaPool_Alloc(&p, 9 * 1024));
+		while (n < 64 && (q[n] = MohaaPool_Alloc(&p, 700)) != NULL)
+			n++;
+		assert(n >= 30);   /* all three regions fill */
+		pool_check(&p);
+		for (i = 0; i < n; i += 2)
+			MohaaPool_Free(&p, q[i]);
+		pool_check(&p);
+		for (i = 1; i < n; i += 2)
+			MohaaPool_Free(&p, q[i]);
+		pool_check(&p);
+		assert(p.used == 0 && p.free->next && p.free->next->next && !p.free->next->next->next);
+	}
 }
 
 /* A backend region replaces malloc: the level runs in it, and one too small refuses cleanly. */
@@ -774,7 +810,9 @@ static void test_pool_backend(void)
 		"\tprintln \"pooled \" level.list[49] \" \" $door1.origin\n"
 		"end\n";
 	b.pool = region;
-	b.pool_size = sizeof(region);
+	b.pool_size = sizeof(region) / 2;   /* in two pieces, as a split arena tail gives it */
+	b.pool_more[0] = region + sizeof(region) / 2 + 64;
+	b.pool_more_size[0] = sizeof(region) / 2 - 64;
 	assert(Dod_MohaaLevelInit(&b, "p", 0, 0));
 	run(0.05f, 0.3f);
 	assert(strstr(log_buf, "pooled item 49 (0.000 0.000 0.000)"));
@@ -785,6 +823,8 @@ static void test_pool_backend(void)
 	files[0][0] = "maps/p.scr";
 	files[0][1] = "main:\n\tprintln \"x\"\nend\n";
 	b.pool_size = sizeof(region);
+	b.pool_more[0] = NULL;
+	b.pool_more_size[0] = 0;
 	assert(Dod_MohaaLevelInit(&b, "p", 0, 0));
 	/* the region is taken back (GameCube map arena reset): the script stops and nothing touches it again */
 	memset(region, 0xA5, sizeof(region));

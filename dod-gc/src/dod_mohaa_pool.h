@@ -6,7 +6,7 @@
  * long as the level and so as long as the VM).
  *
  * Boundary tags: every block has a header and footer holding its size with bit 0 set while in use, so free
- * merges a block with free neighbours. Free blocks sit on a list kept in address order. Normally a request
+ * merges a block with free neighbours. The pool can span several regions (a short arena gives pieces). Free blocks sit on a list kept in address order. Normally a request
  * takes the lowest free block that fits, from its front, so long-lived data packs at the bottom. While the
  * VM compiles (MohaaPool_Top on) requests take the highest block that fits, from its end: the compiler's
  * scratch then lives at the top and leaves one hole when it is freed, instead of holes between the
@@ -25,9 +25,14 @@ typedef struct MohaaPoolFree {
 	struct MohaaPoolFree *prev, *next;
 } MohaaPoolFree;
 
+#define MOHAA_POOL_REGIONS 8
+
 typedef struct MohaaPool {
-	unsigned char *base;
-	size_t size;
+	unsigned char *base;         /* first region's blocks (rbase[0]) */
+	size_t size;                 /* bytes of blocks in all regions */
+	unsigned char *rbase[MOHAA_POOL_REGIONS];   /* each region's first block, and its span */
+	size_t rsize[MOHAA_POOL_REGIONS];
+	int nregions;
 	MohaaPoolFree *free, *tail;  /* free blocks, lowest address first */
 	size_t used;                 /* bytes in use, headers included */
 	int top;                     /* take new blocks from the top of the region */
@@ -86,19 +91,37 @@ static MohaaPoolFree *mp_below(const MohaaPool *p, const unsigned char *blk)
 	return f;
 }
 
-/* Region start and size are trimmed to the alignment. Returns 0 when the region is too small to use. */
-static int MohaaPool_Init(MohaaPool *p, void *region, size_t size)
+static void mp_release(MohaaPool *p, unsigned char *blk, size_t size);
+
+/* Add a region: its start and size are trimmed to the alignment, and a busy tag at each end keeps free from
+ * merging a block across the region's edge, so regions need not touch. Returns 0 when it is too small to use. */
+static int MohaaPool_AddRegion(MohaaPool *p, void *region, size_t size)
 {
+	const size_t one = 1;   /* a size-0 block in use */
 	uintptr_t a = ((uintptr_t)region + MP_ALIGN - 1) & ~(uintptr_t)(MP_ALIGN - 1);
-	memset(p, 0, sizeof(*p));
-	if (!region || size < (size_t)(a - (uintptr_t)region) + MP_MIN)
+	size_t span;
+	if (!region || p->nregions >= MOHAA_POOL_REGIONS || size < (size_t)(a - (uintptr_t)region) + 2 * MP_TAG + MP_MIN)
 		return 0;
 	size -= (size_t)(a - (uintptr_t)region);
-	size &= ~(size_t)(MP_ALIGN - 1);
-	p->base = (unsigned char *)a;
-	p->size = size;
-	mp_insert(p, p->base, size, NULL);
+	span = (size - 2 * MP_TAG) & ~(size_t)(MP_ALIGN - 1);
+	if (span < MP_MIN)
+		return 0;
+	memcpy((unsigned char *)a, &one, MP_TAG);
+	memcpy((unsigned char *)a + MP_TAG + span, &one, MP_TAG);
+	p->rbase[p->nregions] = (unsigned char *)a + MP_TAG;
+	p->rsize[p->nregions] = span;
+	if (!p->nregions)
+		p->base = p->rbase[0];
+	p->nregions++;
+	p->size += span;
+	mp_release(p, (unsigned char *)a + MP_TAG, span);
 	return 1;
+}
+
+static int MohaaPool_Init(MohaaPool *p, void *region, size_t size)
+{
+	memset(p, 0, sizeof(*p));
+	return MohaaPool_AddRegion(p, region, size);
 }
 
 static void MohaaPool_Top(MohaaPool *p, int on) { p->top = on; }
@@ -157,19 +180,17 @@ static void mp_release(MohaaPool *p, unsigned char *blk, size_t size)
 {
 	unsigned char *end = blk + size;
 	MohaaPoolFree *next = NULL, *prev;
-	if (end < p->base + p->size && !mp_busy(end)) {
+	size_t below;
+	if (!mp_busy(end)) {   /* a region's last block meets its end tag, which is busy */
 		next = (MohaaPoolFree *)(void *)end;
 		size += mp_size(end);
 	}
-	if (blk > p->base) {
-		size_t below;
-		memcpy(&below, blk - MP_TAG, MP_TAG);
-		if (!(below & 1u)) {   /* the block below is free: it grows over this one, keeping its place */
-			if (next)
-				mp_unlink(p, next);
-			mp_tag(blk - below, below + size, 0);
-			return;
-		}
+	memcpy(&below, blk - MP_TAG, MP_TAG);
+	if (!(below & 1u)) {   /* the block below is free: it grows over this one, keeping its place */
+		if (next)
+			mp_unlink(p, next);
+		mp_tag(blk - below, below + size, 0);
+		return;
 	}
 	if (next) {
 		prev = next->prev;
@@ -210,7 +231,7 @@ static void *MohaaPool_Realloc(MohaaPool *p, void *ptr, size_t n)
 		return NULL;
 	end = blk + have;
 	/* grow in place into a free neighbour above */
-	if (need > have && end < p->base + p->size && !mp_busy(end) && have + mp_size(end) >= need) {
+	if (need > have && !mp_busy(end) && have + mp_size(end) >= need) {
 		MohaaPoolFree *f = (MohaaPoolFree *)(void *)end;
 		const size_t fsize = mp_size(end);
 		MohaaPoolFree *prev = f->prev;

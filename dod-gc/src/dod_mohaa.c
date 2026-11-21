@@ -1146,7 +1146,8 @@ void Dod_MohaaEntityKey(uint32_t id, const char *key, const char *value)
 	if (!S.vm || !id || !key || !value)
 		return;
 	v = key_value(value);
-	ms_set_entity_var(S.vm, id, key, &v);
+	/* MOHAA's '#' marks a key as a script variable; the variable's name has none (#set -> $ent.set) */
+	ms_set_entity_var(S.vm, id, key[0] == '#' ? key + 1 : key, &v);
 	ms_release(S.vm, v);
 }
 
@@ -1181,6 +1182,14 @@ static int c_spawn(ms_call *c)
 		if (keys[i][0] == '#')
 			Dod_MohaaEntityKey(id, keys[i], vals[i]);
 	ms_return_entity(c, id);
+	return 0;
+}
+
+/* A vehicle's turret: there are no separate turret entities yet, so the vehicle answers for its turrets and the
+   turret commands (setaimtarget, ...) are no-ops on it, instead of every one failing on NIL. */
+static int c_queryturretslotentity(ms_call *c)
+{
+	ms_return(c, ms_call_target(c));
 	return 0;
 }
 
@@ -1300,6 +1309,7 @@ static void register_commands(ms_vm *vm)
 		{"trigger", MS_ON_THREAD, c_trigger},
 		{"spawn", MS_ON_THREAD, c_spawn},
 		{"centerprint", MS_ON_THREAD, c_centerprint},
+		{"queryturretslotentity", MS_ON_ENTITY, c_queryturretslotentity},
 		{NULL, 0, NULL}
 	};
 	int i;
@@ -1402,6 +1412,10 @@ int Dod_MohaaLevelInit(const DodMohaaBackend *backend, const char *mapname, floa
 	S.be = *backend;
 	if (!S.be.alloc) {
 		if (S.be.pool && MohaaPool_Init(&g_pool, S.be.pool, S.be.pool_size)) {
+			int r;
+			for (r = 0; r < 7; r++)
+				if (S.be.pool_more[r] && S.be.pool_more_size[r])
+					MohaaPool_AddRegion(&g_pool, S.be.pool_more[r], S.be.pool_more_size[r]);
 			S.be.alloc = pool_alloc;
 			/* the VM cannot use more than the region, so a larger budget would only hide where it ran out */
 			if (!memory_budget || memory_budget > g_pool.size)
