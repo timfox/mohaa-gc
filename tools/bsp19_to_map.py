@@ -48,6 +48,9 @@ WORLD_LIMIT = 32000.0  # SDHLT rejects brushes past +/-32768; keep a margin
 # created by earlier brushes.
 CSG_DIR_EPS = 2 * 0.0001
 CSG_DIST_EPS = 2 * 0.04
+# Brushes thinner than this (GoldSrc units, along any of their own side normals)
+# are dropped: SDHLT turns 1-unit slivers into +/-80000 "outside world" brushes.
+MIN_THICKNESS = 1.1
 
 # ---------------------------------------------------------------- geometry
 
@@ -277,8 +280,12 @@ def csg_plane(p0, p1, p2):
 
 
 def _same_plane(a, b):
-	(n1, d1), (n2, d2) = a, b
-	return all(abs(n1[k] - n2[k]) < CSG_DIR_EPS for k in range(3)) and abs(d1 - d2) < CSG_DIST_EPS
+	"""a, b: (normal, dist, point). sdHLCSG matches normals per component and tests
+	the new side's first point against the old plane, so check both directions."""
+	(n1, d1, p1), (n2, d2, p2) = a, b
+	if not all(abs(n1[k] - n2[k]) < CSG_DIR_EPS for k in range(3)):
+		return False
+	return abs(_dot(p1, n2) - d2) < CSG_DIST_EPS or abs(_dot(p2, n1) - d1) < CSG_DIST_EPS
 
 
 def csg_safe_sides(sides, stats):
@@ -292,14 +299,14 @@ def csg_safe_sides(sides, stats):
 		if n == (0.0, 0.0, 0.0):
 			stats["brushes_degenerate"] += 1
 			return None
-		flip = ((-n[0], -n[1], -n[2]), -d)
+		flip = ((-n[0], -n[1], -n[2]), -d, rp[0])
 		if any(_same_plane(flip, q) for q in planes):
 			stats["brushes_too_thin"] += 1
 			return None
-		if any(_same_plane((n, d), q) for q in planes):
+		if any(_same_plane((n, d, rp[0]), q) for q in planes):
 			stats["sides_coplanar_dropped"] += 1
 			continue
-		planes.append((n, d))
+		planes.append((n, d, rp[0]))
 		kept.append((pts, rest))
 	if len(kept) < 4:
 		stats["brushes_degenerate"] += 1
@@ -327,6 +334,10 @@ def brush_text(bsp, brush, scale, offset, namer, stats, cls, entity=False):
 	if any(abs(c) > WORLD_LIMIT for _, _, w, _ in faces for p in w for c in p):
 		# Unbounded or runaway brush (MOHAA keeps a few); SDHLT would abort on it.
 		stats["brushes_outside_world"] += 1
+		return None
+	verts = [p for _, _, w, _ in faces for p in w]
+	if min(d - min(_dot(p, n) for p in verts) for n, d, _, _ in faces) < MIN_THICKNESS:
+		stats["brushes_too_thin"] += 1
 		return None
 	sides = []
 	for n, d, w, sh in faces:
@@ -434,13 +445,40 @@ def terrain_brushes(bsp, scale, tol, tex, stats, depth=16.0):
 				p00, p10, p01, p11 = pt(i0, j0), pt(i1, j0), pt(i0, j1), pt(i1, j1)
 				# same diagonal as budget_report.terrain_cell_size
 				for tri in ((p00, p10, p01), (p11, p01, p10)):
-					txt = wedge_brush(*tri, depth, tex, "NULL")
+					txt = wedge_brush(*tri, depth, tex, tex if tex == "CLIP" else "NULL")
 					if txt:
 						out.append(txt)
 						stats["terrain_brushes_written"] += 1
 					else:
 						stats["terrain_brushes_degenerate"] += 1
 		stats["terrain_patches_cell_" + str(cell)] += 1
+	return out
+
+
+def _box_brush(lo, hi, tex):
+	return "\n".join(["{"] + [_face_line(n, w, tex) for n, _, w, _ in brush_faces(
+		[((1.0, 0.0, 0.0), hi[0], None), ((-1.0, 0.0, 0.0), -lo[0], None),
+		 ((0.0, 1.0, 0.0), hi[1], None), ((0.0, -1.0, 0.0), -lo[1], None),
+		 ((0.0, 0.0, 1.0), hi[2], None), ((0.0, 0.0, -1.0), -lo[2], None)])] + ["}"])
+
+
+def terrain_seal_brushes(bsp, scale, stats, gap=8.0, base=16.0):
+	"""One NULL column under each terrain patch, from a common floor up to just below the
+	patch's lowest point. MOHAA terrain is not a brush, so without these the map leaks
+	through the ground; the columns abut, so neighbouring patches at different heights
+	leave no gap. The walkable surface itself comes from mesh collision (or
+	--terrain-brushes)."""
+	if not bsp.terrain:
+		return []
+	floor = (min(min(tp.heights) for tp in bsp.terrain) - gap - base) * scale
+	out = []
+	for tp in bsp.terrain:
+		x0, y0 = tp.origin
+		top = (min(tp.heights) - gap) * scale
+		lo = (x0 * scale, y0 * scale, floor)
+		hi = ((x0 + b19.TERRAIN_PATCH_SIZE) * scale, (y0 + b19.TERRAIN_PATCH_SIZE) * scale, top)
+		out.append(_box_brush(lo, hi, "NULL"))
+		stats["terrain_seal_brushes"] += 1
 	return out
 
 
@@ -454,7 +492,8 @@ def kv_block(keys, brushes=()):
 
 
 def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = None,
-            terrain: bool = False, terrain_tol: float = 8.0, terrain_tex: str = "NULL"):
+            terrain: bool = False, terrain_tol: float = 8.0, terrain_tex: str = "CLIP",
+            terrain_seal: bool = True):
 	namer = TextureNamer()
 	stats = Counter()
 	world = bsp.entities[0] if bsp.entities else {"classname": "worldspawn"}
@@ -468,8 +507,13 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 	world_brushes = []
 	detail = []
 	for cls, txt in model_brushes(bsp, 0, scale, (0.0, 0.0, 0.0), namer, stats):
+		if cls == "detail" and " sky [" in txt:
+			cls = "solid"  # SDHLT rejects sky inside func_detail too
+			stats["detail_sky_to_world"] += 1
 		(detail if cls == "detail" else world_brushes).append(txt)
 		stats["world_brushes_written"] += 1
+	if terrain_seal:
+		world_brushes.extend(terrain_seal_brushes(bsp, scale, stats))
 	if terrain:
 		detail.extend(terrain_brushes(bsp, scale, terrain_tol, terrain_tex, stats))
 	blocks = [kv_block(ws_keys, world_brushes)]
@@ -604,14 +648,17 @@ def main(argv=None) -> int:
 	                help="also write LOD terrain as wedge brushes (GoldSrc-native terrain collision)")
 	ap.add_argument("--terrain-tol", type=float, default=8.0,
 	                help="max terrain height error for --terrain-brushes, GoldSrc units (default 8)")
-	ap.add_argument("--terrain-tex", default="NULL",
-	                help="texture on terrain brush tops: NULL (solid, not drawn; render comes from the bake) or CLIP")
+	ap.add_argument("--terrain-tex", default="CLIP",
+	                help="texture for terrain brushes: CLIP (player hulls only; default, keeps hull 0 small) or NULL")
+	ap.add_argument("--no-terrain-seal", action="store_true",
+	                help="don't write the NULL columns under terrain that stop it leaking")
 	args = ap.parse_args(argv)
 
 	name, data = read_source(args.source)
 	bsp = b19.load_bytes(data, name)
 	wad_key = str(args.wad.resolve()) if args.wad else None
-	text, namer, stats, skipped = convert(bsp, args.scale, wad_key, args.terrain_brushes, args.terrain_tol, args.terrain_tex)
+	text, namer, stats, skipped = convert(bsp, args.scale, wad_key, args.terrain_brushes, args.terrain_tol, args.terrain_tex,
+	                                         not args.no_terrain_seal)
 	args.out.write_text(text)
 	if args.wad:
 		write_wad(args.wad, list(namer.by_shader.values()) + sorted(namer.special_used))

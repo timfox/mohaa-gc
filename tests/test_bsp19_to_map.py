@@ -99,6 +99,38 @@ class CompileSafetyTest(unittest.TestCase):
 		self.assertEqual(stats["brushes_outside_world"], 1)
 		self.assertEqual(stats["world_brushes_written"], 1)
 
+	def test_one_unit_beam_dropped(self):
+		bsp = tiny_bsp([((-2000, 5351, 12), (2000, 5352, 13), 0), ((0, 0, 0), (64, 64, 64), 0)], [])
+		_, _, stats, _ = conv.convert(bsp, scale=1.0)
+		self.assertEqual(stats["brushes_too_thin"], 1)
+		self.assertEqual(stats["world_brushes_written"], 1)
+
+	def test_tilted_near_coplanar_side_dropped(self):
+		# sdHLCSG tests the new side's first point against the old plane, not the distances
+		stats = conv.Counter()
+		sides = [(conv.three_points(n, w), "X") for n, d, w, _ in conv.brush_faces(box_planes((0, 0, 0), (64, 64, 64)))]
+		top = next(pts for pts, _ in sides if conv.csg_plane(*pts)[0] == (0.0, 0.0, 1.0))
+		tilted = ((0, 0, 64), (0, 64, 64.006), (64, 64, 64.006))  # normal off by < DIR_EPSILON
+		sides.append((tilted, "X"))
+		self.assertEqual(len(conv.csg_safe_sides(sides, stats)), 6)
+		self.assertEqual(stats["sides_coplanar_dropped"], 1)
+
+	def test_detail_sky_brush_moves_to_world(self):
+		bsp = tiny_bsp([((0, 0, 0), (64, 64, 64), 1)], [])
+		bsp.shaders[0].content_flags |= b19.CONTENTS_DETAIL  # brush contents come from shader 0
+		text, _, stats, _ = conv.convert(bsp, scale=1.0)
+		self.assertEqual(stats["detail_sky_to_world"], 1)
+		self.assertNotIn("func_detail", text)
+
+	def test_terrain_seal_columns(self):
+		bsp = b19.load_bytes(make_sample_bsp.build(19), "sample")
+		text, _, stats, _ = conv.convert(bsp, scale=1.0)
+		self.assertEqual(stats["terrain_seal_brushes"], len(bsp.terrain))
+		floor = min(min(tp.heights) for tp in bsp.terrain) - 24
+		_, _, s2, _ = conv.convert(bsp, scale=1.0, terrain_seal=False)
+		self.assertEqual(s2["terrain_seal_brushes"], 0)
+		self.assertIn(f" {floor} )", text.replace(".0 )", " )"))
+
 	def test_entity_sky_becomes_null_and_origin_in_wad(self):
 		bsp = tiny_bsp([((0, 0, 0), (64, 64, 64), 1)], [((100, 0, 0), (110, 64, 64), 1)])
 		text, namer, _, _ = conv.convert(bsp, scale=1.0)
