@@ -35,6 +35,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import mohaa_bsp19 as b19  # noqa: E402
+import mesh_collision  # noqa: E402
 from budget_report import terrain_cell_size  # noqa: E402
 
 DEFAULT_SCALE = 72.0 / 94.0
@@ -617,13 +618,18 @@ def reach_points(bsp, scale):
 	return pts
 
 
-def angled_collision(faces, voxels, grid, stats, aabb_fill=0.0, reach=None, exact_size=0.0, txt=None):
+def angled_collision(faces, voxels, grid, stats, aabb_fill=0.0, reach=None, exact_size=0.0, txt=None, mesh=None):
 	"""Player collision for an angled brush: nothing if no player can reach it, its own
 	axial bounding box if that box is nearly as tight as the brush (or the brush is
 	smaller than a cell), else grid voxels. Returns a CLIP brush or None."""
 	lo, hi = brush_aabb(faces)
 	if reach is not None and not reach.reaches(lo, hi):
 		stats["collision_unreachable"] += 1
+		return None
+	if mesh is not None:
+		# Exact: the engine sweeps the player box against this brush (.mcol sidecar).
+		mesh.add_brush([(n, d) for n, d, _, _ in faces], [p for _, _, w, _ in faces for p in w])
+		stats["collision_mesh"] += 1
 		return None
 	if exact_size > 0 and txt is not None and max(hi[i] - lo[i] for i in range(3)) >= exact_size:
 		# A big ramp or roof as voxels is a staircase of hundreds of steps; as one exact
@@ -720,7 +726,8 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
             terrain_seal: bool = True, detail_world: bool = False, seal_box: bool = False,
             simplify_collision: bool = False, collision_grid: float = 16.0, thin_walls: bool = True,
             detail_walls: bool = False, wall_cell: float = THIN_WALL_CELL,
-            collision_aabb: float = 0.0, collision_reach: float = 0.0, collision_exact: float = 0.0):
+            collision_aabb: float = 0.0, collision_reach: float = 0.0, collision_exact: float = 0.0,
+            mesh=None):
 	namer = TextureNamer()
 	stats = Counter()
 	world = bsp.entities[0] if bsp.entities else {"classname": "worldspawn"}
@@ -750,7 +757,7 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 				thin.append((txt, faces))
 				stats["thin_detail_to_wall"] += 1
 				if simplify_collision and not is_axial_brush(faces):
-					box = angled_collision(faces, voxels, collision_grid, stats, collision_aabb, reach, collision_exact, txt)
+					box = angled_collision(faces, voxels, collision_grid, stats, collision_aabb, reach, collision_exact, txt, mesh)
 					if box:
 						world_brushes.append(box)
 				else:
@@ -760,7 +767,7 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 				continue
 		sky_detail = cls == "detail" and " sky [" in txt  # SDHLT: no sky in any entity, so world
 		if simplify_collision and cls in ("detail", "clip") and not sky_detail and not is_axial_brush(faces):
-			box = angled_collision(faces, voxels, collision_grid, stats, collision_aabb, reach, collision_exact, txt)
+			box = angled_collision(faces, voxels, collision_grid, stats, collision_aabb, reach, collision_exact, txt, mesh)
 			if box:
 				world_brushes.append(box)
 			if cls == "detail" and detail_walls:
@@ -947,6 +954,9 @@ def main(argv=None) -> int:
 	ap.add_argument("--collision-aabb", type=float, default=0.0, metavar="FILL",
 	                help="under --simplify-collision, an angled brush collides as its own bounding box when it "
 	                     "fills at least FILL of it (e.g. 0.4) or is smaller than a cell; others are voxelized")
+	ap.add_argument("--mesh-collision", action="store_true",
+	                help="under --simplify-collision, angled brushes collide exactly through the engine instead of "
+	                     "voxels: written to <out>.mcol (needs xash3d-gc mesh collision)")
 	ap.add_argument("--collision-exact", type=float, default=0.0, metavar="UNITS",
 	                help="under --simplify-collision, angled brushes at least UNITS long keep exact CLIP "
 	                     "collision (a big slope is a few planes exact, hundreds of voxel steps)")
@@ -968,6 +978,7 @@ def main(argv=None) -> int:
 	                     "which keeps them out of the world's hull-0 leaves)")
 	args = ap.parse_args(argv)
 
+	mesh = mesh_collision.Collision() if args.mesh_collision else None
 	name, data = read_source(args.source)
 	bsp = b19.load_bytes(data, name)
 	wad_key = str(args.wad.resolve()) if args.wad else None
@@ -976,8 +987,13 @@ def main(argv=None) -> int:
 	                                         args.simplify_collision,
 	                                         (args.collision_grid, args.collision_grid_z or args.collision_grid),
 	                                         not args.thin_detail_in_world, args.detail_walls, args.wall_cell,
-	                                         args.collision_aabb, args.collision_reach, args.collision_exact)
+	                                         args.collision_aabb, args.collision_reach, args.collision_exact,
+	                                         mesh)
 	args.out.write_text(text)
+	if mesh is not None:
+		mpath = args.out.with_suffix(".mcol")
+		npl, nbr, nsd, nnd = mesh.write(mpath)
+		print(f"{name}: wrote {mpath} ({nbr} brushes, {npl} planes, {nnd} nodes, {mpath.stat().st_size} bytes)")
 	if args.wad:
 		write_wad(args.wad, list(namer.by_shader.values()) + sorted(namer.special_used))
 	print(f"{name}: wrote {args.out}")
