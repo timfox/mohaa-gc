@@ -82,7 +82,7 @@ def classify_brush(contents: int) -> str:
 		return "water"
 	if contents & (b19.CONTENTS_SOLID | b19.CONTENTS_FENCE):
 		return "detail" if contents & b19.CONTENTS_DETAIL else "solid"
-	if contents & b19.CONTENTS_ANYCLIP:
+	if contents & (b19.CONTENTS_PLAYERCLIP | b19.CONTENTS_MONSTERCLIP):
 		return "clip"
 	if contents & b19.CONTENTS_LADDER:
 		return "ladder"
