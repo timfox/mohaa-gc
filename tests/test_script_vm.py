@@ -18,7 +18,7 @@ SCRIPTS = os.path.join(HERE, "scripts")
 MSRUN = os.path.join(ROOT, "out", "msrun")
 
 # scripts that are expected to report script errors (msrun exits 3)
-EXPECT_ERRORS = {"errors"}
+EXPECT_ERRORS = {"errors", "retail_quirks"}
 
 
 def run(*args, cwd=None):
@@ -46,6 +46,10 @@ class ScriptVMTest(unittest.TestCase):
 
     def test_errors(self):
         self.check("errors")
+
+    def test_retail_quirks(self):
+        # switch-scoped "name:" case labels, "stmt;" before else, stray quote (m3l1b.scr)
+        self.check("retail_quirks")
 
     def test_compile_error(self):
         with tempfile.TemporaryDirectory() as tmp:
