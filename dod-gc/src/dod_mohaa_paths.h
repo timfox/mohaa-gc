@@ -73,7 +73,7 @@ static int path_next_line(const char **at, const char *end, char *buf, size_t si
 static int MohaaPaths_Load(MohaaPaths *g, const char *text, size_t len)
 {
 	const char *end = text + len, *at = text;
-	char line[160], name[96];
+	char line[512], name[96];
 	float v[3];
 	int n = 0, k = 0;
 	memset(g, 0, sizeof(*g));
@@ -113,6 +113,59 @@ static int MohaaPaths_Load(MohaaPaths *g, const char *text, size_t len)
 	}
 	g->count = k;
 	return k;
+}
+
+/* "%20" -> ' ', "%25" -> '%' (any %XX), in place */
+static void path_unescape(char *s)
+{
+	char *o = s;
+	for (; *s; s++) {
+		int hi, lo;
+		if (s[0] == '%' && s[1] && s[2] &&
+		    (hi = s[1] <= '9' ? s[1] - '0' : (s[1] | 32) - 'a' + 10) >= 0 && hi < 16 &&
+		    (lo = s[2] <= '9' ? s[2] - '0' : (s[2] | 32) - 'a' + 10) >= 0 && lo < 16) {
+			*o++ = (char)(hi * 16 + lo);
+			s += 2;
+		} else
+			*o++ = *s;
+	}
+	*o = 0;
+}
+
+/* The script-only keys of each node, "#key=value" tokens after the name (the converter writes MOHAA's #set,
+ * #group ... there, with space and % escaped). key(ctx, node index, "#set", "3") for each, in Load's node order. */
+static void MohaaPaths_Keys(const char *text, size_t len, int count,
+	void (*key)(void *ctx, int node, const char *k, const char *v), void *ctx)
+{
+	const char *end = text + len, *at = text;
+	char line[512];
+	float v[3];
+	int k = 0;
+	while (k < count && path_next_line(&at, end, line, sizeof(line))) {
+		char *p = line;
+		int field = 0;
+		if (line[0] == '#' || sscanf(line, "%f %f %f", &v[0], &v[1], &v[2]) != 3)
+			continue;
+		for (;;) {
+			char *tok, *eq;
+			while (*p == ' ' || *p == '\t' || *p == '\r')
+				p++;
+			if (!*p)
+				break;
+			tok = p;
+			while (*p && *p != ' ' && *p != '\t' && *p != '\r')
+				p++;
+			if (*p)
+				*p++ = 0;
+			if (field++ < 6 || tok[0] != '#' || !(eq = strchr(tok, '=')))
+				continue;
+			*eq = 0;
+			path_unescape(tok);
+			path_unescape(eq + 1);
+			key(ctx, k, tok, eq + 1);
+		}
+		k++;
+	}
 }
 
 static float path_dist2(const float a[3], const float b[3])

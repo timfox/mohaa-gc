@@ -526,11 +526,12 @@ static void test_routes(void)
 		"\tprintln (\"alive \" + local.a + \" \" + local.d + \" skill \" + (getcvar \"skill\") + \"|\" + (getcvar \"nope\") + \"|\")\n"
 		"\tfadeout 2 0 0 0 1\n"
 		"\tfadein 0.5 1 1 1\n"
+		"\tprintln (\"node set \" + ($west.#set * 2) + \" note \" + $west.#note + \"|\")\n"
 		"end\n";
 	files[1][0] = "maps/r.nodes";
 	files[1][1] =
 		"# x y z grav spawnflags targetname\n"
-		"-100 0 0 0 0 west\n"
+		"-100 0 0 0 0 west #set=3 #note=a%20b%25 stray\n"
 		"-100 250 0 0 0 -\n"
 		"100 250 0 0 0 -\n"
 		"100 0 0 0 0 east\n";
@@ -552,7 +553,7 @@ static void test_routes(void)
 	assert(!strstr(log_buf, "arrived"));
 	Dod_MohaaNotify(make_id(guy), "movedone");
 	run(0.65f, 0.8f);
-	assert(strstr(log_buf, "arrived\nalive 1 0 skill 2||\n<fadeout 2.0 0.0 0.0 0.0 1.0>\n<fadein 0.5 1.0 1.0 1.0 1.0>\n"));
+	assert(strstr(log_buf, "arrived\nalive 1 0 skill 2||\n<fadeout 2.0 0.0 0.0 0.0 1.0>\n<fadein 0.5 1.0 1.0 1.0 1.0>\nnode set 6 note a b%|\n"));
 	{
 		int links = 0;
 		assert(Dod_MohaaPathNodes(&links) == 4 && links == 3);
