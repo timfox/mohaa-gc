@@ -14,6 +14,7 @@ sys.path.insert(0, str(ROOT / "tests"))
 import bsp19_to_map as conv  # noqa: E402
 import mesh_collision as mc  # noqa: E402
 from test_bsp19_to_map import box_planes, tiny_bsp  # noqa: E402
+import make_sample_bsp  # noqa: E402
 import mohaa_bsp19 as b19  # noqa: E402
 
 PLAYER = ((-16.0, -16.0, -36.0), (16.0, 16.0, 36.0))
@@ -88,6 +89,88 @@ class MeshCollisionTest(unittest.TestCase):
 		self.assertEqual(stats["collision_boxes"], 0)
 		self.assertEqual(len(col.brushes), 1)
 		self.assertNotIn(" CLIP [", text)
+
+
+def drop(m, x, y, top=400.0):
+	"""Feet height where a standing player dropped at (x, y) lands, or None."""
+	frac, normal, _ = mc.trace_box(m, (x, y, top), (x, y, -200.0), *PLAYER)
+	return None if frac == 1.0 else top + (-200.0 - top) * frac - 36, normal
+
+
+class TerrainPatchMeshTest(unittest.TestCase):
+	@classmethod
+	def setUpClass(cls):
+		cls.bsp = b19.load_bytes(make_sample_bsp.build(19), "sample")
+
+	def mesh(self, **kw):
+		col = mc.Collision()
+		_, _, stats, _ = conv.convert(self.bsp, scale=1.0, mesh=col, mesh_angled=False, **kw)
+		return roundtrip(col), stats
+
+	def test_off_by_default(self):
+		col = mc.Collision()
+		conv.convert(self.bsp, scale=1.0, mesh=col)
+		self.assertEqual(col.brushes, [])
+
+	def test_terrain_heights(self):
+		m, stats = self.mesh(mesh_terrain_tol=2.0)
+		self.assertEqual(stats["mesh_terrain_patches"], 3)
+		# flat patch at x,y -1024..-512 (cells of 64, patch at -16,-16): ground z = 0
+		feet, n = drop(m, -768, -768)
+		self.assertAlmostEqual(feet, 0.0, delta=0.1)
+		self.assertEqual(n[2], 1.0)
+		# planar slope patch at x -512..0: z = base + 2 * (4 * i) = x_in_patch / 8. The box spans
+		# 16 units either side, so the uphill corner carries the feet.
+		feet, n = drop(m, -256, -768)
+		self.assertAlmostEqual(feet, (256 + 16) / 8.0, delta=0.1)
+		self.assertGreater(n[2], 0.99)
+
+	def test_bumpy_terrain_within_tolerance(self):
+		m, stats = self.mesh(mesh_terrain_tol=2.0)
+		tp = self.bsp.terrain[2]
+		x0, y0 = tp.origin
+		for i, j in ((3, 3), (4, 5), (6, 2)):
+			x, y = x0 + 64 * i, y0 + 64 * j
+			feet, _ = drop(m, x, y)
+			# the box reaches 16 units around the sample, so it rests on the highest ground there
+			self.assertGreaterEqual(feet, tp.heights[j * 9 + i] - 2.1)
+
+	def test_solid_patch_collides_nonsolid_does_not(self):
+		m, stats = self.mesh(mesh_patch_tol=1.0)
+		self.assertEqual(stats["mesh_patches"], 1)
+		self.assertEqual(stats["mesh_patches_nonsolid"], 1)
+		# top of the hump: the joint control point at x = 428 lies on the surface, z = 64
+		feet, n = drop(m, 428, 364)
+		self.assertAlmostEqual(feet, 64.0, delta=1.0)
+		self.assertGreater(n[2], 0.95)
+		self.assertIsNone(drop(m, 664, 364)[0])  # vines: non-solid
+
+	def test_patch_tessellation_error(self):
+		row = [(0, 0), (64, 128), (128, 0)]
+		ctrl = [(x, 64 * j, z) for j in range(3) for x, z in row]
+		tris = conv.patch_triangles(ctrl, 3, 3, 1.0)
+		self.assertGreater(len(tris), 8)
+		# every vertex lies on the curve x = 128 t, z = 256 t (1 - t)
+		for tri in tris:
+			for x, _, z in tri:
+				t = x / 128.0
+				self.assertAlmostEqual(z, 2 * t * (1 - t) * 128, places=4)
+		# and the chords stay within about the tolerance of the curve
+		xs = sorted({round(p[0], 6) for tri in tris for p in tri})
+		for a, b in zip(xs, xs[1:]):
+			t = (a + b) / 256.0
+			za = 2 * (a / 128) * (1 - a / 128) * 128
+			zb = 2 * (b / 128) * (1 - b / 128) * 128
+			self.assertLess(abs(2 * t * (1 - t) * 128 - (za + zb) / 2), 1.5)
+
+	def test_prism_planes_contain_triangle(self):
+		a, b, c = (0, 0, 0), (64, 0, 0), (0, 64, 32)
+		planes = conv.prism_planes(a, b, c, 2.0)
+		self.assertEqual(len(planes), 5)
+		centroid = tuple((a[k] + b[k] + c[k]) / 3 for k in range(3))
+		for n, d in planes:
+			self.assertLessEqual(mc._dot(n, centroid) - d, 1e-6)
+		self.assertIsNone(conv.prism_planes(a, a, c, 2.0))
 
 
 if __name__ == "__main__":
