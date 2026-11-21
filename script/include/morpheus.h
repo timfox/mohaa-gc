@@ -190,6 +190,10 @@ const char *ms_type_name(int type);
 ms_value ms_array_new(ms_vm *vm);
 int      ms_array_set(ms_vm *vm, ms_value *arr, const ms_value *key, const ms_value *val);
 int      ms_array_size(const ms_value *arr);
+/* i-th element (0-based, insertion order) of an array or const array; NULL past the end. */
+const ms_value *ms_array_item(const ms_value *arr, int i);
+/* text of a string value, NULL for other types */
+const char *ms_string_text(const ms_value *v);
 
 #ifdef __cplusplus
 }
