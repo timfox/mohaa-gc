@@ -6,6 +6,7 @@ This patch lets SDHLT compile maps with more than 32,767 clipnodes. The 15 MOHAA
 - A map under 32,767 clipnodes is still written as stock BSP30, so the output is the same as unpatched SDHLT.
 - A larger map gets the `XASH` version 4 extra header (12 empty extra lumps) right after the BSP30 header, and a clipnode lump of 12-byte `{int planenum; int children[2];}` entries.
 - `sdHLVIS` and `sdHLRAD` read both layouts, using the engine's rule: 32-bit if the file has the XASH header and the lump holds at least 32,767 entries (or its length isn't a multiple of 8).
+- Planes go up to 131,072 (xash3d-gc's `MAX_MAP_PLANES`), and SDHLT's internal plane table goes up to 1M. Nodes and clipnodes store int32 plane numbers. Faces store an unsigned short, so `WriteFace` stops with an error if a face would reference plane 65,536 or higher.
 - Hull 0 limits (`MAX_MAP_NODES` 32,767, world leaves 8,192) don't change.
 
 ```bash

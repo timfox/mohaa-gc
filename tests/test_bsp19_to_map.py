@@ -133,6 +133,15 @@ class CompileSafetyTest(unittest.TestCase):
 		self.assertEqual(s2["terrain_seal_brushes"], 0)
 		self.assertIn(f" {floor} )", text.replace(".0 )", " )"))
 
+	def test_detail_world_and_seal_box(self):
+		bsp = tiny_bsp([((0, 0, 0), (64, 64, 64), 0)], [])
+		bsp.shaders[0].content_flags |= b19.CONTENTS_DETAIL
+		self.assertIn("func_detail", conv.convert(bsp, scale=1.0)[0])
+		text, _, stats, _ = conv.convert(bsp, scale=1.0, detail_world=True, seal_box=True)
+		self.assertNotIn("func_detail", text)
+		self.assertEqual(stats["seal_box_brushes"], 6)
+		self.assertIn("-784", text)  # model mins -512 minus 256 margin minus 16 wall
+
 	def test_entity_sky_becomes_null_and_origin_in_wad(self):
 		bsp = tiny_bsp([((0, 0, 0), (64, 64, 64), 1)], [((100, 0, 0), (110, 64, 64), 1)])
 		text, namer, _, _ = conv.convert(bsp, scale=1.0)
