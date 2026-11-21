@@ -133,6 +133,26 @@ class CompileSafetyTest(unittest.TestCase):
 		self.assertEqual(stats["thin_detail_to_wall"], 0)
 		self.assertNotIn('"func_wall"', text)
 
+	def test_anisotropic_collision_grid(self):
+		s = 2 ** -0.5
+		planes = box_planes((0, 0, 0), (128, 128, 64))
+		planes.append(((s, 0.0, s), 96 * s, None))  # a 45-degree ramp face
+		faces = conv.brush_faces(planes)
+		fine, coarse = set(), set()
+		conv.voxelize_brush(faces, fine, 16)
+		conv.voxelize_brush(faces, coarse, (64, 16))
+		stats = conv.Counter()
+		boxes = conv.voxel_boxes(coarse, (64, 16), stats)
+		self.assertLess(len(coarse), len(fine))
+		zs = {float(m) for b in boxes for m in re.findall(r"\( \S+ \S+ (\S+) \)", b)}
+		self.assertTrue(all(z % 16 == 0 for z in zs))  # steps stay one 16-unit cell high
+
+	def test_rain_volume_is_nonsolid(self):
+		bsp = tiny_bsp([((0, 0, 0), (64, 64, 64), 0)], [((0, 0, 100), (64, 64, 164), 0)], door_class="func_rain")
+		text, _, _, _ = conv.convert(bsp, scale=1.0)
+		self.assertIn('"classname" "func_illusionary"', text)
+		self.assertIn('"zhlt_noclip" "1"', text)
+
 	def test_tilted_near_coplanar_side_dropped(self):
 		# sdHLCSG tests the new side's first point against the old plane, not the distances
 		stats = conv.Counter()

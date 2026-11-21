@@ -263,6 +263,8 @@ BRUSH_CLASS_MAP = {
 	"func_window": "func_breakable",
 }
 ROTATING = {"func_door_rotating"}
+# MOHAA brush entities that are volumes, not walls: no player/bullet collision.
+NONSOLID_BRUSH = {"func_rain": "func_illusionary"}
 
 
 def parse_vec(s, default=(0.0, 0.0, 0.0)):
@@ -564,20 +566,29 @@ def is_axial_brush(faces):
 	return all(sum(1 for c in n if abs(c) > 1e-6) == 1 for n, _, _, _ in faces)
 
 
+def _grid3(grid):
+	"""A grid is one cell size or (xy, z) / (x, y, z)."""
+	if isinstance(grid, (int, float)):
+		return (float(grid),) * 3
+	g = tuple(float(v) for v in grid)
+	return (g[0], g[0], g[1]) if len(g) == 2 else g
+
+
 def voxelize_brush(faces, voxels, grid):
 	"""Add every grid cell the convex brush may overlap (plane test against the cell's
 	nearest corner, so thin beams are never missed; it can over-include a little)."""
+	g = _grid3(grid)
 	verts = [p for _, _, w, _ in faces for p in w]
-	lo = [math.floor(min(p[i] for p in verts) / grid) for i in range(3)]
-	hi = [math.ceil(max(p[i] for p in verts) / grid) for i in range(3)]
+	lo = [math.floor(min(p[i] for p in verts) / g[i]) for i in range(3)]
+	hi = [math.ceil(max(p[i] for p in verts) / g[i]) for i in range(3)]
 	planes = [(n, d) for n, d, _, _ in faces]
 	for x in range(lo[0], hi[0]):
 		for y in range(lo[1], hi[1]):
 			for z in range(lo[2], hi[2]):
-				c0 = (x * grid, y * grid, z * grid)
+				c0 = (x * g[0], y * g[1], z * g[2])
 				for n, d in planes:
 					# the cell corner furthest behind the plane
-					m = sum((c0[k] if n[k] > 0 else c0[k] + grid) * n[k] for k in range(3))
+					m = sum((c0[k] if n[k] > 0 else c0[k] + g[k]) * n[k] for k in range(3))
 					if m >= d - 1e-6:
 						break
 				else:
@@ -591,7 +602,9 @@ def voxel_boxes(voxels, grid, stats):
 	the plane and clipnode limits on m6l1a/b and m6l2b. Axial boxes on a shared
 	grid need no bevels and reuse the same few planes, and a slope becomes steps of
 	one grid cell, which players climb as long as the grid is under the 18-unit
-	step height."""
+	step height. Only the z cell size matters for stepping, so a coarser xy cell
+	(--collision-grid-z) cuts the box count without making slopes unclimbable."""
+	g = _grid3(grid)
 	left = set(voxels)
 	out = []
 	for cell in sorted(voxels, key=lambda c: (c[2], c[1], c[0])):
@@ -611,8 +624,8 @@ def voxel_boxes(voxels, grid, stats):
 			for y in range(y0, y1 + 1):
 				for z in range(z0, z1 + 1):
 					left.discard((x, y, z))
-		out.append(_box_brush((x0 * grid, y0 * grid, z0 * grid),
-		                      ((x1 + 1) * grid, (y1 + 1) * grid, (z1 + 1) * grid), "CLIP"))
+		out.append(_box_brush((x0 * g[0], y0 * g[1], z0 * g[2]),
+		                      ((x1 + 1) * g[0], (y1 + 1) * g[1], (z1 + 1) * g[2]), "CLIP"))
 	stats["collision_voxels"] += len(voxels)
 	stats["collision_boxes"] += len(out)
 	return out
@@ -708,13 +721,15 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 			if cn.startswith("trigger_"):
 				skipped[cn] += 1
 				continue
-			gcn = BRUSH_CLASS_MAP.get(cn, "func_wall")
+			gcn = NONSOLID_BRUSH.get(cn) or BRUSH_CLASS_MAP.get(cn, "func_wall")
 			o = parse_vec(e.get("origin", ""))
 			brushes = [t for _, t, _ in model_brushes(bsp, mi, scale, o, namer, stats)]
 			if not brushes:
 				skipped[cn + " (no brushes)"] += 1
 				continue
 			keys = {"classname": gcn, "mohaa_classname": cn}
+			if cn in NONSOLID_BRUSH:
+				keys["zhlt_noclip"] = "1"  # no hull 1-3 trees for a volume nobody collides with
 			for k in ("targetname", "target", "angle", "angles", "speed", "wait", "lip"):
 				if k in e:
 					keys[k] = e[k]
@@ -828,6 +843,9 @@ def main(argv=None) -> int:
 	                help="write MOHAA detail brushes into worldspawn (they seal; func_detail does not)")
 	ap.add_argument("--simplify-collision", action="store_true",
 	                help="angled detail/clip brushes collide as merged CLIP boxes on a grid (detail still drawn)")
+	ap.add_argument("--collision-grid-z", type=float,
+	                help="vertical cell for --simplify-collision (default: same as --collision-grid); "
+	                     "keep it under 18 so voxel slopes stay climbable while xy is coarser")
 	ap.add_argument("--collision-grid", type=float, default=16.0,
 	                help="grid for --simplify-collision, GoldSrc units (default 16, under the 18-unit step)")
 	ap.add_argument("--seal-box", action="store_true",
@@ -842,7 +860,8 @@ def main(argv=None) -> int:
 	wad_key = str(args.wad.resolve()) if args.wad else None
 	text, namer, stats, skipped = convert(bsp, args.scale, wad_key, args.terrain_brushes, args.terrain_tol, args.terrain_tex,
 	                                         not args.no_terrain_seal, args.detail_world, args.seal_box,
-	                                         args.simplify_collision, args.collision_grid,
+	                                         args.simplify_collision,
+	                                         (args.collision_grid, args.collision_grid_z or args.collision_grid),
 	                                         not args.thin_detail_in_world)
 	args.out.write_text(text)
 	if args.wad:
