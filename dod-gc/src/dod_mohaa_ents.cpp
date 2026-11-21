@@ -398,6 +398,11 @@ static const char *M_GetCvar( const char *name )
 	return CVAR_GET_STRING( name );
 }
 
+static void M_SetCvar( const char *name, const char *value )
+{
+	CVAR_SET_STRING( name, value );
+}
+
 static void M_Fade( float seconds, float r, float g, float b, float alpha, int out )
 {
 	/* fade out holds the colour until a fade in; fade in starts from it */
@@ -541,6 +546,7 @@ void DodGC_MohaaLevelInit( void )
 	b.walkable = M_Walkable;
 	b.get_cvar = M_GetCvar;
 	b.fade = M_Fade;
+	b.set_cvar = M_SetCvar;
 	g_nwaiting = 0;	/* the last map's waiting soldiers went with it */
 	memset( g_actors, 0, sizeof( g_actors ) );
 	memset( g_dead, 0, sizeof( g_dead ) );

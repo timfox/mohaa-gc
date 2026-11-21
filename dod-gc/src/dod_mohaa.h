@@ -75,6 +75,8 @@ typedef struct DodMohaaBackend {
 	int (*walkable)(const float a[3], const float b[3]);
 	/* getcvar: a cvar's string, "" when unknown. NULL: always "". */
 	const char *(*get_cvar)(const char *name);
+	/* setcvar: set a cvar. NULL: ignored. */
+	void (*set_cvar)(const char *name, const char *value);
 	/* fadeout/fadein: fade every player's screen over seconds to (or from) colour r g b (0..1) at alpha. */
 	void (*fade)(float seconds, float r, float g, float b, float alpha, int out);
 	/* Background music for every player (late joiners too): intro plays once, then loop repeats; loop "" plays

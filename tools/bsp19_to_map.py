@@ -1184,6 +1184,32 @@ def read_source(src: str) -> tuple[str, bytes]:
 
 
 SCRIPT_WORD = re.compile(r"[A-Za-z0-9_]+")
+SCRIPT_ENTITY = re.compile(r"\$([A-Za-z_][A-Za-z0-9_]*)")
+
+
+def script_entity_names(inputs, mapname):
+	"""Literal $names the level's scripts address ($truck, not $("crate_" + i))."""
+	from stage_scripts import closure
+	from ubersound import collect, read
+	scripts = collect(inputs, (".scr",))
+	need, _ = closure(scripts, mapname)
+	names = set()
+	for path in need:
+		names.update(n.lower() for n in SCRIPT_ENTITY.findall(read(scripts[path]).decode("latin-1")))
+	return names - {"player", "world", "self"}
+
+
+def name_report(bsp, text, wanted):
+	"""(names the scripts address that nothing in the .map has, {name: classname} the BSP had but the .map
+	lost). The first list is what a script will find NULL in game; the second says why, when it is ours."""
+	written = {m.lower() for m in re.findall(r'"targetname" "([^"]+)"', text)}
+	in_bsp = {}
+	for e in bsp.entities[1:]:
+		if e.get("targetname"):
+			in_bsp.setdefault(e["targetname"].lower(), e.get("classname", ""))
+	missing = sorted(n for n in wanted if n not in written)
+	lost = {n: in_bsp[n] for n in missing if n in in_bsp}
+	return missing, lost
 
 
 def script_names(inputs, mapname):
@@ -1297,6 +1323,16 @@ def main(argv=None) -> int:
 	for k in sorted(stats):
 		print(f"  {k:<28} {stats[k]}")
 	print(f"  textures                     {len(namer.by_shader)}")
+	if args.scripts and words is not None:
+		missing, lost = name_report(bsp, text, script_entity_names(args.scripts, mapname))
+		if missing:
+			print(f"  $names the scripts use that the map lacks: {len(missing)} "
+			      f"({len(lost)} were in the BSP: " + ", ".join(f"{n} ({c})" for n, c in sorted(lost.items())[:20]) +
+			      (" ..." if len(lost) > 20 else "") + ")")
+			rest = [n for n in missing if n not in lost]
+			if rest:
+				print("  not in the BSP either (spawned by scripts, or from another level): " + " ".join(rest[:30]) +
+				      (" ..." if len(rest) > 30 else ""))
 	if skipped:
 		print("  point/brush entities not written: " + ", ".join(f"{k} x{v}" for k, v in skipped.most_common(15)))
 	return 0

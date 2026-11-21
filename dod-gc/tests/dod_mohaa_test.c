@@ -148,6 +148,9 @@ static int m_walkable(const float a[3], const float b[3])
 
 static const char *m_get_cvar(const char *name) { return strcmp(name, "skill") ? "" : "2"; }
 
+static char cvar_set[64];
+static void m_set_cvar(const char *name, const char *value) { snprintf(cvar_set, sizeof(cvar_set), "%s=%s", name, value); }
+
 static void m_fade(float t, float r, float g, float b, float a, int out)
 {
 	char line[96];
@@ -202,6 +205,7 @@ static DodMohaaBackend backend(void)
 	b.walkable = m_walkable;
 	b.get_cvar = m_get_cvar;
 	b.fade = m_fade;
+	b.set_cvar = m_set_cvar;
 	b.precache_sound = m_precache;
 	b.music = m_music;
 	return b;
@@ -567,6 +571,13 @@ static void test_setthread_and_quiet_commands(void)
 		"\t$t_gate light 1 0.5 0.5 200\n"
 		"\t$t_gate lightradius 200\n"
 		"\t$t_gate disconnect_paths\n"
+		"\t$t_gate holster\n"
+		"\t$t_gate anim idle\n"
+		"\tprintln (\"tag \" + ($t_gate gettagposition \"tag_barrel\"))\n"
+		"\t$t_gate velocity (94 0 0)\n"
+		"\tsetcvar \"g_mohaa\" \"1\"\n"
+		"\taddobjective 1 1 \"Find the radio\" $t_gate\n"
+		"\tsetcurrentobjective 1\n"
 		"\texec global/nothere.scr\n"
 		"end\n"
 		"gate_open:\n"
@@ -580,7 +591,11 @@ static void test_setthread_and_quiet_commands(void)
 	assert(strstr(log_buf, "gate by t_gate\n"));
 	assert(strstr(log_buf, "setthread no_label: no such label in maps/g.scr"));
 	assert(strstr(log_buf, "mohaa: could not load global/nothere.scr (scripts hold "));
-	assert(!strstr(log_buf, "lighton") && !strstr(log_buf, "disconnect_paths"));
+	assert(!strstr(log_buf, "lighton") && !strstr(log_buf, "disconnect_paths") && !strstr(log_buf, "holster"));
+	assert(strstr(log_buf, "tag (0.000 0.000 0.000)\n"));
+	assert(near(ents[t].vel[0], 72.0f));
+	assert(!strcmp(cvar_set, "g_mohaa=1"));
+	assert(strstr(log_buf, "[center] Objective: Find the radio\n"));
 }
 
 int main(void)

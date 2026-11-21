@@ -55,7 +55,8 @@ static struct {
 	char cue[MUSIC_PATH];
 	int cue_loop;
 	char level_script[128];
-	size_t budget;	/* maps/<map>.scr, where a trigger's setthread label lives */
+	size_t budget;
+	char objectives[8][96];	/* addobjective texts, by index 1..8 */	/* maps/<map>.scr, where a trigger's setthread label lives */
 	/* path nodes, and the soldiers walking them: a route is the goal plus the node it heads for now */
 	MohaaPaths paths;
 	int path_links;
@@ -952,11 +953,70 @@ static int c_stufftext(ms_call *c)
 /* thread commands                                                      */
 /* ------------------------------------------------------------------ */
 
-/* Accepted and dropped. Dynamic lights cost the GameCube a lightmap rebuild per frame, so entity lights stay off;
+/* Accepted and dropped (see the list in register_commands). Dynamic lights cost the GameCube a lightmap rebuild per frame, so entity lights stay off;
    path links are fixed at level load (an opened door does not add a link, a closed one does not cut one). */
 static int c_ignored(ms_call *c)
 {
 	(void)c;
+	return 0;
+}
+
+/* "$e gettagposition <tag>" / "gettagangles": no TIKI skeletons here, so a tag sits at the entity's own origin
+   and faces its way (good enough for spawning effects or aiming at a bone) */
+static int c_gettag(ms_call *c)
+{
+	float v[3], out[3];
+	const uint32_t id = target_id(c);
+	const int angles = strstr(ms_call_name(c), "angles") != NULL;
+	if (!valid(id)) {
+		ms_return(c, NULL);
+		return 0;
+	}
+	get_vec(id, angles ? DOD_MOHAA_ANGLES : DOD_MOHAA_ORIGIN, v);
+	if (angles)
+		memcpy(out, v, sizeof(v));
+	else
+		scale_out(v, out);
+	ms_return_vector(c, out);
+	return 0;
+}
+
+/* "$e velocity (x y z)": a push in MOHAA units per second */
+static int c_velocity(ms_call *c)
+{
+	float v[3], g[3];
+	static const float zero[3] = {0, 0, 0};
+	ms_arg_vector(c, 0, v);
+	scale_in(v, g);
+	S.be.set_velocity(target_id(c), g, zero);
+	return 0;
+}
+
+/* "setcvar <name> <value>" */
+static int c_setcvar(ms_call *c)
+{
+	if (S.be.set_cvar && ms_argc(c) >= 2)
+		S.be.set_cvar(ms_arg_string(c, 0), ms_arg_string(c, 1));
+	return 0;
+}
+
+/* "addobjective <index> <state> <text> [location]" keeps the text; "setcurrentobjective <index>" shows it */
+static int c_addobjective(ms_call *c)
+{
+	const int i = ms_arg_int(c, 0);
+	if (i >= 1 && i <= 8 && ms_argc(c) >= 3)
+		snprintf(S.objectives[i - 1], sizeof(S.objectives[0]), "%s", ms_arg_string(c, 2));
+	return 0;
+}
+
+static int c_setcurrentobjective(ms_call *c)
+{
+	const int i = ms_arg_int(c, 0);
+	if (i >= 1 && i <= 8 && S.objectives[i - 1][0]) {
+		char msg[128];
+		snprintf(msg, sizeof(msg), "Objective: %s", S.objectives[i - 1]);
+		S.be.print(DOD_MOHAA_PRINT_CENTER, msg);
+	}
 	return 0;
 }
 
@@ -1083,8 +1143,55 @@ static void register_commands(ms_vm *vm)
 		{"soundtrack", MS_ON_THREAD | MS_ON_ENTITY, c_soundtrack},
 		{"forcemusic", MS_ON_THREAD | MS_ON_ENTITY, c_forcemusic},
 		{"isalive", MS_ON_THREAD, c_isalive},
+		{"gettagposition", MS_ON_ENTITY, c_gettag},
+		{"gettagangles", MS_ON_ENTITY, c_gettag},
+		{"velocity", MS_ON_ENTITY, c_velocity},
+		{"setcvar", MS_ON_THREAD, c_setcvar},
+		{"addobjective", MS_ON_THREAD, c_addobjective},
+		{"setcurrentobjective", MS_ON_THREAD, c_setcurrentobjective},
 		{"lighton", MS_ON_ENTITY, c_ignored},
 		{"light", MS_ON_ENTITY, c_ignored},
+		/* animation, TIKI models, attachment, vehicles and turrets, weapons and inventory: none of it exists on the
+		   GameCube side yet. Accepted so a mission keeps going; README "Not yet" lists what they would need. */
+		{"american", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"anim", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"animscript", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"attach", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"bind", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"douse", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"forcelegsstate", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"glue", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"gren_awareness", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"holster", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"model", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"nodamage", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"takedamage", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"physics_off", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"physics_on", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"scale", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"setplayerusable", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"threatbias", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"unbind", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"turnspeed", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"vehiclespeed", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"burstfiresettings", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"removeondeath", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"rendereffects", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"tracerfrequency", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"triggereffect", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"setaimtarget", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"accuracy", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"bulletdamage", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"firedelay", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"maxyawoffset", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"pitchcaps", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"ammo", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"heal", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"item", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"takeall", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"useweaponclass", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"unholster", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"detach", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"lightoff", MS_ON_ENTITY, c_ignored},
 		{"lightradius", MS_ON_ENTITY, c_ignored},
 		{"lightcolor", MS_ON_ENTITY, c_ignored},
@@ -1121,6 +1228,7 @@ void Dod_MohaaShutdown(void)
 	S.nmoods = 0;
 	S.mood = S.fallback = -1;
 	S.cue[0] = 0;
+	memset(S.objectives, 0, sizeof(S.objectives));
 	MohaaPaths_Free(&S.paths);
 	S.path_links = 0;
 	memset(S.routes, 0, sizeof(S.routes));
