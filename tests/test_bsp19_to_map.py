@@ -126,6 +126,9 @@ class CompileSafetyTest(unittest.TestCase):
 		self.assertEqual(stats["thin_detail_walls"], 2)  # different 1024-unit cells
 		self.assertEqual(text.count('"classname" "func_wall"'), 2)
 		self.assertIn("func_detail", text)  # the thick brush stays detail
+		self.assertEqual(text.count('"zhlt_noclip" "1"'), 2)
+		world = text.split('"classname" "func_detail"')[0]
+		self.assertEqual(world.count(" CLIP ["), 12)  # both slivers collide via world CLIP copies
 		text, _, stats, _ = conv.convert(bsp, scale=1.0, thin_walls=False)
 		self.assertEqual(stats["thin_detail_to_wall"], 0)
 		self.assertNotIn('"func_wall"', text)
