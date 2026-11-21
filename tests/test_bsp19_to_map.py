@@ -458,6 +458,15 @@ class StaticBrushModelTest(unittest.TestCase):
 		self.assertEqual(text.count('"mohaa_classname" "script_object"'), 5)
 
 
+class ClassifyTest(unittest.TestCase):
+	def test_weapon_clip_alone_lets_players_through(self):
+		self.assertEqual(conv.classify(0x28040000), "nonsolid")   # DETAIL | WEAPONCLIP (m6l1a snowclip)
+		self.assertEqual(conv.classify(b19.CONTENTS_VEHICLECLIP), "nonsolid")
+		self.assertEqual(conv.classify(0x08030000), "clip")       # PLAYERCLIP | MONSTERCLIP
+		self.assertEqual(conv.classify(b19.CONTENTS_PLAYERCLIP | b19.CONTENTS_WEAPONCLIP), "clip")
+		self.assertEqual(conv.classify(0x28000001), "detail")
+
+
 class ConvertTest(unittest.TestCase):
 	def setUp(self):
 		self.bsp = b19.load_bytes(make_sample_bsp.build(19), "sample")

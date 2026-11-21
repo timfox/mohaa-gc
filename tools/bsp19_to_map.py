@@ -241,8 +241,10 @@ def classify(contents: int) -> str:
 		return "water"
 	if contents & (b19.CONTENTS_SOLID | b19.CONTENTS_FENCE):
 		return "detail" if contents & b19.CONTENTS_DETAIL else "solid"
-	if contents & b19.CONTENTS_ANYCLIP:
+	if contents & (b19.CONTENTS_PLAYERCLIP | b19.CONTENTS_MONSTERCLIP):
 		return "clip"
+	# weapon or vehicle clip alone stops bullets or vehicles, never a player or soldier; GoldSrc's
+	# CLIP would block them (m6l1a's snowclip rocks walled off the climb), so these don't collide
 	return "nonsolid"
 
 
