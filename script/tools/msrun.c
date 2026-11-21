@@ -19,6 +19,7 @@
 #include "../src/ms_internal.h"   /* -stats reads the VM's tables */
 
 #include <stdarg.h>
+#include <stddef.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -389,16 +390,17 @@ static void print_stats(const ms_vm *v)
     for (const ms_script *s = v->scripts; s; s = s->next) {
         size_t cs = 0;
         for (uint32_t i = 0; i < s->nconsts; i++)
-            if (s->consts[i].type == MS_STRING)
-                cs += sizeof(ms_str) + s->consts[i].u.s->len + AH;
+            cs += (offsetof(ms_str, data) + s->consts[i]->len + 1 + 7) & ~(size_t)7;
+        if (s->pool)
+            cs += AH + ((sizeof(ms_pool) + 7) & ~(size_t)7);
         size_t swb = s->nswitches ? s->nswitches * sizeof(ms_switch) + AH : 0;
         for (uint32_t i = 0; i < s->nswitches; i++)
             swb += s->switches[i].n * sizeof(ms_case) + AH;
-        size_t c = s->code_len + AH, k = s->nconsts * sizeof(ms_value) + AH + cs;
-        size_t l = s->nlabels * sizeof(ms_label) + AH, ln = s->nlines * sizeof(ms_line) + AH;
+        size_t c = s->code_len + AH, k = s->nconsts * sizeof(ms_str *) + AH + cs;
+        size_t l = s->nlabels * sizeof(ms_label) + AH, ln = s->lines_len + AH;
         size_t total = c + k + l + ln + swb + strlen(s->path) + 1 + AH + sizeof(ms_script) + AH;
         printf("%-36s %8zu %7zu %6zu %6zu %6zu\n", s->path, c, k, l, ln, total);
-        code += c; consts += s->nconsts * sizeof(ms_value) + AH; cstr += cs; labels += l; sw += swb; lines += ln;
+        code += c; consts += s->nconsts * sizeof(ms_str *) + AH; cstr += cs; labels += l; sw += swb; lines += ln;
         paths += strlen(s->path) + 1 + AH + sizeof(ms_script) + AH;
         nscripts++;
     }
