@@ -113,3 +113,7 @@ the tests need no game data.
 The reader is written from the BSP struct layouts documented in
 [OpenMoHAA](https://github.com/openmoh/openmohaa)'s `code/qcommon/qfiles.h`.
 No code is copied from GPL projects.
+
+## Per-map flags
+
+`tools/map_flags.txt` lists the converter flags each retail map needs to fit the GameCube limits. Those limits are at most 32767 clipnodes, at most 8192 world leaves, and a BSP of at most 3 MiB without its lighting lump. Compile every map with `sdHLBSP -hull2alias`. Collision uses the finest voxel grid that fits each map. The 64 to 96-unit grids on the m6 maps, m3l3, m4l1, m4l2, m5l2b and m5l3 still need a Dolphin playtest.
