@@ -2,7 +2,7 @@
 """Extract a MOHAA BSP's brushes into a GoldSrc Valve-220 .map for SDHLT.
 
 First stage of the map pipeline: brushes only. Curved patches, LOD terrain
-and static models are left out (they go to the render bake, and their
+(unless --terrain-brushes) and static models are left out (they go to the render bake, and their
 collision is decided separately). Output compiles with SDHLT
 (sdHLCSG/sdHLBSP[/sdHLVIS/sdHLRAD]) into a BSP30 for dod-gc.
 
@@ -34,6 +34,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import mohaa_bsp19 as b19  # noqa: E402
+from budget_report import terrain_cell_size  # noqa: E402
 
 DEFAULT_SCALE = 72.0 / 94.0
 GOLDSRC_HULL_HALF_HEIGHT = 36.0  # standing hull is -36..36 around the origin
@@ -329,6 +330,65 @@ def model_brushes(bsp, model_index, scale, offset, namer, stats):
 	return out
 
 
+def _face_line(n, w, tex):
+	p0, p1, p2 = three_points(n, w)
+	u, v = texture_axes(n)
+	pts = " ".join("( %s %s %s )" % tuple(_f(c) for c in p) for p in (p0, p1, p2))
+	return f"{pts} {tex} [ {_f(u[0])} {_f(u[1])} {_f(u[2])} 0 ] [ {_f(v[0])} {_f(v[1])} {_f(v[2])} 0 ] 0 1 1"
+
+
+def wedge_brush(a, b, c, depth, top_tex, side_tex):
+	"""Convex brush under triangle abc: sloped top, three vertical sides, flat bottom."""
+	n = _norm(_cross(_sub(b, a), _sub(c, a)))
+	if n[2] < 0:
+		n = (-n[0], -n[1], -n[2])
+	if n[2] < 1e-3:
+		return None
+	planes = [(n, _dot(n, a), top_tex)]
+	zb = min(a[2], b[2], c[2]) - depth
+	planes.append(((0.0, 0.0, -1.0), -zb, side_tex))
+	for p, q, r in ((a, b, c), (b, c, a), (c, a, b)):
+		e = _sub(q, p)
+		sn = _norm((e[1], -e[0], 0.0))
+		if _dot(sn, _sub(r, p)) > 0:
+			sn = (-sn[0], -sn[1], 0.0)
+		planes.append((sn, _dot(sn, p), side_tex))
+	faces = brush_faces(planes)
+	if len(faces) < 5:
+		return None
+	return "\n".join(["{"] + [_face_line(fn, w, t) for fn, _, w, t in faces] + ["}"])
+
+
+def terrain_brushes(bsp, scale, tol, tex, stats, depth=16.0):
+	"""Wedge brushes for every LOD terrain patch, as coarse as tol (GoldSrc units) allows."""
+	out = []
+	n = b19.TERRAIN_SAMPLES
+	tol_mohaa = tol / scale if scale > 0 else tol
+	for tp in bsp.terrain:
+		cell = terrain_cell_size(tp.heights, tol_mohaa)
+		step = cell // b19.TERRAIN_CELL
+		x0, y0 = tp.origin
+		cells = (n - 1) // step
+
+		def pt(i, j):
+			return ((x0 + i * b19.TERRAIN_CELL) * scale, (y0 + j * b19.TERRAIN_CELL) * scale, tp.heights[j * n + i] * scale)
+
+		for cj in range(cells):
+			for ci in range(cells):
+				i0, j0, i1, j1 = ci * step, cj * step, (ci + 1) * step, (cj + 1) * step
+				p00, p10, p01, p11 = pt(i0, j0), pt(i1, j0), pt(i0, j1), pt(i1, j1)
+				# same diagonal as budget_report.terrain_cell_size
+				for tri in ((p00, p10, p01), (p11, p01, p10)):
+					txt = wedge_brush(*tri, depth, tex, "NULL")
+					if txt:
+						out.append(txt)
+						stats["terrain_brushes_written"] += 1
+					else:
+						stats["terrain_brushes_degenerate"] += 1
+		stats["terrain_patches_cell_" + str(cell)] += 1
+	return out
+
+
 def kv_block(keys, brushes=()):
 	lines = ["{"]
 	for k, v in keys.items():
@@ -338,7 +398,8 @@ def kv_block(keys, brushes=()):
 	return "\n".join(lines)
 
 
-def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = None):
+def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = None,
+            terrain: bool = False, terrain_tol: float = 8.0, terrain_tex: str = "NULL"):
 	namer = TextureNamer()
 	stats = Counter()
 	world = bsp.entities[0] if bsp.entities else {"classname": "worldspawn"}
@@ -354,6 +415,8 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 	for cls, txt in model_brushes(bsp, 0, scale, (0.0, 0.0, 0.0), namer, stats):
 		(detail if cls == "detail" else world_brushes).append(txt)
 		stats["world_brushes_written"] += 1
+	if terrain:
+		detail.extend(terrain_brushes(bsp, scale, terrain_tol, terrain_tex, stats))
 	blocks = [kv_block(ws_keys, world_brushes)]
 	if detail:
 		# SDHLT func_detail keeps MOHAA's detail brushes out of the vis tree.
@@ -481,12 +544,18 @@ def main(argv=None) -> int:
 	ap.add_argument("-o", "--out", type=Path, required=True, help="output .map")
 	ap.add_argument("--wad", type=Path, help="also write a placeholder WAD3 with every used texture")
 	ap.add_argument("--scale", type=float, default=DEFAULT_SCALE)
+	ap.add_argument("--terrain-brushes", action="store_true",
+	                help="also write LOD terrain as wedge brushes (GoldSrc-native terrain collision)")
+	ap.add_argument("--terrain-tol", type=float, default=8.0,
+	                help="max terrain height error for --terrain-brushes, GoldSrc units (default 8)")
+	ap.add_argument("--terrain-tex", default="NULL",
+	                help="texture on terrain brush tops: NULL (solid, not drawn; render comes from the bake) or CLIP")
 	args = ap.parse_args(argv)
 
 	name, data = read_source(args.source)
 	bsp = b19.load_bytes(data, name)
 	wad_key = str(args.wad.resolve()) if args.wad else None
-	text, namer, stats, skipped = convert(bsp, args.scale, wad_key)
+	text, namer, stats, skipped = convert(bsp, args.scale, wad_key, args.terrain_brushes, args.terrain_tol, args.terrain_tex)
 	args.out.write_text(text)
 	if args.wad:
 		write_wad(args.wad, list(namer.by_shader.values()) + sorted(namer.special_used))

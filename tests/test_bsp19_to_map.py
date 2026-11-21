@@ -50,6 +50,22 @@ class GeometryTest(unittest.TestCase):
 		self.assertEqual(len(faces), 6)
 
 
+class TerrainTest(unittest.TestCase):
+	def test_wedge_brush(self):
+		txt = conv.wedge_brush((0, 0, 10), (64, 0, 20), (0, 64, 30), 16, "NULL", "NULL")
+		lines = [l for l in txt.splitlines() if l.startswith("(")]
+		self.assertEqual(len(lines), 5)  # top, bottom, three sides
+
+	def test_terrain_brush_counts(self):
+		bsp = b19.load_bytes(make_sample_bsp.build(19), "sample")
+		text, _, stats, _ = conv.convert(bsp, scale=1.0, terrain=True, terrain_tol=8)
+		# flat + sloped patches -> one 512 cell (2 wedges) each; bumpy patch -> 8x8 cells
+		self.assertEqual(stats["terrain_patches_cell_512"], 2)
+		self.assertEqual(stats["terrain_brushes_written"], 2 + 2 + 2 * 64)
+		plain, _, s2, _ = conv.convert(bsp, scale=1.0)
+		self.assertEqual(s2["terrain_brushes_written"], 0)
+
+
 class ConvertTest(unittest.TestCase):
 	def setUp(self):
 		self.bsp = b19.load_bytes(make_sample_bsp.build(19), "sample")
