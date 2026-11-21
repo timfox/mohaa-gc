@@ -11,7 +11,7 @@
 
 typedef struct Ent {
 	int alive;
-	char targetname[32], classname[32];
+	char targetname[32], classname[32], target[32];
 	float origin[3], angles[3], vel[3], avel[3];
 	float health;
 	int hidden, notsolid, used, serial;
@@ -75,7 +75,10 @@ static void m_get_vec(uint32_t id, int what, float out[3]) { memcpy(out, what ? 
 static void m_set_vec(uint32_t id, int what, const float v[3]) { memcpy(what ? ent(id)->angles : ent(id)->origin, v, 12); }
 static float m_get_health(uint32_t id) { return ent(id)->health; }
 static void m_set_health(uint32_t id, float h) { ent(id)->health = h; }
-static const char *m_get_str(uint32_t id, int what) { return what == DOD_MOHAA_TARGETNAME ? ent(id)->targetname : ent(id)->classname; }
+static const char *m_get_str(uint32_t id, int what)
+{
+	return what == DOD_MOHAA_TARGETNAME ? ent(id)->targetname : what == DOD_MOHAA_TARGET ? ent(id)->target : ent(id)->classname;
+}
 static void m_set_tn(uint32_t id, const char *n) { snprintf(ent(id)->targetname, 32, "%s", n); }
 static void m_set_flag(uint32_t id, int f, int on) { if (f == DOD_MOHAA_HIDDEN) ent(id)->hidden = on; else ent(id)->notsolid = on; }
 static void m_remove(uint32_t id) { ent(id)->alive = 0; }
@@ -499,7 +502,7 @@ static void test_music(void)
 		"<music sound/mohaa/music/mus_win.wav | sound/mohaa/music/calm.wav>\n"
 		"<music sound/mohaa/music/other.wav | sound/mohaa/music/other.wav>\n"));
 	assert(strstr(log_buf, "no mood aux9"));
-	assert(strstr(log_buf, "no music/none.mood"));
+	assert(strstr(log_buf, "no music/none.mood, the level plays without music"));
 	/* no table: nothing plays and nothing is reported */
 	reset();
 	files[0][0] = "maps/q.scr";
@@ -569,6 +572,7 @@ static void test_setthread_and_quiet_commands(void)
 	reset();
 	t = add("t_gate", "trigger_multiple", 0, 0, 0);
 	ents[t].angles[1] = 90.0f;   /* facing +y */
+	strcpy(ents[t].target, "dest");
 	files[0][0] = "maps/g.scr";
 	files[0][1] =
 		"main:\n"
@@ -599,6 +603,7 @@ static void test_setthread_and_quiet_commands(void)
 		"\tif (parm.other == NULL) println \"other none\"\n"
 		"\telse println (\"other \" + parm.other.targetname)\n"
 		"\t$t_gate runto $t_gate\n"
+		"\tprintln (\"target \" + self.target + \" \" + $dest.target)\n"
 		"end\n";
 	assert(Dod_MohaaLevelInit(&b, "g", 0, 0));
 	Dod_MohaaEntityKey(make_id(t), "#set", "3");   /* map keys arrive as the map's entities spawn, after the VM starts */
@@ -611,6 +616,7 @@ static void test_setthread_and_quiet_commands(void)
 	Dod_MohaaRunThread("no_label", make_id(t));
 	run(0.25f, 0.3f);
 	assert(strstr(log_buf, "gate by t_gate\n"));
+	assert(strstr(log_buf, "target dest NIL\n") || strstr(log_buf, "target dest \n"));
 	assert(strstr(log_buf, "other t_gate\n") && strstr(log_buf, "other none\n"));
 	assert(strstr(log_buf, "runto: not an actor (trigger_multiple $t_gate)"));
 	assert(strstr(log_buf, "setthread no_label: no such label in maps/g.scr"));

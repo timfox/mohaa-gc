@@ -140,7 +140,8 @@ static const char *M_GetStr( uint32_t id, int what )
 	edict_t *e = EdictFor( id );
 	if( !e )
 		return "";
-	string_t s = what == DOD_MOHAA_CLASSNAME ? e->v.classname : what == DOD_MOHAA_MODEL ? e->v.model : e->v.targetname;
+	string_t s = what == DOD_MOHAA_CLASSNAME ? e->v.classname : what == DOD_MOHAA_MODEL ? e->v.model :
+		what == DOD_MOHAA_TARGET ? e->v.target : e->v.targetname;
 	return s ? STRING( s ) : "";
 }
 
