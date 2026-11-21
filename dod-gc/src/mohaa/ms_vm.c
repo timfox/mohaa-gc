@@ -347,6 +347,16 @@ ms_thread *ms_spawn_thread(ms_vm *vm, ms_script *s, const ms_label *lab, const m
     if (!vm->next_thread_id)
         vm->next_thread_id = 1;
     t->script = s;
+    if (!lab && s->code_len > 5 && s->code[0] == OP_JMP) {
+        /* A file run from the top (exec global/loadout.scr maps/m1l1.scr) whose first statement is a label with
+           parameters: the jump at 0 skips that label's parameter binding, which only fall-through may skip.
+           The arguments are for those parameters. */
+        for (uint32_t i = 0; i < s->nlabels; i++)
+            if (s->labels[i].entry == 5 && s->labels[i].body != 5) {
+                lab = &s->labels[i];
+                break;
+            }
+    }
     t->pc = lab ? lab->entry : 0;
     t->self = self ? *self : ms_nil();
     if (!ms_is_listener(&t->self))

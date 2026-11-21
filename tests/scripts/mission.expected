@@ -1,5 +1,6 @@
   0.50 <notify level prespawn>
   0.50 prespawn
+  0.50 loadout for maps/m1l1.scr
   0.50 locked door1
   0.50 door locked flag 1
   1.00 <notify level spawn>

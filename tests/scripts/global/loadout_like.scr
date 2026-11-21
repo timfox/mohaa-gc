@@ -1,0 +1,4 @@
+// run from the top with an argument, like exec global/loadout.scr maps/m1l1.scr
+main local.mapname:
+	println "loadout for " local.mapname
+end
