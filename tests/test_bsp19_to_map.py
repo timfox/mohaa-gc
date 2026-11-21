@@ -466,6 +466,18 @@ class ConvertTest(unittest.TestCase):
 		self.assertEqual(stats["named_points_written"], 1)
 		self.assertNotIn("unused_thing", text)
 
+	def test_hash_keys_pass_through(self):
+		self.bsp.entities.append({"classname": "script_origin", "origin": "0 0 0", "targetname": "dest",
+		                          "#set": "4", "#group": "2"})
+		self.bsp.entities.append({"classname": "actor", "origin": "0 0 0", "#set": "1"})
+		self.bsp.entities.append({"classname": "info_pathnode", "origin": "8 0 0", "targetname": "n1",
+		                          "#set": "3", "#name x": "a b"})
+		text, _, _, _ = conv.convert(self.bsp, scale=1.0)
+		self.assertIn('"targetname" "dest"\n"origin" "0 0 0"\n"#set" "4"\n"#group" "2"', text)
+		self.assertIn('"classname" "mohaa_actor"\n"origin" "0 0 0"\n"#set" "1"', text)
+		ntext, _ = conv.path_nodes(self.bsp, 1.0)
+		self.assertIn("8 0 0 0 0 n1 #set=3 #name%20x=a%20b", ntext)
+
 	def test_name_report(self):
 		self.bsp.entities.append({"classname": "light", "origin": "0 0 0", "targetname": "Lamp1"})
 		text, _, _, _ = conv.convert(self.bsp, scale=0.5)
