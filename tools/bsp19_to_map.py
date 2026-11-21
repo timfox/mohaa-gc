@@ -609,11 +609,39 @@ class ReachIndex:
 		return False
 
 
+PATH_NODES = ("info_pathnode", "info_grav_pathnode")
+ACTOR_KEYS = ("targetname", "target", "angle", "angles", "model", "health", "spawnflags")
+
+
+def is_actor(cn, model):
+	"""MOHAA soldiers: classname "actor", or a human/ tiki as the classname or model."""
+	cn, model = cn.lower(), model.lower()
+	return cn == "actor" or cn.startswith("human/") or "human/" in model
+
+
+def path_nodes(bsp, scale):
+	"""Path nodes for the <map>.nodes sidecar: one line per node, feet origin scaled.
+	They stay out of the .map so they cost no edicts; dod-gc links them at load."""
+	lines = ["# mohaa path nodes: x y z grav spawnflags targetname"]
+	for e in bsp.entities[1:]:
+		cn = e.get("classname", "").lower()
+		if cn not in PATH_NODES:
+			continue
+		x, y, z = (c * scale for c in parse_vec(e.get("origin", "")))
+		try:
+			flags = int(e.get("spawnflags", "0"))
+		except ValueError:
+			flags = 0
+		name = e.get("targetname", "").strip().lstrip("$") or "-"
+		lines.append(f"{_f(x)} {_f(y)} {_f(z)} {int(cn == 'info_grav_pathnode')} {flags} {name.split()[0]}")
+	return "\n".join(lines) + "\n", len(lines) - 1
+
+
 def reach_points(bsp, scale):
 	pts = []
 	for e in bsp.entities[1:]:
 		cn = e.get("classname", "").lower()
-		if cn in ("info_pathnode", "info_grav_pathnode") or cn in PLAYER_STARTS:
+		if cn in PATH_NODES or cn in PLAYER_STARTS:
 			pts.append(tuple(c * scale for c in parse_vec(e.get("origin", ""))))
 	return pts
 
@@ -854,6 +882,21 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 				blocks.append(kv_block(keys))
 				stats["player_starts_written"] += 1
 			continue
+		if is_actor(cn, e.get("model", "")):
+			# dod-gc spawns this as a script grunt; the origin stays at the feet.
+			ox, oy, oz = parse_vec(e.get("origin", ""))
+			keys = {"classname": "mohaa_actor", "origin": f"{_f(ox * scale)} {_f(oy * scale)} {_f(oz * scale)}"}
+			for k in ACTOR_KEYS:
+				if k in e:
+					keys[k] = e[k]
+			if "model" not in keys and cn.lower() != "actor":
+				keys["model"] = cn
+			blocks.append(kv_block(keys))
+			stats["actors_written"] += 1
+			continue
+		if cn.lower() in PATH_NODES:
+			stats["path_nodes_to_sidecar"] += 1
+			continue
 		skipped[cn] += 1
 
 	if not stats["player_starts_written"]:
@@ -990,6 +1033,11 @@ def main(argv=None) -> int:
 	                                         args.collision_aabb, args.collision_reach, args.collision_exact,
 	                                         mesh)
 	args.out.write_text(text)
+	ntext, nnodes = path_nodes(bsp, args.scale)
+	if nnodes:
+		npath = args.out.with_suffix(".nodes")
+		npath.write_text(ntext)
+		print(f"{name}: wrote {npath} ({nnodes} path nodes)")
 	if mesh is not None:
 		mpath = args.out.with_suffix(".mcol")
 		npl, nbr, nsd, nnd = mesh.write(mpath)
