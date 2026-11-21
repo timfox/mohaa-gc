@@ -38,18 +38,29 @@ import mohaa_bsp19 as b19  # noqa: E402
 # standing hull is 72. Uniform scale so MOHAA doorways fit GoldSrc players.
 DEFAULT_SCALE = 72.0 / 94.0
 
-# Stock Half-Life / SDHLT limits. Xash3D (and xash3d-gc) may raise some of
-# these; override with --limit name=value once the engine's real values are
-# confirmed.
+# Limits for SDHLT -> BSP30 -> xash3d-gc on GameCube (checked 2026-11-21):
+#  * clipnodes: BSP30 stores clipnode children as signed 16-bit, so 32767 is a
+#    format limit no matter what the engine allows (xash's 524288 is BSP2 only).
+#  * world_coord: SDHLT's hlcsg defaults to a +-32768 extent (-worldextent) and
+#    xash computes world size from the map, so stock HL's +-4096 does not apply.
+#  * models: SDHLT MAX_MAP_MODELS 512 (xash allows 2048).
+#  * edicts: xash3d-gc GC_SP_EDICT_CAP is 900 on GameCube, shared with players,
+#    bots and projectiles. Path nodes and lights do not need edicts.
+#  * brushes: SDHLT MAX_MAP_BRUSHES. textures/faces: generous, xash allows more.
+# Override any of these with --limit name=value.
 DEFAULT_LIMITS = {
-	"clipnodes": 32767,  # signed 16-bit child index
-	"world_coord": 4096,  # hlcsg / engine bounds, +- per axis
-	"models": 400,  # world + brush entities (HL1 engine MAX_MAP_MODELS)
-	"entities": 2048,
-	"textures": 512,  # unique miptex
+	"clipnodes": 32767,
+	"world_coord": 32768,
+	"models": 512,
+	"edicts_est": 900,
+	"textures": 512,
 	"faces_est": 65535,
-	"brushes": 32768,  # SDHLT MAX_MAP_BRUSHES
+	"brushes": 32768,
 }
+
+# MOHAA entities that never become GoldSrc edicts: AI path nodes turn into
+# GOAP waypoints, lights are compile-time only (OpenMoHAA removes them on spawn).
+NON_EDICT_CLASSES = {"info_pathnode", "info_grav_pathnode", "light", "worldspawn"}
 
 TIGHT = 0.70  # fraction of a limit at which a value is flagged
 
@@ -210,15 +221,18 @@ def analyse(bsp: b19.Bsp, scale: float, terrain_tol: float, proxy_subdiv: int,
 		          "size": [round(maxs[i] - mins[i]) for i in range(3)]}
 		max_coord = max(abs(v) for v in mins + maxs)
 
-	proxy_sides = patch_proxies * 6 + terrain_proxies * 5
-	total_collision_sides = collision_sides + proxy_sides
-	clipnodes_est = round(total_collision_sides * clipnodes_per_side)
+	clip_brush = round(collision_sides * clipnodes_per_side)
+	clip_patch = round(patch_proxies * 6 * clipnodes_per_side)
+	clip_terrain = round(terrain_proxies * 5 * clipnodes_per_side)
+	clipnodes_est = clip_brush + clip_patch + clip_terrain
+	pathnodes = sum(n for c, n in classnames.items() if c.lower() in ("info_pathnode", "info_grav_pathnode"))
+	edicts_est = sum(n for c, n in classnames.items() if c.lower() not in NON_EDICT_CLASSES)
 
 	estimates = {
 		"clipnodes": clipnodes_est,
 		"world_coord": round(max_coord),
 		"models": len(bsp.models),
-		"entities": len(bsp.entities),
+		"edicts_est": edicts_est,
 		"textures": len(used_textures - {""}),
 		"faces_est": drawn_faces,
 		"brushes": gs_brushes + patch_proxies + terrain_proxies,
@@ -256,11 +270,13 @@ def analyse(bsp: b19.Bsp, scale: float, terrain_tol: float, proxy_subdiv: int,
 			"static_models": len(bsp.static_models),
 			"static_models_unique": len(static_unique),
 			"entities": len(bsp.entities),
+			"pathnodes": pathnodes,
 			"brush_models": max(0, len(bsp.models) - 1),
 			"leafs": bsp.num_leafs,
 			"lightmaps": bsp.num_lightmaps,
 			"drawverts": bsp.num_drawverts,
 		},
+		"clipnodes_by_source": {"brushes": clip_brush, "patch_proxies": clip_patch, "terrain_proxies": clip_terrain},
 		"proxies": {
 			"patch_clip_brushes": patch_proxies,
 			"terrain_wedge_brushes": terrain_proxies,
@@ -318,13 +334,17 @@ def format_text(r: dict) -> str:
 		f"cells {c['terrain_cell_sizes']}  static models {c['static_models']} ({c['static_models_unique']} unique)")
 	out.append(
 		f"   proxies: patch clip {r['proxies']['patch_clip_brushes']}  terrain wedges {r['proxies']['terrain_wedge_brushes']}")
+	cb = r["clipnodes_by_source"]
+	out.append(
+		f"   clipnodes est by source: brushes {cb['brushes']}  patches {cb['patch_proxies']}  terrain {cb['terrain_proxies']}"
+		f"   entities {c['entities']} (path nodes {c['pathnodes']})")
 	for k, v in r["checks"].items():
 		out.append(f"   {v['status']:<5} {k:<18} {v['value']:>9} / {v['limit']:<9} ({v['pct']}%)")
 	return "\n".join(out)
 
 
 CSV_FIELDS = ["map", "verdict", "file_bytes", "brushes", "patches_collidable", "terrain_patches",
-              "static_models", "entities"]
+              "static_models", "entities", "pathnodes", "clip_brushes", "clip_patches", "clip_terrain"]
 
 
 def main(argv=None) -> int:
@@ -384,7 +404,9 @@ def main(argv=None) -> int:
 			for r in results:
 				c = r["counts"]
 				row = [r["map"], r["verdict"], r["file_bytes"], c["brushes"], c["patches_collidable"],
-				       c["terrain_patches"], c["static_models"], c["entities"]]
+				       c["terrain_patches"], c["static_models"], c["entities"], c["pathnodes"]]
+				cb = r["clipnodes_by_source"]
+				row += [cb["brushes"], cb["patch_proxies"], cb["terrain_proxies"]]
 				row += [r["checks"].get(k, {}).get("pct", "") for k in check_keys]
 				w.writerow(row)
 	return 0 if results or not failures else 1

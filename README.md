@@ -41,17 +41,17 @@ checks each estimate against a limit:
 
 | Check | Default limit | Note |
 | --- | --- | --- |
-| `clipnodes` | 32,767 | Estimate = collision brush sides x `--clipnodes-per-side` (0.5, **uncalibrated**) |
-| `world_coord` | 4,096 | Largest absolute coordinate after `--scale` (default 72/94) |
-| `models` | 400 | World plus brush entities |
-| `entities` | 2,048 | |
+| `clipnodes` | 32,767 | BSP30 format limit (signed 16-bit). Estimate = collision brush sides x `--clipnodes-per-side` (0.5, **uncalibrated**), split by brushes, patch proxies and terrain proxies |
+| `world_coord` | 32,768 | Largest absolute coordinate after `--scale` (default 72/94). SDHLT's default `-worldextent`; xash sizes the world from the map |
+| `models` | 512 | World plus brush entities (SDHLT) |
+| `edicts_est` | 900 | xash3d-gc `GC_SP_EDICT_CAP` on GameCube, shared with players, bots and projectiles. Path nodes (future GOAP waypoints) and lights are not counted |
 | `textures` | 512 | Unique textures on drawn brush faces, patches and terrain |
 | `faces_est` | 65,535 | Drawn brush sides before BSP splitting, so a low bound |
-| `brushes` | 32,768 | Converted brushes plus patch and terrain proxies |
+| `brushes` | 32,768 | Converted brushes plus patch and terrain proxies (SDHLT) |
 
 Status is `OK` below 70% of a limit, `TIGHT` from 70% to 100%, `OVER` above.
-The defaults are stock Half-Life / SDHLT values. xash3d-gc may allow more;
-override with `--limit name=value` once its real values are confirmed.
+The defaults come from SDHLT and xash3d-gc source (see the comment above
+`DEFAULT_LIMITS`); override any of them with `--limit name=value`.
 
 Known gaps: the clipnode factor needs calibrating against real SDHLT runs, and
 the report does not yet predict the compiled BSP30 size against the engine's
