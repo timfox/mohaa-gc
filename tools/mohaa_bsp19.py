@@ -179,6 +179,8 @@ class Bsp:
 	lump_sizes: dict
 	shaders: list = field(default_factory=list)
 	num_planes: int = 0
+	planes: list = field(default_factory=list)  # (nx, ny, nz, dist)
+	brushsides: list = field(default_factory=list)  # (plane, shader)
 	surfaces: list = field(default_factory=list)
 	brushsides_shader: list = field(default_factory=list)
 	brushes: list = field(default_factory=list)
@@ -252,7 +254,9 @@ def load_bytes(data: bytes, name: str = "<memory>") -> Bsp:
 		surf, cont, sub = struct.unpack_from("<3i", rec, 64)
 		bsp.shaders.append(Shader(_cstr(rec[:64]), surf, cont, sub))
 
-	bsp.num_planes = len(lump(LUMP_PLANES)) // SZ_PLANE
+	pl = lump(LUMP_PLANES)
+	bsp.planes = list(struct.iter_unpack("<4f", pl[: len(pl) // SZ_PLANE * SZ_PLANE]))
+	bsp.num_planes = len(bsp.planes)
 
 	for rec in _records(lump(LUMP_SURFACES), SZ_SURFACE):
 		v = struct.unpack_from("<12i3f9f2if", rec)
@@ -263,7 +267,8 @@ def load_bytes(data: bytes, name: str = "<memory>") -> Bsp:
 
 	sides = lump(LUMP_BRUSHSIDES)
 	sides = sides[: len(sides) // SZ_BRUSHSIDE * SZ_BRUSHSIDE]
-	bsp.brushsides_shader = [s for _, s, _ in struct.iter_unpack("<3i", sides)]
+	bsp.brushsides = [(p, s) for p, s, _ in struct.iter_unpack("<3i", sides)]
+	bsp.brushsides_shader = [s for _, s in bsp.brushsides]
 
 	for rec in _records(lump(LUMP_BRUSHES), SZ_BRUSH):
 		bsp.brushes.append(Brush(*struct.unpack("<3i", rec)))
