@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import math
+import re
 import sys
 import tempfile
 import unittest
@@ -137,6 +138,29 @@ class TerrainPatchMeshTest(unittest.TestCase):
 			around = [tp.heights[(j + dj) * 9 + i + di] for dj in (-1, 0, 1) for di in (-1, 0, 1)]
 			self.assertGreaterEqual(feet, tp.heights[j * 9 + i] - 0.05)
 			self.assertLessEqual(feet, max(around) + 0.05)
+
+	def test_spawn_on_terrain_is_lifted_clear(self):
+		import copy
+		bsp = copy.copy(self.bsp)
+		tp = bsp.terrain[2]
+		x, y = tp.origin[0] + 64 * 4, tp.origin[1] + 64 * 4
+		# MOHAA puts the origin at the feet, on the sample; the box corners dip into higher ground
+		bsp.entities = [dict(e) for e in self.bsp.entities]
+		for e in bsp.entities:
+			if e.get("classname") == "info_player_allied":
+				e["origin"] = f"{x} {y} {tp.heights[4 * 9 + 4]}"
+		col = mc.Collision()
+		text, _, stats, _ = conv.convert(bsp, scale=1.0, mesh=col, mesh_angled=False, mesh_terrain=True)
+		self.assertEqual(stats["player_starts_lifted"], 1)
+		self.assertEqual(stats["player_starts_stuck"], 0)
+		m = roundtrip(col)
+		origin = re.search(r'"classname" "info_player_allies"\n"origin" "([^"]+)"', text)
+		if origin is None:
+			origin = re.search(r'"origin" "([^"]+)"\n"classname" "info_player_allies"', text)
+		ox, oy, oz = map(float, origin.group(1).split())
+		self.assertFalse(mc.trace_box(m, (ox, oy, oz), (ox, oy, oz), *PLAYER)[2])
+		# and it stands on the ground, not in the air
+		self.assertLess(mc.trace_box(m, (ox, oy, oz), (ox, oy, oz - 4), *PLAYER)[0], 1.0)
 
 	def test_solid_patch_collides_nonsolid_does_not(self):
 		m, stats = self.mesh(mesh_patch_tol=1.0)

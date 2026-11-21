@@ -305,6 +305,39 @@ class TerrainTest(unittest.TestCase):
 		self.assertEqual(s2["terrain_brushes_written"], 0)
 
 
+class StaticBrushModelTest(unittest.TestCase):
+	def bsp(self):
+		boxes = [((i * 100, 0, 0), (i * 100 + 32, 32, 32), 0) for i in range(6)]
+		bsp = tiny_bsp([((0, 0, -64), (1024, 1024, 0), 0)], boxes[:1])
+		# one model per extra box, like MOHAA's script_objects
+		for lo, hi, sh in boxes[1:]:
+			fs = len(bsp.brushsides)
+			for n, d, _ in box_planes(lo, hi):
+				bsp.planes.append((*n, d))
+				bsp.brushsides.append((len(bsp.planes) - 1, sh))
+			bsp.brushes.append(b19.Brush(fs, 6, 0))
+			bsp.models.append(b19.Model(lo, hi, 0, 0, len(bsp.brushes) - 1, 1))
+		bsp.entities = [{"classname": "worldspawn"}]
+		for i in range(1, 6):
+			bsp.entities.append({"classname": "script_object", "model": f"*{i}"})
+		bsp.entities[3]["targetname"] = "wall_b"  # scripts can name it: stays its own entity
+		bsp.entities.append({"classname": "func_door", "model": "*6", "targetname": "d"})
+		return bsp
+
+	def test_unnamed_script_objects_merge_per_cell(self):
+		text, _, stats, _ = conv.convert(self.bsp(), scale=1.0, merge_static_models=True)
+		self.assertEqual(stats["static_brush_models_merged"], 4)
+		self.assertEqual(stats["static_brush_model_walls"], 1)  # all within one 1024 cell
+		self.assertIn('"targetname" "wall_b"', text)
+		self.assertIn('"classname" "func_door"', text)
+		self.assertEqual(text.count('"mohaa_classname" "script_object"'), 1)
+
+	def test_off_keeps_every_model(self):
+		text, _, stats, _ = conv.convert(self.bsp(), scale=1.0)
+		self.assertEqual(stats["static_brush_models_merged"], 0)
+		self.assertEqual(text.count('"mohaa_classname" "script_object"'), 5)
+
+
 class ConvertTest(unittest.TestCase):
 	def setUp(self):
 		self.bsp = b19.load_bytes(make_sample_bsp.build(19), "sample")
