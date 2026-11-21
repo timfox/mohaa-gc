@@ -82,6 +82,7 @@ static struct {
 	char cue[MUSIC_PATH];
 	int cue_loop;
 	char level_script[128];
+	int started;              /* main has run (it waits for the first frame: entities spawn after the VM) */
 	size_t budget;
 	char objectives[8][96];	/* addobjective texts, by index 1..8 */	/* maps/<map>.scr, where a trigger's setthread label lives */
 	/* path nodes, and the soldiers walking them: a route is the goal plus the node it heads for now */
@@ -1149,6 +1150,12 @@ void Dod_MohaaEntityKey(uint32_t id, const char *key, const char *value)
 	ms_release(S.vm, v);
 }
 
+void Dod_MohaaEntityMoved(uint32_t from, uint32_t to)
+{
+	if (S.vm && from && to)
+		ms_move_entity_vars(S.vm, from, to);
+}
+
 static int c_spawn(ms_call *c)
 {
 	const char *keys[16], *vals[16];
@@ -1409,8 +1416,6 @@ int Dod_MohaaLevelInit(const DodMohaaBackend *backend, const char *mapname, floa
 	text = S.be.load_file(path, &len);
 	if (!text)
 		return 0;   /* not a MOHAA map: no VM, no cost */
-	if (S.be.free_file)
-		S.be.free_file(text);
 
 	memset(&host, 0, sizeof(host));
 	host.alloc = h_alloc;
@@ -1429,6 +1434,8 @@ int Dod_MohaaLevelInit(const DodMohaaBackend *backend, const char *mapname, floa
 	S.budget = memory_budget;
 	S.vm = ms_create(&host, &cfg);
 	if (!S.vm) {
+		if (S.be.free_file)
+			S.be.free_file(text);
 		S.be.print(DOD_MOHAA_PRINT_ERROR, "mohaa: cannot create the script VM\n");
 		return 0;
 	}
@@ -1441,12 +1448,30 @@ int Dod_MohaaLevelInit(const DodMohaaBackend *backend, const char *mapname, floa
 		S.mood = mood_find("normal");
 		music_apply();
 	}
-	if (!ms_exec(S.vm, path, NULL, NULL, NULL, 0)) {
-		S.be.print(DOD_MOHAA_PRINT_ERROR, "mohaa: level script did not start\n");
-		Dod_MohaaShutdown();
-		return 0;
+	/* compile now, so a level whose script cannot load says so at once; run it on the first frame, once the
+	   map's entities have spawned (this runs while the world entity spawns, before any other) */
+	{
+		const int ok = ms_load_text(S.vm, path, text, len);
+		if (S.be.free_file)
+			S.be.free_file(text);
+		if (!ok) {
+			S.be.print(DOD_MOHAA_PRINT_ERROR, "mohaa: level script did not start\n");
+			Dod_MohaaShutdown();
+			return 0;
+		}
 	}
+	S.started = 0;
 	return 1;
+}
+
+/* the level script's main, once */
+static void start_main(void)
+{
+	if (S.started)
+		return;
+	S.started = 1;
+	if (!ms_exec(S.vm, S.level_script, NULL, NULL, NULL, 0))
+		S.be.print(DOD_MOHAA_PRINT_ERROR, "mohaa: level script did not start\n");
 }
 
 void Dod_MohaaThink(float now)
@@ -1457,6 +1482,7 @@ void Dod_MohaaThink(float now)
 		return;
 	S.now = now;
 	level.type = MS_LEVEL;
+	start_main();
 	/* MOHAA level scripts wait for these before touching the world */
 	if (S.ticks == 0)
 		ms_notify(S.vm, &level, "prespawn");

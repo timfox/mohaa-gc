@@ -209,7 +209,7 @@ static int IsActorClass( const char *classname )
 
 /* Every soldier this binding put in the pool, with its side, so a full pool can make room (see SpawnActorAt). */
 static struct { uint32_t id; int team; } g_actors[64];
-static void ActorWait( int team, const Vector &origin, float yaw, const char *name );
+static void ActorWait( int team, const Vector &origin, float yaw, const char *name, uint32_t keys );
 
 static void ActorTrack( edict_t *e, int team )
 {
@@ -246,7 +246,7 @@ static int ActorMakeRoom( void )
 	if( best < 0 )
 		return 0;
 	edict_t *e = EdictFor( g_actors[best].id );
-	ActorWait( g_actors[best].team, e->v.origin - Vector( 0, 0, 36 ), e->v.angles.y, NULL );
+	ActorWait( g_actors[best].team, e->v.origin - Vector( 0, 0, 36 ), e->v.angles.y, NULL, g_actors[best].id );
 	g_actors[best].id = 0;
 	return DodGrunts_ScriptRemove( e );
 }
@@ -293,16 +293,33 @@ static uint32_t SpawnActor( const char *classname, const char *const *keys, cons
  * any wait. */
 #define MOHAA_WAITING_MAX 64
 #define MOHAA_CORPSE_SECONDS 20.0f
-static struct { int team; Vector origin; float yaw; string_t name; } g_waiting[MOHAA_WAITING_MAX];
+static struct { int team; Vector origin; float yaw; string_t name; uint32_t park; } g_waiting[MOHAA_WAITING_MAX];
 static int g_nwaiting;
+static uint32_t g_park_serial;
+
+/* An id no entity has (edict index 0 is the world, never a soldier), to hold a waiting soldier's script variables
+ * (its map # keys) until it gets a body. */
+static uint32_t ParkId( void )
+{
+	g_park_serial = ( g_park_serial + 1 ) & 0x7FFFF;
+	if( !g_park_serial )
+		g_park_serial = 1;
+	return g_park_serial << 12;
+}
 static struct { uint32_t id; float at; } g_dead[48];
 static float g_next_waiting_check;
 
-static void ActorWait( int team, const Vector &origin, float yaw, const char *name )
+/* keys: the entity whose script variables go with the soldier (0: none) */
+static void ActorWait( int team, const Vector &origin, float yaw, const char *name, uint32_t keys )
 {
 	if( g_nwaiting >= MOHAA_WAITING_MAX ) {
 		ALERT( at_console, "mohaa_actor %s: dropped, %d soldiers already wait for a slot\n", name ? name : "", g_nwaiting );
 		return;
+	}
+	g_waiting[g_nwaiting].park = 0;
+	if( keys ) {
+		g_waiting[g_nwaiting].park = ParkId();
+		Dod_MohaaEntityMoved( keys, g_waiting[g_nwaiting].park );
 	}
 	g_waiting[g_nwaiting].team = team;
 	g_waiting[g_nwaiting].origin = origin;
@@ -356,8 +373,11 @@ static void ActorsWaitingThink( void )
 	if( best < 0 )
 		return;
 	const char *name = g_waiting[best].name ? STRING( g_waiting[best].name ) : NULL;
-	if( !SpawnActorAt( g_waiting[best].team, g_waiting[best].origin, g_waiting[best].yaw, name ) )
+	edict_t *in = SpawnActorAt( g_waiting[best].team, g_waiting[best].origin, g_waiting[best].yaw, name );
+	if( !in )
 		return;	/* still full */
+	if( g_waiting[best].park )
+		Dod_MohaaEntityMoved( g_waiting[best].park, IdFor( in ) );
 	ALERT( at_console, "mohaa_actor %s: in from the waiting list (%d left)\n", name ? name : "", g_nwaiting - 1 );
 	g_waiting[best] = g_waiting[--g_nwaiting];
 }
@@ -376,8 +396,12 @@ public:
 		const int team = strstr( model, "german" ) ? DOD_TEAM_AXIS : DOD_TEAM_ALLIES;
 		pev->model = 0;	/* a .tik name, never a model the engine has */
 		const char *name = pev->targetname ? STRING( pev->targetname ) : NULL;
-		if( !SpawnActorAt( team, pev->origin, pev->angles.y, name ) )
-			ActorWait( team, pev->origin, pev->angles.y, name );
+		edict_t *grunt = SpawnActorAt( team, pev->origin, pev->angles.y, name );
+		/* the map's # keys (#set, #friendtype ...) arrived on this placeholder: they go with the soldier */
+		if( grunt )
+			Dod_MohaaEntityMoved( IdFor( edict() ), IdFor( grunt ) );
+		else
+			ActorWait( team, pev->origin, pev->angles.y, name, IdFor( edict() ) );
 		pev->targetname = 0;	/* the grunt answers to the name now */
 		UTIL_Remove( this );
 	}
