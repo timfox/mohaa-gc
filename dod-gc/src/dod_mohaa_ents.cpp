@@ -526,17 +526,25 @@ static void M_PoolReset( void )
 	Dod_MohaaDropPool();
 }
 
-static void *M_PoolCarve( size_t bytes )
+/* Up to want bytes from the arena tail; *got says how many. Other residents can split the tail into gaps
+ * smaller than want (m5l2b: 856 KB free, no gap of 384 KB), so it steps down to half of want before giving up. */
+static void *M_PoolCarve( size_t want, size_t *got )
 {
-	size_t at = GC_MapArenaFind( bytes + 32 );
-	unsigned char *p;
-	if( at == (size_t)-1 )
-		return NULL;
-	p = (unsigned char *)GC_MapLoadBufferTailAlloc( at, bytes + 32 );
-	if( !p )
-		return NULL;
-	GC_SetMapArenaResetHook( M_PoolReset );
-	return (void *)( ( (unsigned long)p + 31 ) & ~31UL );
+	size_t bytes;
+	*got = 0;
+	for( bytes = want; bytes >= want / 2 && bytes >= 32u * 1024u; bytes -= 32u * 1024u ) {
+		size_t at = GC_MapArenaFind( bytes + 32 );
+		unsigned char *p;
+		if( at == (size_t)-1 )
+			continue;
+		p = (unsigned char *)GC_MapLoadBufferTailAlloc( at, bytes + 32 );
+		if( !p )
+			continue;
+		GC_SetMapArenaResetHook( M_PoolReset );
+		*got = bytes;
+		return (void *)( ( (unsigned long)p + 31 ) & ~31UL );
+	}
+	return NULL;
 }
 #endif
 
@@ -586,11 +594,12 @@ void DodGC_MohaaLevelInit( void )
 		snprintf( scr, sizeof( scr ), "maps/%s.scr", STRING( gpGlobals->mapname ) );
 		/* only a level with a script spends arena on it */
 		if( budget && g_engfuncs.pfnGetFileSize && g_engfuncs.pfnGetFileSize( scr ) > 0 ) {
-			b.pool = M_PoolCarve( budget );
-			b.pool_size = b.pool ? budget : 0;
+			b.pool = M_PoolCarve( budget, &b.pool_size );
 			if( !b.pool )
-				ALERT( at_console, "mohaa: no room for %u KiB of script memory in the map arena, using the heap\n",
-					(unsigned)( budget / 1024u ) );
+				ALERT( at_console, "mohaa: no gap of %u KiB or more in the map arena for script memory, using the heap\n",
+					(unsigned)( budget / 2048u ) );
+			else if( b.pool_size < budget )
+				budget = b.pool_size;	/* the log line below says what it got */
 		}
 	}
 #endif

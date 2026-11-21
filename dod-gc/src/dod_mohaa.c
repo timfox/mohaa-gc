@@ -23,6 +23,13 @@ static void *pool_alloc(void *ptr, size_t old_size, size_t new_size)
 	return MohaaPool_Realloc(&g_pool, ptr, new_size);
 }
 
+/* compiler scratch goes to the top of the pool (see dod_mohaa_pool.h) */
+static void h_scratch(void *user, int on)
+{
+	(void)user;
+	MohaaPool_Top(&g_pool, on);
+}
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1217,6 +1224,15 @@ static void register_commands(ms_vm *vm)
 		{"useweaponclass", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"unholster", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"detach", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		/* scripted HUD elements (m6l1a's mg42 overlay): there is no matching HUD element on the GoldSrc side yet */
+		{"huddraw_shader", MS_ON_THREAD, c_ignored},
+		{"huddraw_align", MS_ON_THREAD, c_ignored},
+		{"huddraw_rect", MS_ON_THREAD, c_ignored},
+		{"huddraw_virtualsize", MS_ON_THREAD, c_ignored},
+		{"huddraw_color", MS_ON_THREAD, c_ignored},
+		{"huddraw_alpha", MS_ON_THREAD, c_ignored},
+		{"huddraw_string", MS_ON_THREAD, c_ignored},
+		{"huddraw_font", MS_ON_THREAD, c_ignored},
 		{"lightoff", MS_ON_ENTITY, c_ignored},
 		{"lightradius", MS_ON_ENTITY, c_ignored},
 		{"lightcolor", MS_ON_ENTITY, c_ignored},
@@ -1350,6 +1366,8 @@ int Dod_MohaaLevelInit(const DodMohaaBackend *backend, const char *mapname, floa
 	host.get_field = h_get_field;
 	host.set_field = h_set_field;
 	host.unknown_command = h_unknown;
+	if (S.be.alloc == pool_alloc)
+		host.scratch = h_scratch;
 	memset(&cfg, 0, sizeof(cfg));
 	cfg.memory_budget = memory_budget;
 	S.budget = memory_budget;

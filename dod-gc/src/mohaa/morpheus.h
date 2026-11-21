@@ -91,6 +91,11 @@ typedef struct ms_host {
 
     /* Random number in [0,1). NULL uses an internal LCG. */
     float (*random)(void *user);
+
+    /* Told 1 when a compile starts and 0 before it allocates what the script keeps. Between the two,
+       allocations are the compiler's scratch, all freed when the compile ends: a host allocator can put
+       them apart from long-lived data so they leave no holes. NULL: not told. */
+    void (*scratch)(void *user, int on);
 } ms_host;
 
 typedef struct ms_config {
