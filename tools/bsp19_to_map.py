@@ -1089,6 +1089,18 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 		if cn.lower() in PATH_NODES:
 			stats["path_nodes_to_sidecar"] += 1
 			continue
+		if e.get("targetname") and not unused_name(e) and not cn.lower().startswith("light"):
+			# a named script_origin / script_model / script_object ...: scripts move it, hide it, read its
+			# origin or thread on it, so it needs to exist. A point entity holds its place (one edict).
+			ox, oy, oz = parse_vec(e.get("origin", ""))
+			keys = {"classname": "info_target", "mohaa_classname": cn, "targetname": e["targetname"],
+			        "origin": f"{_f(ox * scale)} {_f(oy * scale)} {_f(oz * scale)}"}
+			for k in ("target", "angle", "angles"):
+				if k in e:
+					keys[k] = e[k]
+			blocks.append(kv_block(keys))
+			stats["named_points_written"] += 1
+			continue
 		skipped[cn] += 1
 
 	if not stats["player_starts_written"]:

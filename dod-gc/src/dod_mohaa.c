@@ -54,7 +54,8 @@ static struct {
 	int nmoods, mood, fallback;
 	char cue[MUSIC_PATH];
 	int cue_loop;
-	char level_script[128];	/* maps/<map>.scr, where a trigger's setthread label lives */
+	char level_script[128];
+	size_t budget;	/* maps/<map>.scr, where a trigger's setthread label lives */
 	/* path nodes, and the soldiers walking them: a route is the goal plus the node it heads for now */
 	MohaaPaths paths;
 	int path_links;
@@ -220,7 +221,17 @@ static void h_print(void *user, int channel, const char *text)
 	switch (channel) {
 	case MS_PRINT_HUD:
 	case MS_PRINT_HUD_BOLD: S.be.print(DOD_MOHAA_PRINT_HUD, text); break;
-	case MS_PRINT_ERROR: S.be.print(DOD_MOHAA_PRINT_ERROR, text); break;
+	case MS_PRINT_ERROR:
+		S.be.print(DOD_MOHAA_PRINT_ERROR, text);
+		if (S.vm && strstr(text, "out of memory")) {
+			/* the VM's budget ran out (mohaa_script_kb): say how full it was, to size the budget */
+			char msg[160];
+			snprintf(msg, sizeof(msg), "mohaa: script memory %u KB in use, peak %u KB, budget %u KB\n",
+				(unsigned)(ms_memory_used(S.vm) / 1024u), (unsigned)(ms_memory_peak(S.vm) / 1024u),
+				(unsigned)(S.budget / 1024u));
+			S.be.print(DOD_MOHAA_PRINT_CONSOLE, msg);
+		}
+		break;
 	default: S.be.print(DOD_MOHAA_PRINT_CONSOLE, text); break;
 	}
 }
@@ -1073,6 +1084,7 @@ static void register_commands(ms_vm *vm)
 		{"forcemusic", MS_ON_THREAD | MS_ON_ENTITY, c_forcemusic},
 		{"isalive", MS_ON_THREAD, c_isalive},
 		{"lighton", MS_ON_ENTITY, c_ignored},
+		{"light", MS_ON_ENTITY, c_ignored},
 		{"lightoff", MS_ON_ENTITY, c_ignored},
 		{"lightradius", MS_ON_ENTITY, c_ignored},
 		{"lightcolor", MS_ON_ENTITY, c_ignored},
@@ -1197,6 +1209,7 @@ int Dod_MohaaLevelInit(const DodMohaaBackend *backend, const char *mapname, floa
 	host.unknown_command = h_unknown;
 	memset(&cfg, 0, sizeof(cfg));
 	cfg.memory_budget = memory_budget;
+	S.budget = memory_budget;
 	S.vm = ms_create(&host, &cfg);
 	if (!S.vm) {
 		S.be.print(DOD_MOHAA_PRINT_ERROR, "mohaa: cannot create the script VM\n");

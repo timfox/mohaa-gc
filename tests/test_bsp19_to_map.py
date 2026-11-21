@@ -436,6 +436,19 @@ class ConvertTest(unittest.TestCase):
 		self.assertNotEqual(a, b)
 		self.assertEqual(n.name("textures/a/very_long_texture_name_here"), a)
 
+	def test_named_points_kept(self):
+		self.bsp.entities.append({"classname": "script_origin", "origin": "100 0 0", "targetname": "truck_spot"})
+		self.bsp.entities.append({"classname": "script_model", "origin": "0 0 0", "targetname": "unused_thing"})
+		self.bsp.entities.append({"classname": "light", "origin": "0 0 0", "targetname": "lamp"})
+		text, _, stats, skipped = conv.convert(self.bsp, scale=0.5)
+		self.assertEqual(stats["named_points_written"], 2)
+		self.assertIn('"classname" "info_target"\n"mohaa_classname" "script_origin"\n"targetname" "truck_spot"\n"origin" "50 0 0"', text)
+		self.assertEqual(skipped["light"], 2)
+		# with the level's script words known, a name nothing uses is not worth an edict
+		text, _, stats, _ = conv.convert(self.bsp, scale=0.5, script_words={"truck_spot"})
+		self.assertEqual(stats["named_points_written"], 1)
+		self.assertNotIn("unused_thing", text)
+
 	def test_actor_detection_and_nodes(self):
 		self.assertTrue(conv.is_actor("actor", ""))
 		self.assertTrue(conv.is_actor("human/german_soldier", ""))
