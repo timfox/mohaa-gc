@@ -57,12 +57,24 @@ Known gaps: the clipnode factor needs calibrating against real SDHLT runs, and
 the report does not yet predict the compiled BSP30 size against the engine's
 3 MiB map buffer.
 
+## Mission scripts
+
+`script/` holds a clean-room, MIT-licensed VM for MOHAA's `.scr` (Morpheus)
+scripting language, written in C99 for the GameCube build. Script commands
+are bound to DoD-GC entities by the game code. See [script/README.md](script/README.md).
+
+```bash
+make -C script && out/msrun tests/scripts/mission.scr      # mock-world run
+python3 tools/check_scripts.py "/path/to/MOHAA/main"      # compile every retail script
+```
+
 ## Tests
 
 ```bash
 python3 -m unittest discover -s tests
 ```
 
+The script VM tests build `out/msrun` with the system C compiler.
 `tests/make_sample_bsp.py` writes a small synthetic MOHAA BSP (v17 or v19), so
 the tests need no game data.
 

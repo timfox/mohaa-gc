@@ -1,0 +1,15 @@
+// runtime errors are reported and the script keeps going, like the original game
+main:
+	local.x = local.nothing + 1
+	println "after bad add " local.x
+	$missing hide
+	println "missing target is NULL: " ($missing == NULL)
+	thread spin
+	println "still running"
+	unknowncommand 1 2
+	println "done"
+end
+
+spin:
+	while (1) { local.k++ }
+end

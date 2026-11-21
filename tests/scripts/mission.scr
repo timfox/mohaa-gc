@@ -1,0 +1,52 @@
+// mission-style flow: threads, waits, triggers, entity commands
+//@ent player player 0 0 0
+//@ent door1 func_door 128 0 0
+//@ent trig1 trigger_multiple 64 0 0
+//@ent guard actor 512 64 0
+//@ent guard actor 512 128 0
+//@ent bomb script_model 10 20 30
+//@at 0.5 notify level prespawn
+//@at 1.0 notify level spawn
+//@at 2.0 notify trig1 trigger
+//@at 3.5 remove bomb
+//@run 8
+
+main:
+	level waittill prespawn
+	println "prespawn"
+	$door1 thread global/door_locked.scr::lock
+	println "door locked flag " $door1.locked
+	level waittill spawn
+	println "spawn at " level.time
+	thread door_logic
+	thread bomb_watch
+	thread ticker 3
+	$guard hide
+	println "guards " $guard.size
+	local.v = waitthread global/door_locked.scr::count 4
+	println "helper " local.v " calls " level.helper_calls
+	waitthread ticker 2
+	println "main done"
+end
+
+door_logic:
+	$trig1 waittill trigger
+	println "triggered at " level.time
+	$door1 moveto (128 0 96)
+	$door1 waitmove
+	println "door open at " level.time " origin " $door1.origin
+	$door1.origin = (128 0 96)
+	println "door moved to " $door1.origin
+end
+
+bomb_watch:
+	$bomb waittill removed
+	println "bomb gone, still have bomb? " ($bomb != NULL)
+end
+
+ticker local.n:
+	for (local.i = 1; local.i <= local.n; local.i++) {
+		wait 0.5
+		println "tick " local.i "/" local.n
+	}
+end

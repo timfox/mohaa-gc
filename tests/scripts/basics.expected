@@ -1,0 +1,20 @@
+  0.00 add 7 div 2 fdiv 2.500
+  0.00 str5-1.500
+  0.00 count 8
+  0.00 n 3
+  0.00 arr one 2 nested size 3
+  0.00 carr b size 3
+  0.00 vec (1.000 2.000 3.000) y 2.000 scaled (2.000 4.000 6.000)
+  0.00 neg -5 sum 4
+  0.00 case 2
+  0.00 fall 3
+  0.00 default hit
+  0.00 nil ok
+  0.00 not defined
+  0.00 tern big
+  0.00 logic 0 1 1
+  0.00 len 5 ch e
+  0.00 makearray x y
+  0.00 ret 7
+  0.00 caught
+  0.00 typeof vector float
