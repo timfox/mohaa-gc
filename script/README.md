@@ -52,6 +52,14 @@ Those are host bindings, added as DoD-GC needs them.
 - Every allocation goes through the host allocator and is counted.
   `ms_config.memory_budget` makes allocations past the cap fail cleanly.
   The mission test peaks at about 28 KB.
+- The compiler works one top-level statement at a time and frees its syntax
+  tree after each, so compiling costs little more than the result: the peak
+  is bounded by the largest statement, not the file.
+- Compiled scripts are compact. Name ids and string-constant indexes are 16-bit
+  operands, small ints one byte, the line table (for error messages) a varint
+  stream, and a script's string constants share one block with a pinned
+  reference count instead of a heap allocation each.
+- `msrun -stats` prints where the memory goes, per script and by kind.
 - Threads are coroutines with a small growable value stack (16 slots to
   start). There are no OS threads.
 - A thread that loops 10,000 times without waiting is killed and reported,

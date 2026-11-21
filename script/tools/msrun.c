@@ -2,7 +2,7 @@
  * msrun - run a MOHAA .scr against a mock world, for tests and for checking
  * real mission scripts on a PC before they reach the GameCube. MIT licensed.
  *
- *   msrun [-root DIR] [-time SECONDS] [-label NAME] [-mem] [-budget BYTES] file.scr
+ *   msrun [-root DIR] [-time SECONDS] [-label NAME] [-mem] [-stats] [-budget BYTES] file.scr
  *   msrun -compile file.scr...     compile only; one line per failure, then a summary
  *
  * The world is described by comment directives in the script itself:
@@ -16,8 +16,10 @@
  * so tests can check what a script asked the world to do.
  */
 #include "morpheus.h"
+#include "../src/ms_internal.h"   /* -stats reads the VM's tables */
 
 #include <stdarg.h>
+#include <stddef.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -378,6 +380,50 @@ static int compile_only(int argc, char **argv, int first)
     return bad ? 1 : 0;
 }
 
+/* -stats: where the VM's memory goes, by kind (allocation headers included). */
+#define AH 8
+static void print_stats(const ms_vm *v)
+{
+    size_t code = 0, consts = 0, cstr = 0, labels = 0, sw = 0, lines = 0, paths = 0;
+    int nscripts = 0;
+    printf("%-36s %8s %7s %6s %6s %6s\n", "script", "code", "consts", "labels", "lines", "total");
+    for (const ms_script *s = v->scripts; s; s = s->next) {
+        size_t cs = 0;
+        for (uint32_t i = 0; i < s->nconsts; i++)
+            cs += (offsetof(ms_str, data) + s->consts[i]->len + 1 + 7) & ~(size_t)7;
+        if (s->pool)
+            cs += AH + ((sizeof(ms_pool) + 7) & ~(size_t)7);
+        size_t swb = s->nswitches ? s->nswitches * sizeof(ms_switch) + AH : 0;
+        for (uint32_t i = 0; i < s->nswitches; i++)
+            swb += s->switches[i].n * sizeof(ms_case) + AH;
+        size_t c = s->code_len + AH, k = s->nconsts * sizeof(ms_str *) + AH + cs;
+        size_t l = s->nlabels * sizeof(ms_label) + AH, ln = s->lines_len + AH;
+        size_t total = c + k + l + ln + swb + strlen(s->path) + 1 + AH + sizeof(ms_script) + AH;
+        printf("%-36s %8zu %7zu %6zu %6zu %6zu\n", s->path, c, k, l, ln, total);
+        code += c; consts += s->nconsts * sizeof(ms_str *) + AH; cstr += cs; labels += l; sw += swb; lines += ln;
+        paths += strlen(s->path) + 1 + AH + sizeof(ms_script) + AH;
+        nscripts++;
+    }
+    size_t names = v->names.cap * (sizeof(char *) + sizeof(uint32_t)) + v->names.icap * sizeof(uint32_t) + 3 * AH;
+    for (uint32_t i = 0; i < v->names.n; i++)
+        names += strlen(v->names.str[i]) + 1 + AH;
+    size_t cmds = v->ncmds * sizeof(ms_cmd *) + AH;
+    for (uint32_t i = 0; i < v->ncmds; i++)
+        for (const ms_cmd *c = v->cmds[i]; c; c = c->next)
+            cmds += sizeof(ms_cmd) + AH;
+    size_t threads = 0;
+    int nthreads = 0;
+    for (const ms_thread *t = v->threads; t; t = t->next) {
+        threads += sizeof(ms_thread) + AH + (size_t)t->scap * sizeof(ms_value) + AH +
+                   t->locals.cap * (sizeof(uint32_t) + sizeof(ms_value)) + (t->locals.cap ? 2 * AH : 0);
+        nthreads++;
+    }
+    printf("--\n%d scripts: code %zu, const table %zu, const strings %zu, labels %zu, switches %zu, lines %zu, "
+           "headers %zu\n", nscripts, code, consts, cstr, labels, sw, lines, paths);
+    printf("names %u (%zu bytes), commands %zu, %d threads %zu\n", v->names.n, names, cmds, nthreads, threads);
+    printf("in use %zu, peak %zu\n", v->mem_used, v->mem_peak);
+}
+
 int main(int argc, char **argv)
 {
     if (argc > 1 && !strcmp(argv[1], "-compile"))
@@ -396,6 +442,8 @@ int main(int argc, char **argv)
             label = argv[++i];
         else if (!strcmp(argv[i], "-mem"))
             show_mem = 1;
+        else if (!strcmp(argv[i], "-stats"))
+            show_mem = 2;
         else if (!strcmp(argv[i], "-budget") && i + 1 < argc)
             cfg.memory_budget = (size_t)atol(argv[++i]);
         else
@@ -472,7 +520,9 @@ int main(int argc, char **argv)
         if (!ms_thread_count(vm) && !pending)
             break;
     }
-    if (show_mem)
+    if (show_mem == 2)
+        print_stats(vm);
+    else if (show_mem)
         printf("memory: %zu bytes in use, %zu peak, %d threads, %d errors\n", ms_memory_used(vm),
                ms_memory_peak(vm), ms_thread_count(vm), ms_error_count(vm));
     if (ms_error_count(vm) && rc == 0)
