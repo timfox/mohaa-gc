@@ -643,7 +643,8 @@ def kv_block(keys, brushes=()):
 def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = None,
             terrain: bool = False, terrain_tol: float = 8.0, terrain_tex: str = "CLIP",
             terrain_seal: bool = True, detail_world: bool = False, seal_box: bool = False,
-            simplify_collision: bool = False, collision_grid: float = 16.0, thin_walls: bool = True):
+            simplify_collision: bool = False, collision_grid: float = 16.0, thin_walls: bool = True,
+            detail_walls: bool = False):
 	namer = TextureNamer()
 	stats = Counter()
 	world = bsp.entities[0] if bsp.entities else {"classname": "worldspawn"}
@@ -675,11 +676,21 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 				continue
 		if simplify_collision and cls in ("detail", "clip") and not is_axial_brush(faces):
 			voxelize_brush(faces, voxels, collision_grid)
-			if cls == "detail":
+			if cls == "detail" and detail_walls and " sky [" not in txt:
+				thin.append((txt, faces))  # drawn and shot, no world leaves, no player hulls
+				stats["detail_to_wall"] += 1
+			elif cls == "detail":
 				noclip_detail.append(txt)  # still drawn, no player hulls
 				stats["detail_noclip"] += 1
 			else:
 				stats["clip_replaced"] += 1
+			stats["world_brushes_written"] += 1
+			continue
+		if cls == "detail" and detail_walls and not detail_world and " sky [" not in txt:
+			thin.append((txt, faces))
+			world_brushes.append(clip_copy(txt))  # players collide in the world's hulls 1/3
+			namer.special_used.add("CLIP")
+			stats["detail_to_wall"] += 1
 			stats["world_brushes_written"] += 1
 			continue
 		if cls == "detail" and detail_world:
@@ -850,6 +861,9 @@ def main(argv=None) -> int:
 	                help="grid for --simplify-collision, GoldSrc units (default 16, under the 18-unit step)")
 	ap.add_argument("--seal-box", action="store_true",
 	                help="enclose the map in a NULL box so hull 0 can't leak (last resort)")
+	ap.add_argument("--detail-walls", action="store_true",
+	                help="put all MOHAA detail into per-cell zhlt_noclip func_walls (no world hull-0 leaves); "
+	                     "players collide with CLIP copies, or voxel boxes for angled detail under --simplify-collision")
 	ap.add_argument("--thin-detail-in-world", action="store_true",
 	                help="keep thickened detail slivers in func_detail (default: per-cell func_walls, "
 	                     "which keeps them out of the world's hull-0 leaves)")
@@ -862,7 +876,7 @@ def main(argv=None) -> int:
 	                                         not args.no_terrain_seal, args.detail_world, args.seal_box,
 	                                         args.simplify_collision,
 	                                         (args.collision_grid, args.collision_grid_z or args.collision_grid),
-	                                         not args.thin_detail_in_world)
+	                                         not args.thin_detail_in_world, args.detail_walls)
 	args.out.write_text(text)
 	if args.wad:
 		write_wad(args.wad, list(namer.by_shader.values()) + sorted(namer.special_used))

@@ -153,6 +153,16 @@ class CompileSafetyTest(unittest.TestCase):
 		self.assertIn('"classname" "func_illusionary"', text)
 		self.assertIn('"zhlt_noclip" "1"', text)
 
+	def test_detail_walls(self):
+		bsp = tiny_bsp([((0, 0, 0), (64, 64, 64), 0), ((2000, 0, 0), (2064, 64, 64), 0)], [])
+		bsp.shaders[0].content_flags |= b19.CONTENTS_DETAIL
+		text, _, stats, _ = conv.convert(bsp, scale=1.0, detail_walls=True)
+		self.assertEqual(stats["detail_to_wall"], 2)
+		self.assertNotIn("func_detail", text)
+		self.assertEqual(text.count('"classname" "func_wall"'), 2)
+		world = text.split('"classname" "func_wall"')[0]
+		self.assertEqual(world.count(" CLIP ["), 12)
+
 	def test_tilted_near_coplanar_side_dropped(self):
 		# sdHLCSG tests the new side's first point against the old plane, not the distances
 		stats = conv.Counter()
