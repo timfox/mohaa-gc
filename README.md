@@ -96,6 +96,7 @@ are bound to DoD-GC entities by the game code. See [script/README.md](script/REA
 ```bash
 make -C script && out/msrun tests/scripts/mission.scr      # mock-world run
 python3 tools/check_scripts.py "/path/to/MOHAA/main"      # compile every retail script
+python3 tools/ubersound.py "/path/to/MOHAA/main" --out /tmp/mohaa-sound --wav   # per-map sound tables + 22 kHz mono wavs
 ```
 
 ## Tests
