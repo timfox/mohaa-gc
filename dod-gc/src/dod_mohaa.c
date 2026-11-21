@@ -30,6 +30,7 @@ static void h_scratch(void *user, int on)
 	MohaaPool_Top(&g_pool, on);
 }
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -305,6 +306,26 @@ static int h_get_field(void *user, const ms_value *l, const char *name, ms_value
 	if (!strcmp(name, "angles")) {
 		get_vec(l->u.id, DOD_MOHAA_ANGLES, v);
 		*out = ms_vec(v[0], v[1], v[2]);
+		return 1;
+	}
+	if (!strcmp(name, "forwardvector") || !strcmp(name, "leftvector") || !strcmp(name, "rightvector") ||
+	    !strcmp(name, "upvector")) {
+		/* unit axes from angles (pitch yaw roll, degrees; positive pitch looks down), as AngleVectors */
+		const float d = 3.14159265f / 180.0f;
+		float sp, cp, sy, cy, sr, cr, f[3];
+		get_vec(l->u.id, DOD_MOHAA_ANGLES, v);
+		sp = sinf(v[0] * d); cp = cosf(v[0] * d);
+		sy = sinf(v[1] * d); cy = cosf(v[1] * d);
+		sr = sinf(v[2] * d); cr = cosf(v[2] * d);
+		if (name[0] == 'f') {
+			f[0] = cp * cy; f[1] = cp * sy; f[2] = -sp;
+		} else if (name[0] == 'u') {
+			f[0] = cr * sp * cy + sr * sy; f[1] = cr * sp * sy - sr * cy; f[2] = cr * cp;
+		} else {   /* right; left is its negation */
+			const float k = name[0] == 'l' ? -1.0f : 1.0f;
+			f[0] = k * (-sr * sp * cy + cr * sy); f[1] = k * (-sr * sp * sy - cr * cy); f[2] = k * (-sr * cp);
+		}
+		*out = ms_vec(f[0], f[1], f[2]);
 		return 1;
 	}
 	if (!strcmp(name, "health")) {
