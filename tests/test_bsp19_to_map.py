@@ -449,6 +449,13 @@ class ConvertTest(unittest.TestCase):
 		self.assertEqual(stats["named_points_written"], 1)
 		self.assertNotIn("unused_thing", text)
 
+	def test_name_report(self):
+		self.bsp.entities.append({"classname": "light", "origin": "0 0 0", "targetname": "Lamp1"})
+		text, _, _, _ = conv.convert(self.bsp, scale=0.5)
+		missing, lost = conv.name_report(self.bsp, text, {"door1", "lamp1", "spawned_later"})
+		self.assertEqual(missing, ["lamp1", "spawned_later"])
+		self.assertEqual(lost, {"lamp1": "light"})
+
 	def test_actor_detection_and_nodes(self):
 		self.assertTrue(conv.is_actor("actor", ""))
 		self.assertTrue(conv.is_actor("human/german_soldier", ""))
