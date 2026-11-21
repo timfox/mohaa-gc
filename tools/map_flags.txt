@@ -21,14 +21,15 @@ obj_team3 --detail-walls
 m3l2      --detail-walls
 mohdm7    --detail-walls
 m6l3a     --detail-walls
-# leaves and clipnodes
+# leaves and clipnodes. --mesh-collision: angled detail goes to <map>.mcol for xash3d-gc
+# mesh collision (xash3d-gc PR #491) instead of coarse voxels.
 m4l3      --detail-walls --simplify-collision --collision-grid 32 --collision-grid-z 16
 mohdm3    --detail-walls --simplify-collision --collision-grid 32 --collision-grid-z 16
-m4l1      --detail-walls --simplify-collision --collision-grid 64 --collision-grid-z 16
-m3l3      --detail-walls --simplify-collision --collision-grid 64 --collision-grid-z 16
+m4l1      --detail-walls --simplify-collision --collision-grid 64 --collision-grid-z 16 --mesh-collision
+m3l3      --detail-walls --simplify-collision --collision-grid 64 --collision-grid-z 16 --mesh-collision
 obj_team2 --detail-walls --simplify-collision --collision-grid 16 --collision-grid-z 16 --collision-reach 768
-m6l2a     --detail-walls --simplify-collision --collision-grid 64 --collision-grid-z 16
-m6l2b     --detail-walls --simplify-collision --collision-grid 64 --collision-grid-z 16
-m6l1a     --detail-walls --simplify-collision --collision-grid 96 --collision-grid-z 16
-m6l1b     --detail-walls --simplify-collision --collision-grid 96 --collision-grid-z 16
-m5l2b     --detail-walls --seal-box --simplify-collision --collision-grid 96 --collision-grid-z 16 --wall-cell 2048
+m6l2a     --detail-walls --simplify-collision --collision-grid 64 --collision-grid-z 16 --mesh-collision
+m6l2b     --detail-walls --simplify-collision --collision-grid 64 --collision-grid-z 16 --mesh-collision
+m6l1a     --detail-walls --simplify-collision --collision-grid 96 --collision-grid-z 16 --mesh-collision
+m6l1b     --detail-walls --simplify-collision --collision-grid 96 --collision-grid-z 16 --mesh-collision
+m5l2b     --detail-walls --seal-box --simplify-collision --collision-grid 96 --collision-grid-z 16 --wall-cell 2048 --mesh-collision
