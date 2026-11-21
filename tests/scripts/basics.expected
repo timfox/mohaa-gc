@@ -18,3 +18,4 @@
   0.00 ret 7
   0.00 caught
   0.00 typeof vector float
+  0.00 vector component (1.000 2.000 64.000) (1.000 2.000 3.000)

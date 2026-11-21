@@ -147,6 +147,23 @@ class CompileSafetyTest(unittest.TestCase):
 		zs = {float(m) for b in boxes for m in re.findall(r"\( \S+ \S+ (\S+) \)", b)}
 		self.assertTrue(all(z % 16 == 0 for z in zs))  # steps stay one 16-unit cell high
 
+	def test_trigger_written_with_setthread(self):
+		bsp = tiny_bsp([((-256, -256, -16), (256, 256, 0), 0)], [((0, 0, 0), (64, 64, 64), 0)], door_class="trigger_multiple")
+		bsp.entities[1].update({"targetname": "t_gate", "setthread": "gate_open", "spawnflags": "8"})
+		text, namer, stats, skipped = conv.convert(bsp, scale=1.0)
+		self.assertEqual(stats["triggers_written"], 1)
+		self.assertNotIn("trigger_multiple", skipped)
+		block = text[text.index('"classname" "trigger_multiple"'):]
+		block = block[:block.index("\n}\n")]
+		self.assertIn('"targetname" "t_gate"', block)
+		self.assertIn('"netname" "gate_open"', block)
+		self.assertNotIn("spawnflags", block)  # MOHAA's trigger flags mean other things in GoldSrc
+		texes = {m.group(4) for m in (FACE_RE.match(l) for l in block.splitlines()) if m}
+		self.assertEqual(texes, {"AAATRIGGER"})
+		self.assertIn("AAATRIGGER", namer.special_used)
+		bsp.entities[1]["classname"] = "trigger_once"
+		self.assertIn('"classname" "trigger_once"', conv.convert(bsp, scale=1.0)[0])
+
 	def test_rain_volume_is_nonsolid(self):
 		bsp = tiny_bsp([((0, 0, 0), (64, 64, 64), 0)], [((0, 0, 100), (64, 64, 164), 0)], door_class="func_rain")
 		text, _, _, _ = conv.convert(bsp, scale=1.0)

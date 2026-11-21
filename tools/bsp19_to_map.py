@@ -264,6 +264,16 @@ BRUSH_CLASS_MAP = {
 	"func_window": "func_breakable",
 }
 ROTATING = {"func_door_rotating"}
+# MOHAA triggers. GoldSrc's trigger_multiple fires on touch like MOHAA's trigger_multiple; a use-trigger
+# (trigger_use) has no GoldSrc twin and also fires on touch here. The script hears every firing ("waittill
+# trigger"); MOHAA's "setthread" (a level-script label to run) rides in netname for dod-gc to start.
+TRIGGER_CLASS_MAP = {
+	"trigger_once": "trigger_once",
+	"trigger_hurt": "trigger_hurt",
+	"trigger_push": "trigger_push",
+	"trigger_pushany": "trigger_push",
+}
+TRIGGER_KEYS = ("targetname", "target", "wait", "delay", "dmg", "speed", "angle", "angles")
 # MOHAA brush entities that are volumes, not walls: no player/bullet collision.
 NONSOLID_BRUSH = {"func_rain": "func_illusionary"}
 
@@ -456,6 +466,7 @@ def thin_wall_blocks(thin, stats, cell=THIN_WALL_CELL):
 
 
 _SIDE_TEXNAME_RE = re.compile(r"^\(.*?\) \(.*?\) \(.*?\) (\S+) \[", re.M)
+_SIDE_TEXNAME_SUB = re.compile(r"^(\(.*?\) \(.*?\) \(.*?\) )\S+ \[", re.M)
 _SIDE_TEX_RE = re.compile(r"^(\(.*?\) \(.*?\) \(.*?\) )\S+ \[", re.M)
 
 
@@ -982,7 +993,22 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 				skipped[cn + " (bad model)"] += 1
 				continue
 			if cn.startswith("trigger_"):
-				skipped[cn] += 1
+				o = parse_vec(e.get("origin", ""))
+				brushes = [_SIDE_TEXNAME_SUB.sub(r"\1AAATRIGGER [", t) for _, t, _ in model_brushes(bsp, mi, scale, o, namer, stats)]
+				if not brushes:
+					skipped[cn + " (no brushes)"] += 1
+					continue
+				namer.special_used.add("AAATRIGGER")
+				keys = {"classname": TRIGGER_CLASS_MAP.get(cn, "trigger_multiple"), "mohaa_classname": cn}
+				for k in TRIGGER_KEYS:
+					if k in e:
+						keys[k] = e[k]
+				if e.get("setthread"):
+					keys["netname"] = e["setthread"].strip()
+				if keys["classname"] == "trigger_multiple" and "wait" not in keys:
+					keys["wait"] = "0.2"  # MOHAA re-arms a multiple trigger quickly; GoldSrc's default is 0.2 too
+				blocks.append(kv_block(keys, brushes))
+				stats["triggers_written"] += 1
 				continue
 			gcn = NONSOLID_BRUSH.get(cn) or BRUSH_CLASS_MAP.get(cn, "func_wall")
 			o = parse_vec(e.get("origin", ""))

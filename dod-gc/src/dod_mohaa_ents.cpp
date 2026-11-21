@@ -509,4 +509,7 @@ void DodGC_MohaaEntityEvent( edict_t *e, const char *event )
 		ActorDied( e );
 	if( id )
 		Dod_MohaaNotify( id, event );
+	/* mohaa-gc's converter puts a MOHAA trigger's setthread label in netname */
+	if( id && !strcmp( event, "trigger" ) && e->v.netname && !strncmp( STRING( e->v.classname ), "trigger_", 8 ) )
+		Dod_MohaaRunThread( STRING( e->v.netname ), id );
 }

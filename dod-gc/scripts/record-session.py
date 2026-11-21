@@ -40,7 +40,8 @@ def find_render_window(timeout: float) -> str | None:
 	while time.time() < deadline:
 		tree = sh("xwininfo", "-root", "-tree").stdout
 		for line in tree.splitlines():
-			if '("dolphin-emu" "GameCube")' not in line or ")  800x600" in line:
+			# stock Dolphin, or the xash-gc build of it (its own window class)
+			if not ('("dolphin-emu" "GameCube")' in line or '"xash-gc-dolphin"' in line) or ")  800x600" in line:
 				continue
 			m = re.search(r"(\d+)x(\d+)\+", line)
 			if m and int(m.group(1)) >= 300 and int(m.group(2)) >= 200:
