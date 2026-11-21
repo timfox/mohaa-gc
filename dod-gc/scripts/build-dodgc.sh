@@ -1,0 +1,246 @@
+#!/usr/bin/env bash
+# Build Day of Defeat GameCube artifacts into this repo's out/ tree only.
+# Produces: out/dodgc.dol + out/dodgc.iso
+# Does NOT overwrite HL1 OUT/xash3d-gc.iso, boot.dol, or halflife1.dol.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/env.sh"
+
+usage() {
+	cat <<'EOF'
+usage: scripts/build-dodgc.sh [options]
+
+  --dol-only     build/link dodgc.dol only (skip ISO)
+  --iso-only     package out/dodgc.iso from an existing out/dodgc.dol
+  --skip-hlsdk   skip HLSDK archive rebuild (use existing engine OUT/hlsdk-gamecube/dod)
+  --play         stamp play-oriented gamecube.cfg with BSP world rendering
+  --smoke MAP    lean smoke disc for MAP (e.g. dod_avalanche)
+  -h, --help     this help
+
+Environment:
+  DODGC_ENGINE, DODGC_CONTENT_DOD, DODGC_ISO, XASH3D_GC_ISO_CACHE
+EOF
+}
+
+DOL_ONLY=0
+ISO_ONLY=0
+SKIP_HLSDK=0
+PLAY=0
+SMOKE_MAP=""
+
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+		--dol-only) DOL_ONLY=1 ;;
+		--iso-only) ISO_ONLY=1 ;;
+		--skip-hlsdk) SKIP_HLSDK=1 ;;
+		--play) PLAY=1 ;;
+		--smoke)
+			SMOKE_MAP="${2:-}"
+			[[ -n "$SMOKE_MAP" ]] || { echo "error: --smoke needs a map name" >&2; exit 2; }
+			shift
+			;;
+		-h|--help) usage; exit 0 ;;
+		*) echo "unknown option: $1" >&2; usage >&2; exit 2 ;;
+	esac
+	shift
+done
+
+dodgc_require_content
+dodgc_require_hlsdk
+bash "$SCRIPT_DIR/check-menu-provenance.sh" --engine "$DODGC_ENGINE" || exit 1
+
+# A rebuild must not silently use an old engine: with the default clone under .deps/, stop when it is behind the
+# branch the lock tracks (scripts/fetch-sources.sh --update moves it). Offline, or a checkout you supplied
+# yourself, is not checked. DODGC_ALLOW_STALE_ENGINE=1 builds anyway.
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/tip-status.sh"
+if (( ! ISO_ONLY )) && [[ "$DODGC_ENGINE" == "$DODGC_ROOT/.deps/xash3d-gc" ]]; then
+	engine_tip="$(dodgc_tip_status "$DODGC_ENGINE" "$DODGC_ENGINE_REF")"
+	case "$engine_tip" in
+		tip=NO*)
+			if [[ "${DODGC_ALLOW_STALE_ENGINE:-0}" != 1 ]]; then
+				echo "error: the engine clone $DODGC_ENGINE is not at the tip of $DODGC_ENGINE_REF: $engine_tip" >&2
+				echo "  run scripts/fetch-sources.sh --update, or set DODGC_ALLOW_STALE_ENGINE=1 to build with it anyway." >&2
+				exit 1
+			fi
+			echo "warning: building with a stale engine ($engine_tip)" >&2
+			;;
+		tip=unknown*) echo "warning: could not check the engine clone against origin ($engine_tip)" >&2 ;;
+	esac
+fi
+
+# The SDK must be the pinned commit (scripts/sources.lock); a different HEAD means the game DLL would
+# be built from code nobody recorded. DODGC_HLSDK_UNPINNED=1 is the explicit way to build another one.
+if git -C "$DODGC_HLSDK" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+	hlsdk_head="$(git -C "$DODGC_HLSDK" rev-parse HEAD)"
+	if [[ "$hlsdk_head" != "$DODGC_HLSDK_COMMIT" && "${DODGC_HLSDK_UNPINNED:-0}" != 1 ]]; then
+		echo "error: SDK $DODGC_HLSDK is at $hlsdk_head, pinned $DODGC_HLSDK_COMMIT ($DODGC_HLSDK_BRANCH)." >&2
+		echo "  scripts/fetch-sources.sh --update moves the .deps clone to the pin; or set DODGC_HLSDK_UNPINNED=1." >&2
+		exit 1
+	fi
+fi
+
+ENGINE_DOL="$DODGC_ENGINE/OUT/bin/dodgc.dol"
+ENGINE_HLSDK_DOD="$DODGC_ENGINE/OUT/hlsdk-gamecube/dod"
+
+if (( ! ISO_ONLY )); then
+	echo "==> [dod-gc] building DoD HLSDK + engine DOL (profile=dod → dodgc.dol)"
+	# Modern Ethernet adapters require libogc2's native EXI drivers.
+	export XASH_GAMECUBE_OGC_STACK="${XASH_GAMECUBE_OGC_STACK:-libogc2}"
+	# playermove_t array caps for both the engine and the game DLL (one value, exported to both builds; the
+	# stock 600/64 makes two ~317 KiB static copies). Set either to "stock" to keep 600 / 64.
+	export XASH_GC_PM_MAX_PHYSENTS="${XASH_GC_PM_MAX_PHYSENTS:-256}"
+	export XASH_GC_PM_MAX_MOVEENTS="${XASH_GC_PM_MAX_MOVEENTS:-32}"
+	# CapFaces tip: default BBA off (~200 KiB MEM1 → tip≈390 KiB on caen).
+	# Set XASH_GAMECUBE_LINK_BBA=1 for Ethernet/net probes only.
+	export XASH_GAMECUBE_LINK_BBA="${XASH_GAMECUBE_LINK_BBA:-0}"
+	cd "$DODGC_ENGINE"
+	# The integrate step patches the SDK's pm_defs.h (XASH_GC_PM_MAX_*) so the game archives match the engine built below.
+	# The patch is only needed while the archives compile; restore the stock header on every exit so a patched SDK tree is
+	# never left behind to pair with a differently built engine (boots crash in PM_InitTextureTypes).
+	trap 'python3 "$SCRIPT_DIR/integrate-dod-gameplay.py" --hlsdk-dir "$DODGC_HLSDK" --restore-pm-caps >/dev/null 2>&1 || true' EXIT
+	python3 "$SCRIPT_DIR/integrate-dod-gameplay.py" \
+		--hlsdk-dir "$DODGC_HLSDK" --engine-dir "$DODGC_ENGINE"
+
+	# Keep DoD HLSDK archives under out/network-hlsdk. Never clobber a fresh
+	# private build with stale OUT/hlsdk-gamecube copies (hud19 ScreenWidth miss).
+	SDK_PRIVATE="$DODGC_OUT/network-hlsdk"
+	export HLSDK_GAMECUBE_DESTDIR="$SDK_PRIVATE"
+
+	if (( ! SKIP_HLSDK )); then
+		echo "==> HLSDK GameCube archives for gamedir=dod → $SDK_PRIVATE"
+		echo "    note: retail DoD client is vgui2-blocked upstream; this tree uses"
+		echo "    HL1SDK deathmatch as the code base while mirroring DoD assets."
+		HLSDK_GAMECUBE_DESTDIR="$SDK_PRIVATE" \
+		HLSDK_GAMECUBE_GAMEDIR=dod \
+			bash scripts/hlsdk-gamecube-build.sh || {
+			echo "error: hlsdk-gamecube-build for dod failed; not linking a DOL against stale game archives." >&2
+			echo "  (DODGC_ALLOW_STALE_HLSDK=1 keeps the old warn-and-continue behaviour.)" >&2
+			[[ "${DODGC_ALLOW_STALE_HLSDK:-0}" == 1 ]] || exit 1
+		}
+	fi
+
+	# The archives are built: put the stock header back now (the EXIT trap above covers a failed build).
+	python3 "$SCRIPT_DIR/integrate-dod-gameplay.py" --hlsdk-dir "$DODGC_HLSDK" --restore-pm-caps
+
+	SDK_SOURCE="${HLSDK_GAMECUBE_FALLBACK_SOURCE:-$DODGC_ENGINE/OUT/hlsdk-gamecube}"
+	if [[ ! -s "$SDK_PRIVATE/dod/cl_dlls/libclient_gamecube_ppc.a" ]] \
+		&& [[ -s "$SDK_SOURCE/dod/cl_dlls/libclient_gamecube_ppc.a" ]]; then
+		mkdir -p "$SDK_PRIVATE/lib"
+		cp -a "$SDK_SOURCE/dod" "$SDK_PRIVATE/"
+		[[ ! -d "$SDK_SOURCE/lib" ]] || cp -a "$SDK_SOURCE/lib/." "$SDK_PRIVATE/lib/"
+	fi
+	for archive in "$SDK_PRIVATE/dod/dlls/libhl_gamecube_ppc.a" "$SDK_PRIVATE/dod/cl_dlls/libclient_gamecube_ppc.a"; do
+		[[ -s "$archive" ]] || continue
+		"${DEVKITPRO:-/opt/devkitpro}/devkitPPC/bin/powerpc-eabi-objcopy" \
+			--remove-section=.eh_frame --remove-section='.eh_frame.*' "$archive"
+	done
+
+	# Build DOL only inside the engine tree; disc packaging happens here with dodgc.iso.
+	XASH3D_GC_SKIP_DISC_BUILD=1 \
+	HLSDK_GAMECUBE_GAMEDIR=dod \
+		bash scripts/build-gamecube.sh --game-profile=dod
+
+	if [[ ! -f "$ENGINE_DOL" ]]; then
+		echo "error: expected $ENGINE_DOL after build" >&2
+		exit 1
+	fi
+
+	cp -f "$ENGINE_DOL" "$DODGC_DOL"
+	bash "$SCRIPT_DIR/check-menu-provenance.sh" --dol "$DODGC_DOL" || exit 1
+	if [[ -f "$DODGC_ENGINE/OUT/bin/gamecube-handoff.txt" ]]; then
+		cp -f "$DODGC_ENGINE/OUT/bin/gamecube-handoff.txt" "$DODGC_HANDOFF"
+	fi
+	echo "==> [dod-gc] DOL ready: $DODGC_DOL"
+fi
+
+if (( DOL_ONLY )); then
+	exit 0
+fi
+
+if [[ ! -f "$DODGC_DOL" ]]; then
+	echo "error: missing $DODGC_DOL (run without --iso-only first)" >&2
+	exit 1
+fi
+
+echo "==> [dod-gc] packaging isolated ISO: $DODGC_ISO"
+echo "    data=$DODGC_CONTENT_DOD  gamedir=dod  cache=$XASH3D_GC_ISO_CACHE"
+
+# Stage content into cache so disc tooling never writes into the retail DoD or HL1 trees.
+BUILD_DATA="$XASH3D_GC_ISO_CACHE/dod"
+BUILD_VALVE="$XASH3D_GC_ISO_CACHE/valve"
+mkdir -p "$BUILD_DATA"
+rsync -a --delete "$DODGC_CONTENT_DOD/" "$BUILD_DATA/"
+cat > "$BUILD_DATA/game.cfg" <<'EOF'
+mp_teamplay 1
+mp_teamlist "Allies;Axis"
+mp_defaultteam 0
+EOF
+# Create Server fills its Map field from maps.lst and cannot write one on a
+# disc. Without it the list is empty: the Map field does nothing and Start
+# is greyed. List every map on the disc unless the content brings its own.
+if [[ ! -s "$BUILD_DATA/maps.lst" ]]; then
+	: > "$BUILD_DATA/maps.lst"
+	while IFS= read -r bsp; do
+		stem="$(basename "$bsp")"
+		stem="${stem%.*}"
+		printf '%s "%s"\n' "$stem" "$stem" >> "$BUILD_DATA/maps.lst"
+	done < <(find "$BUILD_DATA/maps" -maxdepth 1 -iname '*.bsp' 2>/dev/null | sort -f)
+	echo "==> [dod-gc] staged maps.lst: $(wc -l < "$BUILD_DATA/maps.lst" | tr -d ' ') maps"
+fi
+# Every disc carries its own stamp (the lean route already does).
+bash "$SCRIPT_DIR/build-info.sh" --short > "$BUILD_DATA/build-info.txt"
+# Retail DoD reads what it does not ship from valve/ (blood, explosion and
+# spark sprites, pickup and impact sounds). The disc has no valve directory,
+# so copy those into the staged dod tree; DoD's own files win.
+python3 "$SCRIPT_DIR/stage_valve_fallback.py" --dod "$BUILD_DATA" --valve "$DODGC_CONTENT_VALVE"
+if [[ -d "$DODGC_CONTENT_VALVE" ]]; then
+	mkdir -p "$BUILD_VALVE"
+	rsync -a --delete \
+		--exclude 'SAVE' --exclude 'logs' --exclude '*.tmp' \
+		"$DODGC_CONTENT_VALVE/" "$BUILD_VALVE/"
+fi
+
+tmp_iso="$XASH3D_GC_ISO_CACHE/dodgc-$$.iso"
+trap 'rm -f "$tmp_iso"' EXIT
+
+DISC_ARGS=(
+	--dol "$DODGC_DOL"
+	--output "$tmp_iso"
+	--data "$BUILD_DATA"
+	--gamedir dod
+)
+if (( PLAY )); then
+	DISC_ARGS+=(--play --world-render)
+fi
+if [[ -n "$SMOKE_MAP" ]]; then
+	DISC_ARGS+=(--smoke-map "$SMOKE_MAP")
+fi
+
+TMPDIR="$XASH3D_GC_ISO_CACHE" \
+	python3 "$DODGC_ENGINE/scripts/build-gamecube-disc.py" "${DISC_ARGS[@]}"
+
+publish_tmp="$DODGC_ISO.tmp.$$"
+cp --reflink=auto "$tmp_iso" "$publish_tmp"
+mv -f "$publish_tmp" "$DODGC_ISO"
+trap - EXIT
+rm -f "$tmp_iso"
+
+{
+	echo "dod-gc disc handoff"
+	echo "built_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+	echo "iso=$DODGC_ISO"
+	echo "iso_bytes=$(wc -c < "$DODGC_ISO" | tr -d ' ')"
+	echo "dol=$DODGC_DOL"
+	echo "gamedir=dod"
+	echo "engine_commit=$(dodgc_engine_sha)"
+	echo "dodgc_commit=$(dodgc_repo_sha)"
+	echo "content_dod=$DODGC_CONTENT_DOD"
+	echo "note=does_not_overwrite_hl1_xash3d-gc.iso"
+} | tee "$DODGC_OUT/dodgc-iso-handoff.txt"
+
+echo "==> [dod-gc] ISO ready: $DODGC_ISO"
+echo "    playtest: scripts/playtest.sh"
+echo "    HL1 remains untouched (engine OUT/xash3d-gc.iso / boot.dol)."

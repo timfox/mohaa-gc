@@ -119,3 +119,12 @@ No code is copied from GPL projects.
 ## Per-map flags
 
 `tools/map_flags.txt` lists the converter flags each retail map needs to fit the GameCube limits. Those limits are at most 32767 clipnodes, at most 8192 world leaves, and a BSP of at most 3 MiB without its lighting lump. Compile every map with `sdHLBSP -hull2alias`. Collision uses the finest voxel grid that fits each map. The 64 to 96-unit grids on the m6 maps, m3l3, m4l1, m4l2, m5l2b and m5l3 still need a Dolphin playtest.
+
+## DoD-GC fork
+
+`dod-gc/` is a full copy of the DoD-GC game tree. MOHAA's game-side code (script binding,
+soldiers, path nodes, music) is developed there; see `dod-gc/FORK.md`.
+
+Staging a level: `tools/stage_scripts.py <main> --out <disc> --maps m1l1` copies the map script and
+every `global/*.scr` it pulls in. `tools/ubersound.py` stages sounds, `tools/music.py` stages
+music, and `tools/bsp19_to_map.py` converts the map (`.map`, `.nodes`).

@@ -1,0 +1,78 @@
+# Build / object noise
+*.d
+*.o
+*.ko
+*.obj
+*.elf
+*.ilk
+*.map
+*.exp
+*.gch
+*.pch
+*.lib
+*.a
+*.la
+*.lo
+*.dll
+*.so
+*.so.*
+*.dylib
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+*.dSYM/
+*.su
+*.idb
+*.pdb
+*.mod*
+*.cmd
+.tmp_versions/
+modules.order
+Module.symvers
+Mkfile.old
+dkms.conf
+*.dwo
+
+# Local GameCube artifacts (regenerate with scripts/build-dodgc.sh)
+out/**
+!out/.gitkeep
+out/iso-cache/
+
+# Large playtest media (notes + INDEX stay tracked; binaries stay local)
+playtests/videos/*
+!playtests/videos/.gitkeep
+playtests/screenshots/*
+!playtests/screenshots/.gitkeep
+# Ignore huge dumps only; dated .md notes are intentional progress records
+playtests/screenshots/*.tga
+playtests/screenshots/*.bmp
+
+# Editor / OS
+.DS_Store
+*~
+*.swp
+.vscode/
+.idea/
+social-media/
+playtests/
+web/
+web-*
+# Python verification helpers
+__pycache__/
+
+# Engine / SDK come from .deps/ (scripts/fetch-sources.sh) or DODGC_ENGINE / DODGC_HLSDK, never from symlinks here
+/.deps/
+/engine
+/hlsdk-portable
+
+# Film/documentary work is kept in a separate private repo; never commit it here.
+/film/
+/tools/film/
+/docs/FILM_PIPELINE.md
+/scripts/film-capture.sh
+/tests/test_film.py
+/tests/test_film_voice.py
+/out/film/

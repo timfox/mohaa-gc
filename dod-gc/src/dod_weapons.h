@@ -1,0 +1,177 @@
+/* Day of Defeat weapon table for the HL1SDK based GameCube port.
+ *
+ * Engine-independent: every number a weapon needs (damage, rate of fire,
+ * spread, clip, reload time, ammo, models, sounds, fire mode) lives in one
+ * table so the game DLL has a single generic weapon class and the values can
+ * be host-tested. Numbers are approximate DoD 1.3, tuned for the HL1 damage
+ * model; they are meant to be adjusted here, not in the weapon code. */
+#ifndef DODGC_DOD_WEAPONS_H
+#define DODGC_DOD_WEAPONS_H
+
+#include "dod_game.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef enum {
+	DOD_FIRE_SEMI = 0,	/* one shot per trigger pull (Garand, pistols) */
+	DOD_FIRE_AUTO,		/* held trigger (SMGs, BAR, StG44, MGs) */
+	DOD_FIRE_BOLT,		/* one shot, then a bolt cycle (Kar98k, Springfield) */
+	DOD_FIRE_ROCKET		/* fires a rocket (Bazooka, Panzerschreck) */
+} DodFireMode;
+
+typedef enum {
+	DOD_WEAPON_NONE = 0,
+	DOD_WEAPON_GARAND,
+	DOD_WEAPON_SPRINGFIELD,
+	DOD_WEAPON_THOMPSON,
+	DOD_WEAPON_BAR,
+	DOD_WEAPON_BROWNING,
+	DOD_WEAPON_BAZOOKA,
+	DOD_WEAPON_COLT,
+	DOD_WEAPON_K98,
+	DOD_WEAPON_K98_SCOPED,
+	DOD_WEAPON_MP40,
+	DOD_WEAPON_STG44,
+	DOD_WEAPON_MG42,
+	DOD_WEAPON_PSCHRECK,
+	DOD_WEAPON_LUGER,
+	DOD_WEAPON_COUNT
+} DodWeaponId;
+
+/* HL1 weapon ids are a 32 bit mask; 1-15, 30 and 31 are taken. HL1 keeps its
+ * ItemInfo (clip size, ammo) per id, so every weapon needs its own: the 14
+ * weapons use 16-29 in DodWeaponId order. */
+#define DOD_HLID_BASE 16
+#define DOD_HLID(id) (DOD_HLID_BASE - 1 + (int)(id))
+
+typedef struct DodWeaponDef {
+	DodWeaponId id;
+	const char *classname;		/* weapon_dod_garand */
+	const char *title;		/* "M1 Garand" */
+	DodTeam team;
+	DodFireMode mode;
+	int hl_id;			/* DOD_HLID( id ), unique per weapon */
+	const char *view_model;
+	const char *player_model;
+	const char *ammo;		/* shared by calibre: "dod_30-06" */
+	int ammo_max;			/* reserve cap, kept <= 250 for the HUD byte */
+	int clip;			/* magazine / belt size */
+	int reserve;			/* spare rounds issued at spawn */
+	float damage;			/* per bullet, or rocket centre damage */
+	float interval;			/* seconds between shots (bolt: cycle time) */
+	float spread;			/* HL1 cone half width, standing and moving slowly */
+	float recoil;			/* view punch in degrees per shot */
+	float range;			/* bullet reach in GoldSrc units */
+	float reload_seconds;
+	float scope_fov;		/* zoomed FOV, 0 = no scope */
+	int bipod;			/* can deploy a bipod for accuracy */
+	int slot;			/* HL1 weapon HUD slot / position / weight */
+	int position;
+	int weight;
+	const char *fire_sound;
+	const char *reload_sound;
+} DodWeaponDef;
+
+const DodWeaponDef *Dod_GetWeaponDef(DodWeaponId id);
+/* The retail world model of a gun lying on the ground ("models/w_garand.mdl"): the view model's name with w_ for v_, except the two that
+ * differ (v_panzerschreck -> w_pschreck, v_m1carbine -> w_m1carb). Returns characters written, 0 if the def has no view model. */
+int Dod_WeaponWorldModel(const DodWeaponDef *def, char *buffer, int size);
+const DodWeaponDef *Dod_FindWeaponDef(const char *classname);
+/* The primary weapon a class is issued, NULL for bad input. */
+const DodWeaponDef *Dod_ClassWeaponDef(DodTeam team, DodClass player_class);
+/* The Colt/Luger, NULL when the class carries no sidearm. */
+const DodWeaponDef *Dod_ClassSidearmDef(DodTeam team, DodClass player_class);
+
+/* Accuracy modifiers for Dod_WeaponSpread. */
+#define DOD_ACC_MOVING 1
+#define DOD_ACC_CROUCHED 2
+#define DOD_ACC_DEPLOYED 4	/* bipod down */
+#define DOD_ACC_SCOPED 8
+#define DOD_ACC_AIRBORNE 16
+
+/* Effective spread for a shot. Moving and jumping widen it; crouching,
+ * a deployed bipod and a scope tighten it. Never negative. */
+float Dod_WeaponSpread(const DodWeaponDef *def, int accuracy_flags);
+/* Rounds a reload moves into the magazine: limited by room and by reserve. */
+int Dod_ReloadAmount(const DodWeaponDef *def, int clip, int reserve);
+/* Whether the trigger may fire again: auto always, semi/bolt only on a new pull. */
+int Dod_WeaponMayFire(const DodWeaponDef *def, int trigger_was_held);
+
+/* ---------------------------------------------------------------- Allied country
+ * On the British maps (dod_caen, dod_flash, dod_jagd: info_doddetect detect_allies_country 1) the Allies carry the
+ * British kit: Lee-Enfield, Sten, Bren, scoped Lee-Enfield, PIAT, Webley, Fairbairn knife, Mills bomb. Weapon ids are
+ * scarce (the engine allows 32), and the American guns never appear on those maps, so the British weapons reuse their
+ * ids and class names: Dod_GetWeaponDef returns the British definition for the same id. */
+typedef enum {
+	DOD_COUNTRY_US = 0,
+	DOD_COUNTRY_BRITISH
+} DodAlliesCountry;
+
+/* Paratroopers: a team of paratroopers (info_doddetect detect_allies_paras / detect_axis_paras) carries the para kit the
+ * same way: the Allies' Garand id becomes the M1 Carbine and the Thompson id the Grease Gun, the Axis' Kar98k id the
+ * FG42; both teams use the para knife. Retail sets this per map: dod_escape, falaise, flugplatz, glider and kraftstoff
+ * for both teams, dod_jagd for the Axis, dod_sturm, switch and zalec for the Allies. */
+void Dod_SetParatroopers(int allies, int axis);
+int Dod_TeamIsParatroopers(DodTeam team);
+/* The paratrooper teams of a retail map by name: bit 0 Allies, bit 1 Axis (so 3 = both). */
+int Dod_ParatroopersForMap(const char *mapname);
+
+void Dod_SetAlliesCountry(DodAlliesCountry country);
+DodAlliesCountry Dod_GetAlliesCountry(void);
+/* The Allied country of a retail map, by name; anything else (custom maps included) is American. */
+DodAlliesCountry Dod_AlliesCountryForMap(const char *mapname);
+
+/* The sleeve body of a view model for the side holding it: 0 American, 1 British, 2 Axis. The retail models carry a
+ * three-way "sleeve" group in that order; the British guns (Sten, Enfield, Bren, PIAT, Mills) have an empty American
+ * slot, so a British soldier given 0 showed a bare forearm with no cuff. */
+int Dod_ViewSleeveBody(DodTeam team);
+
+/* ---------------------------------------------------------------- view model animations
+ * The game code sends generic animation numbers; every retail view model orders its sequences differently, so
+ * SendWeaponAnim translates them (tools/gen_viewanims.py names the sequence each role uses in each model). */
+#define DOD_GENERIC_ANIM_IDLE 0
+#define DOD_GENERIC_ANIM_FIRE1 1	/* 1-3: fire variants */
+#define DOD_GENERIC_ANIM_RELOAD 4
+#define DOD_GENERIC_ANIM_DRAW 5
+#define DOD_GENERIC_ANIM_HOLSTER 6
+#define DOD_GENERIC_ANIM_IDLE_EMPTY 7
+#define DOD_GENERIC_ANIM_FIRE_EMPTY 8
+
+typedef enum {
+	DOD_ANIM_IDLE = 0,
+	DOD_ANIM_IDLE_EMPTY,
+	DOD_ANIM_FIRE,		/* variant picks among the model's shoot (or slash) sequences */
+	DOD_ANIM_FIRE_EMPTY,
+	DOD_ANIM_RELOAD,
+	DOD_ANIM_DRAW,
+	DOD_ANIM_HOLSTER,
+	DOD_ANIM_PINPULL,	/* grenades */
+	DOD_ANIM_ROLE_COUNT
+} DodAnimRole;
+
+/* The sequence a retail view model plays for a role, or -1 when the model is unknown or has none. A missing
+ * idle_empty falls back to idle and a missing fire_empty to fire. */
+int Dod_ViewAnim(const char *view_model, DodAnimRole role, int variant);
+
+/* The sounds a retail view model plays inside a sequence (animation event 5004: reload clips, bolt cycling, the draw
+ * rustle). The GameCube DoD route does not run view model events, so the weapon code plays them at these offsets
+ * (tools/gen_viewsounds.py writes the table from the retail models). Only the fire, reload and draw roles carry any. */
+#define DOD_VIEW_SOUND_MAX 8
+typedef struct DodViewSoundEvent {
+	int ms;	/* into the sequence */
+	const char *sound;
+} DodViewSoundEvent;
+/* Fills out[0..count) and returns count (0 when the model has no sound events for the role). */
+int Dod_ViewSounds(const char *view_model, DodAnimRole role, DodViewSoundEvent out[DOD_VIEW_SOUND_MAX]);
+/* The sequence to send for a weapon: `anim` is what the code asked for (the generic number for a DoD gun, the stock
+ * constant for the HL1 crowbar and hand grenade that wear the knife and grenade models). Unchanged when the weapon
+ * or the role is not known. */
+int Dod_RemapAnim(const char *classname, int anim);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* DODGC_DOD_WEAPONS_H */

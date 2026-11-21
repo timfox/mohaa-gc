@@ -1,0 +1,163 @@
+"""Host-side tests for the engine-independent Day of Defeat rules core."""
+from pathlib import Path
+import subprocess
+import tempfile
+import unittest
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+class DodGameRulesTests(unittest.TestCase):
+    def test_native_rules_core(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            binary = Path(tmp) / "dod-game-rules"
+            subprocess.run(
+                [
+                    "cc",
+                    "-std=c99",
+                    "-Wall",
+                    "-Wextra",
+                    "-Werror",
+                    "-fsanitize=address,undefined",
+                    "-I",
+                    str(ROOT / "src"),
+                    str(ROOT / "src/dod_game.c"),
+                    str(ROOT / "src/dod_weapons.c"),
+                    str(ROOT / "tests/dod_game_rules_test.c"),
+                    "-o",
+                    str(binary),
+                    "-lm",
+                ],
+                check=True,
+            )
+            subprocess.run([str(binary)], check=True)
+
+    def test_native_hud_layout(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            binary = Path(tmp) / "dod-hud"
+            subprocess.run(
+                [
+                    "cc", "-std=c99", "-Wall", "-Wextra", "-Werror",
+                    "-fsanitize=address,undefined",
+                    "-I", str(ROOT / "src"),
+                    str(ROOT / "tests/dod_hud_test.c"),
+                    "-o", str(binary),
+                ],
+                check=True,
+            )
+            subprocess.run([str(binary)], check=True)
+
+    def test_native_retail_hud_layout(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            binary = Path(tmp) / "dod-hud-retail"
+            subprocess.run(
+                [
+                    "cc", "-std=c99", "-Wall", "-Wextra", "-Werror",
+                    "-fsanitize=address,undefined",
+                    "-I", str(ROOT / "src"),
+                    str(ROOT / "tests/dod_hud_retail_test.c"),
+                    "-o", str(binary),
+                ],
+                check=True,
+            )
+            subprocess.run([str(binary)], check=True)
+
+    def test_native_bot_logic(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            binary = Path(tmp) / "dod-bots"
+            subprocess.run(
+                [
+                    "cc", "-std=c99", "-Wall", "-Wextra", "-Werror",
+                    "-fsanitize=address,undefined",
+                    "-I", str(ROOT / "src"),
+                    str(ROOT / "src/dod_bots.c"),
+                    str(ROOT / "tests/dod_bots_test.c"),
+                    "-o", str(binary), "-lm",
+                ],
+                check=True,
+            )
+            subprocess.run([str(binary)], check=True)
+
+    def test_native_spectator_camera(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            binary = Path(tmp) / "dod-cam"
+            subprocess.run(
+                [
+                    "cc", "-std=c99", "-Wall", "-Wextra", "-Werror",
+                    "-fsanitize=address,undefined",
+                    "-I", str(ROOT / "src"),
+                    str(ROOT / "tests/dod_cam_test.c"),
+                    "-o", str(binary), "-lm",
+                ],
+                check=True,
+            )
+            subprocess.run([str(binary)], check=True)
+
+    def test_native_film_cast(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            binary = Path(tmp) / "dod-film"
+            subprocess.run(
+                [
+                    "cc", "-std=c99", "-Wall", "-Wextra", "-Werror",
+                    "-fsanitize=address,undefined",
+                    "-I", str(ROOT / "src"),
+                    str(ROOT / "src/dod_film.c"),
+                    str(ROOT / "tests/dod_film_test.c"),
+                    "-o", str(binary), "-lm",
+                ],
+                check=True,
+            )
+            subprocess.run([str(binary)], check=True)
+
+    def test_native_achievements(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            binary = Path(tmp) / "dod-achievements"
+            subprocess.run(
+                [
+                    "cc", "-std=c99", "-Wall", "-Wextra", "-Werror",
+                    "-fsanitize=address,undefined",
+                    "-I", str(ROOT / "src"),
+                    str(ROOT / "src/dod_achievements.c"),
+                    str(ROOT / "tests/dod_achievements_test.c"),
+                    "-o", str(binary),
+                ],
+                check=True,
+            )
+            subprocess.run([str(binary)], check=True)
+
+    def test_native_grunts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            binary = Path(tmp) / "dod-grunts"
+            subprocess.run(
+                [
+                    "cc", "-std=c99", "-Wall", "-Wextra", "-Werror",
+                    "-fsanitize=address,undefined",
+                    "-I", str(ROOT / "src"),
+                    str(ROOT / "src/dod_grunts.c"),
+                    str(ROOT / "tests/dod_grunts_test.c"),
+                    "-o", str(binary), "-lm",
+                ],
+                check=True,
+            )
+            subprocess.run([str(binary)], check=True)
+
+    def test_native_mohaa_scripts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            binary = Path(tmp) / "dod-mohaa"
+            subprocess.run(
+                [
+                    "cc", "-std=c99", "-Wall", "-Wextra", "-Werror",
+                    "-fsanitize=address,undefined",
+                    "-I", str(ROOT / "src"), "-I", str(ROOT / "src/mohaa"),
+                    str(ROOT / "src/dod_mohaa.c"),
+                    *[str(p) for p in sorted((ROOT / "src/mohaa").glob("ms_*.c"))],
+                    str(ROOT / "tests/dod_mohaa_test.c"),
+                    "-o", str(binary), "-lm",
+                ],
+                check=True,
+            )
+            subprocess.run([str(binary)], check=True)
+
+
+if __name__ == "__main__":
+    unittest.main()
