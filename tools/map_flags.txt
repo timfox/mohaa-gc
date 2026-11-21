@@ -6,15 +6,16 @@
 # Abbreviations used in the comments: W = --detail-walls, B/C = grid 32/64 with z 16.
 
 m1l3c     --thin-detail-in-world
-mohdm4    --detail-world --seal-box
-obj_team4 --detail-world --seal-box
-mohdm5    --detail-world --simplify-collision --collision-grid 32 --collision-grid-z 16
+# --detail-world + --seal-box left ~8k world leaves that all see each other: 6 MB of VIS.
+# Detail walls with the seal box keep them sealed with few leaves (as on m5l2b).
+mohdm4    --detail-walls --seal-box
+obj_team4 --detail-walls --seal-box
+mohdm5    --detail-walls --seal-box --simplify-collision --collision-grid 32 --collision-grid-z 16
 m5l1b     --simplify-collision --collision-grid 32 --collision-grid-z 16
 m5l3      --simplify-collision --collision-grid 80 --collision-grid-z 16
 m4l2      --simplify-collision --collision-grid 64 --collision-grid-z 16
 # world leaves over 8192: detail into walls
 m6l1c     --detail-walls
-obj_team2 --detail-walls
 m2l1      --detail-walls
 obj_team3 --detail-walls
 m3l2      --detail-walls
@@ -25,6 +26,7 @@ m4l3      --detail-walls --simplify-collision --collision-grid 32 --collision-gr
 mohdm3    --detail-walls --simplify-collision --collision-grid 32 --collision-grid-z 16
 m4l1      --detail-walls --simplify-collision --collision-grid 64 --collision-grid-z 16
 m3l3      --detail-walls --simplify-collision --collision-grid 64 --collision-grid-z 16
+obj_team2 --detail-walls --simplify-collision --collision-grid 64 --collision-grid-z 16
 m6l2a     --detail-walls --simplify-collision --collision-grid 64 --collision-grid-z 16
 m6l2b     --detail-walls --simplify-collision --collision-grid 64 --collision-grid-z 16
 m6l1a     --detail-walls --simplify-collision --collision-grid 96 --collision-grid-z 16
