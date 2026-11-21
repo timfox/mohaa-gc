@@ -565,6 +565,7 @@ static void test_setthread_and_quiet_commands(void)
 	int t;
 	reset();
 	t = add("t_gate", "trigger_multiple", 0, 0, 0);
+	ents[t].angles[1] = 90.0f;   /* facing +y */
 	files[0][0] = "maps/g.scr";
 	files[0][1] =
 		"main:\n"
@@ -580,6 +581,9 @@ static void test_setthread_and_quiet_commands(void)
 		"\taddobjective 1 1 \"Find the radio\" $t_gate\n"
 		"\tsetcurrentobjective 1\n"
 		"\texec global/nothere.scr\n"
+		"\tlocal.p = $t_gate.forwardvector * 128 + $t_gate.origin\n"
+		"\tprintln (\"ahead \" + local.p)\n"
+		"\tprintln (\"left \" + $t_gate.leftvector + \" up \" + $t_gate.upvector)\n"
 		"end\n"
 		"gate_open:\n"
 		"\tprintln (\"gate by \" + self.targetname)\n"
@@ -597,6 +601,8 @@ static void test_setthread_and_quiet_commands(void)
 	assert(near(ents[t].vel[0], 72.0f));
 	assert(!strcmp(cvar_set, "g_mohaa=1"));
 	assert(strstr(log_buf, "[center] Objective: Find the radio\n"));
+	assert(strstr(log_buf, "ahead (0.000 128.000 0.000)\n") || strstr(log_buf, "ahead (-0.000 128.000 0.000)\n"));
+	assert(strstr(log_buf, "left (-1.000 ") && strstr(log_buf, " up (0.000 0.000 1.000)") );
 }
 
 /* Walk the region block by block and the free list: tags agree, no two free blocks touch, the list is in
