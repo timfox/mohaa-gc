@@ -83,7 +83,11 @@ typedef struct DodMohaaBackend {
 	   intro once and stops; intro NULL stops the music. Paths are game-relative ("sound/mohaa/music/x.wav"),
 	   PCM wavs written by mohaa-gc tools/music.py. NULL: no music. */
 	void (*music)(const char *intro, const char *loop);
-	void *(*alloc)(void *ptr, size_t old_size, size_t new_size); /* NULL: malloc */
+	void *(*alloc)(void *ptr, size_t old_size, size_t new_size); /* NULL: pool below, else malloc */
+	/* A region the VM allocates from when alloc is NULL (dod_mohaa_pool.h), instead of the engine heap. It must
+	   stay valid until the next Dod_MohaaLevelInit or Dod_MohaaShutdown. NULL: malloc. */
+	void *pool;
+	size_t pool_size;
 } DodMohaaBackend;
 
 typedef struct DodMohaaStats {

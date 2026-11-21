@@ -1187,29 +1187,44 @@ SCRIPT_WORD = re.compile(r"[A-Za-z0-9_]+")
 SCRIPT_ENTITY = re.compile(r"\$([A-Za-z_][A-Za-z0-9_]*)")
 
 
+SCRIPT_ASSIGN = re.compile(r'targetname"?\s*=?\s*"?([A-Za-z_][A-Za-z0-9_]*)', re.I)
+_NOT_NAMES = {"local", "level", "game", "self", "group", "parm", "owner", "player", "world"}
+
+
 def script_entity_names(inputs, mapname):
-	"""Literal $names the level's scripts address ($truck, not $("crate_" + i))."""
+	"""(literal $names the level's scripts address ($truck, not $("crate_" + i)), names the scripts give
+	entities they spawn or rename: `spawn ... targetname x`, `.targetname = "x"`)."""
 	from stage_scripts import closure
 	from ubersound import collect, read
 	scripts = collect(inputs, (".scr",))
 	need, _ = closure(scripts, mapname)
-	names = set()
+	names, assigned = set(), set()
 	for path in need:
-		names.update(n.lower() for n in SCRIPT_ENTITY.findall(read(scripts[path]).decode("latin-1")))
-	return names - {"player", "world", "self"}
+		src = read(scripts[path]).decode("latin-1")
+		names.update(n.lower() for n in SCRIPT_ENTITY.findall(src))
+		assigned.update(n.lower() for n in SCRIPT_ASSIGN.findall(src))
+	return names - {"player", "world", "self"}, assigned - _NOT_NAMES
 
 
-def name_report(bsp, text, wanted):
-	"""(names the scripts address that nothing in the .map has, {name: classname} the BSP had but the .map
-	lost). The first list is what a script will find NULL in game; the second says why, when it is ours."""
+def name_report(bsp, text, wanted, assigned=frozenset()):
+	"""Sort the $names the scripts address that nothing in the .map has: (missing, lost, spawned).
+	missing: what a script will find NULL in game (path node names are not missing: the game finds them
+	in the .nodes sidecar). lost: {name: classname} of those the BSP had but the .map dropped, which is
+	ours to fix. spawned: names the scripts give entities themselves, found once that code has run."""
 	written = {m.lower() for m in re.findall(r'"targetname" "([^"]+)"', text)}
 	in_bsp = {}
 	for e in bsp.entities[1:]:
-		if e.get("targetname"):
-			in_bsp.setdefault(e["targetname"].lower(), e.get("classname", ""))
-	missing = sorted(n for n in wanted if n not in written)
+		tn = e.get("targetname", "").lstrip("$").lower()
+		if not tn:
+			continue
+		if e.get("classname", "").lower() in PATH_NODES:
+			written.add(tn)
+		in_bsp.setdefault(tn, e.get("classname", ""))
+	unfound = sorted(n for n in wanted if n not in written)
+	spawned = [n for n in unfound if n in assigned and n not in in_bsp]
+	missing = [n for n in unfound if n not in spawned]
 	lost = {n: in_bsp[n] for n in missing if n in in_bsp}
-	return missing, lost
+	return missing, lost, spawned
 
 
 def script_names(inputs, mapname):
@@ -1324,15 +1339,17 @@ def main(argv=None) -> int:
 		print(f"  {k:<28} {stats[k]}")
 	print(f"  textures                     {len(namer.by_shader)}")
 	if args.scripts and words is not None:
-		missing, lost = name_report(bsp, text, script_entity_names(args.scripts, mapname))
+		wanted, assigned = script_entity_names(args.scripts, mapname)
+		missing, lost, spawned = name_report(bsp, text, wanted, assigned)
+		if spawned:
+			print(f"  $names the scripts spawn themselves: {len(spawned)}: " + " ".join(spawned))
 		if missing:
 			print(f"  $names the scripts use that the map lacks: {len(missing)} "
-			      f"({len(lost)} were in the BSP: " + ", ".join(f"{n} ({c})" for n, c in sorted(lost.items())[:20]) +
-			      (" ..." if len(lost) > 20 else "") + ")")
+			      f"({len(lost)} were in the BSP: " + ", ".join(f"{n} ({c})" for n, c in sorted(lost.items())) + ")")
 			rest = [n for n in missing if n not in lost]
 			if rest:
-				print("  not in the BSP either (spawned by scripts, or from another level): " + " ".join(rest[:30]) +
-				      (" ..." if len(rest) > 30 else ""))
+				print(f"  not in the BSP or spawned by name ({len(rest)}; another level's, or built by $(\"..\" + n)): "
+				      + " ".join(rest))
 	if skipped:
 		print("  point/brush entities not written: " + ", ".join(f"{k} x{v}" for k, v in skipped.most_common(15)))
 	return 0

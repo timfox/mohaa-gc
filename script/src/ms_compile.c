@@ -16,6 +16,12 @@
 /* arena for tokens and AST                                             */
 /* ================================================================== */
 
+/* Blocks are small so a compile fits in a fragmented heap (GameCube: the largest free piece after m1l1
+   loads is 11 KB); a token or node bigger than this gets a block of its own. */
+#ifndef MS_ARENA_BLOCK
+#define MS_ARENA_BLOCK 4096
+#endif
+
 typedef struct arena_blk {
     struct arena_blk *next;
     size_t used, cap;
@@ -31,7 +37,7 @@ static void *arena_alloc(arena *a, size_t n)
 {
     n = (n + 7) & ~(size_t)7;
     if (!a->head || a->head->used + n > a->head->cap) {
-        size_t cap = n > 16384 ? n : 16384;
+        size_t cap = n > MS_ARENA_BLOCK ? n : MS_ARENA_BLOCK;
         arena_blk *b = (arena_blk *)ms_alloc(a->vm, sizeof(arena_blk) + cap);
         if (!b)
             return NULL;

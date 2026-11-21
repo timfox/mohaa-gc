@@ -3,6 +3,15 @@
 
 #include "morpheus.h"
 #include "dod_mohaa_paths.h"
+#include "dod_mohaa_pool.h"
+
+static MohaaPool g_pool;  /* used when the backend gives a region (DodMohaaBackend.pool) */
+
+static void *pool_alloc(void *ptr, size_t old_size, size_t new_size)
+{
+	(void)old_size;
+	return MohaaPool_Realloc(&g_pool, ptr, new_size);
+}
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -231,6 +240,12 @@ static void h_print(void *user, int channel, const char *text)
 				(unsigned)(ms_memory_used(S.vm) / 1024u), (unsigned)(ms_memory_peak(S.vm) / 1024u),
 				(unsigned)(S.budget / 1024u));
 			S.be.print(DOD_MOHAA_PRINT_CONSOLE, msg);
+			if (S.be.alloc == pool_alloc) {
+				snprintf(msg, sizeof(msg), "mohaa: script pool %u of %u KB used, largest free piece %u KB\n",
+					(unsigned)(g_pool.used / 1024u), (unsigned)(g_pool.size / 1024u),
+					(unsigned)(MohaaPool_Largest(&g_pool) / 1024u));
+				S.be.print(DOD_MOHAA_PRINT_CONSOLE, msg);
+			}
 		}
 		break;
 	default: S.be.print(DOD_MOHAA_PRINT_CONSOLE, text); break;
@@ -1294,8 +1309,16 @@ int Dod_MohaaLevelInit(const DodMohaaBackend *backend, const char *mapname, floa
 	if (!backend || !mapname || !*mapname)
 		return 0;
 	S.be = *backend;
-	if (!S.be.alloc)
-		S.be.alloc = default_alloc;
+	if (!S.be.alloc) {
+		if (S.be.pool && MohaaPool_Init(&g_pool, S.be.pool, S.be.pool_size)) {
+			S.be.alloc = pool_alloc;
+			/* the VM cannot use more than the region, so a larger budget would only hide where it ran out */
+			if (!memory_budget || memory_budget > g_pool.size)
+				memory_budget = g_pool.size;
+		} else {
+			S.be.alloc = default_alloc;
+		}
+	}
 	S.now = now;
 	snprintf(path, sizeof(path), "maps/%s.scr", mapname);
 	snprintf(S.level_script, sizeof(S.level_script), "%s", path);

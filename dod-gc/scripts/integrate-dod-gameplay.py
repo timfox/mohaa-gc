@@ -668,7 +668,7 @@ DOD_DLL_SOURCES = (
 	"dod_film.c", "dod_film.h", "dod_film_actor.cpp",
 	"dod_achievements.c", "dod_achievements.h",
 	"dod_grunts.c", "dod_grunts.h", "dod_grunt.cpp",
-	"dod_mohaa.c", "dod_mohaa.h", "dod_mohaa_paths.h", "dod_mohaa_ents.cpp", "dod_mohaa_ents.h",
+	"dod_mohaa.c", "dod_mohaa.h", "dod_mohaa_paths.h", "dod_mohaa_pool.h", "dod_mohaa_ents.cpp", "dod_mohaa_ents.h",
 )
 # The MOHAA script VM (src/mohaa/, vendored from timfox/mohaa-gc), copied flat into dlls/.
 MOHAA_VM_SOURCES = ("morpheus.h", "ms_internal.h", "ms_value.c", "ms_compile.c", "ms_vm.c", "ms_builtins.c")
