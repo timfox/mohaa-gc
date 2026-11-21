@@ -1350,6 +1350,12 @@ static int walk_test(void *ctx, const float a[3], const float b[3])
 }
 
 /* maps/<map>.nodes: loaded for names, linked when the game can test walks */
+static void node_key(void *ctx, int node, const char *key, const char *value)
+{
+	(void)ctx;
+	Dod_MohaaEntityKey(DOD_MOHAA_NODE_ID | (uint32_t)node, key, value);
+}
+
 static void nodes_load(const char *mapname)
 {
 	char path[128], msg[256];
@@ -1361,6 +1367,7 @@ static void nodes_load(const char *mapname)
 	if (!text)
 		return;
 	MohaaPaths_Load(&S.paths, text, len);
+	MohaaPaths_Keys(text, len, S.paths.count, node_key, NULL);
 	if (S.be.free_file)
 		S.be.free_file(text);
 	if (S.be.walkable && S.paths.count > 1)
