@@ -674,9 +674,10 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 					namer.special_used.add("CLIP")
 				stats["world_brushes_written"] += 1
 				continue
-		if simplify_collision and cls in ("detail", "clip") and not is_axial_brush(faces):
+		sky_detail = cls == "detail" and " sky [" in txt  # SDHLT: no sky in any entity, so world
+		if simplify_collision and cls in ("detail", "clip") and not sky_detail and not is_axial_brush(faces):
 			voxelize_brush(faces, voxels, collision_grid)
-			if cls == "detail" and detail_walls and " sky [" not in txt:
+			if cls == "detail" and detail_walls:
 				thin.append((txt, faces))  # drawn and shot, no world leaves, no player hulls
 				stats["detail_to_wall"] += 1
 			elif cls == "detail":
