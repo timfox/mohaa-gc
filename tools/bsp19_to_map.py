@@ -40,6 +40,14 @@ DEFAULT_SCALE = 72.0 / 94.0
 GOLDSRC_HULL_HALF_HEIGHT = 36.0  # standing hull is -36..36 around the origin
 EPS = 0.01
 BIG = 1.0e5
+WORLD_LIMIT = 32000.0  # SDHLT rejects brushes past +/-32768; keep a margin
+# sdHLCSG plane matching (brush.cpp FindIntPlane): normals within DIR_EPSILON per
+# component and distances within DIST_EPSILON share one plane. Two sides of a
+# brush that land on the same plane (or its flip) are a fatal "coplanar plane".
+# We test with twice those tolerances because sdHLCSG also snaps to planes
+# created by earlier brushes.
+CSG_DIR_EPS = 2 * 0.0001
+CSG_DIST_EPS = 2 * 0.04
 
 # ---------------------------------------------------------------- geometry
 
@@ -195,7 +203,7 @@ class TextureNamer:
 
 def side_texture(sh: b19.Shader, namer: TextureNamer, brush_class: str) -> str:
 	tex = _side_texture(sh, namer, brush_class)
-	if tex in ("sky", "!water", "AAATRIGGER"):
+	if tex in ("sky", "!water", "AAATRIGGER"):  # ORIGIN is added where origin brushes are written
 		namer.special_used.add(tex)
 	return tex
 
@@ -262,7 +270,44 @@ def parse_vec(s, default=(0.0, 0.0, 0.0)):
 # ---------------------------------------------------------------- convert
 
 
-def brush_text(bsp, brush, scale, offset, namer, stats, cls):
+def csg_plane(p0, p1, p2):
+	"""The plane sdHLCSG derives from three written points (PlaneFromPoints)."""
+	n = _norm(_cross(_sub(p0, p1), _sub(p2, p1)))
+	return n, _dot(n, p0)
+
+
+def _same_plane(a, b):
+	(n1, d1), (n2, d2) = a, b
+	return all(abs(n1[k] - n2[k]) < CSG_DIR_EPS for k in range(3)) and abs(d1 - d2) < CSG_DIST_EPS
+
+
+def csg_safe_sides(sides, stats):
+	"""sides: [(points, rest_of_line)]. Drops later sides that sdHLCSG would read as the
+	same plane as an earlier one; returns None when two sides are flips of one plane
+	(a brush thinner than DIST_EPSILON) or a side has no normal."""
+	kept, planes = [], []
+	for pts, rest in sides:
+		rp = tuple(tuple(float(_f(c)) for c in p) for p in pts)
+		n, d = csg_plane(*rp)
+		if n == (0.0, 0.0, 0.0):
+			stats["brushes_degenerate"] += 1
+			return None
+		flip = ((-n[0], -n[1], -n[2]), -d)
+		if any(_same_plane(flip, q) for q in planes):
+			stats["brushes_too_thin"] += 1
+			return None
+		if any(_same_plane((n, d), q) for q in planes):
+			stats["sides_coplanar_dropped"] += 1
+			continue
+		planes.append((n, d))
+		kept.append((pts, rest))
+	if len(kept) < 4:
+		stats["brushes_degenerate"] += 1
+		return None
+	return kept
+
+
+def brush_text(bsp, brush, scale, offset, namer, stats, cls, entity=False):
 	planes = []
 	for si in range(brush.first_side, brush.first_side + brush.num_sides):
 		if si >= len(bsp.brushsides):
@@ -279,13 +324,24 @@ def brush_text(bsp, brush, scale, offset, namer, stats, cls):
 	if len(faces) < 4:
 		stats["brushes_degenerate"] += 1
 		return None
-	lines = ["{"]
+	if any(abs(c) > WORLD_LIMIT for _, _, w, _ in faces for p in w for c in p):
+		# Unbounded or runaway brush (MOHAA keeps a few); SDHLT would abort on it.
+		stats["brushes_outside_world"] += 1
+		return None
+	sides = []
 	for n, d, w, sh in faces:
 		tex = side_texture(sh, namer, cls)
-		p0, p1, p2 = three_points(n, w)
+		if entity and tex == "sky":
+			tex = "NULL"  # SDHLT: "SKY brushes not allowed in entity"
 		u, v = texture_axes(n)
-		pts = " ".join("( %s %s %s )" % tuple(_f(c) for c in p) for p in (p0, p1, p2))
-		lines.append(f"{pts} {tex} [ {_f(u[0])} {_f(u[1])} {_f(u[2])} 0 ] [ {_f(v[0])} {_f(v[1])} {_f(v[2])} 0 ] 0 1 1")
+		rest = f"{tex} [ {_f(u[0])} {_f(u[1])} {_f(u[2])} 0 ] [ {_f(v[0])} {_f(v[1])} {_f(v[2])} 0 ] 0 1 1"
+		sides.append((three_points(n, w), rest))
+	sides = csg_safe_sides(sides, stats)
+	if sides is None:
+		return None
+	lines = ["{"]
+	for pts, rest in sides:
+		lines.append(" ".join("( %s %s %s )" % tuple(_f(c) for c in p) for p in pts) + " " + rest)
 		stats["faces"] += 1
 	lines.append("}")
 	return "\n".join(lines)
@@ -313,6 +369,7 @@ def origin_brush(o, half=8.0):
 
 
 def model_brushes(bsp, model_index, scale, offset, namer, stats):
+	entity = model_index != 0
 	m = bsp.models[model_index]
 	out = []
 	for bi in range(m.first_brush, m.first_brush + m.num_brushes):
@@ -322,9 +379,7 @@ def model_brushes(bsp, model_index, scale, offset, namer, stats):
 		stats["brush_class_" + cls] += 1
 		if cls in ("origin", "skip", "nonsolid"):
 			continue
-		if cls == "water" and model_index == 0:
-			pass
-		txt = brush_text(bsp, br, scale, offset, namer, stats, cls)
+		txt = brush_text(bsp, br, scale, offset, namer, stats, cls, entity)
 		if txt:
 			out.append((cls, txt))
 	return out
@@ -449,6 +504,7 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 					keys[k] = e[k]
 			if gcn in ROTATING:
 				brushes.append(origin_brush(tuple(c * scale for c in o)))
+				namer.special_used.add("ORIGIN")
 			blocks.append(kv_block(keys, brushes))
 			stats["brush_entities_written"] += 1
 			continue

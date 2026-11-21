@@ -50,6 +50,65 @@ class GeometryTest(unittest.TestCase):
 		self.assertEqual(len(faces), 6)
 
 
+def tiny_bsp(world_boxes, door_boxes, door_class="func_rotatingdoor"):
+	"""In-memory Bsp: shader 0 = concrete, 1 = sky. Boxes are (lo, hi, side_shader)."""
+	bsp = b19.Bsp("tiny", 19, 0, 0, {})
+	bsp.shaders = [b19.Shader("textures/concrete", 0, b19.CONTENTS_SOLID, 0),
+	               b19.Shader("textures/sky/sky1", b19.SURF_SKY, b19.CONTENTS_SOLID, 0)]
+
+	def add(boxes):
+		first = len(bsp.brushes)
+		for lo, hi, sh in boxes:
+			fs = len(bsp.brushsides)
+			for n, d, _ in box_planes(lo, hi):
+				bsp.planes.append((*n, d))
+				bsp.brushsides.append((len(bsp.planes) - 1, sh))
+			bsp.brushes.append(b19.Brush(fs, 6, 0))
+		return first, len(boxes)
+
+	for boxes in (world_boxes, door_boxes):
+		fb, nb = add(boxes)
+		bsp.models.append(b19.Model((-512, -512, -512), (512, 512, 512), 0, 0, fb, nb))
+	bsp.entities = [{"classname": "worldspawn"},
+	                {"classname": door_class, "model": "*1", "origin": "0 0 0"},
+	                {"classname": "info_player_allied", "origin": "0 0 16"}]
+	return bsp
+
+
+class CompileSafetyTest(unittest.TestCase):
+	"""Failures seen when compiling the retail maps with SDHLT."""
+
+	def test_thin_brush_dropped(self):
+		bsp = tiny_bsp([((0, 0, 0), (64, 64, 0.03), 0), ((0, 0, 0), (64, 64, 64), 0)], [])
+		text, _, stats, _ = conv.convert(bsp, scale=1.0)
+		self.assertEqual(stats["brushes_too_thin"], 1)
+		self.assertEqual(stats["world_brushes_written"], 1)
+
+	def test_near_coplanar_side_dropped(self):
+		stats = conv.Counter()
+		sides = [(conv.three_points(n, w), "X") for n, d, w, _ in conv.brush_faces(box_planes((0, 0, 0), (64, 64, 64)))]
+		top = next(pts for pts, _ in sides if conv.csg_plane(*pts)[0] == (0.0, 0.0, 1.0))
+		sides.append((tuple((x, y, z + 0.01) for x, y, z in top), "X"))  # rounds onto the same sdHLCSG plane
+		kept = conv.csg_safe_sides(sides, stats)
+		self.assertEqual(len(kept), 6)
+		self.assertEqual(stats["sides_coplanar_dropped"], 1)
+
+	def test_runaway_brush_dropped(self):
+		bsp = tiny_bsp([((-80000, 0, 0), (80000, 1, 1), 0), ((0, 0, 0), (64, 64, 64), 0)], [])
+		_, _, stats, _ = conv.convert(bsp, scale=1.0)
+		self.assertEqual(stats["brushes_outside_world"], 1)
+		self.assertEqual(stats["world_brushes_written"], 1)
+
+	def test_entity_sky_becomes_null_and_origin_in_wad(self):
+		bsp = tiny_bsp([((0, 0, 0), (64, 64, 64), 1)], [((100, 0, 0), (110, 64, 64), 1)])
+		text, namer, _, _ = conv.convert(bsp, scale=1.0)
+		ent = text.split('"classname" "func_door_rotating"')[1]
+		self.assertNotIn(" sky ", ent)
+		self.assertIn(" NULL ", ent)
+		self.assertIn(" sky ", text.split('"classname" "func_door_rotating"')[0])  # world keeps sky
+		self.assertIn("ORIGIN", namer.special_used)
+
+
 class TerrainTest(unittest.TestCase):
 	def test_wedge_brush(self):
 		txt = conv.wedge_brush((0, 0, 10), (64, 0, 20), (0, 64, 30), 16, "NULL", "NULL")
