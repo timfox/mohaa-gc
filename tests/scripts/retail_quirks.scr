@@ -1,0 +1,37 @@
+// constructs found in the shipped MOHAA scripts
+main:
+	thread pick "rifle"
+	thread pick "pistol"
+	thread pick "grenade"
+	local.e = NIL
+	if (local.e != NIL)
+		println "wrong";
+	else
+	{
+		println "semicolon before else ok";
+	}
+	local.path = "p1"
+	println ("XXX walking on path " + local.path")
+	println "after stray quote"
+end
+
+// plain labels inside a switch are case labels; the same names repeat per switch
+pick local.w:
+	switch (local.w)
+	{
+		pistol:
+		rifle:
+			println "small arms " local.w
+			break
+		default:
+			println "other " local.w
+	}
+	switch (local.w)
+	{
+		pistol:
+			println "second switch pistol"
+			break
+		grenade:
+			println "second switch grenade"
+	}
+end

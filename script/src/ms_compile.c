@@ -310,8 +310,16 @@ again:
                 L->p++;
             L->p++;
         }
-        if (L->p >= L->end || *L->p != '"')
-            perr(P, L->line, "unterminated string");
+        if (L->p >= L->end || *L->p != '"') {
+            /* no closing quote on this line: the quote is just an identifier
+               character (shipped scripts rely on this, e.g. m3l1b.scr) */
+            L->p = s - 1;
+            while (L->p < L->end && !is_delim(*L->p))
+                L->p++;
+            t->type = T_IDENT;
+            t->str = copy_str(P, s - 1, (size_t)(L->p - (s - 1)), 0);
+            goto done;
+        }
         t->type = T_STRING;
         t->str = copy_str(P, s, (size_t)(L->p - s), 1);
         L->p++;
@@ -875,7 +883,7 @@ static node *parse_stmt_decl(parser *P)
         n = mk(P, N_IF, line);
         n->a = parse_prim(P);
         n->b = parse_cond_body(P);
-        while (tt(P) == T_EOL)
+        while (tt(P) == T_EOL || tt(P) == T_SEMI)
             next(P);
         if (tt(P) == T_ELSE) {
             next(P);
@@ -1376,6 +1384,21 @@ static ms_value case_value(cg *G, node *v)
     return out;
 }
 
+static void add_case(cg *G, ms_switch *S, ms_value key, int line)
+{
+    if (key.type == MS_NIL)
+        perr(G->P, line, "out of memory");
+    ms_case *nc = (ms_case *)ms_realloc(G->vm, S->cases, sizeof(ms_case) * (S->n + 1));
+    if (!nc) {
+        ms_release(G->vm, key);
+        perr(G->P, line, "out of memory");
+    }
+    S->cases = nc;
+    S->cases[S->n].key = key;
+    S->cases[S->n].pc = G->len;
+    S->n++;
+}
+
 static void gen_stmt(cg *G, node *n)
 {
     if (!n)
@@ -1389,8 +1412,13 @@ static void gen_stmt(cg *G, node *n)
         break;
     case N_LABEL: {
         ctl *sw = innermost_switch(G);
-        if (sw && n->i == 0 && strcmp(n->s, "default") == 0) {
-            G->sw[sw->sw].def = G->len;
+        if (sw && n->i == 0) {
+            /* inside a switch, "name:" is a case label ("pistol:"), scoped to that switch */
+            if (strcmp(n->s, "default") == 0) {
+                G->sw[sw->sw].def = G->len;
+                break;
+            }
+            add_case(G, &G->sw[sw->sw], ms_string(G->vm, n->s), n->line);
             break;
         }
         if (n->i == 0) {
@@ -1413,14 +1441,7 @@ static void gen_stmt(cg *G, node *n)
         ctl *sw = innermost_switch(G);
         if (!sw)
             perr(G->P, n->line, "case outside of switch");
-        ms_switch *S = &G->sw[sw->sw];
-        ms_case *nc = (ms_case *)ms_realloc(G->vm, S->cases, sizeof(ms_case) * (S->n + 1));
-        if (!nc)
-            perr(G->P, n->line, "out of memory");
-        S->cases = nc;
-        S->cases[S->n].key = case_value(G, n->a);
-        S->cases[S->n].pc = G->len;
-        S->n++;
+        add_case(G, &G->sw[sw->sw], case_value(G, n->a), n->line);
         break;
     }
     case N_IF: {
