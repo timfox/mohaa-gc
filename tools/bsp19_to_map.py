@@ -273,6 +273,10 @@ TRIGGER_CLASS_MAP = {
 	"trigger_push": "trigger_push",
 	"trigger_pushany": "trigger_push",
 }
+# Brush models whose own target only aims them: one exploder set's chunks each fly at their own
+# target, 259 of them on m5l2b. They merge per set (and fly as one piece, at the first one's target)
+# so the map fits GoldSrc's 512 models.
+TARGET_FREE_NAMES = {"exploderchunk"}
 TRIGGER_KEYS = ("targetname", "target", "wait", "delay", "dmg", "speed", "angle", "angles")
 # MOHAA brush entities that are volumes, not walls: no player/bullet collision.
 NONSOLID_BRUSH = {"func_rain": "func_illusionary"}
@@ -1078,8 +1082,9 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 				# all at once through $name (m5l2b's "$targetname" exploder pieces put it back over
 				# the 512-model limit once their names were read)
 				# every MOHAA key counts (#set and the like aren't written but tell pieces apart)
-				group = tuple(sorted(keys.items())) + tuple(sorted(
-					(k, v) for k, v in e.items() if k not in keys and k not in ("model", "origin")))
+				ignore = ("model", "origin") + (("target",) if keys.get("targetname") in TARGET_FREE_NAMES else ())
+				group = tuple(sorted((k, v) for k, v in keys.items() if k not in ignore)) + tuple(sorted(
+					(k, v) for k, v in e.items() if k not in keys and k not in ignore))
 				if group in same_key_models:
 					same_key_models[group].extend(brushes)
 					stats["same_key_models_merged"] += 1
