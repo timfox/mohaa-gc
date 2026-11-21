@@ -1629,6 +1629,27 @@ ms_script *ms_compile(ms_vm *vm, const char *path, const char *text, size_t len,
     if (!S)
         perr(P, 0, "out of memory");
     S->path = ms_strdup(vm, path);
+    /* growth doubles buffers; give the slack back (matters at GameCube sizes) */
+    {
+        uint8_t *c = (uint8_t *)ms_realloc(vm, G->code, G->len);
+        if (c)
+            G->code = c;
+        if (G->nlines) {
+            ms_line *l = (ms_line *)ms_realloc(vm, G->lines, sizeof(ms_line) * G->nlines);
+            if (l)
+                G->lines = l;
+        }
+        if (G->nconsts) {
+            ms_value *k = (ms_value *)ms_realloc(vm, G->consts, sizeof(ms_value) * G->nconsts);
+            if (k)
+                G->consts = k;
+        }
+        if (G->nlabels) {
+            ms_label *lb = (ms_label *)ms_realloc(vm, G->labels, sizeof(ms_label) * G->nlabels);
+            if (lb)
+                G->labels = lb;
+        }
+    }
     S->code = G->code;
     S->code_len = G->len;
     S->consts = G->consts;
