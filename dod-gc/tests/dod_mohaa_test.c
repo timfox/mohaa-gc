@@ -334,6 +334,25 @@ static void test_budget_refuses_cleanly(void)
 	files[0][1] = "main:\n\tprintln \"hi\"\nend\n";
 	assert(!Dod_MohaaLevelInit(&b, "big", 0, 512));   /* far too small to compile */
 	assert(strstr(log_buf, "[error]"));
+	/* a big global that does not fit later: the error says how full the budget was */
+	{
+		static char big[64 * 1024];
+		size_t o = 0;
+		int i;
+		o += (size_t)snprintf(big + o, sizeof(big) - o, "main:\n");
+		for (i = 0; o + 64 < sizeof(big); i++)
+			o += (size_t)snprintf(big + o, sizeof(big) - o, "\tlocal.v%d = \"string number %d\"\n", i, i);
+		snprintf(big + o, sizeof(big) - o, "end\n");
+		reset();
+		files[0][0] = "maps/fit.scr";
+		files[0][1] = "main:\n\texec global/big.scr\nend\n";
+		files[1][0] = "global/big.scr";
+		files[1][1] = big;
+		assert(Dod_MohaaLevelInit(&b, "fit", 0, 48 * 1024));
+		run(0.05f, 0.2f);
+		assert(strstr(log_buf, "out of memory"));
+		assert(strstr(log_buf, "mohaa: script memory ") && strstr(log_buf, "budget 48 KB\n"));
+	}
 }
 
 static void test_actors(void)
@@ -545,6 +564,7 @@ static void test_setthread_and_quiet_commands(void)
 	files[0][1] =
 		"main:\n"
 		"\t$t_gate lighton\n"
+		"\t$t_gate light 1 0.5 0.5 200\n"
 		"\t$t_gate lightradius 200\n"
 		"\t$t_gate disconnect_paths\n"
 		"\texec global/nothere.scr\n"

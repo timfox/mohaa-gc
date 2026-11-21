@@ -11,6 +11,7 @@
 #include "shake.h"
 
 #include <stdio.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -206,11 +207,62 @@ static int IsActorClass( const char *classname )
 	return !strcmp( classname, "actor" ) || !strncmp( classname, "models/human/", 13 ) || !strncmp( classname, "human/", 6 );
 }
 
-static edict_t *SpawnActorAt( int team, const Vector &origin, float yaw, const char *targetname )
+/* Every soldier this binding put in the pool, with its side, so a full pool can make room (see SpawnActorAt). */
+static struct { uint32_t id; int team; } g_actors[64];
+static void ActorWait( int team, const Vector &origin, float yaw, const char *name );
+
+static void ActorTrack( edict_t *e, int team )
+{
+	const uint32_t id = IdFor( e );
+	for( int k = 0; k < 64; k++ )
+		if( !g_actors[k].id || !EdictFor( g_actors[k].id ) ) {
+			g_actors[k].id = id;
+			g_actors[k].team = team;
+			return;
+		}
+}
+
+/* Make room for a soldier the script needs now: the living soldier with no name farthest from every player goes back
+ * to the waiting list (scripts cannot address it, so nothing notices) and gives up its slot. 0: none to move. */
+static int ActorMakeRoom( void )
+{
+	int best = -1;
+	float best_d = -1.0f;
+	for( int k = 0; k < 64; k++ ) {
+		edict_t *e = g_actors[k].id ? EdictFor( g_actors[k].id ) : NULL;
+		if( !e || e->v.targetname || e->v.health <= 0 )
+			continue;
+		float nearest = 1e9f;
+		for( int p = 1; p <= gpGlobals->maxClients; p++ ) {
+			edict_t *pe = INDEXENT( p );
+			if( pe && !pe->free && ( pe->v.flags & FL_CLIENT ) )
+				nearest = fminf( nearest, ( pe->v.origin - e->v.origin ).Length() );
+		}
+		if( nearest > best_d ) {
+			best = k;
+			best_d = nearest;
+		}
+	}
+	if( best < 0 )
+		return 0;
+	edict_t *e = EdictFor( g_actors[best].id );
+	ActorWait( g_actors[best].team, e->v.origin - Vector( 0, 0, 36 ), e->v.angles.y, NULL );
+	g_actors[best].id = 0;
+	return DodGrunts_ScriptRemove( e );
+}
+
+/* must: the script addresses this soldier (it has a name, or the script spawned it), so it takes an unnamed
+ * soldier's slot when the pool is full rather than wait */
+static edict_t *SpawnActorAt( int team, const Vector &origin, float yaw, const char *targetname, int must = 0 )
 {
 	edict_t *e = DodGrunts_ScriptSpawn( team, origin, yaw );
-	if( e && targetname && targetname[0] )
+	if( !e && ( must || ( targetname && targetname[0] ) ) && ActorMakeRoom() )
+		e = DodGrunts_ScriptSpawn( team, origin, yaw );
+	if( !e )
+		return NULL;
+	if( targetname && targetname[0] )
 		e->v.targetname = ALLOC_STRING( targetname );
+	ActorTrack( e, team );
 	return e;
 }
 
@@ -233,7 +285,7 @@ static uint32_t SpawnActor( const char *classname, const char *const *keys, cons
 		else if( !strcmp( keys[i], "model" ) && strstr( values[i], "german" ) )
 			team = DOD_TEAM_AXIS;
 	}
-	return IdFor( SpawnActorAt( team, origin, yaw, targetname ) );
+	return IdFor( SpawnActorAt( team, origin, yaw, targetname, 1 ) );
 }
 
 /* Soldiers that found the grunt pool full (MOHAA maps place more than its 48 slots: m1l1 has 54). They wait here
@@ -367,8 +419,13 @@ static uint32_t M_Spawn( const char *classname, const char *const *keys, const c
 	if( !strcmp( classname, "script_model" ) || !strcmp( classname, "script_origin" ) || !strcmp( classname, "script_object" ) )
 		classname = "info_target";
 	edict_t *e = CREATE_NAMED_ENTITY( ALLOC_STRING( classname ) );
-	if( FNullEnt( e ) )
-		return 0;
+	if( FNullEnt( e ) ) {
+		/* a MOHAA class GoldSrc lacks (trigger_save, animate/..., ...): a point entity still answers to its name */
+		classname = "info_target";
+		e = CREATE_NAMED_ENTITY( ALLOC_STRING( classname ) );
+		if( FNullEnt( e ) )
+			return 0;
+	}
 	for( int i = 0; i < count; i++ )
 	{
 		if( !strcmp( keys[i], "model" ) )
@@ -485,6 +542,7 @@ void DodGC_MohaaLevelInit( void )
 	b.get_cvar = M_GetCvar;
 	b.fade = M_Fade;
 	g_nwaiting = 0;	/* the last map's waiting soldiers went with it */
+	memset( g_actors, 0, sizeof( g_actors ) );
 	memset( g_dead, 0, sizeof( g_dead ) );
 	g_next_waiting_check = 0.0f;
 	size_t budget = (size_t)CVAR_GET_FLOAT( "mohaa_script_kb" ) * 1024u;
