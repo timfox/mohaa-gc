@@ -213,6 +213,10 @@ def parse_entities(text: str) -> list[dict]:
 		kv = {}
 		for k, v in re.findall(r'"([^"]*)"\s+"([^"]*)"', block.group(1)):
 			kv[k] = v
+		# Radiant writes many MOHAA names as "$targetname" (flak88_1 on m5l2b, the exploders);
+		# the game reads them as targetname. A plain key, when both are there, wins.
+		for k in [k for k in kv if k.startswith("$") and len(k) > 1]:
+			kv.setdefault(k[1:], kv.pop(k))
 		ents.append(kv)
 	return ents
 

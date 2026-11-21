@@ -296,6 +296,14 @@ class CompileSafetyTest(unittest.TestCase):
 		_, _, s2, _ = conv.convert(plain, scale=1.0, simplify_collision=True)
 		self.assertEqual(s2["collision_voxels"], 0)
 
+	def test_dollar_keys_read_as_plain(self):
+		ents = b19.parse_entities('{\n"classname" "turretweapon_german_88mmflakturret"\n"$targetname" "flak88_1"\n'
+		                          '"$basename" "flak88_1_base"\n}\n{\n"targetname" "a"\n"$targetname" "b"\n}\n')
+		self.assertEqual(ents[0]["targetname"], "flak88_1")
+		self.assertEqual(ents[0]["basename"], "flak88_1_base")
+		self.assertNotIn("$targetname", ents[0])
+		self.assertEqual(ents[1], {"targetname": "a"})
+
 	def test_entity_sky_becomes_null_and_origin_in_wad(self):
 		bsp = tiny_bsp([((0, 0, 0), (64, 64, 64), 1)], [((100, 0, 0), (110, 64, 64), 1)])
 		text, namer, _, _ = conv.convert(bsp, scale=1.0)
