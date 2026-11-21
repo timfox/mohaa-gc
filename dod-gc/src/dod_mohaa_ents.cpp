@@ -512,6 +512,34 @@ static void MusicSend( void )
 	}
 }
 
+#if defined( __GAMECUBE__ )
+/* The script VM's memory comes from the engine's map arena tail when it has room: the heap is fragmented by
+ * the time a big level has loaded (m1l1 leaves 35 KB free in 11 pieces) while the tail still has megabytes.
+ * The arena resets at map change, possibly before the next level init, so the reset hook drops the VM then;
+ * hooks run once, so it is registered again on every carve. Heap is the fallback. */
+extern "C" size_t GC_MapArenaFind( size_t bytes );
+extern "C" void *GC_MapLoadBufferTailAlloc( size_t after_offset, size_t need );
+extern "C" void GC_SetMapArenaResetHook( void ( *hook )( void ) );
+
+static void M_PoolReset( void )
+{
+	Dod_MohaaDropPool();
+}
+
+static void *M_PoolCarve( size_t bytes )
+{
+	size_t at = GC_MapArenaFind( bytes + 32 );
+	unsigned char *p;
+	if( at == (size_t)-1 )
+		return NULL;
+	p = (unsigned char *)GC_MapLoadBufferTailAlloc( at, bytes + 32 );
+	if( !p )
+		return NULL;
+	GC_SetMapArenaResetHook( M_PoolReset );
+	return (void *)( ( (unsigned long)p + 31 ) & ~31UL );
+}
+#endif
+
 void DodGC_MohaaLevelInit( void )
 {
 	if( !g_mohaa_cvar_registered )
@@ -552,10 +580,24 @@ void DodGC_MohaaLevelInit( void )
 	memset( g_dead, 0, sizeof( g_dead ) );
 	g_next_waiting_check = 0.0f;
 	size_t budget = (size_t)CVAR_GET_FLOAT( "mohaa_script_kb" ) * 1024u;
+#if defined( __GAMECUBE__ )
+	{
+		char scr[96];
+		snprintf( scr, sizeof( scr ), "maps/%s.scr", STRING( gpGlobals->mapname ) );
+		/* only a level with a script spends arena on it */
+		if( budget && g_engfuncs.pfnGetFileSize && g_engfuncs.pfnGetFileSize( scr ) > 0 ) {
+			b.pool = M_PoolCarve( budget );
+			b.pool_size = b.pool ? budget : 0;
+			if( !b.pool )
+				ALERT( at_console, "mohaa: no room for %u KiB of script memory in the map arena, using the heap\n",
+					(unsigned)( budget / 1024u ) );
+		}
+	}
+#endif
 	if( Dod_MohaaLevelInit( &b, STRING( gpGlobals->mapname ), gpGlobals->time, budget ) ) {
 		DodGrunts_PrecacheBodies();	/* the mission's soldiers wear the sides' player bodies */
-		ALERT( at_console, "mohaa: running maps/%s.scr (budget %u KiB)\n", STRING( gpGlobals->mapname ),
-			(unsigned)( budget / 1024u ) );
+		ALERT( at_console, "mohaa: running maps/%s.scr (budget %u KiB, %s)\n", STRING( gpGlobals->mapname ),
+			(unsigned)( budget / 1024u ), b.pool ? "map arena" : "heap" );
 	}
 }
 

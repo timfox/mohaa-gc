@@ -671,6 +671,16 @@ static void test_pool_backend(void)
 	reset();
 	files[0][0] = "maps/p.scr";
 	files[0][1] = "main:\n\tprintln \"x\"\nend\n";
+	b.pool_size = sizeof(region);
+	assert(Dod_MohaaLevelInit(&b, "p", 0, 0));
+	/* the region is taken back (GameCube map arena reset): the script stops and nothing touches it again */
+	memset(region, 0xA5, sizeof(region));
+	Dod_MohaaDropPool();
+	Dod_MohaaGetStats(&st);
+	assert(!st.active);
+	Dod_MohaaThink(1.0f);
+	Dod_MohaaShutdown();
+	Dod_MohaaDropPool();   /* no pool in use: nothing to do */
 	b.pool_size = 1024;
 	assert(!Dod_MohaaLevelInit(&b, "p", 0, 0));
 	assert(strstr(log_buf, "script pool") || strstr(log_buf, "cannot create"));

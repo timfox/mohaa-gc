@@ -85,7 +85,8 @@ typedef struct DodMohaaBackend {
 	void (*music)(const char *intro, const char *loop);
 	void *(*alloc)(void *ptr, size_t old_size, size_t new_size); /* NULL: pool below, else malloc */
 	/* A region the VM allocates from when alloc is NULL (dod_mohaa_pool.h), instead of the engine heap. It must
-	   stay valid until the next Dod_MohaaLevelInit or Dod_MohaaShutdown. NULL: malloc. */
+	   stay valid until the next Dod_MohaaLevelInit or Dod_MohaaShutdown, or until Dod_MohaaDropPool says it is
+	   gone. NULL: malloc. */
 	void *pool;
 	size_t pool_size;
 } DodMohaaBackend;
@@ -104,6 +105,9 @@ int Dod_MohaaLevelInit(const DodMohaaBackend *backend, const char *mapname, floa
 /* Every server frame: sends "prespawn" then "spawn" to level, runs threads, finishes moves. */
 void Dod_MohaaThink(float now);
 void Dod_MohaaShutdown(void);
+/* The backend's pool region is being taken back (GameCube: the map arena resets at map change): stop the
+ * script and forget everything in the region without touching it. Does nothing when no pool is in use. */
+void Dod_MohaaDropPool(void);
 /* Game events: Dod_MohaaNotify(id, "trigger") wakes "$t waittill trigger". */
 void Dod_MohaaNotify(uint32_t id, const char *event);
 void Dod_MohaaEntityFreed(uint32_t id);

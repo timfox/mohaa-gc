@@ -7,6 +7,16 @@
 
 static MohaaPool g_pool;  /* used when the backend gives a region (DodMohaaBackend.pool) */
 
+static void *default_alloc(void *ptr, size_t old_size, size_t new_size)
+{
+	(void)old_size;
+	if (!new_size) {
+		free(ptr);
+		return NULL;
+	}
+	return realloc(ptr, new_size);
+}
+
 static void *pool_alloc(void *ptr, size_t old_size, size_t new_size)
 {
 	(void)old_size;
@@ -1247,6 +1257,18 @@ void Dod_MohaaShutdown(void)
 	MohaaPaths_Free(&S.paths);
 	S.path_links = 0;
 	memset(S.routes, 0, sizeof(S.routes));
+	memset(&g_pool, 0, sizeof(g_pool));
+}
+
+void Dod_MohaaDropPool(void)
+{
+	if (S.be.alloc != pool_alloc)
+		return;
+	/* the region is gone (or about to be reused): forget everything in it without freeing */
+	S.vm = NULL;
+	S.sounds = NULL;
+	Dod_MohaaShutdown();
+	S.be.alloc = default_alloc;
 }
 
 int Dod_MohaaPathNodes(int *links)
@@ -1285,16 +1307,6 @@ static void nodes_load(const char *mapname)
 	snprintf(msg, sizeof(msg), "mohaa: %d path nodes from %s, %d links (%d walk tests)\n", S.paths.count, path,
 		S.path_links, traces);
 	S.be.print(DOD_MOHAA_PRINT_CONSOLE, msg);
-}
-
-static void *default_alloc(void *ptr, size_t old_size, size_t new_size)
-{
-	(void)old_size;
-	if (!new_size) {
-		free(ptr);
-		return NULL;
-	}
-	return realloc(ptr, new_size);
 }
 
 int Dod_MohaaLevelInit(const DodMohaaBackend *backend, const char *mapname, float now, size_t memory_budget)
