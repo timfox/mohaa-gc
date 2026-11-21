@@ -7,10 +7,13 @@ against these convex brushes the way MOHAA's own Quake 3 collision does, with br
 planes pushed out by the box and axial bevels so corners don't snag.
 
 File layout, little-endian:
-  header  char magic[4] "MCOL"; int32 version (1); int32 numplanes, numbrushes,
+  header  char magic[4] "MCOL"; int32 version (2); int32 numplanes, numbrushes,
           numsides, numnodes
   planes  numplanes  x { float normal[3]; float dist; }
   brushes numbrushes x { int32 firstside; int32 numsides; float mins[3]; float maxs[3]; }
+          A brush is its six axial planes, which are exactly its bounds (a real axial
+          face lies on the bounds, a bevel is defined by them), followed by its
+          non-axial sides. Axial planes are never stored: that halves the file.
   sides   numsides   x { int32 planenum; }
   nodes   numnodes   x { float mins[3]; float maxs[3]; int32 a; int32 b; }
           b > 0: leaf holding brushes a .. a+b-1; b == 0: inner node, children a, a+1.
@@ -23,7 +26,7 @@ from __future__ import annotations
 import struct
 
 MAGIC = b"MCOL"
-VERSION = 1
+VERSION = 2
 LEAF_SIZE = 4
 DIST_EPSILON = 0.03125  # Quake's SURFACE_CLIP_EPSILON
 
@@ -32,18 +35,20 @@ def _dot(a, b):
 	return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
 
 
-def with_axial_bevels(planes, verts):
-	"""planes: [(normal, dist)]. Adds any missing axis-aligned bounding planes."""
-	out = list(planes)
+def _axial(n):
+	return sum(1 for c in n if abs(c) > 1e-6) == 1
+
+
+def bound_planes(mins, maxs):
+	"""The six axial planes of a brush, in the order the engine tests them."""
+	out = []
 	for ax in range(3):
-		for sign in (1.0, -1.0):
-			n = [0.0, 0.0, 0.0]
-			n[ax] = sign
-			if any(abs(p[0][0] - n[0]) < 1e-6 and abs(p[0][1] - n[1]) < 1e-6 and abs(p[0][2] - n[2]) < 1e-6
-			       for p in planes):
-				continue
-			d = max(sign * v[ax] for v in verts)
-			out.append((tuple(n), d))
+		n = [0.0, 0.0, 0.0]
+		n[ax] = -1.0
+		out.append((tuple(n), -mins[ax]))
+		n = [0.0, 0.0, 0.0]
+		n[ax] = 1.0
+		out.append((tuple(n), maxs[ax]))
 	return out
 
 
@@ -54,7 +59,7 @@ class Collision:
 	def add_brush(self, planes, verts):
 		mins = tuple(min(v[i] for v in verts) for i in range(3))
 		maxs = tuple(max(v[i] for v in verts) for i in range(3))
-		self.brushes.append((with_axial_bevels(planes, verts), mins, maxs))
+		self.brushes.append(([p for p in planes if not _axial(p[0])], mins, maxs))
 
 	def build(self):
 		"""Returns (planes, brushes, sides, nodes) with brushes in leaf order."""
@@ -138,12 +143,11 @@ def trace_box(mcol, start, end, mins, maxs):
 	def overlaps(lo, hi):
 		return all(lo[i] <= bmax[i] and hi[i] >= bmin[i] for i in range(3))
 
-	def brush(first, num):
+	def brush(first, num, bl, bh):
 		enter, leave = -1.0, 1.0
 		clipn = None
 		startout = getsout = False
-		for s in sides[first:first + num]:
-			n, d = planes[s]
+		for n, d in bound_planes(bl, bh) + [planes[s] for s in sides[first:first + num]]:
 			off = [maxs[i] if n[i] < 0 else mins[i] for i in range(3)]
 			dist = d - _dot(off, n)
 			d1 = _dot(start, n) - dist
@@ -184,7 +188,7 @@ def trace_box(mcol, start, end, mins, maxs):
 		if b:
 			for first, num, bl, bh in brushes[a:a + b]:
 				if overlaps(bl, bh):
-					brush(first, num)
+					brush(first, num, bl, bh)
 		else:
 			stack.extend((a, a + 1))
 	return tuple(best)
