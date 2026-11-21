@@ -1,0 +1,69 @@
+// language basics
+main:
+	local.a = 5
+	local.b = 2
+	println "add " (local.a + local.b) " div " (local.a / local.b) " fdiv " (local.a / 2.0)
+	println ("str" + local.a + "-" + 1.5)
+	level.count = 0
+	for (local.i = 1; local.i <= 4; local.i++)
+	{
+		if (local.i == 2)
+			continue
+		level.count += local.i
+	}
+	println "count " level.count
+	local.n = 0
+	while (1) {
+		local.n++
+		if (local.n >= 3) break
+	}
+	println "n " local.n
+	local.arr[1] = "one"
+	local.arr["two"] = 2
+	local.arr[3][1] = "nested"
+	println "arr " local.arr[1] " " local.arr["two"] " " local.arr[3][1] " size " local.arr.size
+	local.c = a::b::c
+	println "carr " local.c[2] " size " local.c.size
+	local.v = (1 2 3)
+	println "vec " local.v " y " local.v[1] " scaled " (local.v * 2)
+	println "neg " -local.a " sum " (local.a - 1)
+	switch (local.b) {
+		case 1:
+			println "case 1"
+			break
+		case 2:
+			println "case 2"
+		case 3:
+			println "fall 3"
+			break
+		default:
+			println "default"
+	}
+	switch "foo" {
+		case "bar": println "bar"; break
+		default: println "default hit"
+	}
+	if (local.undefined == NIL) println "nil ok"
+	if !(isdefined local.undefined) println "not defined"
+	println "tern " (local.a > 3 ? "big" : "small")
+	println "logic " (1 && 0) " " (0 || 2) " " (!0)
+	local.s = "hello"
+	println "len " local.s.size " ch " local.s[1]
+	local.m = makearray
+		"x" 1
+		"y"
+	endarray
+	println "makearray " local.m[1][1] " " local.m[2]
+	local.r = waitthread add 3 4
+	println "ret " local.r
+	try {
+		local.z = 1 / 0
+		println "not reached"
+	} catch {
+		println "caught"
+	}
+	println "typeof " (typeof local.v) " " (typeof 1.0)
+end
+
+add local.x local.y:
+end (local.x + local.y)

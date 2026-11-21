@@ -1,0 +1,9 @@
+// shared helper, run with exec / thread file::label
+lock:
+	self.locked = 1
+	println "locked " self.targetname
+end
+
+count local.n:
+	level.helper_calls++
+end (local.n * 10)

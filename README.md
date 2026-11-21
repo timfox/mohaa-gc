@@ -73,12 +73,24 @@ Writes a Valve-220 .map that SDHLT compiles to BSP30. Stage one only covers brus
 
 Not handled yet: texture alignment (Q3-family brush sides store none, so faces are box-projected), curved patches, terrain and static models (render bake plus engine mesh collision), triggers, and point entities other than player starts.
 
+## Mission scripts
+
+`script/` holds a clean-room, MIT-licensed VM for MOHAA's `.scr` (Morpheus)
+scripting language, written in C99 for the GameCube build. Script commands
+are bound to DoD-GC entities by the game code. See [script/README.md](script/README.md).
+
+```bash
+make -C script && out/msrun tests/scripts/mission.scr      # mock-world run
+python3 tools/check_scripts.py "/path/to/MOHAA/main"      # compile every retail script
+```
+
 ## Tests
 
 ```bash
 python3 -m unittest discover -s tests
 ```
 
+The script VM tests build `out/msrun` with the system C compiler.
 `tests/make_sample_bsp.py` writes a small synthetic MOHAA BSP (v17 or v19), so
 the tests need no game data.
 

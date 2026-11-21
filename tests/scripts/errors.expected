@@ -1,0 +1,8 @@
+  0.00 [error] script error: errors.scr:3: binary '+' applied to NIL and int: incompatible types
+  0.00 after bad add NIL
+  0.00 [error] script error: errors.scr:5: command 'hide' applied to NULL
+  0.00 missing target is NULL: 1
+  0.00 [error] script error: errors.scr:14: possible infinite loop (10000 iterations without a wait), thread killed
+  0.00 still running
+  0.00 [error] script error: errors.scr:9: unknown command 'unknowncommand' for thread
+  0.00 done
