@@ -17,10 +17,120 @@ static void *default_alloc(void *ptr, size_t old_size, size_t new_size)
 	return realloc(ptr, new_size);
 }
 
+/* Blocks the pool cannot fit go to the heap, each behind a link so that dropping the pool can free them.
+   The link is two pointers, a multiple of 8 bytes, so the block after it keeps malloc's alignment. */
+typedef struct HeapLink {
+	struct HeapLink *prev, *next;
+} HeapLink;
+static HeapLink *g_heap;   /* overflow blocks, newest first */
+static size_t g_heap_used;
+
+static int pool_owns(const void *ptr)
+{
+	const unsigned char *q = (const unsigned char *)ptr;
+	int r;
+	for (r = 0; r < g_pool.nregions; r++)
+		if (q >= g_pool.rbase[r] && q < g_pool.rbase[r] + g_pool.rsize[r])
+			return 1;
+	return 0;
+}
+
+static void heap_unlink(HeapLink *h)
+{
+	if (h->prev)
+		h->prev->next = h->next;
+	else
+		g_heap = h->next;
+	if (h->next)
+		h->next->prev = h->prev;
+}
+
+static void heap_link(HeapLink *h)
+{
+	h->prev = NULL;
+	h->next = g_heap;
+	if (g_heap)
+		g_heap->prev = h;
+	g_heap = h;
+}
+
+static void *heap_get(size_t n)
+{
+	HeapLink *h;
+	if (n > (size_t)-1 - sizeof(HeapLink))
+		return NULL;
+	h = (HeapLink *)malloc(sizeof(HeapLink) + n);
+	if (!h)
+		return NULL;
+	heap_link(h);
+	g_heap_used += n;
+	return h + 1;
+}
+
+static void heap_put(void *ptr, size_t old_size)
+{
+	HeapLink *h = (HeapLink *)ptr - 1;
+	heap_unlink(h);
+	g_heap_used -= old_size;
+	free(h);
+}
+
+/* free every overflow block: the VM that owned them is gone */
+static void heap_drop(void)
+{
+	while (g_heap) {
+		HeapLink *h = g_heap;
+		g_heap = h->next;
+		free(h);
+	}
+	g_heap_used = 0;
+}
+
 static void *pool_alloc(void *ptr, size_t old_size, size_t new_size)
 {
-	(void)old_size;
-	return MohaaPool_Realloc(&g_pool, ptr, new_size);
+	void *q;
+	if (!ptr) {
+		q = MohaaPool_Alloc(&g_pool, new_size);
+		return q ? q : (new_size ? heap_get(new_size) : NULL);
+	}
+	if (pool_owns(ptr)) {
+		if (!new_size) {
+			MohaaPool_Free(&g_pool, ptr);
+			return NULL;
+		}
+		q = MohaaPool_Realloc(&g_pool, ptr, new_size);
+		if (q)
+			return q;
+		q = heap_get(new_size);   /* the pool is full: move the block out */
+		if (!q)
+			return NULL;
+		memcpy(q, ptr, old_size < new_size ? old_size : new_size);
+		MohaaPool_Free(&g_pool, ptr);
+		return q;
+	}
+	if (!new_size) {
+		heap_put(ptr, old_size);
+		return NULL;
+	}
+	q = MohaaPool_Alloc(&g_pool, new_size);   /* back into the pool when it has room again */
+	if (!q) {
+		HeapLink *h = (HeapLink *)ptr - 1, *g;
+		if (new_size > (size_t)-1 - sizeof(HeapLink))
+			return NULL;
+		heap_unlink(h);
+		g = (HeapLink *)realloc(h, sizeof(HeapLink) + new_size);
+		if (!g) {
+			heap_link(h);
+			return NULL;
+		}
+		heap_link(g);
+		g_heap_used += new_size;
+		g_heap_used -= old_size;
+		return g + 1;
+	}
+	memcpy(q, ptr, old_size < new_size ? old_size : new_size);
+	heap_put(ptr, old_size);
+	return q;
 }
 
 /* compiler scratch goes to the top of the pool (see dod_mohaa_pool.h) */
@@ -263,6 +373,8 @@ static void h_print(void *user, int channel, const char *text)
 				snprintf(msg, sizeof(msg), "mohaa: script pool %u of %u KB used, largest free piece %u KB\n",
 					(unsigned)(g_pool.used / 1024u), (unsigned)(g_pool.size / 1024u),
 					(unsigned)(MohaaPool_Largest(&g_pool) / 1024u));
+				S.be.print(DOD_MOHAA_PRINT_CONSOLE, msg);
+				snprintf(msg, sizeof(msg), "mohaa: %u KB more on the engine heap\n", (unsigned)(g_heap_used / 1024u));
 				S.be.print(DOD_MOHAA_PRINT_CONSOLE, msg);
 			}
 		}
@@ -548,11 +660,21 @@ static int c_waitmove(ms_call *c)
 
 /* ---- actors (MOHAA AI soldiers; the game plays them with grunts) ---- */
 
+/* say what the script sent the order to, so the cause shows in the log */
+static int not_actor(ms_call *c, uint32_t id)
+{
+	const char *cls = id && valid(id) && !is_node(id) ? S.be.get_str(id, DOD_MOHAA_CLASSNAME) : NULL;
+	const char *tn = id && valid(id) && !is_node(id) ? S.be.get_str(id, DOD_MOHAA_TARGETNAME) : NULL;
+	return ms_call_error(c, "%s: not an actor (%s%s%s)", ms_call_name(c),
+		!id || !valid(id) ? "no such entity" : is_node(id) ? "a path node" : cls && *cls ? cls : "?",
+		tn && *tn ? " $" : "", tn && *tn ? tn : "");
+}
+
 static int actor_order(ms_call *c, int order, const float pos[3])
 {
 	static const float zero[3] = {0, 0, 0};
 	if (!S.be.actor || !S.be.actor(target_id(c), order, pos ? pos : zero))
-		return ms_call_error(c, "%s: not an actor", ms_call_name(c));
+		return not_actor(c, target_id(c));
 	return 0;
 }
 
@@ -646,13 +768,13 @@ static int c_goto(ms_call *c)
 	if (!dest_arg(c, 0, pos))
 		return ms_call_error(c, "%s needs a vector, an entity or a node name", name);
 	if (!S.be.actor || !valid(id) || is_node(id))
-		return ms_call_error(c, "%s: not an actor", name);
+		return not_actor(c, id);
 	get_vec(id, DOD_MOHAA_ORIGIN, from);
 	from[2] -= 36.0f;	/* a grunt's origin is its body centre; nodes are at the feet */
 	nodes = route_plan(id, order, from, pos, leg);
 	if (!S.be.actor(id, order, leg)) {
 		forget(id);
-		return ms_call_error(c, "%s: not an actor", name);
+		return not_actor(c, id);
 	}
 	if (nodes) {
 		char msg[96];
@@ -1157,6 +1279,18 @@ void Dod_MohaaEntityMoved(uint32_t from, uint32_t to)
 		ms_move_entity_vars(S.vm, from, to);
 }
 
+void Dod_MohaaSetOther(uint32_t id)
+{
+	ms_value v = ms_nil();
+	if (!S.vm)
+		return;
+	if (id && valid(id))
+		v = ms_entity(id);
+	else
+		v.type = MS_NULL;
+	ms_set_parm(S.vm, "other", &v);
+}
+
 static int c_spawn(ms_call *c)
 {
 	const char *keys[16], *vals[16];
@@ -1340,6 +1474,7 @@ void Dod_MohaaShutdown(void)
 	S.path_links = 0;
 	memset(S.routes, 0, sizeof(S.routes));
 	memset(&g_pool, 0, sizeof(g_pool));
+	heap_drop();   /* normally empty: the VM freed its blocks */
 }
 
 void Dod_MohaaDropPool(void)
@@ -1349,7 +1484,7 @@ void Dod_MohaaDropPool(void)
 	/* the region is gone (or about to be reused): forget everything in it without freeing */
 	S.vm = NULL;
 	S.sounds = NULL;
-	Dod_MohaaShutdown();
+	Dod_MohaaShutdown();   /* frees the overflow blocks on the heap too */
 	S.be.alloc = default_alloc;
 }
 
@@ -1416,10 +1551,8 @@ int Dod_MohaaLevelInit(const DodMohaaBackend *backend, const char *mapname, floa
 			for (r = 0; r < 7; r++)
 				if (S.be.pool_more[r] && S.be.pool_more_size[r])
 					MohaaPool_AddRegion(&g_pool, S.be.pool_more[r], S.be.pool_more_size[r]);
+			/* the budget stays as asked: what the pool cannot hold goes to the heap (m5l2b got one 64 KB piece) */
 			S.be.alloc = pool_alloc;
-			/* the VM cannot use more than the region, so a larger budget would only hide where it ran out */
-			if (!memory_budget || memory_budget > g_pool.size)
-				memory_budget = g_pool.size;
 		} else {
 			S.be.alloc = default_alloc;
 		}

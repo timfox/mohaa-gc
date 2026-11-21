@@ -114,6 +114,8 @@ void Dod_MohaaEntityKey(uint32_t id, const char *key, const char *value);
 /* The backend replaced entity from with to (a mohaa_actor placeholder became a grunt): to keeps from's script
  * variables, map keys included. from may be an id no entity has, to park them meanwhile. */
 void Dod_MohaaEntityMoved(uint32_t from, uint32_t to);
+/* Who set off the event about to be notified (a trigger's activator): scripts read it as parm.other. 0: NULL. */
+void Dod_MohaaSetOther(uint32_t id);
 /* The backend's pool region is being taken back (GameCube: the map arena resets at map change): stop the
  * script and forget everything in the region without touching it. Does nothing when no pool is in use. */
 void Dod_MohaaDropPool(void);

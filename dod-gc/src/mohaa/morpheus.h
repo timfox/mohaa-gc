@@ -129,6 +129,9 @@ int ms_set_entity_var(ms_vm *vm, uint32_t id, const char *name, const ms_value *
    thing). Variables the new id already has win. */
 void ms_move_entity_vars(ms_vm *vm, uint32_t from, uint32_t to);
 
+/* Set parm.<name> (parm.other, parm.owner: who caused the event a thread is about to see). */
+int ms_set_parm(ms_vm *vm, const char *name, const ms_value *v);
+
 /* Host removed an entity: wake "removed" waiters, kill threads owned by it. */
 void ms_entity_removed(ms_vm *vm, uint32_t id);
 

@@ -596,15 +596,23 @@ static void test_setthread_and_quiet_commands(void)
 		"gate_open:\n"
 		"\tprintln (\"gate by \" + self.targetname)\n"
 		"\tprintln (\"set \" + (self.set + 1) + \" group \" + self.group)\n"
+		"\tif (parm.other == NULL) println \"other none\"\n"
+		"\telse println (\"other \" + parm.other.targetname)\n"
+		"\t$t_gate runto $t_gate\n"
 		"end\n";
 	assert(Dod_MohaaLevelInit(&b, "g", 0, 0));
 	Dod_MohaaEntityKey(make_id(t), "#set", "3");   /* map keys arrive as the map's entities spawn, after the VM starts */
 	Dod_MohaaEntityKey(make_id(t), "#group", "left side");
 	run(0.05f, 0.2f);
+	Dod_MohaaSetOther(make_id(t));   /* the trigger's activator */
+	Dod_MohaaRunThread("gate_open", make_id(t));
+	Dod_MohaaSetOther(0);
 	Dod_MohaaRunThread("gate_open", make_id(t));
 	Dod_MohaaRunThread("no_label", make_id(t));
 	run(0.25f, 0.3f);
 	assert(strstr(log_buf, "gate by t_gate\n"));
+	assert(strstr(log_buf, "other t_gate\n") && strstr(log_buf, "other none\n"));
+	assert(strstr(log_buf, "runto: not an actor (trigger_multiple $t_gate)"));
 	assert(strstr(log_buf, "setthread no_label: no such label in maps/g.scr"));
 	assert(strstr(log_buf, "mohaa: could not load global/nothere.scr (scripts hold "));
 	assert(!strstr(log_buf, "lighton") && !strstr(log_buf, "disconnect_paths") && !strstr(log_buf, "holster"));
@@ -834,9 +842,36 @@ static void test_pool_backend(void)
 	Dod_MohaaThink(1.0f);
 	Dod_MohaaShutdown();
 	Dod_MohaaDropPool();   /* no pool in use: nothing to do */
-	b.pool_size = 1024;
-	assert(!Dod_MohaaLevelInit(&b, "p", 0, 0));
-	assert(strstr(log_buf, "script pool") || strstr(log_buf, "cannot create"));
+	/* a pool too small for the level: the rest goes to the heap, and dropping the pool frees that too (ASan) */
+	reset();
+	files[0][0] = "maps/p.scr";
+	files[0][1] =
+		"main:\n"
+		"\tfor (local.i = 0; local.i < 200; local.i++)\n"
+		"\t\tlevel.list[local.i] = \"item \" + local.i\n"
+		"\tprintln \"overflow \" level.list[199]\n"
+		"\twait 5\n"
+		"end\n";
+	b.pool_size = 8 * 1024;
+	assert(Dod_MohaaLevelInit(&b, "p", 0, 0));
+	run(0.05f, 0.3f);
+	assert(strstr(log_buf, "overflow item 199"));
+	Dod_MohaaGetStats(&st);
+	assert(st.errors == 0 && st.memory > b.pool_size);
+	Dod_MohaaDropPool();
+	/* and with a budget, running out still says where the memory went */
+	reset();
+	files[0][0] = "maps/p.scr";
+	files[0][1] =
+		"main:\n"
+		"\tfor (local.i = 0; local.i < 5000; local.i++)\n"
+		"\t\tlevel.list[local.i] = \"item \" + local.i\n"
+		"end\n";
+	b.pool_size = 8 * 1024;
+	assert(Dod_MohaaLevelInit(&b, "p", 0, 48 * 1024));
+	run(0.05f, 0.3f);
+	assert(strstr(log_buf, "out of memory") && strstr(log_buf, "more on the engine heap"));
+	Dod_MohaaShutdown();
 }
 
 int main(void)
