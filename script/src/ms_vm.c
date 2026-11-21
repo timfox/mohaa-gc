@@ -828,6 +828,15 @@ static void store_indexed(ms_vm *vm, ms_thread *t, ms_value *root, ms_value *idx
                 ms_release(vm, *slot);
                 *slot = c;
             }
+        } else if (slot->type == MS_VECTOR && k == n - 1) {
+            /* local.v[2] = 64: one component of a vector (vectors are values, so this changes only this slot) */
+            int32_t i = ms_to_int(&idx[k]);
+            if (i < 0 || i > 2)
+                vm_error(vm, t, "vector index %d out of range", (int)i);
+            else
+                slot->u.v[i] = ms_to_float(&val);
+            ms_release(vm, val);
+            return;
         } else {
             vm_error(vm, t, "cannot index-assign into %s", ms_type_name(slot->type));
             ms_release(vm, val);

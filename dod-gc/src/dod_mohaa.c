@@ -54,6 +54,7 @@ static struct {
 	int nmoods, mood, fallback;
 	char cue[MUSIC_PATH];
 	int cue_loop;
+	char level_script[128];	/* maps/<map>.scr, where a trigger's setthread label lives */
 	/* path nodes, and the soldiers walking them: a route is the goal plus the node it heads for now */
 	MohaaPaths paths;
 	int path_links;
@@ -193,8 +194,17 @@ static void *h_alloc(void *user, void *ptr, size_t old_size, size_t new_size)
 
 static char *h_load(void *user, const char *path, size_t *len)
 {
+	char *text;
 	(void)user;
-	return S.be.load_file(path, len);
+	text = S.be.load_file(path, len);
+	if (!text && S.vm) {
+		/* missing, or the engine had no room for the text: say how much the scripts hold, to tell which */
+		char msg[192];
+		snprintf(msg, sizeof(msg), "mohaa: could not load %s (scripts hold %u KB, peak %u KB)\n", path,
+			(unsigned)(ms_memory_used(S.vm) / 1024u), (unsigned)(ms_memory_peak(S.vm) / 1024u));
+		S.be.print(DOD_MOHAA_PRINT_CONSOLE, msg);
+	}
+	return text;
 }
 
 static void h_free(void *user, char *text)
@@ -931,6 +941,14 @@ static int c_stufftext(ms_call *c)
 /* thread commands                                                      */
 /* ------------------------------------------------------------------ */
 
+/* Accepted and dropped. Dynamic lights cost the GameCube a lightmap rebuild per frame, so entity lights stay off;
+   path links are fixed at level load (an opened door does not add a link, a closed one does not cut one). */
+static int c_ignored(ms_call *c)
+{
+	(void)c;
+	return 0;
+}
+
 /* "isalive $guy": 1 while the entity exists and has health left */
 static int c_isalive(ms_call *c)
 {
@@ -1054,6 +1072,12 @@ static void register_commands(ms_vm *vm)
 		{"soundtrack", MS_ON_THREAD | MS_ON_ENTITY, c_soundtrack},
 		{"forcemusic", MS_ON_THREAD | MS_ON_ENTITY, c_forcemusic},
 		{"isalive", MS_ON_THREAD, c_isalive},
+		{"lighton", MS_ON_ENTITY, c_ignored},
+		{"lightoff", MS_ON_ENTITY, c_ignored},
+		{"lightradius", MS_ON_ENTITY, c_ignored},
+		{"lightcolor", MS_ON_ENTITY, c_ignored},
+		{"disconnect_paths", MS_ON_ENTITY, c_ignored},
+		{"connect_paths", MS_ON_ENTITY, c_ignored},
 		{"getcvar", MS_ON_THREAD, c_getcvar},
 		{"fadeout", MS_ON_THREAD, c_fade},
 		{"fadein", MS_ON_THREAD, c_fade},
@@ -1154,6 +1178,7 @@ int Dod_MohaaLevelInit(const DodMohaaBackend *backend, const char *mapname, floa
 		S.be.alloc = default_alloc;
 	S.now = now;
 	snprintf(path, sizeof(path), "maps/%s.scr", mapname);
+	snprintf(S.level_script, sizeof(S.level_script), "%s", path);
 	text = S.be.load_file(path, &len);
 	if (!text)
 		return 0;   /* not a MOHAA map: no VM, no cost */
@@ -1241,6 +1266,18 @@ void Dod_MohaaNotify(uint32_t id, const char *event)
 	if (!strcmp(event, "death"))
 		forget(id);
 	ms_notify(S.vm, &ent, event);
+}
+
+void Dod_MohaaRunThread(const char *label, uint32_t self)
+{
+	ms_value me = ms_entity(self);
+	if (!S.vm || !label || !*label)
+		return;
+	if (!ms_exec(S.vm, S.level_script, label, self ? &me : NULL, NULL, 0)) {
+		char msg[320];
+		snprintf(msg, sizeof(msg), "mohaa: setthread %s: no such label in %s\n", label, S.level_script);
+		S.be.print(DOD_MOHAA_PRINT_ERROR, msg);
+	}
 }
 
 void Dod_MohaaEntityFreed(uint32_t id)

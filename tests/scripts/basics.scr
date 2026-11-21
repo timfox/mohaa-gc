@@ -63,6 +63,10 @@ main:
 		println "caught"
 	}
 	println "typeof " (typeof local.v) " " (typeof 1.0)
+	local.w = (1 2 3)
+	local.w2 = local.w
+	local.w[2] = 64
+	println "vector component " local.w " " local.w2
 end
 
 add local.x local.y:

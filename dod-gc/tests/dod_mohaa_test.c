@@ -535,6 +535,34 @@ static void test_routes(void)
 	}
 }
 
+static void test_setthread_and_quiet_commands(void)
+{
+	DodMohaaBackend b = backend();
+	int t;
+	reset();
+	t = add("t_gate", "trigger_multiple", 0, 0, 0);
+	files[0][0] = "maps/g.scr";
+	files[0][1] =
+		"main:\n"
+		"\t$t_gate lighton\n"
+		"\t$t_gate lightradius 200\n"
+		"\t$t_gate disconnect_paths\n"
+		"\texec global/nothere.scr\n"
+		"end\n"
+		"gate_open:\n"
+		"\tprintln (\"gate by \" + self.targetname)\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "g", 0, 0));
+	run(0.05f, 0.2f);
+	Dod_MohaaRunThread("gate_open", make_id(t));
+	Dod_MohaaRunThread("no_label", make_id(t));
+	run(0.25f, 0.3f);
+	assert(strstr(log_buf, "gate by t_gate\n"));
+	assert(strstr(log_buf, "setthread no_label: no such label in maps/g.scr"));
+	assert(strstr(log_buf, "mohaa: could not load global/nothere.scr (scripts hold "));
+	assert(!strstr(log_buf, "lighton") && !strstr(log_buf, "disconnect_paths"));
+}
+
 int main(void)
 {
 	test_no_script_no_vm();
@@ -545,6 +573,7 @@ int main(void)
 	test_sounds();
 	test_music();
 	test_routes();
+	test_setthread_and_quiet_commands();
 	Dod_MohaaShutdown();
 	assert(Dod_MohaaPathNodes(NULL) == 0);
 	printf("dod_mohaa_test: ok\n");

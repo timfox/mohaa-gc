@@ -101,6 +101,8 @@ void Dod_MohaaShutdown(void);
 /* Game events: Dod_MohaaNotify(id, "trigger") wakes "$t waittill trigger". */
 void Dod_MohaaNotify(uint32_t id, const char *event);
 void Dod_MohaaEntityFreed(uint32_t id);
+/* A trigger with MOHAA's setthread fired: run that label of the level script with self = the trigger. */
+void Dod_MohaaRunThread(const char *label, uint32_t self);
 void Dod_MohaaGetStats(DodMohaaStats *out);
 /* Path nodes this level loaded and linked (0 when none). */
 int Dod_MohaaPathNodes(int *links);
