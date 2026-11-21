@@ -67,7 +67,7 @@ class MeshCollisionTest(unittest.TestCase):
 			faces = conv.brush_faces(box_planes((i * 100, 0, 0), (i * 100 + 32, 32, 32)))
 			col.add_brush([(n, d) for n, d, _, _ in faces], [p for _, _, w, _ in faces for p in w])
 		m = roundtrip(col)
-		planes, brushes, sides, nodes = m
+		planes, brushes, sides, nodes, _, _ = m
 		self.assertEqual(len(brushes), 50)
 		for k in (0, 17, 49):
 			frac, _, _ = mc.trace_box(m, (k * 100 + 16, 16, 300), (k * 100 + 16, 16, 0), *PLAYER)
@@ -113,7 +113,7 @@ class TerrainPatchMeshTest(unittest.TestCase):
 		self.assertEqual(col.brushes, [])
 
 	def test_terrain_heights(self):
-		m, stats = self.mesh(mesh_terrain_tol=2.0)
+		m, stats = self.mesh(mesh_terrain=True)
 		self.assertEqual(stats["mesh_terrain_patches"], 3)
 		# flat patch at x,y -1024..-512 (cells of 64, patch at -16,-16): ground z = 0
 		feet, n = drop(m, -768, -768)
@@ -125,15 +125,18 @@ class TerrainPatchMeshTest(unittest.TestCase):
 		self.assertAlmostEqual(feet, (256 + 16) / 8.0, delta=0.1)
 		self.assertGreater(n[2], 0.99)
 
-	def test_bumpy_terrain_within_tolerance(self):
-		m, stats = self.mesh(mesh_terrain_tol=2.0)
+	def test_bumpy_terrain_is_exact(self):
+		m, stats = self.mesh(mesh_terrain=True)
 		tp = self.bsp.terrain[2]
 		x0, y0 = tp.origin
 		for i, j in ((3, 3), (4, 5), (6, 2)):
 			x, y = x0 + 64 * i, y0 + 64 * j
 			feet, _ = drop(m, x, y)
-			# the box reaches 16 units around the sample, so it rests on the highest ground there
-			self.assertGreaterEqual(feet, tp.heights[j * 9 + i] - 2.1)
+			# the box reaches 16 units around the sample, so it rests on the highest ground there:
+			# at least the sample itself, at most the highest of the 3 x 3 samples around it
+			around = [tp.heights[(j + dj) * 9 + i + di] for dj in (-1, 0, 1) for di in (-1, 0, 1)]
+			self.assertGreaterEqual(feet, tp.heights[j * 9 + i] - 0.05)
+			self.assertLessEqual(feet, max(around) + 0.05)
 
 	def test_solid_patch_collides_nonsolid_does_not(self):
 		m, stats = self.mesh(mesh_patch_tol=1.0)

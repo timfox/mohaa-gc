@@ -525,19 +525,13 @@ def _terrain_triangles(tp, scale, tol):
 	return cell, tris
 
 
-def mesh_terrain(bsp, scale, tol, mesh, stats, depth=16.0):
-	"""LOD terrain as wedge brushes in the engine collision mesh (.mcol): exact to tol units,
-	and no clipnodes. MOHAA terrain is not a brush, so without this it has no collision."""
+def add_mesh_terrain(bsp, scale, mesh, stats):
+	"""LOD terrain as heightfields in the engine collision mesh (.mcol): exact, and no
+	clipnodes. MOHAA terrain is not a brush, so without this it has no collision."""
 	for tp in bsp.terrain:
-		cell, tris = _terrain_triangles(tp, scale, tol)
-		for a, b, c in tris:
-			planes = wedge_planes(a, b, c, depth)
-			if planes is None:
-				stats["mesh_terrain_degenerate"] += 1
-				continue
-			zb = min(a[2], b[2], c[2]) - depth
-			mesh.add_brush(planes, [a, b, c, (a[0], a[1], zb), (b[0], b[1], zb), (c[0], c[1], zb)])
-			stats["mesh_terrain_brushes"] += 1
+		x0, y0 = tp.origin
+		h = [(z - tp.base_z) // 2 for z in tp.heights]
+		mesh.add_terrain((x0 * scale, y0 * scale, tp.base_z * scale), b19.TERRAIN_CELL * scale, 2 * scale, h)
 		stats["mesh_terrain_patches"] += 1
 
 
@@ -880,9 +874,9 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
             simplify_collision: bool = False, collision_grid: float = 16.0, thin_walls: bool = True,
             detail_walls: bool = False, wall_cell: float = THIN_WALL_CELL,
             collision_aabb: float = 0.0, collision_reach: float = 0.0, collision_exact: float = 0.0,
-            mesh=None, mesh_terrain_tol: float = 0.0, mesh_patch_tol: float = 0.0, mesh_angled: bool = True):
+            mesh=None, mesh_terrain: bool = False, mesh_patch_tol: float = 0.0, mesh_angled: bool = True):
 	"""mesh: a mesh_collision.Collision that angled detail (mesh_angled, under
-	simplify_collision), terrain (mesh_terrain_tol > 0) and solid world patches
+	simplify_collision), terrain heightfields (mesh_terrain) and solid world patches
 	(mesh_patch_tol > 0) are added to."""
 	angled_mesh = mesh if mesh_angled else None
 	namer = TextureNamer()
@@ -959,8 +953,8 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 		world_brushes.extend(seal_box_brushes(bsp, scale, stats))
 	if terrain:
 		detail.extend(terrain_brushes(bsp, scale, terrain_tol, terrain_tex, stats))
-	if mesh is not None and mesh_terrain_tol > 0 and not terrain:
-		mesh_terrain(bsp, scale, mesh_terrain_tol, mesh, stats)
+	if mesh is not None and mesh_terrain and not terrain:
+		add_mesh_terrain(bsp, scale, mesh, stats)
 	if mesh is not None and mesh_patch_tol > 0:
 		mesh_patches(bsp, scale, mesh_patch_tol, mesh, stats)
 	blocks = [kv_block(ws_keys, world_brushes)]
@@ -1133,9 +1127,9 @@ def main(argv=None) -> int:
 	ap.add_argument("--mesh-collision", action="store_true",
 	                help="under --simplify-collision, angled brushes collide exactly through the engine instead of "
 	                     "voxels: written to <out>.mcol (needs xash3d-gc mesh collision)")
-	ap.add_argument("--mesh-terrain-tol", type=float, default=2.0, metavar="UNITS",
-	                help="LOD terrain collides through the engine mesh (<out>.mcol), merged into cells within "
-	                     "UNITS of the true heights (default 2; 0 = no terrain collision, as before)")
+	ap.add_argument("--no-mesh-terrain", action="store_true",
+	                help="don't give LOD terrain collision through the engine mesh (by default it goes to "
+	                     "<out>.mcol as exact heightfields)")
 	ap.add_argument("--mesh-patch-tol", type=float, default=2.0, metavar="UNITS",
 	                help="solid curved patches collide through the engine mesh, tessellated within about UNITS "
 	                     "(default 2; 0 = no patch collision, as before)")
@@ -1170,14 +1164,14 @@ def main(argv=None) -> int:
 	                                         (args.collision_grid, args.collision_grid_z or args.collision_grid),
 	                                         not args.thin_detail_in_world, args.detail_walls, args.wall_cell,
 	                                         args.collision_aabb, args.collision_reach, args.collision_exact,
-	                                         mesh, args.mesh_terrain_tol, args.mesh_patch_tol, args.mesh_collision)
+	                                         mesh, not args.no_mesh_terrain, args.mesh_patch_tol, args.mesh_collision)
 	args.out.write_text(text)
 	ntext, nnodes = path_nodes(bsp, args.scale)
 	if nnodes:
 		npath = args.out.with_suffix(".nodes")
 		npath.write_text(ntext)
 		print(f"{name}: wrote {npath} ({nnodes} path nodes)")
-	if mesh.brushes:
+	if mesh.brushes or mesh.terrain:
 		mpath = args.out.with_suffix(".mcol")
 		npl, nbr, nsd, nnd = mesh.write(mpath)
 		print(f"{name}: wrote {mpath} ({nbr} brushes, {npl} planes, {nnd} nodes, {mpath.stat().st_size} bytes)")
