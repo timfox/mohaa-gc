@@ -632,17 +632,16 @@ void DodGC_MohaaLevelInit( void )
 	memset( g_dead, 0, sizeof( g_dead ) );
 	g_next_waiting_check = 0.0f;
 	size_t budget = (size_t)CVAR_GET_FLOAT( "mohaa_script_kb" ) * 1024u;
+	size_t arena = 0;	/* bytes of the budget in the map arena; the rest comes from the heap when needed */
 #if defined( __GAMECUBE__ )
 	{
 		char scr[96];
 		snprintf( scr, sizeof( scr ), "maps/%s.scr", STRING( gpGlobals->mapname ) );
 		/* only a level with a script spends arena on it */
 		if( budget && g_engfuncs.pfnGetFileSize && g_engfuncs.pfnGetFileSize( scr ) > 0 ) {
-			const size_t got = M_PoolCarve( budget, &b );
-			if( !got )
+			arena = M_PoolCarve( budget, &b );
+			if( !arena )
 				ALERT( at_console, "mohaa: no gap of 32 KiB or more in the map arena for script memory, using the heap\n" );
-			else
-				budget = got;	/* the log line below says what it got */
 		}
 	}
 #endif
@@ -651,9 +650,15 @@ void DodGC_MohaaLevelInit( void )
 		int pieces = b.pool ? 1 : 0;
 		for( int r = 0; r < 7; r++ )
 			pieces += b.pool_more[r] != NULL;
-		ALERT( at_console, "mohaa: running maps/%s.scr (budget %u KiB, %s, %d piece%s)\n", STRING( gpGlobals->mapname ),
-			(unsigned)( budget / 1024u ), b.pool ? "map arena" : "heap", pieces, pieces == 1 ? "" : "s" );
+		ALERT( at_console, "mohaa: running maps/%s.scr (budget %u KiB, %u KiB in the map arena in %d piece%s, the rest from the heap)\n",
+			STRING( gpGlobals->mapname ), (unsigned)( budget / 1024u ), (unsigned)( arena / 1024u ), pieces, pieces == 1 ? "" : "s" );
 	}
+}
+
+void DodGC_MohaaTrigger( edict_t *e, edict_t *activator )
+{
+	Dod_MohaaSetOther( IdFor( activator ) );
+	DodGC_MohaaEntityEvent( e, "trigger" );
 }
 
 void DodGC_MohaaEntityKey( edict_t *e, const char *key, const char *value )

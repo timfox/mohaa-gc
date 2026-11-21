@@ -10,6 +10,8 @@ void DodGC_MohaaThink( void );
 /* An entity event a script can wait for, e.g. ("trigger") from a trigger firing. */
 void DodGC_MohaaEntityEvent( edict_t *e, const char *event );
 
+/* A trigger fired, set off by activator (may be NULL): the script sees the activator as parm.other. */
+void DodGC_MohaaTrigger( edict_t *e, edict_t *activator );
 /* DispatchKeyValue: a key starting with '#' (MOHAA "#set", "#group") is for scripts only. */
 void DodGC_MohaaEntityKey( edict_t *e, const char *key, const char *value );
 

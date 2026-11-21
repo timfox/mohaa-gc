@@ -317,7 +317,7 @@ def integrate_mohaa_trigger_event(dlls: Path) -> None:
 	replace_once(triggers,
 		'\tif( !FStringNull( pev->noise ) )\n\t\tEMIT_SOUND( ENT( pev ), CHAN_VOICE, STRING( pev->noise ), 1, ATTN_NORM );\n\n'
 		'\t// don\'t trigger again until reset\n',
-		'\tDodGC_MohaaEntityEvent( edict(), "trigger" );\n'
+		'\tDodGC_MohaaTrigger( edict(), pActivator ? pActivator->edict() : NULL );	/* parm.other is the activator */\n'
 		'\tif( !FStringNull( pev->noise ) )\n\t\tEMIT_SOUND( ENT( pev ), CHAN_VOICE, STRING( pev->noise ), 1, ATTN_NORM );\n\n'
 		'\t// don\'t trigger again until reset\n')
 

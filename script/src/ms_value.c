@@ -748,6 +748,17 @@ int ms_set_entity_var(ms_vm *vm, uint32_t id, const char *name, const ms_value *
     return 1;
 }
 
+int ms_set_parm(ms_vm *vm, const char *name, const ms_value *v)
+{
+    ms_value *slot = ms_table_slot(vm, &vm->parm_vars, ms_intern(vm, name, strlen(name)));
+    if (!slot)
+        return 0;
+    ms_retain(*v);
+    ms_release(vm, *slot);
+    *slot = *v;
+    return 1;
+}
+
 void ms_move_entity_vars(ms_vm *vm, uint32_t from, uint32_t to)
 {
     ms_entvars **pp, *src = NULL;
