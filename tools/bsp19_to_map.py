@@ -1016,6 +1016,8 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 			chunk_sets.add(chunk)
 		targeted.add(e["target"])
 
+	script_points = []  # named points scripts reach by $name, written right after worldspawn
+
 	def unused_name(e):
 		"""e's targetname, when nothing can ever look it up."""
 		name = e.get("targetname")
@@ -1099,6 +1101,8 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 					(k, v) for k, v in e.items() if k not in keys and k not in ignore))
 				if group in same_key_models:
 					same_key_models[group].extend(brushes)
+					if "target" in keys and "target" not in same_key_keys[group]:
+						same_key_keys[group]["target"] = keys["target"]  # a chunk set's first aimed piece
 					stats["same_key_models_merged"] += 1
 					continue
 				same_key_models[group] = brushes
@@ -1147,7 +1151,15 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 				if k in e:
 					keys[k] = e[k]
 			keys.update(hash_keys(e))
-			blocks.append(kv_block(keys))
+			name = e["targetname"]
+			stem = name.rstrip("0123456789")
+			if script_words is not None and (name in script_words or (stem != name and len(stem) >= 3 and stem in script_words)):
+				# scripts look these up by $name: they go first, since the engine keeps only as many
+				# info_targets as its edict budget allows, in file order (m5l2b's $flak88_2 came 164th)
+				script_points.append(kv_block(keys))
+				stats["script_points_first"] += 1
+			else:
+				blocks.append(kv_block(keys))
 			stats["named_points_written"] += 1
 			continue
 		skipped[cn] += 1
@@ -1163,6 +1175,7 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 
 	for group, i in same_key_slots.items():
 		blocks[i] = kv_block(same_key_keys[group], same_key_models[group])
+	blocks[1:1] = script_points
 	for keys, brushes in trigger_groups.items():
 		blocks.append(kv_block(dict(keys), brushes))
 		stats["triggers_written"] += 1

@@ -432,6 +432,26 @@ class StaticBrushModelTest(unittest.TestCase):
 		points = re.findall(r'"classname" "info_target"\n"mohaa_classname" "script_origin"\n"targetname" "(\w)"', text)
 		self.assertEqual(sorted(points), ["a", "d"])
 
+	def test_chunk_set_takes_the_first_target(self):
+		bsp = self.bsp()
+		bsp.entities[1].update({"targetname": "exploderchunk", "#set": "1"})
+		bsp.entities[2].update({"targetname": "exploderchunk", "#set": "1", "target": "b"})
+		bsp.entities.append({"classname": "script_origin", "targetname": "b", "origin": "0 0 0"})
+		text, _, _, _ = conv.convert(bsp, scale=1.0, merge_static_models=True, script_words=set())
+		self.assertIn('"target" "b"', text)
+		self.assertIn('"targetname" "b"', text)
+
+	def test_script_named_points_come_first(self):
+		bsp = self.bsp()
+		bsp.entities.append({"classname": "script_origin", "targetname": "aim", "origin": "0 0 0"})
+		bsp.entities[3]["target"] = "aim"
+		bsp.entities.append({"classname": "script_origin", "targetname": "flak88_2", "origin": "0 0 0"})
+		text, _, stats, _ = conv.convert(bsp, scale=1.0, merge_static_models=True, script_words={"flak88_"})
+		self.assertEqual(stats["script_points_first"], 1)
+		blocks = text.split("\n}\n")
+		self.assertIn('"targetname" "flak88_2"', blocks[1])
+		self.assertLess(text.index('"flak88_2"'), text.index('"targetname" "aim"'))
+
 	def test_off_keeps_every_model(self):
 		text, _, stats, _ = conv.convert(self.bsp(), scale=1.0)
 		self.assertEqual(stats["static_brush_models_merged"], 0)
