@@ -1,0 +1,397 @@
+# Day of Defeat game code
+
+This port uses the HL1SDK-based `hlsdk-portable` game DLL because retail DoD
+provides assets but no game source, and its retail client depends on VGUI2,
+which the current Xash3D GameCube build does not support.
+
+## Runtime bridge
+
+`dod_game.c` and `dod_game.h` implement engine-independent team, class, scoring,
+capture, and round state. `dod_runtime.cpp` and `dod_runtime.h` connect that
+state to the HL1SDK game DLL:
+
+- The `dod` game folder selects `CHalfLifeDoD`, a teamplay rules class.
+- Players choose Allies or Axis, then a class, through GoldSrc `ShowMenu`.
+  The GameCube HUD integration lets the pad navigate and confirm those menus.
+- Class choices select DoD view and player models and issue a compatible HL1
+  weapon as the firing and ammunition implementation.
+- Team spawn entities use `info_player_allies` and `info_player_axis`.
+- `dod_control_point` entities register capture objectives. Living players
+  within 128 GoldSrc units capture a point in ten seconds; both teams in range
+  pause capture. The rules core tracks scoring and round state.
+
+This is an initial rules bridge, not a complete recreation of retail DoD. The
+menus are text menus, class weapons use HL1 weapon behavior, and control points
+use a fixed spherical capture area. HUD score presentation, weapon behavior,
+and objective handling can be extended without changing the rules core's
+public C API. A complete Create Game match is not verified yet. A small-map
+listen-server probe from the linked, in-progress engine checkout reached map
+load and local signon using static edicts. The isolated engine PR build also
+selects the static pool, but its current Dolphin run stalls during early map
+setup and ends in a DSI before map-ready; that build is not gameplay-verified.
+`dod_avalanche` remains blocked: an 800 KiB spill build fails while reloading
+the 190.59 KiB BSP node lump; a 960 KiB experimental build reaches signon but
+crashes during the ordinary intro/menu boot before `gc_menu_ready`. Neither
+large-map experiment is accepted as the normal gameplay build. The 800 KiB
+normal boot reaches the Valve intro and `gc_menu_ready`; the Create Game
+controller route has not yet produced a map-start marker or a valid guest
+frame. The regular two-player Create Game route still needs a clean runtime
+capture.
+
+The Garand viewmodel is now textured and framed in the lower center of the
+screen in the latest valid in-game capture
+(`playtests/screenshots/20261110-182518-ava-vm15/final.png`). The world behind
+it remains visibly fragmented, with large missing or misplaced surfaces, so
+this is not yet a playable-world claim. Earlier runs also recorded a 1.72 MiB
+BSP-surface allocation failure and a DSI after map startup. Map-bearing play
+ISOs enable the packed BSP renderer by default so low-memory loads can select
+the CapFaces path when the live surface table cannot fit.
+
+## Weapons
+
+The class guns are real DoD weapons, not HL1 stand-ins. `dod_weapons.c` holds
+one table (`DodWeaponDef`) with everything a gun needs: classname, team, fire
+mode (semi, auto, bolt, rocket), damage, rate of fire, spread, recoil, reach,
+clip, reserve, reload time, scope FOV, bipod, HUD slot, models and sounds.
+`dod_weapon.cpp` is a single generic game-DLL weapon class driven by that
+table, with a thin subclass per classname (`weapon_dod_garand`,
+`weapon_dod_k98`, ...). Class loadouts (`Dod_GetLoadout`) read clip and
+reserve from the same table, so they cannot disagree. Damage and rate numbers
+are approximate and meant to be tuned in the table, not in the weapon code.
+
+| Class | Allies | Axis |
+|-------|--------|------|
+| Rifleman | M1 Garand (semi) | Kar98k (bolt) |
+| Assault | Thompson (auto) | MP40 (auto) |
+| Support | BAR (auto) | StG44 (auto) |
+| Sniper | Springfield (bolt, scope) | Scoped Kar98k (bolt, scope) |
+| Machine gunner | 30cal (auto, bipod) | MG42 (auto, bipod) |
+| Rocket | Bazooka | Panzerschreck |
+
+Heavy and special classes also carry a Colt (Allies) or Luger (Axis); every
+class gets the knife/spade (still the HL1 crowbar wearing the DoD models) and
+its grenades.
+
+- **Behaviour.** Semi and bolt guns need a fresh trigger pull; automatics fire
+  while held. Spread widens when moving or airborne and tightens when
+  crouching, with a deployed bipod, or scoped (`Dod_WeaponSpread`). `+attack2`
+  toggles the sniper scope (FOV zoom) or the MG bipod; moving cancels a
+  bipod. Reload moves what fits and is limited by reserve
+  (`Dod_ReloadAmount`). Rockets use the grenade explosion (budgeted effects,
+  radius damage) at 150 damage.
+- **Server only.** Fire sound, muzzle flash, recoil and the animation all come
+  from the server, so no client event or prediction code is needed. Each gun
+  has its own HL1 weapon id (16-29), because HL1 keeps its clip and ammo
+  info per id.
+- **Memory.** `W_Precache` registers the guns' ItemInfo and ammo only. A gun's
+  models and sounds are precached when it is granted (late precache), so a
+  map holds only what its players carry. Staging reads the fire and reload
+  clips straight from the table, cuts them under the 16 KiB WAV ceiling and
+  lists the staged weapon audio in the ARAM prefetch manifest (at most 32
+  entries, none over 64 KiB).
+- **Known limits.** The MG viewmodels animate their carried ("down") state only;
+  the bipod up/down transition sequences are not played. The lean `v_mg42`
+  (274 KB) and `v_30cal` (191 KB) are large because they carry about 58
+  ammo-count sequences and may not fit the studio arena on a tight boot;
+  they need sequence pruning if they do not. The sniper scope has no overlay
+  sprite yet, only the zoom. Shots have no distance falloff (HL1 bullets).
+
+Not verified in Dolphin: any of the gun behaviour above. The table, loadouts,
+spread and reload maths, integration anchors, audio staging, manifest and the
+engine animation remap have host tests.
+
+## HUD
+
+The lean client HUD already draws ammo, crosshair and health from a tiny digit
+sheet, so the match HUD only adds what the match needs: a clock, both team
+scores, one flag per control point, the round and tally, and the player's class
+and grenades. It is the `cl_dodhud` cvar, **off by default**; with it off the
+server keeps sending the text strip, so nothing changes until it is turned on
+(after Dolphin shows the headroom).
+
+- **Server.** `DodGC_SendHud` sends a `DodHud` message to each human client twice
+  a second (about 22 bytes) and stops the text strip while `cl_dodhud` is set.
+  The local client registers the cvar, so the listen server reads it directly.
+- **Layout.** `dod_hud.h` is header-only and shared: `Dod_HudLayout` turns the
+  state into at most 24 draw ops (text and flag icons), inside any screen size,
+  with the flag colours by owner. It has host tests, including bounds on
+  640x480 and 320x240 and a buffer that is too small.
+- **Memory.** Text uses the engine's resident console font. The flags use one
+  sheet, `sprites/icon_obj.spr` (96x32, 3.9 KB: neutral, Allies, Axis), loaded
+  with `SPR_Load` the first time a flag is drawn and never when the cvar is off.
+  Nothing is added to the studio arena or the sprite budget at boot. The sheet
+  is small enough that ARAM caching would not pay for itself.
+- **Not done.** The retail DoD HUD art (`hud_icons`, `hud_layout`, ammo clip
+  pictures) is not used: those sheets are 66 KB each and the lean HUD has no
+  room for them. Flag models in the world are also not done.
+
+Not verified in Dolphin: that `SPR_DrawHoles` renders the icon sheet's palette
+correctly, the message being hooked, and the cvar toggle.
+
+## Match loop
+
+Rounds repeat by themselves, so a Create Game match plays on without anyone
+touching the console. The state machine is in `dod_game.c` and is host-tested.
+
+- **Round end.** A round ends when one team captures the last point it did not
+  own (owning every point at the start is not a win), or when the clock runs
+  out. A timed-out round goes to the team with more points, or is a draw.
+  `dod_roundtime` (default 600 s) is the length when `mp_timelimit` is 0.
+- **Intermission and restart.** Eight seconds after a round ends the next one
+  starts: scores zero, every control point returns to its starting owner, the
+  clock resets, and the game DLL respawns everyone (bots included) with a fresh
+  loadout. Teams and classes are kept. Nothing scores between rounds, though
+  kills are still recorded.
+- **Match.** Each round win is tallied. The first team to `dod_rounds` (default
+  2, 0 for endless rounds) wins the match: the tally and everyone's kills,
+  deaths and objective score reset and a new match starts at round one.
+- **Scoring.** A kill is 1 point, a capture 5, and every held point earns 2 a
+  minute (control points used to score nothing in game).
+- **HUD.** The status strip shows the round and the tally next to the score,
+  held points and clock, e.g. `Allies 5  Axis 3 | Points 2-1 | 4:10 | Round 2
+  (1-0)`. The round end and restart messages show on the centre of the screen.
+
+Not done: flag models on the control points (three small models would each
+spend studio arena memory), a retail-style graphical HUD, and a map change after
+a match. Not verified in Dolphin: the respawn on restart.
+
+## Bots
+
+A default Create Game match fills the free client slots with bots, no setup.
+Bots are fake clients (`pfnCreateFakeClient`) driven from
+`CHalfLifeDoD::Think`: `dod_bot.cpp` talks to the engine, `dod_bots.c` holds
+the host-tested logic.
+
+- **Count.** `dod_bots` (default 3 on GameCube, 1 elsewhere) is how many bots
+  to add next to the humans; `Dod_BotTargetCount` caps it by the free client
+  slots, so it means "fill the server" without ever over-asking. `dod_bot_skill`
+  (0-3, default 1) tightens their aim. Bots are only added once a human is
+  present and are kicked if the cvar drops. A server with no humans has no bots.
+- **Slots.** The engine decides how many slots there are. By default a GameCube
+  listen server has two (human plus one bot). A build with slim client slots
+  (`XASH_GC_SLIM_CLIENTS=1`, see the engine) can hold more: every extra slot is
+  a bot-only slot of about 9.3 KiB instead of 89 KiB, measured as +18.6 KiB of
+  BSS for 4 slots over 2. Four slots give two a side (a human plus three bots)
+  and are the next step once Dolphin shows the heap can afford them: the logs
+  show only 2-38 KiB of free heap after map load, and each bot also costs about
+  five edicts (its weapons) out of the dod profile's 460.
+- **Networked servers.** When the network link is up (`gc_net_status` shows an
+  address) the free slot is kept for the peer and no bots are added, unless
+  `dod_bots_online 1`. An engine with slim slots also drops a bot to make room
+  for a person.
+- **Memory.** A bot shares the player model the human already has loaded and
+  skips viewmodel precache for its weapons (it has no view), so it never spends
+  the studio arena's viewmodel budget. Its class is drawn from cheap infantry
+  classes; each special class (sniper, MG, rocket) is taken at most once per
+  team.
+- **Behaviour.** A bot joins the smaller team (so four players come out two a
+  side), picks the nearest visible enemy, turns toward it at a limited rate with
+  a skill-dependent aim error, keeps a fighting distance, strafes, and fires
+  inside a 6 degree cone (semi-auto weapons release the trigger between shots).
+  With nothing in sight it roams between control points, hopping low obstacles
+  and turning away from walls and ledges. A dead bot presses fire to respawn.
+
+Not verified in Dolphin: fake client creation, the AI, respawn and kick. The
+count, the online rule, team and class selection, turning, aim error and the
+move decision have host tests.
+
+## Grunts (co-op fodder)
+
+Opt-in, beside the bots (the bot system is untouched). `dod_grunts N` (default 0) fills the match with N grunts on the side
+opposite the humans (`dod_grunt_team` 0 auto, 1 Allies, 2 Axis; `dod_grunt_rush` 1 runs forward and at the enemy, 0 wanders;
+`dod_grunt_skill` 0-3; `dod_grunt_log` 1 prints a cost line every 10 s). `dod_grunts.c` holds the rules as plain arrays
+(host-tested in `tests/dod_grunts_test.c`), `dod_grunt.cpp` the engine glue.
+
+- **Cost per grunt.** One prop edict wearing the side's player body, and a 62-byte row in a 3 KiB pool. No client slot (a bot
+  slot is 9.3 KiB slim, 89 KiB full), no weapon edicts (a bot spends about five), no nav graph, no objectives, no call-outs.
+  The pool is 48 at most; `Dod_GruntTargetCount` also keeps 24 edicts free, so on charlie's ~30 spare edicts a match gets 6.
+- **Cost per frame.** Movement is arithmetic. Looking (one line trace) is scheduled: each grunt looks about 3 times a second
+  and a frame never runs more than 4 looks. One hull trace per moving grunt every 0.15 s checks the next stretch of path,
+  plus one floor trace. 32 grunts come to about 100 looks, 210 hull and 210 floor traces a second, 3 to 4 of each per frame.
+- **Behaviour.** Wander (walk a heading, turn every 2-6 s), advance (run at the last seen enemy, or along the heading), shoot
+  (stop at 660 units or nearer, one shot every 1-2 s, hit chance 0.7 close to 0.1 at 1800, 40 health, 10 s to respawn at a
+  spawn point of its side). Players of the grunt's own side do no damage to it. A kill is one point.
+- **Unverified.** The cost numbers are from the host model; the engine glue has not run in Dolphin. Read `GRUNT cost:` in
+  the console for console-time numbers.
+
+## Spectating bot matches
+
+The local human can watch the bots fight instead of playing.
+
+- **Joining.** `dod_spectate 1` makes the human spectate from the first frame
+  (no team menu). Otherwise pick `6. Spectate` on the side menu, or run
+  `spectate` / `dod_team spectator`. Picking Allies or Axis from the menu again
+  leaves spectating and spawns as an ordinary player.
+- **Slot.** GoldSrc has no slotless spectator (HLTV needs one too), so the
+  spectator is the human's own client slot. Nothing extra is allocated: a
+  spectator is not on a team, has no class, weapon, edict beyond the slot's own,
+  collision or damage, and does not count towards either side when bots pick a
+  team. The only added memory is about 100 bytes of static director state.
+- **Bots to watch.** Bots fill the *remaining* slots, so the default two-slot
+  listen server gives a single bot, which is nothing to watch. For Axis against
+  Allies use a slim-slot engine build (`XASH_GC_SLIM_CLIENTS=1
+  XASH_GC_MAX_SLOTS=4`, `sv_gc_slots 4`): spectator plus three bots is Axis,
+  Allies, Axis. The heap caveats under Bots apply.
+- **Cameras.** The HLSDK observer code runs them, with the retail spectator
+  controls: Fire = next player, Alt-fire = previous, Jump = cycle the camera
+  (chase, in-eye, free-fly). The two overview-map modes are skipped (they need
+  map overview data the GameCube build does not ship). With nobody to follow the
+  camera free-flies and returns to the chosen camera as soon as a bot spawns.
+- **Smooth chase.** Chase cameras follow the target's entity origin, which only
+  changes on a network update, so the view used to step. `client/dod_cam.h`
+  low-passes the camera origin (about 0.11 s) and angles in the two chase
+  modes, independent of frame rate, and snaps on a new target, a mode change,
+  a jump over 300 units (respawn) or a hitch over 0.25 s. It is hooked into
+  `V_CalcSpectatorRefdef` by `integrate-dod-gameplay.py`; in-eye and roaming are
+  untouched. `DodCam_Level` also zeroes roll and clamps pitch to +-89 in the chase
+  and roaming cameras so the horizon stays level (in-eye keeps the followed
+  player's own view). Host-tested; not yet seen in Dolphin.
+- **No clipping.** After smoothing, the chase cameras are traced from the
+  followed player's eye to the camera and stop 6 units short of any world or
+  brush surface; free-fly is traced from last frame's position. Static props
+  have no collision, so cameras can still pass through those.
+- **Cinematic mode.** `dod_spec_cine 1` turns the chase camera into a film
+  camera: moving shots around the followed player (slow orbit, three-quarter
+  track, rising crane, side flyby, low hero angle push-in), each 6 s, cutting to
+  the next shot or straight away when the director switches player. Each shot
+  keeps the target's facing from its first frame so the path does not swing as
+  the bot turns, glides like the chase camera, is clipped from the target's eye
+  and re-aimed at the chest after clipping. With `dod_spec_auto 1` this is a
+  hands-free fly-through of the match; `gc_hud_off 1` (engine) hides the HUD for
+  clean footage. Host-tested (`dod_cam_test.c`); not yet seen in Dolphin.
+- **Director.** `dod_spec_auto` (default 1) moves the follow camera by itself
+  to the bot in the closest fight, staying at least 4 s and at most 14 s on one
+  target, and straight away when the followed bot dies. Any Fire, Alt-fire or
+  Jump press pauses it for 20 s; `dod_spec_auto 0` turns it off.
+- **Not retail.** Retail DoD also has an overview-map spectator, a team filter
+  for spectating (mp_forcechasecam / mp_fadetoblack) and a spectator count on the
+  scoreboard. None of those exist here.
+
+Not verified in Dolphin: joining, the cameras, the director and the
+leave-to-play path. The mode mapping, interest scoring, target cycling and
+director choice have host tests (`Dod_Spec*` in `dod_bots.c`). The C++ glue
+was syntax-checked against upstream hlsdk-portable only.
+
+## Grenades
+
+`dod_grenade.cpp` puts the DoD hand grenade on top of the HL1 `CHandGrenade` /
+`CGrenade` code, which still does the pin pull, throw, bounce and fuse timing.
+Class loadouts issue grenades (`Dod_GetLoadout`), and the rules core
+(`Dod_GetGrenade` and friends in `dod_game.c`) holds the numbers:
+
+- Allies throw the Mk2 grenade, Axis the stick grenade (`v_grenade`/`p_grenade`/
+  `w_grenade`, `v_stick`/`p_stick`/`w_stick`). Values are approximate DoD 1.3:
+  5 second fuse that cooking shortens (a grenade held past its fuse goes off in
+  the thrower's hand), 100 damage at the centre falling off linearly to a 250
+  unit radius, 800 unit/second maximum throw.
+- Damage is applied with the engine's `RadiusDamage`, so team damage rules and
+  kill credit work as for any other weapon. The thrower can be hurt.
+- The explosion replaces `CGrenade::Explode` for DoD grenades only (marker in
+  `pev->iuser3`); rockets and every other user of `CGrenade` are untouched.
+
+### Memory
+
+Everything here is sized for MEM1 + ARAM:
+
+- **No new sprites.** The fireball, smoke and underwater sprites are the ones HL1
+  already precaches for every weapon.
+- **Effect budget.** `Dod_FxPlanExplosion` decides which layers one blast sends
+  (fireball, smoke, sparks, debris). A lone blast sends all four; blasts landing
+  within two seconds of each other shed debris, then sparks, then smoke, down to
+  the fireball alone. The fireball and damage are never skipped. The HL1
+  `spark_shower` entities are replaced by client-side `TE_SPARKS`, so a blast
+  costs no edicts.
+- **Live cap.** At most `DOD_MAX_LIVE_GRENADES` (8) grenades exist at once, so
+  the static edict pool cannot be exhausted by throwing spam. A new pin cannot
+  be pulled while the cap is full.
+- **Viewmodels** ride the engine's studio allowlist, are lean-stripped into
+  `gc_studio/` with a downsampled skin companion like the other DoD viewmodels,
+  and are cached whole in ARAM after their first load.
+- **Audio.** The eleven grenade clips are cut to fit the 16 KiB WAV ceiling
+  (about 110 KiB in total) and listed in `media/c0a0.prefetch`, so the engine
+  copies them into ARAM during menu idle instead of reading them from disc
+  mid-fight. Half-Life discs get no such entries.
+
+Both viewmodels use the `pinpull` / `throw` / `draw` / `holster` / `idle`
+sequences through the engine's `gc_vmanim` remap.
+
+Not verified in Dolphin yet: viewmodel animation, throw feel, the explosion and
+particle rendering, and the Mk2 versus stick world models. The rules core, the
+integration anchors, audio staging and the prefetch manifest have host tests.
+
+## MOHAA mission scripts
+
+Original MOHAA `.scr` (Morpheus) mission scripts run against DoD-GC entities. The VM lives in `src/mohaa/`, a clean-room MIT
+copy of [timfox/mohaa-gc](https://github.com/timfox/mohaa-gc) `script/` (no OpenMoHAA code: it is GPL-2 and cannot link with
+the HLSDK). `dod_mohaa.c` binds the MOHAA commands and is host-tested in `tests/dod_mohaa_test.c`; `dod_mohaa_ents.cpp` is the
+engine glue. The game rules constructor calls `DodGC_MohaaLevelInit`, `Think` calls `DodGC_MohaaThink`, and a firing
+`trigger_multiple`/`trigger_once` notifies `trigger` waiters.
+
+- **Off unless the map has a script.** No VM is created and nothing is allocated unless `maps/<map>.scr` exists.
+- **Bound.** `wait`, `waittill`, threads, `exec`, the level/game/local/parm scopes, `$targetname` (and `$player`), and on
+  entities `hide`/`show`, `solid`/`notsolid`, `remove`, `origin`/`angles`/`health`, `moveto`, `moveup`..`movewest`,
+  `rotateto`, `rotatex/y/z`, `move`/`waitmove`, `time`; on threads `trigger`, `spawn`, `centerprint`, `iprintln`. Positions are
+  scaled by 72/94, the factor the map converter uses. `level waittill prespawn`/`spawn` fire on the first two ticks.
+- **Soldiers.** MOHAA AI soldiers are grunts owned by the script (`dod_grunt.cpp`, rules in `dod_grunts.c`): `spawn actor`
+  or `spawn models/human/<who>.tik` puts one in (German models play the Axis, the rest the Allies), and `ai_on`/`ai_off`,
+  `runto`/`walkto` (a vector, an entity or a node name), `turnto`/`lookat` and `attackplayer` drive it. A move order ends in
+  `movedone`, a kill in `death`, so `waittill movedone`/`death` work. A script soldier holds where it stands until it sees
+  someone (it turns to them, and shoots inside 660 units), never respawns, and is not counted by `dod_grunts`. It costs a
+  73-byte pool row and one edict; the pool has 48 slots, shared with co-op grunts.
+- **Sounds.** `playsound`/`loopsound`/`stoploopsound` play MOHAA aliases through `maps/<map>.snd`, which mohaa-gc
+  `tools/ubersound.py` writes from the retail ubersound tables (alias, sample under `sound/mohaa/`, volume, minimum
+  distance, channel; repeated aliases are variants picked at random). The samples are precached at level start, a
+  minimum distance of 160 MOHAA units maps to ATTN_NORM, and a loop plays on the static channel (one per entity). An alias
+  missing from the table is reported once and stays silent; a map without a table plays nothing.
+- **Not yet.** Music (`.mp3`) and dialogue subtitles. `.tik` models are skipped on `spawn`. No
+  camera, HUD objectives or `exec global/*.scr` libraries beyond what the map ships. Soldiers have no path graph (a move
+  order heads straight for its point and turns off walls), no animations beyond the grunt poses, and soldiers placed in the
+  map itself are not converted yet (only script-spawned ones exist). An unknown command is reported once
+  and skipped, so a mission keeps running.
+- **Memory.** `mohaa_script_kb` (default 384) caps the VM; a level whose scripts do not fit is refused at load, not run half
+  way. Retail missions fit: on a 32-bit host build, m1l1 with its globals uses 108 KB and peaks at 190 KB while compiling,
+  and m3l1a (the biggest) uses 131 KB and peaks at 213 KB. `msrun -stats` in mohaa-gc shows where it goes.
+- **Updating the VM.** Change it in mohaa-gc, then `scripts/sync-mohaa-vm.sh /path/to/mohaa-gc`.
+
+## Build integration
+
+`scripts/integrate-dod-gameplay.py` copies the tracked runtime into the linked
+HLSDK source tree and applies the DoD hooks to the game DLL, client HUD, and
+engine. It checks its insertion anchors so a changed upstream source layout
+fails the build instead of silently skipping an integration. The DoD build
+invokes this overlay before building the GameCube archives and DOL:
+
+```sh
+scripts/build-dodgc.sh --dol-only
+```
+
+The build uses DoD assets from `content/dod`; those assets are not stored in
+this repository. The resulting DOL is packaged as `out/dodgc.iso` by the
+normal build command.
+
+## Rules core API
+
+Player slots and objective IDs are 1-based and 0-based respectively. A
+contested objective pauses capture progress. `Dod_TickObjective` returns 1
+when ownership changes. Round scoring covers enemy kills, completed captures,
+and held objectives when the configured scoring rate is nonzero.
+
+`Dod_FormatStatus` builds the one-line match status (team scores, held points,
+round clock) that `CHalfLifeDoD::Think` sends once per second as a HUD text
+channel. It is a stand-in for the retail scoreboard and has not been run on
+hardware or Dolphin.
+
+## Bots by default
+
+A Day of Defeat match on the GameCube build starts with bots: `dod_bots` defaults to 3
+("fill the server"), capped by the free server slots (`sv_gc_slots`, 2 by default, so
+one human plus one bot), `mp_teamplay` is forced to 1 for the dod gamedir, and bots are
+balanced across Axis and Allies (`Dod_BotPickTeam`). Menu New Game / Create Server needs
+no setting for this. LAN/listen play is an option on top: `dod_bots_online` (default 0)
+keeps the free slot for the network peer while the link is up. Set `dod_bots 0` for a
+human-only match.
+
+Run the host-side rules-core checks with `python3 tests/test_dod_game.py`.
+
+Do not patch HL1 release artifacts (`halflife1.dol`, `boot.dol`, or
+`xash3d-gc.iso`) from this repository.

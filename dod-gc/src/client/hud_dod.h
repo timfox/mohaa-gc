@@ -1,0 +1,64 @@
+#ifndef DODGC_HUD_DOD_H
+#define DODGC_HUD_DOD_H
+
+/* Client side of the Day of Defeat HUD. Included from hud.h after CHudBase.
+ * Draws the retail DoD 1.3 HUD (dod_hud_retail.h): the status panel with
+ * stamina and health, the objective timer and the dynamic crosshair, from the
+ * retail hud.txt sheets. The match state (clock, flags, scores) arrives in
+ * the server's DodHud message (dod_hud.h). cl_dodhud 0 turns it off. */
+
+#include "dod_hud.h"
+#include "dod_hud_retail.h"
+#include "dod_hud_geom.h"
+
+class CHudDod : public CHudBase
+{
+public:
+	/* Register the cvar and the message; safe to call twice. The lean (quality 0)
+	 * HUD never runs Init, so CHud::Init calls this first. */
+	void InitState( void );
+	int Init( void );
+	int VidInit( void );
+	int Draw( float flTime );
+	/* The retail HUD, for the lean tier's Redraw: returns 1 when it drew and
+	 * the caller should skip its own HUD. */
+	int DrawRetail( float flTime );
+	int MsgFunc_DodHud( const char *pszName, int iSize, void *pbuf );
+	int MsgFunc_DodBoard( const char *pszName, int iSize, void *pbuf );
+	int MsgFunc_DodVoice( const char *pszName, int iSize, void *pbuf );
+	int MsgFunc_DodKill( const char *pszName, int iSize, void *pbuf );
+	/* A modal panel is up (team/class menu, voice menu, scoreboard, chat prompt): the kill feed and chat lines step aside
+	 * so nothing draws over anything else (see dod_hud_geom.h). */
+	int Modal( void );
+
+private:
+	void DrawBoard( void );
+	void DrawVoice( void );
+	void DrawKills( void );
+	struct KillLine { char killer[32], victim[32], weapon[24]; int killer_team, victim_team; float time; };
+	KillLine m_kills[5];	/* newest last */
+	int m_nKills;
+	char m_szVoice[200];	/* voice menu lines from the DodVoice message */
+	int m_iVoiceSel;
+	float m_flVoiceTime;
+	int m_fVoiceShown;
+	char m_szBoard[256];	/* scoreboard text from the DodBoard message, lines split by newlines */
+	float m_flBoardTime;	/* client time of the last DodBoard message; the board hides 3 s after it */
+	int m_fBoardShown;
+	int m_fChatting;	/* the chat prompt (on-screen keyboard) is up: set from HUD_ChatInputPosition */
+	DodHudState m_state;
+	float m_flLastUpdate;
+	float m_flTimerBase;	/* client time the clock was last set */
+	int m_fHaveState;
+	HSPRITE m_hSheets[DOD_SHEET_COUNT];
+	int m_fSheetsTried;
+	int m_fDrawLogged;
+	char m_szLoggedWeapon[32];
+	unsigned m_fSheetTried;	/* on-use sheets already attempted (bit per sheet) */
+	cvar_t *m_pCvar;
+};
+
+/* HUD_ChatInputPosition: the chat prompt goes above the keyboard, inside the safe area; also notes that chat is open. */
+void DodHud_ChatInputPosition( int *x, int *y );
+
+#endif
