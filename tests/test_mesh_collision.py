@@ -52,6 +52,25 @@ class MeshCollisionTest(unittest.TestCase):
 		frac, _, solid = mc.trace_box(m, (0, 0, 36 - 0.5), (64, 0, 36 - 0.5), *PLAYER)
 		self.assertTrue(solid)  # deeper is still inside
 
+	def test_crease_reports_the_ground(self):
+		# floor at z 0 and a 75-degree face leaning out of it at x 64: a box resting in the crease
+		# touches both, and a ground check has to see the floor or the box never lands
+		col = mc.Collision()
+		for planes in (box_planes((32, -256, -64), (256, 256, 128)) + [((-math.cos(math.radians(15)), 0.0,
+		                                                                 math.sin(math.radians(15))),
+		                                                                -math.cos(math.radians(15)) * 64, None)],
+		               box_planes((-256, -256, -64), (64, 256, 0))):
+			faces = conv.brush_faces(planes)
+			col.add_brush([(n, d) for n, d, _, _ in faces], [p for _, _, w, _ in faces for p in w])
+		m = roundtrip(col)
+		c, sn = math.cos(math.radians(15)), math.sin(math.radians(15))
+		eps = mc.DIST_EPSILON
+		cx = 64 + (sn * eps - eps) / c - 16
+		frac, n, solid = mc.trace_box(m, (cx, 0, 36 + eps), (cx, 0, 36 + eps - 2), *PLAYER)
+		self.assertFalse(solid)
+		self.assertLess(frac, 0.01)
+		self.assertEqual(n[2], 1.0)
+
 	def test_box_hit_and_miss(self):
 		col = mc.Collision()
 		faces = conv.brush_faces(box_planes((0, 0, 0), (64, 64, 64)))

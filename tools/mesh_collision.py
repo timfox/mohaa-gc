@@ -55,6 +55,7 @@ LEAF_SIZE = 4
 DIST_EPSILON = 0.03125  # Quake's SURFACE_CLIP_EPSILON
 TOUCH_TOLERANCE = DIST_EPSILON  # a start less than this inside one plane counts as touching it
 TOUCH_SLACK = 1.0 / 1024
+TIE_FRACTION = 1e-5  # hits this close together count as one
 
 
 def _dot(a, b):
@@ -353,8 +354,16 @@ def trace_box(mcol, start, end, mins, maxs):
 			if not getsout:
 				best[0] = 0.0
 			return
-		if enter < leave and enter > -1 and enter < best[0]:
-			best[0], best[1] = max(enter, 0.0), clipn
+		if enter < leave and enter > -1 and clipn is not None:
+			f = max(enter, 0.0)
+			if best[0] < 1 and abs(f - best[0]) <= TIE_FRACTION:
+				# two surfaces at once (a crease of ground and a steep face): the more
+				# upward-facing normal wins, so the ground check can land (m6l1a)
+				if clipn[2] > best[1][2]:
+					best[1] = clipn
+				best[0] = min(best[0], f)
+			elif f < best[0]:
+				best[0], best[1] = f, clipn
 
 	for a, b in _walk(nodes, overlaps):
 		for first, num, bl, bh in brushes[a:a + b]:
