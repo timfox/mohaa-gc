@@ -142,6 +142,30 @@ class CompileSafetyTest(unittest.TestCase):
 		self.assertEqual(stats["seal_box_brushes"], 6)
 		self.assertIn("-784", text)  # model mins -512 minus 256 margin minus 16 wall
 
+	def test_simplify_collision_kdop_proxy(self):
+		import math
+		bsp = tiny_bsp([((0, 0, 0), (64, 64, 64), 0)], [])
+		bsp.shaders[0].content_flags |= b19.CONTENTS_DETAIL
+		# rotate the box 30 degrees about z: four angled sides
+		c, s_ = math.cos(math.radians(30)), math.sin(math.radians(30))
+		for k, (nx, ny, nz, d) in enumerate(bsp.planes):
+			bsp.planes[k] = (nx * c - ny * s_, nx * s_ + ny * c, nz, d)
+		text, _, stats, _ = conv.convert(bsp, scale=1.0, simplify_collision=True)
+		self.assertEqual(stats["detail_noclip"], 1)
+		self.assertIn('"zhlt_noclip" "1"', text)
+		self.assertGreater(stats["collision_voxels"], 0)
+		self.assertLess(stats["collision_boxes"], stats["collision_voxels"])
+		# the rotated 64 box spans about 87 units: 6 x 6 cells of 16 cover it, 4 high
+		self.assertLessEqual(stats["collision_voxels"], 6 * 6 * 4)
+		vox = set()
+		conv.voxelize_brush(conv.brush_faces(box_planes((0, 0, 0), (32, 2, 32))), vox, 16.0)
+		self.assertEqual(len(vox), 4)  # a 2-unit sliver still fills its cells
+		# axial brushes are left alone
+		plain = tiny_bsp([((0, 0, 0), (64, 64, 64), 0)], [])
+		plain.shaders[0].content_flags |= b19.CONTENTS_DETAIL
+		_, _, s2, _ = conv.convert(plain, scale=1.0, simplify_collision=True)
+		self.assertEqual(s2["collision_voxels"], 0)
+
 	def test_entity_sky_becomes_null_and_origin_in_wad(self):
 		bsp = tiny_bsp([((0, 0, 0), (64, 64, 64), 1)], [((100, 0, 0), (110, 64, 64), 1)])
 		text, namer, _, _ = conv.convert(bsp, scale=1.0)
