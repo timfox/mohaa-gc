@@ -1,0 +1,32 @@
+# Per-map bsp19_to_map.py flags for the GameCube fit (round 15 data, 2026-11-21).
+# Format: <map> <flags...>. Maps not listed use defaults. Compile every map with
+# sdHLBSP -hull2alias. Targets: <=32767 clipnodes, <=8192 world leaves, and
+# BSP minus LUMP_LIGHTING <=3 MiB (xash3d-gc compact load).
+# Collision grid: the finest one that fits each map (16 < 32 < 64 < 80 < 96 units).
+# Abbreviations used in the comments: W = --detail-walls, B/C = grid 32/64 with z 16.
+
+m1l3c     --thin-detail-in-world
+mohdm4    --detail-world --seal-box
+obj_team4 --detail-world --seal-box
+mohdm5    --detail-world --simplify-collision --collision-grid 32 --collision-grid-z 16
+m5l1b     --simplify-collision --collision-grid 32 --collision-grid-z 16
+m5l3      --simplify-collision --collision-grid 80 --collision-grid-z 16
+m4l2      --simplify-collision --collision-grid 64 --collision-grid-z 16
+# world leaves over 8192: detail into walls
+m6l1c     --detail-walls
+obj_team2 --detail-walls
+m2l1      --detail-walls
+obj_team3 --detail-walls
+m3l2      --detail-walls
+mohdm7    --detail-walls
+m6l3a     --detail-walls
+# leaves and clipnodes
+m4l3      --detail-walls --simplify-collision --collision-grid 32 --collision-grid-z 16
+mohdm3    --detail-walls --simplify-collision --collision-grid 32 --collision-grid-z 16
+m4l1      --detail-walls --simplify-collision --collision-grid 64 --collision-grid-z 16
+m3l3      --detail-walls --simplify-collision --collision-grid 64 --collision-grid-z 16
+m6l2a     --detail-walls --simplify-collision --collision-grid 64 --collision-grid-z 16
+m6l2b     --detail-walls --simplify-collision --collision-grid 64 --collision-grid-z 16
+m6l1a     --detail-walls --simplify-collision --collision-grid 96 --collision-grid-z 16
+m6l1b     --detail-walls --simplify-collision --collision-grid 96 --collision-grid-z 16
+m5l2b     --detail-walls --seal-box --simplify-collision --collision-grid 96 --collision-grid-z 16 --wall-cell 2048
