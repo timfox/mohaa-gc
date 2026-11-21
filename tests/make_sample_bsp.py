@@ -69,14 +69,20 @@ def build(version: int = 19) -> bytes:
 	add_brush((400, 0, 0), (408, 96, 120), [S_CONCRETE], S_CONCRETE)
 
 	surfaces = []
+	drawverts = []
 
-	def surf(shader, stype, pw=0, ph=0):
-		v = [shader, -1, stype, 0, 0, 0, 0, -1, 0, 0, 0, 0] + [0.0] * 12 + [pw, ph, 4.0]
+	def surf(shader, stype, pw=0, ph=0, ctrl=()):
+		first = len(drawverts)
+		drawverts.extend(ctrl)
+		v = [shader, -1, stype, first, len(ctrl), 0, 0, -1, 0, 0, 0, 0] + [0.0] * 12 + [pw, ph, 4.0]
 		surfaces.append(struct.pack("<12i3f9f2if", *v))
 
+	# a hump 256 long in x: z rises 0 -> 64 -> 0 over two bezier pieces, flat across y
+	hump = [(300 + 64 * i, 300 + 64 * j, (0, 64, 64, 64, 0)[i]) for j in range(3) for i in range(5)]
+	vines = [(600 + 32 * i, 300 + 32 * j, 32) for j in range(3) for i in range(3)]
 	surf(S_CONCRETE, b19.MST_PLANAR)
-	surf(S_ARCH, b19.MST_PATCH, 5, 3)  # 2 bezier pieces, collidable
-	surf(S_VINES, b19.MST_PATCH, 3, 3)  # 1 piece, non-solid
+	surf(S_ARCH, b19.MST_PATCH, 5, 3, hump)  # 2 bezier pieces, collidable
+	surf(S_VINES, b19.MST_PATCH, 3, 3, vines)  # 1 piece, non-solid
 	surf(S_GRASS, b19.MST_TERRAIN)
 
 	def terrain(x, y, base, fn):
@@ -121,6 +127,7 @@ def build(version: int = 19) -> bytes:
 	lumps[b19.LUMP_PLANES] = b"".join(struct.pack("<4f", *p) for p in planes)
 	lumps[b19.LUMP_LIGHTMAPS] = bytes(b19.LIGHTMAP_BYTES * 2)
 	lumps[b19.LUMP_SURFACES] = b"".join(surfaces)
+	lumps[b19.LUMP_DRAWVERTS] = b"".join(struct.pack("<3f7f4B", *p, *([0.0] * 7), 255, 255, 255, 255) for p in drawverts)
 	lumps[b19.LUMP_BRUSHSIDES] = b"".join(struct.pack("<3i", *s) for s in brushsides)
 	lumps[b19.LUMP_BRUSHES] = b"".join(struct.pack("<3i", *b) for b in brushes)
 	lumps[b19.LUMP_MODELS] = b"".join(models)

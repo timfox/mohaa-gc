@@ -471,54 +471,179 @@ def _face_line(n, w, tex):
 	return f"{pts} {tex} [ {_f(u[0])} {_f(u[1])} {_f(u[2])} 0 ] [ {_f(v[0])} {_f(v[1])} {_f(v[2])} 0 ] 0 1 1"
 
 
-def wedge_brush(a, b, c, depth, top_tex, side_tex):
-	"""Convex brush under triangle abc: sloped top, three vertical sides, flat bottom."""
+def wedge_planes(a, b, c, depth):
+	"""Planes of the convex wedge under triangle abc: sloped top, flat bottom, then three
+	vertical sides. None for a triangle seen edge-on from above."""
 	n = _norm(_cross(_sub(b, a), _sub(c, a)))
 	if n[2] < 0:
 		n = (-n[0], -n[1], -n[2])
 	if n[2] < 1e-3:
 		return None
-	planes = [(n, _dot(n, a), top_tex)]
+	planes = [(n, _dot(n, a))]
 	zb = min(a[2], b[2], c[2]) - depth
-	planes.append(((0.0, 0.0, -1.0), -zb, side_tex))
+	planes.append(((0.0, 0.0, -1.0), -zb))
 	for p, q, r in ((a, b, c), (b, c, a), (c, a, b)):
 		e = _sub(q, p)
 		sn = _norm((e[1], -e[0], 0.0))
 		if _dot(sn, _sub(r, p)) > 0:
 			sn = (-sn[0], -sn[1], 0.0)
-		planes.append((sn, _dot(sn, p), side_tex))
+		planes.append((sn, _dot(sn, p)))
+	return planes
+
+
+def wedge_brush(a, b, c, depth, top_tex, side_tex):
+	"""Convex brush under triangle abc: sloped top, three vertical sides, flat bottom."""
+	wp = wedge_planes(a, b, c, depth)
+	if wp is None:
+		return None
+	planes = [(n, d, top_tex if i == 0 else side_tex) for i, (n, d) in enumerate(wp)]
 	faces = brush_faces(planes)
 	if len(faces) < 5:
 		return None
 	return "\n".join(["{"] + [_face_line(fn, w, t) for fn, _, w, t in faces] + ["}"])
 
 
+def _terrain_triangles(tp, scale, tol):
+	"""Triangles of one LOD terrain patch, merged into cells as coarse as tol (GoldSrc units)."""
+	n = b19.TERRAIN_SAMPLES
+	tol_mohaa = tol / scale if scale > 0 else tol
+	cell = terrain_cell_size(tp.heights, tol_mohaa)
+	step = cell // b19.TERRAIN_CELL
+	x0, y0 = tp.origin
+	cells = (n - 1) // step
+
+	def pt(i, j):
+		return ((x0 + i * b19.TERRAIN_CELL) * scale, (y0 + j * b19.TERRAIN_CELL) * scale, tp.heights[j * n + i] * scale)
+
+	tris = []
+	for cj in range(cells):
+		for ci in range(cells):
+			i0, j0, i1, j1 = ci * step, cj * step, (ci + 1) * step, (cj + 1) * step
+			p00, p10, p01, p11 = pt(i0, j0), pt(i1, j0), pt(i0, j1), pt(i1, j1)
+			# same diagonal as budget_report.terrain_cell_size
+			tris.extend(((p00, p10, p01), (p11, p01, p10)))
+	return cell, tris
+
+
+def mesh_terrain(bsp, scale, tol, mesh, stats, depth=16.0):
+	"""LOD terrain as wedge brushes in the engine collision mesh (.mcol): exact to tol units,
+	and no clipnodes. MOHAA terrain is not a brush, so without this it has no collision."""
+	for tp in bsp.terrain:
+		cell, tris = _terrain_triangles(tp, scale, tol)
+		for a, b, c in tris:
+			planes = wedge_planes(a, b, c, depth)
+			if planes is None:
+				stats["mesh_terrain_degenerate"] += 1
+				continue
+			zb = min(a[2], b[2], c[2]) - depth
+			mesh.add_brush(planes, [a, b, c, (a[0], a[1], zb), (b[0], b[1], zb), (c[0], c[1], zb)])
+			stats["mesh_terrain_brushes"] += 1
+		stats["mesh_terrain_patches"] += 1
+
+
+def prism_planes(a, b, c, thickness):
+	"""Planes of triangle abc extruded backwards (against its normal) by thickness: front,
+	back, then the three edges. None when the triangle is degenerate."""
+	cr = _cross(_sub(b, a), _sub(c, a))
+	if _dot(cr, cr) < 1e-8:
+		return None
+	n = _norm(cr)
+	planes = [(n, _dot(n, a)), ((-n[0], -n[1], -n[2]), -_dot(n, a) + thickness)]
+	for p, q, r in ((a, b, c), (b, c, a), (c, a, b)):
+		en = _norm(_cross(_sub(q, p), n))
+		if _dot(en, _sub(r, p)) > 0:
+			en = (-en[0], -en[1], -en[2])
+		planes.append((en, _dot(en, p)))
+	return planes
+
+
+def _bezier(p0, p1, p2, t):
+	u = 1.0 - t
+	return tuple(u * u * p0[k] + 2 * u * t * p1[k] + t * t * p2[k] for k in range(3))
+
+
+def _quad_steps(p0, p1, p2, tol):
+	"""Segments that keep a quadratic curve within tol of its polyline (error ~ dev / n^2)."""
+	mid = tuple((p0[k] + p2[k]) * 0.5 for k in range(3))
+	dev = math.sqrt(sum((p1[k] - mid[k]) ** 2 for k in range(3))) * 0.5
+	return max(1, min(16, math.ceil(math.sqrt(dev / tol)) if tol > 0 else 16))
+
+
+def patch_triangles(ctrl, w, h, tol):
+	"""Tessellate a Quake 3 biquadratic patch (w x h control points, row-major, both odd)
+	into triangles within about tol of the surface. Strips share their step counts so
+	neighbouring 3x3 pieces meet without cracks."""
+	if w < 3 or h < 3 or not (w & 1) or not (h & 1) or len(ctrl) < w * h:
+		return []
+	cp = lambda i, j: ctrl[j * w + i]  # noqa: E731
+	su = [max(_quad_steps(cp(2 * i, j), cp(2 * i + 1, j), cp(2 * i + 2, j), tol) for j in range(h))
+	      for i in range((w - 1) // 2)]
+	sv = [max(_quad_steps(cp(i, 2 * j), cp(i, 2 * j + 1), cp(i, 2 * j + 2), tol) for i in range(w))
+	      for j in range((h - 1) // 2)]
+	# parameter samples along each axis: (strip, t)
+	us = [(i, k / n) for i, n in enumerate(su) for k in range(n)] + [(len(su) - 1, 1.0)]
+	vs = [(j, k / n) for j, n in enumerate(sv) for k in range(n)] + [(len(sv) - 1, 1.0)]
+
+	def point(ui, vj):
+		i, tu = ui
+		j, tv = vj
+		cols = [_bezier(cp(2 * i, 2 * j + r), cp(2 * i + 1, 2 * j + r), cp(2 * i + 2, 2 * j + r), tu) for r in range(3)]
+		return _bezier(cols[0], cols[1], cols[2], tv)
+
+	grid = [[point(u, v) for u in us] for v in vs]
+	tris = []
+	for y in range(len(vs) - 1):
+		for x in range(len(us) - 1):
+			p00, p10, p01, p11 = grid[y][x], grid[y][x + 1], grid[y + 1][x], grid[y + 1][x + 1]
+			tris.extend(((p00, p10, p11), (p00, p11, p01)))
+	return tris
+
+
+def mesh_patches(bsp, scale, tol, mesh, stats, thickness=2.0):
+	"""Solid curved patches of the world as thin prisms in the engine collision mesh, the
+	way Quake 3 collides with patches. Brush-model patches are left to their entities."""
+	if not bsp.models or not bsp.drawverts:
+		return
+	m = bsp.models[0]
+	for si in range(m.first_surface, m.first_surface + m.num_surfaces):
+		if si >= len(bsp.surfaces):
+			break
+		sf = bsp.surfaces[si]
+		if sf.surface_type != b19.MST_PATCH:
+			continue
+		sh = bsp.shaders[sf.shader] if 0 <= sf.shader < len(bsp.shaders) else None
+		if sh is None or not sh.content_flags & (b19.CONTENTS_SOLID | b19.CONTENTS_PLAYERCLIP) \
+				or sh.surface_flags & (b19.SURF_NONSOLID | b19.SURF_SKY):
+			stats["mesh_patches_nonsolid"] += 1
+			continue
+		ctrl = [tuple(c * scale for c in v) for v in bsp.drawverts[sf.first_vert:sf.first_vert + sf.num_verts]]
+		tris = patch_triangles(ctrl, sf.patch_width, sf.patch_height, tol)
+		if not tris:
+			stats["mesh_patches_bad"] += 1
+			continue
+		for a, b, c in tris:
+			planes = prism_planes(a, b, c, thickness)
+			if planes is None:
+				continue
+			n = planes[0][0]
+			back = [tuple(p[k] - n[k] * thickness for k in range(3)) for p in (a, b, c)]
+			mesh.add_brush(planes, [a, b, c] + back)
+			stats["mesh_patch_brushes"] += 1
+		stats["mesh_patches"] += 1
+
+
 def terrain_brushes(bsp, scale, tol, tex, stats, depth=16.0):
 	"""Wedge brushes for every LOD terrain patch, as coarse as tol (GoldSrc units) allows."""
 	out = []
-	n = b19.TERRAIN_SAMPLES
-	tol_mohaa = tol / scale if scale > 0 else tol
 	for tp in bsp.terrain:
-		cell = terrain_cell_size(tp.heights, tol_mohaa)
-		step = cell // b19.TERRAIN_CELL
-		x0, y0 = tp.origin
-		cells = (n - 1) // step
-
-		def pt(i, j):
-			return ((x0 + i * b19.TERRAIN_CELL) * scale, (y0 + j * b19.TERRAIN_CELL) * scale, tp.heights[j * n + i] * scale)
-
-		for cj in range(cells):
-			for ci in range(cells):
-				i0, j0, i1, j1 = ci * step, cj * step, (ci + 1) * step, (cj + 1) * step
-				p00, p10, p01, p11 = pt(i0, j0), pt(i1, j0), pt(i0, j1), pt(i1, j1)
-				# same diagonal as budget_report.terrain_cell_size
-				for tri in ((p00, p10, p01), (p11, p01, p10)):
-					txt = wedge_brush(*tri, depth, tex, tex if tex == "CLIP" else "NULL")
-					if txt:
-						out.append(txt)
-						stats["terrain_brushes_written"] += 1
-					else:
-						stats["terrain_brushes_degenerate"] += 1
+		cell, tris = _terrain_triangles(tp, scale, tol)
+		for tri in tris:
+			txt = wedge_brush(*tri, depth, tex, tex if tex == "CLIP" else "NULL")
+			if txt:
+				out.append(txt)
+				stats["terrain_brushes_written"] += 1
+			else:
+				stats["terrain_brushes_degenerate"] += 1
 		stats["terrain_patches_cell_" + str(cell)] += 1
 	return out
 
@@ -755,7 +880,11 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
             simplify_collision: bool = False, collision_grid: float = 16.0, thin_walls: bool = True,
             detail_walls: bool = False, wall_cell: float = THIN_WALL_CELL,
             collision_aabb: float = 0.0, collision_reach: float = 0.0, collision_exact: float = 0.0,
-            mesh=None):
+            mesh=None, mesh_terrain_tol: float = 0.0, mesh_patch_tol: float = 0.0, mesh_angled: bool = True):
+	"""mesh: a mesh_collision.Collision that angled detail (mesh_angled, under
+	simplify_collision), terrain (mesh_terrain_tol > 0) and solid world patches
+	(mesh_patch_tol > 0) are added to."""
+	angled_mesh = mesh if mesh_angled else None
 	namer = TextureNamer()
 	stats = Counter()
 	world = bsp.entities[0] if bsp.entities else {"classname": "worldspawn"}
@@ -785,7 +914,7 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 				thin.append((txt, faces))
 				stats["thin_detail_to_wall"] += 1
 				if simplify_collision and not is_axial_brush(faces):
-					box = angled_collision(faces, voxels, collision_grid, stats, collision_aabb, reach, collision_exact, txt, mesh)
+					box = angled_collision(faces, voxels, collision_grid, stats, collision_aabb, reach, collision_exact, txt, angled_mesh)
 					if box:
 						world_brushes.append(box)
 				else:
@@ -795,7 +924,7 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 				continue
 		sky_detail = cls == "detail" and " sky [" in txt  # SDHLT: no sky in any entity, so world
 		if simplify_collision and cls in ("detail", "clip") and not sky_detail and not is_axial_brush(faces):
-			box = angled_collision(faces, voxels, collision_grid, stats, collision_aabb, reach, collision_exact, txt, mesh)
+			box = angled_collision(faces, voxels, collision_grid, stats, collision_aabb, reach, collision_exact, txt, angled_mesh)
 			if box:
 				world_brushes.append(box)
 			if cls == "detail" and detail_walls:
@@ -830,6 +959,10 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 		world_brushes.extend(seal_box_brushes(bsp, scale, stats))
 	if terrain:
 		detail.extend(terrain_brushes(bsp, scale, terrain_tol, terrain_tex, stats))
+	if mesh is not None and mesh_terrain_tol > 0 and not terrain:
+		mesh_terrain(bsp, scale, mesh_terrain_tol, mesh, stats)
+	if mesh is not None and mesh_patch_tol > 0:
+		mesh_patches(bsp, scale, mesh_patch_tol, mesh, stats)
 	blocks = [kv_block(ws_keys, world_brushes)]
 	if detail:
 		# SDHLT func_detail keeps MOHAA's detail brushes out of the vis tree.
@@ -1000,6 +1133,12 @@ def main(argv=None) -> int:
 	ap.add_argument("--mesh-collision", action="store_true",
 	                help="under --simplify-collision, angled brushes collide exactly through the engine instead of "
 	                     "voxels: written to <out>.mcol (needs xash3d-gc mesh collision)")
+	ap.add_argument("--mesh-terrain-tol", type=float, default=2.0, metavar="UNITS",
+	                help="LOD terrain collides through the engine mesh (<out>.mcol), merged into cells within "
+	                     "UNITS of the true heights (default 2; 0 = no terrain collision, as before)")
+	ap.add_argument("--mesh-patch-tol", type=float, default=2.0, metavar="UNITS",
+	                help="solid curved patches collide through the engine mesh, tessellated within about UNITS "
+	                     "(default 2; 0 = no patch collision, as before)")
 	ap.add_argument("--collision-exact", type=float, default=0.0, metavar="UNITS",
 	                help="under --simplify-collision, angled brushes at least UNITS long keep exact CLIP "
 	                     "collision (a big slope is a few planes exact, hundreds of voxel steps)")
@@ -1021,7 +1160,7 @@ def main(argv=None) -> int:
 	                     "which keeps them out of the world's hull-0 leaves)")
 	args = ap.parse_args(argv)
 
-	mesh = mesh_collision.Collision() if args.mesh_collision else None
+	mesh = mesh_collision.Collision()
 	name, data = read_source(args.source)
 	bsp = b19.load_bytes(data, name)
 	wad_key = str(args.wad.resolve()) if args.wad else None
@@ -1031,14 +1170,14 @@ def main(argv=None) -> int:
 	                                         (args.collision_grid, args.collision_grid_z or args.collision_grid),
 	                                         not args.thin_detail_in_world, args.detail_walls, args.wall_cell,
 	                                         args.collision_aabb, args.collision_reach, args.collision_exact,
-	                                         mesh)
+	                                         mesh, args.mesh_terrain_tol, args.mesh_patch_tol, args.mesh_collision)
 	args.out.write_text(text)
 	ntext, nnodes = path_nodes(bsp, args.scale)
 	if nnodes:
 		npath = args.out.with_suffix(".nodes")
 		npath.write_text(ntext)
 		print(f"{name}: wrote {npath} ({nnodes} path nodes)")
-	if mesh is not None:
+	if mesh.brushes:
 		mpath = args.out.with_suffix(".mcol")
 		npl, nbr, nsd, nnd = mesh.write(mpath)
 		print(f"{name}: wrote {mpath} ({nbr} brushes, {npl} planes, {nnd} nodes, {mpath.stat().st_size} bytes)")
