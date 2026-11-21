@@ -322,7 +322,7 @@ def brush_thickness(faces):
 	return min(d - min(_dot(p, n) for p in verts) for n, d, _, _ in faces)
 
 
-def brush_text(bsp, brush, scale, offset, namer, stats, cls, entity=False):
+def brush_text(bsp, brush, scale, offset, namer, stats, cls, entity=False, geom=None):
 	planes = []
 	for si in range(brush.first_side, brush.first_side + brush.num_sides):
 		if si >= len(bsp.brushsides):
@@ -366,6 +366,8 @@ def brush_text(bsp, brush, scale, offset, namer, stats, cls, entity=False):
 	sides = csg_safe_sides(sides, stats)
 	if sides is None:
 		return None
+	if geom is not None:
+		geom.extend(faces)
 	lines = ["{"]
 	for pts, rest in sides:
 		lines.append(" ".join("( %s %s %s )" % tuple(_f(c) for c in p) for p in pts) + " " + rest)
@@ -406,9 +408,10 @@ def model_brushes(bsp, model_index, scale, offset, namer, stats):
 		stats["brush_class_" + cls] += 1
 		if cls in ("origin", "skip", "nonsolid"):
 			continue
-		txt = brush_text(bsp, br, scale, offset, namer, stats, cls, entity)
+		faces = []
+		txt = brush_text(bsp, br, scale, offset, namer, stats, cls, entity, faces)
 		if txt:
-			out.append((cls, txt))
+			out.append((cls, txt, faces))
 	return out
 
 
@@ -518,6 +521,64 @@ def seal_box_brushes(bsp, scale, stats, margin=256.0, wall=16.0):
 	return out
 
 
+def is_axial_brush(faces):
+	return all(sum(1 for c in n if abs(c) > 1e-6) == 1 for n, _, _, _ in faces)
+
+
+def voxelize_brush(faces, voxels, grid):
+	"""Add every grid cell the convex brush may overlap (plane test against the cell's
+	nearest corner, so thin beams are never missed; it can over-include a little)."""
+	verts = [p for _, _, w, _ in faces for p in w]
+	lo = [math.floor(min(p[i] for p in verts) / grid) for i in range(3)]
+	hi = [math.ceil(max(p[i] for p in verts) / grid) for i in range(3)]
+	planes = [(n, d) for n, d, _, _ in faces]
+	for x in range(lo[0], hi[0]):
+		for y in range(lo[1], hi[1]):
+			for z in range(lo[2], hi[2]):
+				c0 = (x * grid, y * grid, z * grid)
+				for n, d in planes:
+					# the cell corner furthest behind the plane
+					m = sum((c0[k] if n[k] > 0 else c0[k] + grid) * n[k] for k in range(3))
+					if m >= d - 1e-6:
+						break
+				else:
+					voxels.add((x, y, z))
+
+
+def voxel_boxes(voxels, grid, stats):
+	"""Greedy-merge occupied cells into axial CLIP boxes (x runs, then y, then z).
+
+	Player-hull expansion of thousands of arbitrarily angled brushes is what blows
+	the plane and clipnode limits on m6l1a/b and m6l2b. Axial boxes on a shared
+	grid need no bevels and reuse the same few planes, and a slope becomes steps of
+	one grid cell, which players climb as long as the grid is under the 18-unit
+	step height."""
+	left = set(voxels)
+	out = []
+	for cell in sorted(voxels, key=lambda c: (c[2], c[1], c[0])):
+		if cell not in left:
+			continue
+		x0, y0, z0 = cell
+		x1 = x0
+		while (x1 + 1, y0, z0) in left:
+			x1 += 1
+		y1 = y0
+		while all((x, y1 + 1, z0) in left for x in range(x0, x1 + 1)):
+			y1 += 1
+		z1 = z0
+		while all((x, y, z1 + 1) in left for x in range(x0, x1 + 1) for y in range(y0, y1 + 1)):
+			z1 += 1
+		for x in range(x0, x1 + 1):
+			for y in range(y0, y1 + 1):
+				for z in range(z0, z1 + 1):
+					left.discard((x, y, z))
+		out.append(_box_brush((x0 * grid, y0 * grid, z0 * grid),
+		                      ((x1 + 1) * grid, (y1 + 1) * grid, (z1 + 1) * grid), "CLIP"))
+	stats["collision_voxels"] += len(voxels)
+	stats["collision_boxes"] += len(out)
+	return out
+
+
 def kv_block(keys, brushes=()):
 	lines = ["{"]
 	for k, v in keys.items():
@@ -529,7 +590,8 @@ def kv_block(keys, brushes=()):
 
 def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = None,
             terrain: bool = False, terrain_tol: float = 8.0, terrain_tex: str = "CLIP",
-            terrain_seal: bool = True, detail_world: bool = False, seal_box: bool = False):
+            terrain_seal: bool = True, detail_world: bool = False, seal_box: bool = False,
+            simplify_collision: bool = False, collision_grid: float = 16.0):
 	namer = TextureNamer()
 	stats = Counter()
 	world = bsp.entities[0] if bsp.entities else {"classname": "worldspawn"}
@@ -542,7 +604,18 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 
 	world_brushes = []
 	detail = []
-	for cls, txt in model_brushes(bsp, 0, scale, (0.0, 0.0, 0.0), namer, stats):
+	noclip_detail = []
+	voxels = set()
+	for cls, txt, faces in model_brushes(bsp, 0, scale, (0.0, 0.0, 0.0), namer, stats):
+		if simplify_collision and cls in ("detail", "clip") and not is_axial_brush(faces):
+			voxelize_brush(faces, voxels, collision_grid)
+			if cls == "detail":
+				noclip_detail.append(txt)  # still drawn, no player hulls
+				stats["detail_noclip"] += 1
+			else:
+				stats["clip_replaced"] += 1
+			stats["world_brushes_written"] += 1
+			continue
 		if cls == "detail" and detail_world:
 			cls = "solid"  # MOHAA detail can be part of the shell; func_detail never seals in SDHLT
 		if cls == "detail" and " sky [" in txt:
@@ -550,6 +623,8 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 			stats["detail_sky_to_world"] += 1
 		(detail if cls == "detail" else world_brushes).append(txt)
 		stats["world_brushes_written"] += 1
+	if voxels:
+		world_brushes.extend(voxel_boxes(voxels, collision_grid, stats))
 	if terrain_seal:
 		world_brushes.extend(terrain_seal_brushes(bsp, scale, stats))
 	if seal_box:
@@ -560,6 +635,8 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 	if detail:
 		# SDHLT func_detail keeps MOHAA's detail brushes out of the vis tree.
 		blocks.append(kv_block({"classname": "func_detail", "zhlt_detaillevel": "1"}, detail))
+	if noclip_detail:
+		blocks.append(kv_block({"classname": "func_detail", "zhlt_detaillevel": "1", "zhlt_noclip": "1"}, noclip_detail))
 
 	skipped = Counter()
 	for e in bsp.entities[1:]:
@@ -578,7 +655,7 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 				continue
 			gcn = BRUSH_CLASS_MAP.get(cn, "func_wall")
 			o = parse_vec(e.get("origin", ""))
-			brushes = [t for _, t in model_brushes(bsp, mi, scale, o, namer, stats)]
+			brushes = [t for _, t, _ in model_brushes(bsp, mi, scale, o, namer, stats)]
 			if not brushes:
 				skipped[cn + " (no brushes)"] += 1
 				continue
@@ -694,6 +771,10 @@ def main(argv=None) -> int:
 	                help="don't write the NULL columns under terrain that stop it leaking")
 	ap.add_argument("--detail-world", action="store_true",
 	                help="write MOHAA detail brushes into worldspawn (they seal; func_detail does not)")
+	ap.add_argument("--simplify-collision", action="store_true",
+	                help="angled detail/clip brushes collide as merged CLIP boxes on a grid (detail still drawn)")
+	ap.add_argument("--collision-grid", type=float, default=16.0,
+	                help="grid for --simplify-collision, GoldSrc units (default 16, under the 18-unit step)")
 	ap.add_argument("--seal-box", action="store_true",
 	                help="enclose the map in a NULL box so hull 0 can't leak (last resort)")
 	args = ap.parse_args(argv)
@@ -702,7 +783,8 @@ def main(argv=None) -> int:
 	bsp = b19.load_bytes(data, name)
 	wad_key = str(args.wad.resolve()) if args.wad else None
 	text, namer, stats, skipped = convert(bsp, args.scale, wad_key, args.terrain_brushes, args.terrain_tol, args.terrain_tex,
-	                                         not args.no_terrain_seal, args.detail_world, args.seal_box)
+	                                         not args.no_terrain_seal, args.detail_world, args.seal_box,
+	                                         args.simplify_collision, args.collision_grid)
 	args.out.write_text(text)
 	if args.wad:
 		write_wad(args.wad, list(namer.by_shader.values()) + sorted(namer.special_used))
