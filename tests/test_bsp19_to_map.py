@@ -349,6 +349,50 @@ class StaticBrushModelTest(unittest.TestCase):
 		self.assertIn('"classname" "func_door"', text)
 		self.assertEqual(text.count('"mohaa_classname" "script_object"'), 1)
 
+	def test_names_no_script_uses_merge(self):
+		bsp = self.bsp()
+		bsp.entities[2]["targetname"] = "crate_unused"
+		self.assertEqual(conv.convert(bsp, scale=1.0, merge_static_models=True)[2]["static_brush_models_merged"], 3)
+		text, _, stats, _ = conv.convert(bsp, scale=1.0, merge_static_models=True,
+		                                 script_words={"wall_b", "d", "thread"})
+		self.assertEqual(stats["static_brush_models_merged"], 4)
+		self.assertNotIn("crate_unused", text)
+		self.assertIn('"targetname" "wall_b"', text)  # the script says $wall_b
+		self.assertIn('"targetname" "d"', text)
+		# a numbered name a script can build ("crate_" + local.i) stays
+		bsp.entities[2]["targetname"] = "crate_2"
+		text = conv.convert(bsp, scale=1.0, merge_static_models=True, script_words={"wall_b", "d", "crate_"})[0]
+		self.assertIn('"targetname" "crate_2"', text)
+
+	def test_triggers_with_same_keys_merge(self):
+		bsp = self.bsp()
+		for i in range(1, 6):
+			bsp.entities[i] = {"classname": "trigger_multiple", "model": f"*{i}", "setthread": "alarm"}
+		bsp.entities[1]["setthread"] = "other"
+		bsp.entities[2]["targetname"] = "t_named"
+		bsp.entities[3]["classname"] = "trigger_once"
+		text, _, stats, _ = conv.convert(bsp, scale=1.0, merge_static_models=True)
+		# *4 and *5 share keys; *1 differs, *2 is named, *3 fires once on its own
+		self.assertEqual(stats["triggers_merged"], 3)
+		self.assertEqual(stats["triggers_written"], 4)
+		self.assertEqual(text.count('"netname" "alarm"'), 3)
+		# without scripts every name stays; with scripts that never say t_named it merges too
+		text, _, stats, _ = conv.convert(bsp, scale=1.0, merge_static_models=True, script_words=set())
+		self.assertEqual(stats["triggers_written"], 3)
+		self.assertEqual(text.count('"netname" "alarm"'), 2)
+
+	def test_script_names_follow_globals(self):
+		import tempfile
+		with tempfile.TemporaryDirectory() as d:
+			Path(d, "maps").mkdir()
+			Path(d, "global").mkdir()
+			Path(d, "maps", "m9.scr").write_text('main:\n exec global/lib.scr\n $gate open\nend\n')
+			Path(d, "global", "lib.scr").write_text('$("bunker_" + local.i) hide\n')
+			words = conv.script_names([d], "m9")
+			self.assertIn("gate", words)
+			self.assertIn("bunker_", words)
+			self.assertIsNone(conv.script_names([d], "nope"))
+
 	def test_off_keeps_every_model(self):
 		text, _, stats, _ = conv.convert(self.bsp(), scale=1.0)
 		self.assertEqual(stats["static_brush_models_merged"], 0)

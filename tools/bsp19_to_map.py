@@ -865,10 +865,15 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
             detail_walls: bool = False, wall_cell: float = THIN_WALL_CELL,
             collision_aabb: float = 0.0, collision_reach: float = 0.0, collision_exact: float = 0.0,
             mesh=None, mesh_terrain: bool = False, mesh_patch_tol: float = 0.0, mesh_angled: bool = True,
-            merge_static_models: bool = False):
+            merge_static_models: bool = False, script_words: set | None = None):
 	"""mesh: a mesh_collision.Collision that angled detail (mesh_angled, under
 	simplify_collision), terrain heightfields (mesh_terrain) and solid world patches
-	(mesh_patch_tol > 0) are added to."""
+	(mesh_patch_tol > 0) are added to.
+
+	merge_static_models also merges triggers with the same keys into one entity each.
+	script_words: every word of the level's scripts (script_names()). A targetname that no
+	script word and no entity target names is dropped, so that entity can merge too; None
+	keeps every targetname."""
 	angled_mesh = mesh if mesh_angled else None
 	namer = TextureNamer()
 	stats = Counter()
@@ -981,9 +986,24 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 
 	skipped = Counter()
 	static_cells = {}  # cell -> brush texts of unnamed static brush models, merged per cell
+	trigger_groups = {}  # trigger keys -> brush texts, for triggers that merge
+	targeted = {e["target"] for e in bsp.entities if e.get("target")}
+
+	def unused_name(e):
+		"""e's targetname, when nothing can ever look it up."""
+		name = e.get("targetname")
+		if not name or script_words is None or name in script_words or name in targeted:
+			return False
+		# scripts build numbered names: $("bunker_" + local.i) reaches bunker_1, bunker_2 ...
+		stem = name.rstrip("0123456789")
+		return not (stem != name and len(stem) >= 3 and stem in script_words)
+
 	for e in bsp.entities[1:]:
 		cn = e.get("classname", "")
 		model = e.get("model", "")
+		if merge_static_models and unused_name(e):
+			e = {k: v for k, v in e.items() if k != "targetname"}
+			stats["targetnames_unused"] += 1
 		if model.startswith("*"):
 			try:
 				mi = int(model[1:])
@@ -1007,6 +1027,12 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 					keys["netname"] = e["setthread"].strip()
 				if keys["classname"] == "trigger_multiple" and "wait" not in keys:
 					keys["wait"] = "0.2"  # MOHAA re-arms a multiple trigger quickly; GoldSrc's default is 0.2 too
+				if merge_static_models and "targetname" not in keys and keys["classname"] != "trigger_once":
+					# nothing names it, so the same keys on one entity act the same: touching any brush
+					# fires it (a trigger_once stays apart, since each MOHAA one fires once on its own)
+					trigger_groups.setdefault(tuple(keys.items()), []).extend(brushes)
+					stats["triggers_merged"] += 1
+					continue
 				blocks.append(kv_block(keys, brushes))
 				stats["triggers_written"] += 1
 				continue
@@ -1074,6 +1100,9 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 			blocks.append(kv_block({"classname": gcn, "origin": " ".join(_f(v) for v in c)}))
 		stats["player_starts_fallback"] += 1
 
+	for keys, brushes in trigger_groups.items():
+		blocks.append(kv_block(dict(keys), brushes))
+		stats["triggers_written"] += 1
 	for cell in sorted(static_cells):
 		blocks.append(kv_block({"classname": "func_wall", "mohaa_classname": "static_brush_models"}, static_cells[cell]))
 		stats["static_brush_model_walls"] += 1
@@ -1142,6 +1171,25 @@ def read_source(src: str) -> tuple[str, bytes]:
 	return src, Path(src).read_bytes()
 
 
+SCRIPT_WORD = re.compile(r"[A-Za-z0-9_]+")
+
+
+def script_names(inputs, mapname):
+	"""Every word in the scripts the level runs (maps/<map>.scr and the global scripts it pulls in),
+	read from MOHAA pk3s or directories, or None when the map has no script. A targetname missing
+	from this set can't be what a script asks for with $name, so the converter may drop it."""
+	from stage_scripts import closure
+	from ubersound import collect, read
+	scripts = collect(inputs, (".scr",))
+	need, _ = closure(scripts, mapname)
+	if not need:
+		return None
+	words = set()
+	for path in need:
+		words.update(SCRIPT_WORD.findall(read(scripts[path]).decode("latin-1")))
+	return words
+
+
 def main(argv=None) -> int:
 	ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
 	ap.add_argument("source")
@@ -1198,11 +1246,20 @@ def main(argv=None) -> int:
 	ap.add_argument("--thin-detail-in-world", action="store_true",
 	                help="keep thickened detail slivers in func_detail (default: per-cell func_walls, "
 	                     "which keeps them out of the world's hull-0 leaves)")
+	ap.add_argument("--scripts", action="append", metavar="PATH",
+	                help="MOHAA main directory or pk3 (repeatable): targetnames the level's scripts never use "
+	                     "are dropped, so those brush models and triggers merge too")
 	args = ap.parse_args(argv)
 
 	mesh = mesh_collision.Collision()
 	name, data = read_source(args.source)
 	bsp = b19.load_bytes(data, name)
+	words = None
+	if args.scripts:
+		mapname = re.sub(r"\.bsp$", "", re.split(r"[/:\\]", name)[-1], flags=re.I).lower()
+		words = script_names(args.scripts, mapname)
+		if words is None:
+			print(f"{name}: no maps/{mapname}.scr, keeping every targetname")
 	wad_key = str(args.wad.resolve()) if args.wad else None
 	text, namer, stats, skipped = convert(bsp, args.scale, wad_key, args.terrain_brushes, args.terrain_tol, args.terrain_tex,
 	                                         not args.no_terrain_seal, args.detail_world, args.seal_box,
@@ -1211,7 +1268,7 @@ def main(argv=None) -> int:
 	                                         not args.thin_detail_in_world, args.detail_walls, args.wall_cell,
 	                                         args.collision_aabb, args.collision_reach, args.collision_exact,
 	                                         mesh, not args.no_mesh_terrain, args.mesh_patch_tol, args.mesh_collision,
-	                                         not args.keep_brush_models)
+	                                         not args.keep_brush_models, words)
 	args.out.write_text(text)
 	ntext, nnodes = path_nodes(bsp, args.scale)
 	if nnodes:
