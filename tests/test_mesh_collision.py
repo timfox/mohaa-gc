@@ -67,7 +67,7 @@ class MeshCollisionTest(unittest.TestCase):
 			faces = conv.brush_faces(box_planes((i * 100, 0, 0), (i * 100 + 32, 32, 32)))
 			col.add_brush([(n, d) for n, d, _, _ in faces], [p for _, _, w, _ in faces for p in w])
 		m = roundtrip(col)
-		planes, brushes, sides, nodes, _, _ = m
+		planes, brushes, sides, nodes = m[:4]
 		self.assertEqual(len(brushes), 50)
 		for k in (0, 17, 49):
 			frac, _, _ = mc.trace_box(m, (k * 100 + 16, 16, 300), (k * 100 + 16, 16, 0), *PLAYER)
@@ -168,12 +168,12 @@ class TerrainPatchMeshTest(unittest.TestCase):
 
 	def test_prism_planes_contain_triangle(self):
 		a, b, c = (0, 0, 0), (64, 0, 0), (0, 64, 32)
-		planes = conv.prism_planes(a, b, c, 2.0)
+		_, _, planes = mc.triangle_prism(a, b, c)
 		self.assertEqual(len(planes), 5)
 		centroid = tuple((a[k] + b[k] + c[k]) / 3 for k in range(3))
 		for n, d in planes:
 			self.assertLessEqual(mc._dot(n, centroid) - d, 1e-6)
-		self.assertIsNone(conv.prism_planes(a, a, c, 2.0))
+		self.assertIsNone(mc.triangle_prism(a, a, c))
 
 
 if __name__ == "__main__":

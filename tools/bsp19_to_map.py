@@ -535,22 +535,6 @@ def add_mesh_terrain(bsp, scale, mesh, stats):
 		stats["mesh_terrain_patches"] += 1
 
 
-def prism_planes(a, b, c, thickness):
-	"""Planes of triangle abc extruded backwards (against its normal) by thickness: front,
-	back, then the three edges. None when the triangle is degenerate."""
-	cr = _cross(_sub(b, a), _sub(c, a))
-	if _dot(cr, cr) < 1e-8:
-		return None
-	n = _norm(cr)
-	planes = [(n, _dot(n, a)), ((-n[0], -n[1], -n[2]), -_dot(n, a) + thickness)]
-	for p, q, r in ((a, b, c), (b, c, a), (c, a, b)):
-		en = _norm(_cross(_sub(q, p), n))
-		if _dot(en, _sub(r, p)) > 0:
-			en = (-en[0], -en[1], -en[2])
-		planes.append((en, _dot(en, p)))
-	return planes
-
-
 def _bezier(p0, p1, p2, t):
 	u = 1.0 - t
 	return tuple(u * u * p0[k] + 2 * u * t * p1[k] + t * t * p2[k] for k in range(3))
@@ -593,9 +577,9 @@ def patch_triangles(ctrl, w, h, tol):
 	return tris
 
 
-def mesh_patches(bsp, scale, tol, mesh, stats, thickness=2.0):
-	"""Solid curved patches of the world as thin prisms in the engine collision mesh, the
-	way Quake 3 collides with patches. Brush-model patches are left to their entities."""
+def mesh_patches(bsp, scale, tol, mesh, stats):
+	"""Solid curved patches of the world as triangles in the engine collision mesh (each
+	swept as a thin prism, the way Quake 3 collides with patch facets). Brush-model patches are left to their entities."""
 	if not bsp.models or not bsp.drawverts:
 		return
 	m = bsp.models[0]
@@ -616,13 +600,8 @@ def mesh_patches(bsp, scale, tol, mesh, stats, thickness=2.0):
 			stats["mesh_patches_bad"] += 1
 			continue
 		for a, b, c in tris:
-			planes = prism_planes(a, b, c, thickness)
-			if planes is None:
-				continue
-			n = planes[0][0]
-			back = [tuple(p[k] - n[k] * thickness for k in range(3)) for p in (a, b, c)]
-			mesh.add_brush(planes, [a, b, c] + back)
-			stats["mesh_patch_brushes"] += 1
+			if mesh.add_triangle(a, b, c):
+				stats["mesh_patch_triangles"] += 1
 		stats["mesh_patches"] += 1
 
 
@@ -1171,7 +1150,7 @@ def main(argv=None) -> int:
 		npath = args.out.with_suffix(".nodes")
 		npath.write_text(ntext)
 		print(f"{name}: wrote {npath} ({nnodes} path nodes)")
-	if mesh.brushes or mesh.terrain:
+	if mesh.brushes or mesh.terrain or mesh.tris:
 		mpath = args.out.with_suffix(".mcol")
 		npl, nbr, nsd, nnd = mesh.write(mpath)
 		print(f"{name}: wrote {mpath} ({nbr} brushes, {npl} planes, {nnd} nodes, {mpath.stat().st_size} bytes)")
