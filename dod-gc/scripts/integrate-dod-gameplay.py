@@ -322,6 +322,20 @@ def integrate_mohaa_trigger_event(dlls: Path) -> None:
 		'\t// don\'t trigger again until reset\n')
 
 
+def integrate_mohaa_entity_keys(dlls: Path) -> None:
+	"""MOHAA map keys starting with '#' (#set, #group) are only read by scripts ($spawner.#set): hand them to the script
+	binding instead of the entity, which would not know them."""
+	cbase = dlls / "cbase.cpp"
+	replace_once(cbase, '#include\t"game.h"\n', '#include\t"game.h"\n#include "dod_mohaa_ents.h"\n')
+	replace_once(cbase,
+		'\tif( !pkvd || !pentKeyvalue )\n\t\treturn;\n\n\tEntvarsKeyvalue( VARS( pentKeyvalue ), pkvd );\n',
+		'\tif( !pkvd || !pentKeyvalue )\n\t\treturn;\n\n'
+		'\tif( pkvd->szKeyName && pkvd->szKeyName[0] == \'#\' && pkvd->szValue ) {\n'
+		'\t\tDodGC_MohaaEntityKey( pentKeyvalue, pkvd->szKeyName, pkvd->szValue );\n'
+		'\t\tpkvd->fHandled = TRUE;\n\t\treturn;\n\t}\n'
+		'\tEntvarsKeyvalue( VARS( pentKeyvalue ), pkvd );\n')
+
+
 def integrate_doddetect(dlls: Path) -> None:
 	"""info_doddetect is linked to a plain point entity in the SDK; the game's CDoDDetect (dod_runtime.cpp) takes the class name to read the
 	respawn factors, so the SDK's link line goes."""
@@ -1009,6 +1023,7 @@ def main() -> int:
 	integrate_film_actors(dlls)
 	integrate_doddetect(dlls)
 	integrate_mohaa_trigger_event(dlls)
+	integrate_mohaa_entity_keys(dlls)
 	integrate_pm_layout_hook(dlls)
 	integrate_precache_bodies_hook(dlls)
 	integrate_weaponbox_null_check(dlls)

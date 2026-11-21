@@ -581,14 +581,19 @@ static void test_setthread_and_quiet_commands(void)
 		"\taddobjective 1 1 \"Find the radio\" $t_gate\n"
 		"\tsetcurrentobjective 1\n"
 		"\texec global/nothere.scr\n"
+		"\tlocal.d = spawn script_origin \"#set\" \"4\" targetname dest\n"
+		"\tprintln (\"spawned set \" + local.d.#set)\n"
 		"\tlocal.p = $t_gate.forwardvector * 128 + $t_gate.origin\n"
 		"\tprintln (\"ahead \" + local.p)\n"
 		"\tprintln (\"left \" + $t_gate.leftvector + \" up \" + $t_gate.upvector)\n"
 		"end\n"
 		"gate_open:\n"
 		"\tprintln (\"gate by \" + self.targetname)\n"
+		"\tprintln (\"set \" + (self.#set + 1) + \" group \" + self.#group)\n"
 		"end\n";
 	assert(Dod_MohaaLevelInit(&b, "g", 0, 0));
+	Dod_MohaaEntityKey(make_id(t), "#set", "3");   /* map keys arrive as the map's entities spawn, after the VM starts */
+	Dod_MohaaEntityKey(make_id(t), "#group", "left side");
 	run(0.05f, 0.2f);
 	Dod_MohaaRunThread("gate_open", make_id(t));
 	Dod_MohaaRunThread("no_label", make_id(t));
@@ -602,6 +607,8 @@ static void test_setthread_and_quiet_commands(void)
 	assert(!strcmp(cvar_set, "g_mohaa=1"));
 	assert(strstr(log_buf, "[center] Objective: Find the radio\n"));
 	assert(strstr(log_buf, "ahead (0.000 128.000 0.000)\n") || strstr(log_buf, "ahead (-0.000 128.000 0.000)\n"));
+	assert(strstr(log_buf, "set 4 group left side\n"));
+	assert(strstr(log_buf, "spawned set 4\n"));
 	assert(strstr(log_buf, "left (-1.000 ") && strstr(log_buf, " up (0.000 0.000 1.000)") );
 }
 

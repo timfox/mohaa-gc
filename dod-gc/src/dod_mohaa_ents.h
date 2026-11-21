@@ -10,4 +10,7 @@ void DodGC_MohaaThink( void );
 /* An entity event a script can wait for, e.g. ("trigger") from a trigger firing. */
 void DodGC_MohaaEntityEvent( edict_t *e, const char *event );
 
+/* DispatchKeyValue: a key starting with '#' (MOHAA "#set", "#group") is for scripts only. */
+void DodGC_MohaaEntityKey( edict_t *e, const char *key, const char *value );
+
 #endif

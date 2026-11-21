@@ -610,6 +610,13 @@ void DodGC_MohaaLevelInit( void )
 	}
 }
 
+void DodGC_MohaaEntityKey( edict_t *e, const char *key, const char *value )
+{
+	uint32_t id = IdFor( e );
+	if( id )
+		Dod_MohaaEntityKey( id, key, value );
+}
+
 void DodGC_MohaaThink( void )
 {
 	Dod_MohaaThink( gpGlobals->time );

@@ -1,0 +1,4 @@
+main local.n:
+	local.a[1] = local.n
+	local.a[2] = "two"
+end local.a

@@ -105,6 +105,9 @@ int Dod_MohaaLevelInit(const DodMohaaBackend *backend, const char *mapname, floa
 /* Every server frame: sends "prespawn" then "spawn" to level, runs threads, finishes moves. */
 void Dod_MohaaThink(float now);
 void Dod_MohaaShutdown(void);
+/* A map entity's key that only scripts read (MOHAA "#set", "#group", ...): the script sees it as $ent.#set.
+ * Numbers become numbers. Ignored when no script runs. */
+void Dod_MohaaEntityKey(uint32_t id, const char *key, const char *value);
 /* The backend's pool region is being taken back (GameCube: the map arena resets at map change): stop the
  * script and forget everything in the region without touching it. Does nothing when no pool is in use. */
 void Dod_MohaaDropPool(void);

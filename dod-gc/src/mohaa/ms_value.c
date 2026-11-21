@@ -736,6 +736,18 @@ ms_table *ms_entity_vars(ms_vm *vm, uint32_t id, int create)
     return &e->vars;
 }
 
+int ms_set_entity_var(ms_vm *vm, uint32_t id, const char *name, const ms_value *v)
+{
+    ms_table *t = ms_entity_vars(vm, id, 1);
+    ms_value *slot = t ? ms_table_slot(vm, t, ms_intern(vm, name, strlen(name))) : NULL;
+    if (!slot)
+        return 0;
+    ms_retain(*v);
+    ms_release(vm, *slot);
+    *slot = *v;
+    return 1;
+}
+
 /* ------------------------------------------------------------------ */
 /* operators                                                            */
 /* ------------------------------------------------------------------ */

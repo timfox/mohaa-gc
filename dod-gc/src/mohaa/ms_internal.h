@@ -166,6 +166,7 @@ struct ms_call {
     ms_value        target;
     ms_value       *args;
     int32_t         argc;
+    int32_t         keep;        /* the result is used (the command is an expression) */
     ms_value        ret;
     int32_t         wait_kind;   /* 0 none, 1 time, 2 signal, 3 thread, 4 frame, 5 end */
     float           wait_time;

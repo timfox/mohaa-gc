@@ -1125,6 +1125,30 @@ static int c_trigger(ms_call *c)
 	return 0;
 }
 
+/* "3" -> 3, "0.5" -> 0.5, anything else stays a string (the VM's own value for a numeric key) */
+static ms_value key_value(const char *value)
+{
+	char *end;
+	long i = strtol(value, &end, 10);
+	double f;
+	if (*value && !*end)
+		return ms_int((int32_t)i);
+	f = strtod(value, &end);
+	if (*value && !*end)
+		return ms_float((float)f);
+	return ms_string(S.vm, value);
+}
+
+void Dod_MohaaEntityKey(uint32_t id, const char *key, const char *value)
+{
+	ms_value v;
+	if (!S.vm || !id || !key || !value)
+		return;
+	v = key_value(value);
+	ms_set_entity_var(S.vm, id, key, &v);
+	ms_release(S.vm, v);
+}
+
 static int c_spawn(ms_call *c)
 {
 	const char *keys[16], *vals[16];
@@ -1146,6 +1170,9 @@ static int c_spawn(ms_call *c)
 	id = S.be.spawn(ms_arg_string(c, 0), keys, vals, n);
 	if (!id)
 		return ms_call_error(c, "could not spawn '%s'", ms_arg_string(c, 0));
+	for (i = 0; i < n; i++)
+		if (keys[i][0] == '#')
+			Dod_MohaaEntityKey(id, keys[i], vals[i]);
 	ms_return_entity(c, id);
 	return 0;
 }
@@ -1243,6 +1270,7 @@ static void register_commands(ms_vm *vm)
 		{"item", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"takeall", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"useweaponclass", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"dontdropweapons", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"unholster", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"detach", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		/* scripted HUD elements (m6l1a's mg42 overlay): there is no matching HUD element on the GoldSrc side yet */

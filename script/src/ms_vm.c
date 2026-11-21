@@ -1182,6 +1182,7 @@ static void interpret(ms_vm *vm, ms_thread *t)
             c.thread = t;
             c.name = name;
             c.argc = argc;
+            c.keep = keep;
             int base = t->sp - argc;
             ms_value target = ms_nil();
             if (op == OP_METHOD) {

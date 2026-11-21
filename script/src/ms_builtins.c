@@ -150,7 +150,9 @@ static int start(ms_call *c, int is_exec, int wait)
 
 static int bi_thread(ms_call *c) { return start(c, 0, 0); }
 static int bi_waitthread(ms_call *c) { return start(c, 0, 1); }
-static int bi_exec(ms_call *c) { return start(c, 1, 0); }
+/* exec as an expression (level.friendly = exec global/makearray.scr $friendly) yields the script's end
+   value, so it waits for the script like waitexec; as a statement it starts the script and goes on. */
+static int bi_exec(ms_call *c) { return start(c, 1, c->keep); }
 static int bi_waitexec(ms_call *c) { return start(c, 1, 1); }
 
 static int bi_self(ms_call *c)
