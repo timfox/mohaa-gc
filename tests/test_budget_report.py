@@ -24,10 +24,10 @@ class ReaderTest(unittest.TestCase):
 	def test_v19_counts(self):
 		bsp = b19.load_bytes(make_sample_bsp.build(19), "sample")
 		self.assertEqual(bsp.version, 19)
-		self.assertEqual(len(bsp.shaders), 7)
-		self.assertEqual(len(bsp.brushes), 5)
+		self.assertEqual(len(bsp.shaders), 8)
+		self.assertEqual(len(bsp.brushes), 10)
 		self.assertEqual(len(bsp.models), 2)
-		self.assertEqual(bsp.models[0].num_brushes, 4)
+		self.assertEqual(bsp.models[0].num_brushes, 9)
 		self.assertEqual(len(bsp.terrain), 3)
 		self.assertEqual(len(bsp.static_models), 2)
 		self.assertEqual(bsp.static_models[0].model, "static/barrel.tik")
@@ -77,15 +77,15 @@ class ReportTest(unittest.TestCase):
 
 	def test_classification_and_proxies(self):
 		r = self.analyse()
-		self.assertEqual(r["counts"]["brush_classes"], {"solid": 3, "clip": 1, "water": 1})
+		self.assertEqual(r["counts"]["brush_classes"], {"solid": 8, "clip": 1, "water": 1})
 		self.assertEqual(r["counts"]["patches_collidable"], 1)
 		self.assertEqual(r["proxies"]["patch_clip_brushes"], 2 * 4)  # 2 pieces x 2x2
 		cells = r["counts"]["terrain_cell_sizes"]
 		self.assertEqual(cells.get("512"), 2)
 		self.assertEqual(r["proxies"]["terrain_wedge_brushes"],
 		                 2 * 2 + sum(2 * (512 // int(c)) ** 2 * n for c, n in cells.items() if c != "512"))
-		# floor top + 6 crate faces + 6 door faces + 6 water faces; caulk skipped
-		self.assertEqual(r["checks"]["faces_est"]["value"], 1 + 6 + 6 + 6)
+		# floor top + crate, door, water, 4 walls and the sky ceiling (6 each); caulk skipped
+		self.assertEqual(r["checks"]["faces_est"]["value"], 1 + 6 * 8)
 		self.assertEqual(r["verdict"], "OK")
 
 	def test_edicts_skip_pathnodes_and_lights(self):

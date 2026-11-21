@@ -57,6 +57,22 @@ Known gaps: the clipnode factor needs calibrating against real SDHLT runs, and
 the report does not yet predict the compiled BSP30 size against the engine's
 3 MiB map buffer.
 
+## Brush extraction (BSP19 -> .map)
+
+```bash
+python3 tools/bsp19_to_map.py retail/main/Pak5.pk3:maps/m1l1.bsp -o m1l1.map --wad m1l1.wad
+sdHLCSG m1l1.map && sdHLBSP m1l1.map      # fast fullbright loop; add sdHLVIS / sdHLRAD later
+```
+
+Writes a Valve-220 .map that SDHLT compiles to BSP30. Stage one only covers brushes:
+
+- Every brush is rebuilt from its planes. Bevel and duplicate planes drop out, and the world is scaled by `--scale` (default 72/94).
+- MOHAA detail brushes go into one `func_detail`. Caulk/nodraw becomes `NULL`, clip becomes `CLIP`, sky becomes `sky`, water becomes `!water`.
+- Doors and script objects are written as brush entities. Rotating doors get an `ORIGIN` brush. MOHAA player starts become DoD spawns, lifted onto GoldSrc's hull.
+- `--wad` writes placeholder textures (a flat checker per name) so SDHLT can compile without the real art.
+
+Not handled yet: texture alignment (Q3-family brush sides store none, so faces are box-projected), curved patches, terrain and static models (render bake plus engine mesh collision), triggers, and point entities other than player starts.
+
 ## Tests
 
 ```bash
