@@ -25,8 +25,9 @@ SHADERS = [
 	("textures/general/archway", 0, b19.CONTENTS_SOLID),
 	("textures/general/vines", b19.SURF_NONSOLID, b19.CONTENTS_SOLID),
 	("textures/terrain/grass", 0, b19.CONTENTS_SOLID),
+	("textures/sky/sky_algiers", b19.SURF_SKY, b19.CONTENTS_SOLID),
 ]
-S_CONCRETE, S_CAULK, S_CLIP, S_WATER, S_ARCH, S_VINES, S_GRASS = range(len(SHADERS))
+S_CONCRETE, S_CAULK, S_CLIP, S_WATER, S_ARCH, S_VINES, S_GRASS, S_SKY = range(len(SHADERS))
 
 
 def box_sides(planes, mins, maxs, shaders):
@@ -57,6 +58,12 @@ def build(version: int = 19) -> bytes:
 	add_brush((0, 0, 0), (64, 64, 64), [S_CONCRETE], S_CONCRETE)
 	add_brush((200, 200, 0), (264, 264, 128), [S_CLIP], S_CLIP)
 	add_brush((-512, -512, -64), (-256, -256, -8), [S_WATER], S_WATER)
+	# walls and a sky ceiling seal the room so SDHLT compiles it without a leak
+	add_brush((-1024, -1024, 0), (-992, 1024, 224), [S_CONCRETE], S_CONCRETE)
+	add_brush((992, -1024, 0), (1024, 1024, 224), [S_CONCRETE], S_CONCRETE)
+	add_brush((-992, -1024, 0), (992, -992, 224), [S_CONCRETE], S_CONCRETE)
+	add_brush((-992, 992, 0), (992, 1024, 224), [S_CONCRETE], S_CONCRETE)
+	add_brush((-1024, -1024, 224), (1024, 1024, 256), [S_SKY], S_SKY)
 	n_world = len(brushes)
 	# brush model 1: a door
 	add_brush((400, 0, 0), (408, 96, 120), [S_CONCRETE], S_CONCRETE)
@@ -103,6 +110,9 @@ def build(version: int = 19) -> bytes:
 		'{\n"classname" "info_player_allied"\n"origin" "0 0 16"\n}\n'
 		'{\n"classname" "func_door"\n"model" "*1"\n"targetname" "door1"\n}\n'
 		'{\n"classname" "actor"\n"origin" "128 0 16"\n}\n'
+		'{\n"classname" "info_pathnode"\n"origin" "64 64 16"\n}\n'
+		'{\n"classname" "info_pathnode"\n"origin" "128 64 16"\n}\n'
+		'{\n"classname" "light"\n"origin" "0 0 128"\n}\n'
 	).encode() + b"\0"
 
 	lumps = {i: b"" for i in range(b19.HEADER_LUMPS)}
