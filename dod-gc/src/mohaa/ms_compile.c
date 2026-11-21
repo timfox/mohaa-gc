@@ -1690,14 +1690,39 @@ static void script_free(ms_vm *vm, ms_script *s, int keep_pool)
 void ms_script_free(ms_vm *vm, ms_script *s) { script_free(vm, s, 0); }
 void ms_script_retire(ms_vm *vm, ms_script *s) { script_free(vm, s, 1); }
 
+static void scratch(ms_vm *vm, int on)
+{
+    if (vm->host.scratch)
+        vm->host.scratch(vm->host.user, on);
+}
+
+/* Move a buffer the script keeps out of the compile's scratch (see ms_host.scratch), trimmed to n bytes.
+   Without room for the copy it is only trimmed where it is. */
+static void *settle(ms_vm *vm, void *p, size_t n)
+{
+    void *q;
+    if (!p || !n)
+        return p;
+    if (!vm->host.scratch) {
+        q = ms_realloc(vm, p, n);
+        return q ? q : p;
+    }
+    q = ms_alloc(vm, n);
+    if (!q) {
+        q = ms_realloc(vm, p, n);
+        return q ? q : p;
+    }
+    memcpy(q, p, n);
+    ms_free(vm, p);
+    return q;
+}
+
 /* The constant buffer becomes the script's pool: trim it, point a table into it. */
 static void pool_consts(cg *G)
 {
     if (!G->nconsts)
         return;
-    char *nb = (char *)ms_realloc(G->vm, G->kbuf, G->klen);
-    if (nb)
-        G->kbuf = nb;
+    G->kbuf = (char *)settle(G->vm, G->kbuf, G->klen);
     G->ktab = (ms_str **)ms_alloc(G->vm, sizeof(ms_str *) * G->nconsts);
     if (!G->ktab)
         perr(G->P, 0, "out of memory");
@@ -1711,6 +1736,7 @@ static void pool_consts(cg *G)
 
 ms_script *ms_compile(ms_vm *vm, const char *path, const char *text, size_t len, char *err, size_t errlen)
 {
+    scratch(vm, 1);
     parser *P = (parser *)ms_alloc(vm, sizeof(parser));
     cg *G = (cg *)ms_alloc(vm, sizeof(cg));
     ms_script *S = NULL;
@@ -1718,6 +1744,7 @@ ms_script *ms_compile(ms_vm *vm, const char *path, const char *text, size_t len,
         snprintf(err, errlen, "%s: out of memory", path);
         ms_free(vm, P);
         ms_free(vm, G);
+        scratch(vm, 0);
         return NULL;
     }
     P->vm = vm;
@@ -1753,6 +1780,7 @@ ms_script *ms_compile(ms_vm *vm, const char *path, const char *text, size_t len,
         arena_free(&P->ar);
         ms_free(vm, P);
         ms_free(vm, G);
+        scratch(vm, 0);
         return NULL;
     }
 
@@ -1763,21 +1791,18 @@ ms_script *ms_compile(ms_vm *vm, const char *path, const char *text, size_t len,
     }
     e8(G, OP_END);
     flush_line(G);
-    /* growth leaves slack in the buffers; give the slack back (matters at GameCube sizes) */
-    {
-        uint8_t *c = (uint8_t *)ms_realloc(vm, G->code, G->len);
-        if (c)
-            G->code = c;
-        if (G->nlines) {
-            uint8_t *l = (uint8_t *)ms_realloc(vm, G->lines, G->nlines);
-            if (l)
-                G->lines = l;
-        }
-        if (G->nlabels) {
-            ms_label *lb = (ms_label *)ms_realloc(vm, G->labels, sizeof(ms_label) * G->nlabels);
-            if (lb)
-                G->labels = lb;
-        }
+    /* From here on allocations are kept. Growth leaves slack in the buffers; settle gives it back (matters
+       at GameCube sizes) and moves them out of the scratch. */
+    scratch(vm, 0);
+    G->code = (uint8_t *)settle(vm, G->code, G->len);
+    if (G->nlines)
+        G->lines = (uint8_t *)settle(vm, G->lines, G->nlines);
+    if (G->nlabels)
+        G->labels = (ms_label *)settle(vm, G->labels, sizeof(ms_label) * G->nlabels);
+    if (G->nsw) {
+        for (uint32_t i = 0; i < G->nsw; i++)
+            G->sw[i].cases = (ms_case *)settle(vm, G->sw[i].cases, sizeof(ms_case) * G->sw[i].n);
+        G->sw = settle(vm, G->sw, sizeof(G->sw[0]) * G->nsw);
     }
     pool_consts(G);
 

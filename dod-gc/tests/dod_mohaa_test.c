@@ -599,6 +599,38 @@ static void test_setthread_and_quiet_commands(void)
 	assert(strstr(log_buf, "[center] Objective: Find the radio\n"));
 }
 
+/* Walk the region block by block and the free list: tags agree, no two free blocks touch, the list is in
+   address order and holds exactly the free blocks, and the used count matches. */
+static void pool_check(const MohaaPool *p)
+{
+	const unsigned char *b = p->base;
+	size_t used = 0, nfree = 0, nlist = 0;
+	int prev_free = 0;
+	const MohaaPoolFree *f, *last = NULL;
+	while (b < p->base + p->size) {
+		size_t head, foot;
+		memcpy(&head, b, sizeof(head));
+		memcpy(&foot, b + (head & ~(size_t)1) - sizeof(foot), sizeof(foot));
+		assert(head == foot && (head & ~(size_t)1) >= MP_MIN);
+		if (head & 1u) {
+			used += head & ~(size_t)1;
+			prev_free = 0;
+		} else {
+			assert(!prev_free);
+			prev_free = 1;
+			nfree++;
+		}
+		b += head & ~(size_t)1;
+	}
+	assert(b == p->base + p->size && used == p->used);
+	for (f = p->free; f; f = f->next) {
+		assert(!mp_busy(f) && f->prev == last && (!last || last < f));
+		last = f;
+		nlist++;
+	}
+	assert(last == p->tail && nlist == nfree);
+}
+
 /* The region allocator: random allocs, grows, shrinks and frees keep every block's bytes, and freeing
    everything merges the region back into one piece. */
 static void test_pool_allocator(void)
@@ -619,6 +651,9 @@ static void test_pool_allocator(void)
 	for (k = 0; k < 20000; k++) {
 		rng = rng * 1103515245u + 12345u;
 		i = (int)((rng >> 8) % N);
+		if (k % 97 == 0)
+			pool_check(&p);
+		MohaaPool_Top(&p, (k / 500) % 3 == 1);   /* stretches of top-down (compile) allocation */
 		const size_t want = 1 + (rng >> 20) % 900;
 		if (ptr[i]) {   /* check the block kept its fill byte */
 			size_t j;
@@ -638,10 +673,46 @@ static void test_pool_allocator(void)
 			len[i] = want;
 		}
 	}
+	pool_check(&p);
+	MohaaPool_Top(&p, 0);
 	for (i = 0; i < N; i++)
 		MohaaPool_Free(&p, ptr[i]);
+	pool_check(&p);
 	assert(p.used == 0 && MohaaPool_Largest(&p) == whole && p.free && !p.free->next);
 	assert(!MohaaPool_Alloc(&p, whole + 1) && MohaaPool_Alloc(&p, whole));
+
+	/* compile pattern: kept buffers interleave with scratch blocks; scratch on top leaves one hole */
+	{
+		void *keep[16], *tmp[16];
+		uintptr_t lowest_tmp = ~(uintptr_t)0, highest_keep = 0;
+		assert(MohaaPool_Init(&p, region, sizeof(region)));
+		for (i = 0; i < 16; i++) {
+			MohaaPool_Top(&p, 1);
+			tmp[i] = MohaaPool_Alloc(&p, 2000);
+			MohaaPool_Top(&p, 0);
+			keep[i] = MohaaPool_Alloc(&p, 300);
+			assert(tmp[i] && keep[i]);
+			if ((uintptr_t)tmp[i] < lowest_tmp)
+				lowest_tmp = (uintptr_t)tmp[i];
+			if ((uintptr_t)keep[i] > highest_keep)
+				highest_keep = (uintptr_t)keep[i];
+		}
+		assert(highest_keep < lowest_tmp);
+		for (i = 0; i < 16; i++)
+			MohaaPool_Free(&p, tmp[i]);
+		assert(p.free && !p.free->next);   /* the scratch merged back into the one free block above */
+		assert(MohaaPool_Largest(&p) > sizeof(region) - 16 * 400);
+		/* top-mode growth by realloc moves within the top */
+		MohaaPool_Top(&p, 1);
+		tmp[0] = MohaaPool_Realloc(&p, NULL, 100);
+		tmp[0] = MohaaPool_Realloc(&p, tmp[0], 5000);
+		assert(tmp[0] && (uintptr_t)tmp[0] > highest_keep);
+		MohaaPool_Free(&p, tmp[0]);
+		MohaaPool_Top(&p, 0);
+		for (i = 0; i < 16; i++)
+			MohaaPool_Free(&p, keep[i]);
+		assert(p.used == 0 && p.free && !p.free->next && p.free == p.tail);
+	}
 }
 
 /* A backend region replaces malloc: the level runs in it, and one too small refuses cleanly. */

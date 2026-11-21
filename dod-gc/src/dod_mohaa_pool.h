@@ -3,10 +3,15 @@
  * On GameCube the engine heap is fragmented by the time a big level has loaded (m1l1 leaves 35 KB free in
  * 11 pieces), so the compiler's blocks and the VM's tables fail there even though the VM is far under its
  * budget. The backend can instead hand the VM one region (the engine's map-load arena tail, which lives as
- * long as the level and so as long as the VM). This is a boundary-tag first-fit allocator over that region:
- * every block has a header and footer holding its size with bit 0 set while in use; free blocks are also on
- * a doubly linked list, and free merges a block with free neighbours so the region does not fragment the way
- * the heap did. All static: included by dod_mohaa.c only.
+ * long as the level and so as long as the VM).
+ *
+ * Boundary tags: every block has a header and footer holding its size with bit 0 set while in use, so free
+ * merges a block with free neighbours. Free blocks sit on a list kept in address order. Normally a request
+ * takes the lowest free block that fits, from its front, so long-lived data packs at the bottom. While the
+ * VM compiles (MohaaPool_Top on) requests take the highest block that fits, from its end: the compiler's
+ * scratch then lives at the top and leaves one hole when it is freed, instead of holes between the
+ * bytecode of every script (m1l1 ran out with 188 KB free, largest piece 7 KB, before this).
+ * All static: included by dod_mohaa.c only.
  */
 #ifndef DOD_MOHAA_POOL_H
 #define DOD_MOHAA_POOL_H
@@ -23,8 +28,9 @@ typedef struct MohaaPoolFree {
 typedef struct MohaaPool {
 	unsigned char *base;
 	size_t size;
-	MohaaPoolFree *free;
-	size_t used;  /* bytes in use, headers included */
+	MohaaPoolFree *free, *tail;  /* free blocks, lowest address first */
+	size_t used;                 /* bytes in use, headers included */
+	int top;                     /* take new blocks from the top of the region */
 } MohaaPool;
 
 #define MP_ALIGN 8u
@@ -50,17 +56,34 @@ static void mp_unlink(MohaaPool *p, MohaaPoolFree *f)
 		p->free = f->next;
 	if (f->next)
 		f->next->prev = f->prev;
+	else
+		p->tail = f->prev;
 }
 
-static void mp_push(MohaaPool *p, unsigned char *blk, size_t size)
+/* Put a free block of size bytes at blk on the list, after prev (NULL: first). */
+static void mp_insert(MohaaPool *p, unsigned char *blk, size_t size, MohaaPoolFree *prev)
 {
 	MohaaPoolFree *f = (MohaaPoolFree *)(void *)blk;
 	mp_tag(blk, size, 0);
-	f->prev = NULL;
-	f->next = p->free;
-	if (p->free)
-		p->free->prev = f;
-	p->free = f;
+	f->prev = prev;
+	f->next = prev ? prev->next : p->free;
+	if (f->next)
+		f->next->prev = f;
+	else
+		p->tail = f;
+	if (prev)
+		prev->next = f;
+	else
+		p->free = f;
+}
+
+/* The free block just below blk in address order, or NULL. */
+static MohaaPoolFree *mp_below(const MohaaPool *p, const unsigned char *blk)
+{
+	MohaaPoolFree *f = p->tail;
+	while (f && (const unsigned char *)f > blk)
+		f = f->prev;
+	return f;
 }
 
 /* Region start and size are trimmed to the alignment. Returns 0 when the region is too small to use. */
@@ -74,9 +97,11 @@ static int MohaaPool_Init(MohaaPool *p, void *region, size_t size)
 	size &= ~(size_t)(MP_ALIGN - 1);
 	p->base = (unsigned char *)a;
 	p->size = size;
-	mp_push(p, p->base, size);
+	mp_insert(p, p->base, size, NULL);
 	return 1;
 }
+
+static void MohaaPool_Top(MohaaPool *p, int on) { p->top = on; }
 
 static size_t mp_need(size_t n)
 {
@@ -84,19 +109,27 @@ static size_t mp_need(size_t n)
 	return need < MP_MIN ? MP_MIN : need;
 }
 
-/* Take need bytes from the front of the free block f; a remainder big enough to be a block stays free. */
-static unsigned char *mp_take(MohaaPool *p, MohaaPoolFree *f, size_t need)
+/* Take need bytes from the free block f: from its front, or its end when top. A remainder big enough to
+   be a block stays free, in f's place on the list. */
+static unsigned char *mp_take(MohaaPool *p, MohaaPoolFree *f, size_t need, int top)
 {
 	unsigned char *blk = (unsigned char *)f;
 	const size_t have = mp_size(blk);
-	mp_unlink(p, f);
-	if (have - need >= MP_MIN) {
-		mp_tag(blk, need, 1);
-		mp_push(p, blk + need, have - need);
-	} else {
-		need = have;
-		mp_tag(blk, need, 1);
+	MohaaPoolFree *prev = f->prev;
+	if (have - need < MP_MIN) {
+		mp_unlink(p, f);
+		mp_tag(blk, have, 1);
+		p->used += have;
+		return blk;
 	}
+	if (top) {
+		mp_tag(blk, have - need, 0);   /* f keeps its links */
+		blk += have - need;
+	} else {
+		mp_unlink(p, f);
+		mp_insert(p, blk + need, have - need, prev);
+	}
+	mp_tag(blk, need, 1);
 	p->used += need;
 	return blk;
 }
@@ -107,36 +140,56 @@ static void *MohaaPool_Alloc(MohaaPool *p, size_t n)
 	MohaaPoolFree *f;
 	if (!n || need < n)
 		return NULL;
-	for (f = p->free; f; f = f->next)
-		if (mp_size(f) >= need)
-			return mp_take(p, f, need) + MP_TAG;
+	if (p->top) {
+		for (f = p->tail; f; f = f->prev)
+			if (mp_size(f) >= need)
+				return mp_take(p, f, need, 1) + MP_TAG;
+	} else {
+		for (f = p->free; f; f = f->next)
+			if (mp_size(f) >= need)
+				return mp_take(p, f, need, 0) + MP_TAG;
+	}
 	return NULL;
+}
+
+/* Free the block at blk of size bytes, merging with free neighbours. */
+static void mp_release(MohaaPool *p, unsigned char *blk, size_t size)
+{
+	unsigned char *end = blk + size;
+	MohaaPoolFree *next = NULL, *prev;
+	if (end < p->base + p->size && !mp_busy(end)) {
+		next = (MohaaPoolFree *)(void *)end;
+		size += mp_size(end);
+	}
+	if (blk > p->base) {
+		size_t below;
+		memcpy(&below, blk - MP_TAG, MP_TAG);
+		if (!(below & 1u)) {   /* the block below is free: it grows over this one, keeping its place */
+			if (next)
+				mp_unlink(p, next);
+			mp_tag(blk - below, below + size, 0);
+			return;
+		}
+	}
+	if (next) {
+		prev = next->prev;
+		mp_unlink(p, next);
+	} else {
+		prev = mp_below(p, blk);
+	}
+	mp_insert(p, blk, size, prev);
 }
 
 static void MohaaPool_Free(MohaaPool *p, void *ptr)
 {
-	unsigned char *blk, *end;
+	unsigned char *blk;
 	size_t size;
 	if (!ptr)
 		return;
 	blk = (unsigned char *)ptr - MP_TAG;
 	size = mp_size(blk);
 	p->used -= size;
-	end = blk + size;
-	if (end < p->base + p->size && !mp_busy(end)) {
-		mp_unlink(p, (MohaaPoolFree *)(void *)end);
-		size += mp_size(end);
-	}
-	if (blk > p->base) {
-		size_t prev;
-		memcpy(&prev, blk - MP_TAG, MP_TAG);
-		if (!(prev & 1u)) {
-			blk -= prev;
-			mp_unlink(p, (MohaaPoolFree *)(void *)blk);
-			size += prev;
-		}
-	}
-	mp_push(p, blk, size);
+	mp_release(p, blk, size);
 }
 
 static void *MohaaPool_Realloc(MohaaPool *p, void *ptr, size_t n)
@@ -156,29 +209,26 @@ static void *MohaaPool_Realloc(MohaaPool *p, void *ptr, size_t n)
 	if (need < n)
 		return NULL;
 	end = blk + have;
-	/* grow in place into a free neighbour */
+	/* grow in place into a free neighbour above */
 	if (need > have && end < p->base + p->size && !mp_busy(end) && have + mp_size(end) >= need) {
-		const size_t merged = have + mp_size(end);
-		mp_unlink(p, (MohaaPoolFree *)(void *)end);
-		mp_tag(blk, merged, 1);
-		p->used += merged - have;
-		have = merged;
+		MohaaPoolFree *f = (MohaaPoolFree *)(void *)end;
+		const size_t fsize = mp_size(end);
+		MohaaPoolFree *prev = f->prev;
+		size_t grown = have + fsize;
+		mp_unlink(p, f);
+		if (grown - need >= MP_MIN) {
+			mp_insert(p, blk + need, grown - need, prev);
+			grown = need;
+		}
+		mp_tag(blk, grown, 1);
+		p->used += grown - have;
+		return ptr;
 	}
 	if (need <= have) {
-		if (have - need >= MP_MIN) {  /* give the tail back */
+		if (have - need >= MP_MIN) {   /* give the tail back */
 			mp_tag(blk, need, 1);
 			p->used -= have - need;
-			mp_push(p, blk + need, have - need);
-			/* merge the returned tail with what follows it */
-			{
-				unsigned char *tail = blk + need, *after = tail + mp_size(tail);
-				if (after < p->base + p->size && !mp_busy(after)) {
-					const size_t t = mp_size(tail) + mp_size(after);
-					mp_unlink(p, (MohaaPoolFree *)(void *)after);
-					mp_unlink(p, (MohaaPoolFree *)(void *)tail);
-					mp_push(p, tail, t);
-				}
-			}
+			mp_release(p, blk + need, have - need);
 		}
 		return ptr;
 	}
