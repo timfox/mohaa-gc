@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import math
+import re
 import struct
 import sys
 import zipfile
@@ -439,8 +440,18 @@ def thin_wall_blocks(thin, stats):
 		          for i in range(3))
 		cells.setdefault(c, []).append(txt)
 	stats["thin_detail_walls"] += len(cells)
-	return [kv_block({"classname": "func_wall", "mohaa_classname": "thin_detail"}, cells[c])
+	# zhlt_noclip: no hull 1-3 trees per wall (each sliver cost ~40 clipnodes as its own
+	# model). Players collide with a CLIP copy in the world instead, see clip_copy().
+	return [kv_block({"classname": "func_wall", "mohaa_classname": "thin_detail", "zhlt_noclip": "1"}, cells[c])
 	        for c in sorted(cells)]
+
+
+_SIDE_TEX_RE = re.compile(r"^(\(.*?\) \(.*?\) \(.*?\) )\S+ \[", re.M)
+
+
+def clip_copy(txt):
+	"""The same brush with every side textured CLIP (player hulls only, no hull-0 leaves)."""
+	return _SIDE_TEX_RE.sub(lambda m: m.group(1) + "CLIP [", txt)
 
 
 def _face_line(n, w, tex):
@@ -642,6 +653,11 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 			else:
 				thin.append((txt, faces))
 				stats["thin_detail_to_wall"] += 1
+				if simplify_collision and not is_axial_brush(faces):
+					voxelize_brush(faces, voxels, collision_grid)
+				else:
+					world_brushes.append(clip_copy(txt))
+					namer.special_used.add("CLIP")
 				stats["world_brushes_written"] += 1
 				continue
 		if simplify_collision and cls in ("detail", "clip") and not is_axial_brush(faces):
