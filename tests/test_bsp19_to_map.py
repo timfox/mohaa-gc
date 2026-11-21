@@ -410,6 +410,17 @@ class StaticBrushModelTest(unittest.TestCase):
 		self.assertEqual(stats["same_key_models_merged"], 1)
 		self.assertEqual(text.count('"targetname" "chunk"'), 2)
 
+	def test_exploder_chunks_merge_per_set(self):
+		bsp = self.bsp()
+		for i, t in ((1, "a"), (2, "b"), (4, "c")):
+			bsp.entities[i].update({"targetname": "exploderchunk", "#set": "1", "target": t})
+		bsp.entities[5].update({"targetname": "exploderchunk", "#set": "2", "target": "d"})
+		text, _, stats, _ = conv.convert(bsp, scale=1.0, merge_static_models=True)
+		self.assertEqual(stats["same_key_models_merged"], 2)
+		self.assertEqual(text.count('"targetname" "exploderchunk"'), 2)
+		self.assertIn('"target" "a"', text)
+		self.assertNotIn('"target" "b"', text)
+
 	def test_off_keeps_every_model(self):
 		text, _, stats, _ = conv.convert(self.bsp(), scale=1.0)
 		self.assertEqual(stats["static_brush_models_merged"], 0)
