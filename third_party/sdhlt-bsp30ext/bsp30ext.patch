@@ -1,0 +1,165 @@
+diff --git a/src/sdhlt/common/bspfile.cpp b/src/sdhlt/common/bspfile.cpp
+index 7c78fcc..6771cb9 100644
+--- a/src/sdhlt/common/bspfile.cpp
++++ b/src/sdhlt/common/bspfile.cpp
+@@ -326,8 +326,8 @@ static void     SwapBSPFile(const bool todisk)
+     for (i = 0; i < g_numclipnodes; i++)
+     {
+         g_dclipnodes[i].planenum = LittleLong(g_dclipnodes[i].planenum);
+-        g_dclipnodes[i].children[0] = LittleShort(g_dclipnodes[i].children[0]);
+-        g_dclipnodes[i].children[1] = LittleShort(g_dclipnodes[i].children[1]);
++        g_dclipnodes[i].children[0] = LittleLong(g_dclipnodes[i].children[0]);
++        g_dclipnodes[i].children[1] = LittleLong(g_dclipnodes[i].children[1]);
+     }
+ 
+     //
+@@ -441,7 +441,35 @@ void            LoadBSPImage(dheader_t* const header)
+     g_numleafs = CopyLump(LUMP_LEAFS, g_dleafs, sizeof(dleaf_t), header);
+     g_numnodes = CopyLump(LUMP_NODES, g_dnodes, sizeof(dnode_t), header);
+     g_numtexinfo = CopyLump(LUMP_TEXINFO, g_texinfo, sizeof(texinfo_t), header);
+-    g_numclipnodes = CopyLump(LUMP_CLIPNODES, g_dclipnodes, sizeof(dclipnode_t), header);
++    {
++        // BSP30ext: same rule as the Xash3D loader
++        const dextrahdr_t* ext = (const dextrahdr_t*)((const byte*)header + sizeof(dheader_t));
++        const int len = header->lumps[LUMP_CLIPNODES].filelen;
++        const bool isext = header->lumps[LUMP_PLANES].fileofs >= (int)(sizeof(dheader_t) + sizeof(dextrahdr_t))
++            && LittleLong(ext->id) == IDEXTRAHEADER && LittleLong(ext->version) == EXTRA_VERSION;
++        if (isext && ((len % sizeof(dclipnode16_t)) || len / (int)sizeof(dclipnode_t) >= MAX_MAP_CLIPNODES_HLBSP))
++        {
++            hlassume(len / (int)sizeof(dclipnode_t) <= MAX_MAP_CLIPNODES, assume_MAX_MAP_CLIPNODES);
++            g_numclipnodes = CopyLump(LUMP_CLIPNODES, g_dclipnodes, sizeof(dclipnode_t), header);
++        }
++        else
++        {
++            const dclipnode16_t* in = (const dclipnode16_t*)((const byte*)header + header->lumps[LUMP_CLIPNODES].fileofs);
++            if (len % sizeof(dclipnode16_t))
++                Error("LoadBSPFile: odd lump size");
++            g_numclipnodes = len / sizeof(dclipnode16_t);
++            hlassume(g_numclipnodes <= MAX_MAP_CLIPNODES, assume_MAX_MAP_CLIPNODES);
++            for (int k = 0; k < g_numclipnodes; k++)
++            {
++                // widen now; SwapBSPFile below swaps the int32 fields
++                g_dclipnodes[k].planenum = in[k].planenum;
++                g_dclipnodes[k].children[0] = LittleShort(in[k].children[0]);
++                g_dclipnodes[k].children[1] = LittleShort(in[k].children[1]);
++                g_dclipnodes[k].children[0] = LittleLong(g_dclipnodes[k].children[0]);
++                g_dclipnodes[k].children[1] = LittleLong(g_dclipnodes[k].children[1]);
++            }
++        }
++    }
+     g_numfaces = CopyLump(LUMP_FACES, g_dfaces, sizeof(dface_t), header);
+     g_nummarksurfaces = CopyLump(LUMP_MARKSURFACES, g_dmarksurfaces, sizeof(g_dmarksurfaces[0]), header);
+     g_numsurfedges = CopyLump(LUMP_SURFEDGES, g_dsurfedges, sizeof(g_dsurfedges[0]), header);
+@@ -508,8 +536,32 @@ void            WriteBSPFile(const char* const filename)
+ 
+     header->version = LittleLong(BSPVERSION);
+ 
++    // swapped to disk order above; the count itself is still native
++    const bool bsp30ext = g_numclipnodes >= MAX_MAP_CLIPNODES_HLBSP;
++    dclipnode16_t* clip16 = NULL;
++    if (!bsp30ext)
++    {
++        clip16 = (dclipnode16_t*)malloc((g_numclipnodes + 1) * sizeof(dclipnode16_t));
++        hlassume(clip16 != NULL, assume_NoMemory);
++        for (int k = 0; k < g_numclipnodes; k++)
++        {
++            clip16[k].planenum = g_dclipnodes[k].planenum;
++            clip16[k].children[0] = LittleShort((short)LittleLong(g_dclipnodes[k].children[0]));
++            clip16[k].children[1] = LittleShort((short)LittleLong(g_dclipnodes[k].children[1]));
++        }
++    }
++
+     bspfile = SafeOpenWrite(filename);
+     SafeWrite(bspfile, header, sizeof(dheader_t));         // overwritten later
++    if (bsp30ext)
++    {
++        dextrahdr_t ext;
++        memset(&ext, 0, sizeof(ext));
++        ext.id = LittleLong(IDEXTRAHEADER);
++        ext.version = LittleLong(EXTRA_VERSION);
++        SafeWrite(bspfile, &ext, sizeof(ext));
++        Log("Writing BSP30ext (XASH extra header, 32-bit clipnodes): %i clipnodes\n", g_numclipnodes);
++    }
+ 
+     //      LUMP TYPE       DATA            LENGTH                              HEADER  BSPFILE   
+     AddLump(LUMP_PLANES,    g_dplanes,      g_numplanes * sizeof(dplane_t),     header, bspfile);
+@@ -518,7 +570,10 @@ void            WriteBSPFile(const char* const filename)
+     AddLump(LUMP_NODES,     g_dnodes,       g_numnodes * sizeof(dnode_t),       header, bspfile);
+     AddLump(LUMP_TEXINFO,   g_texinfo,      g_numtexinfo * sizeof(texinfo_t),   header, bspfile);
+     AddLump(LUMP_FACES,     g_dfaces,       g_numfaces * sizeof(dface_t),       header, bspfile);
+-    AddLump(LUMP_CLIPNODES, g_dclipnodes,   g_numclipnodes * sizeof(dclipnode_t), header, bspfile);
++    if (bsp30ext)
++        AddLump(LUMP_CLIPNODES, g_dclipnodes, g_numclipnodes * sizeof(dclipnode_t), header, bspfile);
++    else
++        AddLump(LUMP_CLIPNODES, clip16, g_numclipnodes * sizeof(dclipnode16_t), header, bspfile);
+ 
+     AddLump(LUMP_MARKSURFACES, g_dmarksurfaces, g_nummarksurfaces * sizeof(g_dmarksurfaces[0]), header, bspfile);
+     AddLump(LUMP_SURFEDGES, g_dsurfedges,   g_numsurfedges * sizeof(g_dsurfedges[0]), header, bspfile);
+@@ -534,6 +589,7 @@ void            WriteBSPFile(const char* const filename)
+     SafeWrite(bspfile, header, sizeof(dheader_t));
+ 
+     fclose(bspfile);
++    free(clip16);
+ }
+ 
+ 
+diff --git a/src/sdhlt/common/bspfile.h b/src/sdhlt/common/bspfile.h
+index ab50540..b82c26f 100644
+--- a/src/sdhlt/common/bspfile.h
++++ b/src/sdhlt/common/bspfile.h
+@@ -35,7 +35,11 @@
+ 
+ #define MAX_MAP_NODES        32767
+ // hard limit (negative short's are used as contents values)
+-#define MAX_MAP_CLIPNODES    32767
++// mohaa-gc BSP30ext: clipnodes are int32 in memory. Maps with fewer than 32767 are
++// written as stock BSP30; larger ones get Xash3D's "XASH" extra header and a
++// 32-bit clipnode lump (engine/common/mod_bmodel.c, LUMP_BSP30EXT).
++#define MAX_MAP_CLIPNODES_HLBSP 32767
++#define MAX_MAP_CLIPNODES    262144
+ // hard limit (negative short's are used as contents values)
+ 
+ #define MAX_MAP_LEAFS        32760
+@@ -216,9 +220,27 @@ dnode_t;
+ typedef struct
+ {
+     int             planenum;
+-    short           children[2];                           // negative numbers are contents
++    int             children[2];                           // negative numbers are contents
+ }
+-dclipnode_t;
++dclipnode_t;                                               // in memory, and on disk in BSP30ext
++
++typedef struct
++{
++    int             planenum;
++    short           children[2];
++}
++dclipnode16_t;                                             // stock BSP30 on disk
++
++#define IDEXTRAHEADER   (('X' << 0) | ('A' << 8) | ('S' << 16) | ('H' << 24))
++#define EXTRA_VERSION   4
++#define EXTRA_LUMPS     12
++typedef struct
++{
++    int             id;
++    int             version;
++    lump_t          lumps[EXTRA_LUMPS];
++}
++dextrahdr_t;
+ 
+ typedef struct texinfo_s
+ {
+diff --git a/src/sdhlt/sdHLBSP/brink.cpp b/src/sdhlt/sdHLBSP/brink.cpp
+index 3e31d29..3878448 100644
+--- a/src/sdhlt/sdHLBSP/brink.cpp
++++ b/src/sdhlt/sdHLBSP/brink.cpp
+@@ -1136,7 +1136,7 @@ typedef struct bbrinkinfo_s
+ }
+ bbrinkinfo_t;
+ 
+-#define MAXCLIPNODES (MAX_MAP_CLIPNODES*8)
++#define MAXCLIPNODES (MAX_MAP_CLIPNODES_HLBSP*8 > MAX_MAP_CLIPNODES*2 ? MAX_MAP_CLIPNODES_HLBSP*8 : MAX_MAP_CLIPNODES*2)
+ 
+ bclipnode_t *ExpandClipnodes_r (bclipnode_t *bclipnodes, int &numbclipnodes, const dclipnode_t *clipnodes, int headnode)
+ {

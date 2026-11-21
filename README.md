@@ -75,6 +75,15 @@ Writes a Valve-220 .map that SDHLT compiles to BSP30. Stage one only covers brus
 
 Not handled yet: texture alignment (Q3-family brush sides store none, so faces are box-projected), curved patches, terrain and static models (render bake plus engine mesh collision), triggers, and point entities other than player starts.
 
+## Compiler: SDHLT with 32-bit clipnodes
+
+Stock BSP30 tops out at 32,767 clipnodes, and 15 MOHAA maps go over it. `third_party/sdhlt-bsp30ext/` holds a GPL-2 patch for SDHLT that writes those maps in Xash3D's BSP30ext layout, which xash3d-gc already loads. Maps under the limit still come out as stock BSP30. `tools/bsp30_check.py` reads either layout, checks the hulls, and samples hull contents at a point.
+
+```bash
+third_party/sdhlt-bsp30ext/build.sh /tmp/sdhlt
+python3 tools/bsp30_check.py m1l2a.bsp --point 0 0 40 1
+```
+
 ## Mission scripts
 
 `script/` holds a clean-room, MIT-licensed VM for MOHAA's `.scr` (Morpheus)
