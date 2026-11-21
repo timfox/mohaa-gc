@@ -359,7 +359,7 @@ def trace_box(mcol, start, end, mins, maxs):
 			if best[0] < 1 and abs(f - best[0]) <= TIE_FRACTION:
 				# two surfaces at once (a crease of ground and a steep face): the more
 				# upward-facing normal wins, so the ground check can land (m6l1a)
-				if clipn[2] > best[1][2]:
+				if best[1] is None or clipn[2] > best[1][2]:
 					best[1] = clipn
 				best[0] = min(best[0], f)
 			elif f < best[0]:

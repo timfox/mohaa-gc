@@ -421,6 +421,17 @@ class StaticBrushModelTest(unittest.TestCase):
 		self.assertIn('"target" "a"', text)
 		self.assertNotIn('"target" "b"', text)
 
+	def test_merged_chunks_drop_their_aim_points(self):
+		bsp = self.bsp()
+		for i, t in ((1, "a"), (2, "b"), (4, "c")):
+			bsp.entities[i].update({"targetname": "exploderchunk", "#set": "1", "target": t})
+		bsp.entities[5].update({"targetname": "exploderchunk", "#set": "2", "target": "d"})
+		for t in "abcd":
+			bsp.entities.append({"classname": "script_origin", "targetname": t, "origin": "0 0 0"})
+		text, _, stats, _ = conv.convert(bsp, scale=1.0, merge_static_models=True, script_words=set())
+		points = re.findall(r'"classname" "info_target"\n"mohaa_classname" "script_origin"\n"targetname" "(\w)"', text)
+		self.assertEqual(sorted(points), ["a", "d"])
+
 	def test_off_keeps_every_model(self):
 		text, _, stats, _ = conv.convert(self.bsp(), scale=1.0)
 		self.assertEqual(stats["static_brush_models_merged"], 0)

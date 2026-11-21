@@ -1002,7 +1002,19 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 	same_key_models = {}  # sorted keys -> brush texts of brush models with exactly those keys
 	same_key_slots = {}  # sorted keys -> index of the group's block
 	same_key_keys = {}  # sorted keys -> the keys written for the group
-	targeted = {e["target"] for e in bsp.entities if e.get("target")}
+	targeted = set()
+	chunk_sets = set()
+	for e in bsp.entities:
+		if not e.get("target"):
+			continue
+		if merge_static_models and e.get("targetname") in TARGET_FREE_NAMES and e.get("model", "").startswith("*"):
+			# only the first chunk of a merged set keeps its target, so the others' aim points
+			# need no entity (m5l2b's chunk targets ran the map out of edicts: 147 of 399 spawned)
+			chunk = tuple(sorted((k, v) for k, v in e.items() if k not in ("model", "origin", "target")))
+			if chunk in chunk_sets:
+				continue
+			chunk_sets.add(chunk)
+		targeted.add(e["target"])
 
 	def unused_name(e):
 		"""e's targetname, when nothing can ever look it up."""
