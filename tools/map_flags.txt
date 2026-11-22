@@ -6,9 +6,9 @@
 # Abbreviations used in the comments: W = --detail-walls, B/C = grid 32/64 with z 16.
 
 m1l3c     --thin-detail-in-world
-# The default m1l2a compile reached 8,853 world leaves and leaked; keep detail
-# in wall models and seal the map for a bounded VIS tree.
-m1l2a     --detail-walls --seal-box
+# The collision grid reduces clipnodes enough to leave map-arena space for the
+# 81 KiB mission script while retaining detailed walls and a bounded VIS tree.
+m1l2a     --detail-walls --seal-box --simplify-collision --collision-grid 32 --collision-grid-z 16
 m4l0      --seal-box
 m5l1a     --detail-walls --seal-box
 training  --seal-box
