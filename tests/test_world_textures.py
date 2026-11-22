@@ -118,6 +118,22 @@ class WorldTexturesTest(unittest.TestCase):
 		self.assertEqual(fit.stats["sides_unfit"], 1)
 		self.assertEqual(fit.stats["sides_projected"], 6)
 
+	def test_plan_keeps_texel_density_and_the_texture_budget(self):
+		with tempfile.TemporaryDirectory() as tmp:
+			pak(Path(tmp) / "pak0.pk3", 256, 256)
+			images = wt.Images([tmp])
+			scale = 72.0 / 94.0
+			fit = wt.TextureFit(slab_bsp(), images, scale)
+			# one repeat per 128 MOHAA units along s (98 map units): one texel a unit allows 64; t's 256 allow 128
+			cap, total = fit.plan(["textures/concrete"])
+			self.assertEqual(images.size("textures/concrete"), (64, 128))
+			self.assertEqual(total, wt.miptex_bytes(64, 128))
+			# a budget under that halves every texture until it fits
+			images._size.clear()
+			cap, total = fit.plan(["textures/concrete"], budget=wt.miptex_bytes(32, 32))
+			self.assertEqual((cap, images.size("textures/concrete")), (32, (32, 32)))
+			self.assertLessEqual(total, wt.miptex_bytes(32, 32))
+
 	def test_miptex_and_wad(self):
 		with tempfile.TemporaryDirectory() as tmp:
 			pak(Path(tmp) / "pak0.pk3", 64, 32)

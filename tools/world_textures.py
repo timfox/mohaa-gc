@@ -35,6 +35,13 @@ PLANE_DIST = 1.0     # MOHAA units
 MIPS = 4
 MAX_AXIS_COS = 0.5   # fitted S and T axes closer than 60 degrees: a sliver's fit, kept projected instead
 MIN_DENSITY, MAX_DENSITY = 1.0 / 16, 8.0   # texels per map unit a side may get
+MAX_TEXEL = 1.0      # texels per map unit plan() allows, as the placeholders had
+TEXDATA_BUDGET = 400 * 1024   # a map's texture lump: m1l1's placeholders (406 KB) loaded; 1.2 MB did not
+
+
+def miptex_bytes(w, h):
+	"""A WAD/BSP miptex lump's size: header, four mips, palette."""
+	return 40 + sum(max(1, w >> k) * max(1, h >> k) for k in range(MIPS)) + 2 + 768 + 2
 
 
 def _dot(a, b):
@@ -74,6 +81,7 @@ class Images:
 			if p.endswith(".shader"):
 				self.shaders.update(skd.parse_shaders(read(e).decode("latin-1")))
 		self._size = {}
+		self._source = {}
 
 	def image(self, shader: str):
 		"""The shader's image bytes, or None."""
@@ -85,19 +93,27 @@ class Images:
 				return self.read(self.files[cand])
 		return None
 
-	def size(self, shader: str):
-		"""(width, height) the shader's WAD texture gets, or None if it has no image."""
-		if shader not in self._size:
+	def source_size(self, shader: str):
+		"""(width, height) of the shader's image, or None if it has none."""
+		if shader not in self._source:
 			from PIL import Image
 			data = self.image(shader)
 			got = None
 			if data is not None:
 				try:
-					w, h = Image.open(io.BytesIO(data)).size
-					got = (_pow2_at_most(w, self.max_side), _pow2_at_most(h, self.max_side))
+					got = Image.open(io.BytesIO(data)).size
 				except OSError:
 					got = None
-			self._size[shader] = got
+			self._source[shader] = got
+		return self._source[shader]
+
+	def size(self, shader: str):
+		"""(width, height) the shader's WAD texture gets, or None if it has no image. TextureFit.plan() may
+		have set it smaller (texel density and the map's texture budget)."""
+		if shader not in self._size:
+			src = self.source_size(shader)
+			self._size[shader] = (_pow2_at_most(src[0], self.max_side), _pow2_at_most(src[1], self.max_side)) \
+				if src else None
 		return self._size[shader]
 
 	def miptex(self, shader: str, name: str):
@@ -218,6 +234,31 @@ class TextureFit:
 			if best is None or gap < best_d:
 				best, best_d = fit, gap
 		return best
+
+	def plan(self, shaders, budget=TEXDATA_BUDGET, max_texel=MAX_TEXEL):
+		"""Pick each shader's WAD size before any side is fitted: at most max_texel texels per map unit
+		(the placeholders' one texel a unit: more means more SDHLT face splits and luxels), then halve every
+		texture until the texture lump fits budget bytes. The GameCube keeps a map's textures in MEM1: m1l1 at
+		128 texels (1.2 MB of textures) left no room for its collision. Returns (largest side, bytes)."""
+		want = {}
+		for sh in sorted(set(s.lower() for s in shaders)):
+			src = self.images.source_size(sh)
+			if not src:
+				continue
+			lim = []
+			for axis in (0, 1):   # repeats per MOHAA unit along s, then t, on every surface of the shader
+				dens = [math.sqrt(_dot(fit[axis][0], fit[axis][0])) for *_, fit in self.by_shader.get(sh, ())]
+				lim.append(self.scale * max_texel / max(dens) if dens and max(dens) > 0 else self.images.max_side)
+			want[sh] = tuple(_pow2_at_most(src[i], min(self.images.max_side, max(8, int(lim[i])))) for i in (0, 1))
+		cap = self.images.max_side
+		while True:
+			sizes = {sh: (min(w, cap), min(h, cap)) for sh, (w, h) in want.items()}
+			total = sum(miptex_bytes(w, h) for w, h in sizes.values())
+			if total <= budget or cap <= 8:
+				break
+			cap //= 2
+		self.images._size.update(sizes)
+		return cap, total
 
 	def density(self, shader):
 		"""Texels per MOHAA unit along s and t on this shader's other surfaces (for projected sides)."""
