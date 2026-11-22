@@ -480,6 +480,10 @@ static uint32_t M_Spawn( const char *classname, const char *const *keys, const c
 	/* MOHAA's script helpers have no GoldSrc class: a point entity holds their place */
 	if( !strcmp( classname, "script_model" ) || !strcmp( classname, "script_origin" ) || !strcmp( classname, "script_object" ) )
 		classname = "info_target";
+	/* "spawn models/statweapons/x.tik" (a model as the class, as MOHAA allows) or an empty class: no GoldSrc class has
+	 * such a name, and asking the engine would only log "No spawn function" */
+	if( !classname[0] || strchr( classname, '/' ) || strchr( classname, '.' ) )
+		classname = "info_target";
 	edict_t *e = CREATE_NAMED_ENTITY( ALLOC_STRING( classname ) );
 	if( FNullEnt( e ) ) {
 		/* a MOHAA class GoldSrc lacks (trigger_save, animate/..., ...): a point entity still answers to its name */
