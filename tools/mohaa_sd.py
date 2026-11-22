@@ -29,7 +29,8 @@ Stages run in this order (--stages picks some; by default every one whose tools 
   music     soundtracks and tracks                         needs ffmpeg
   sounds    per-map sound tables and samples
   scripts   level scripts and the global/ libraries
-  maps      maps/<map>.bsp (+ .mcol collision, .nodes)     needs the patched SDHLT: built once (git, cmake, C++)
+  maps      maps/<map>.bsp with MOHAA's textures (+ .mcol collision, .nodes)
+                                                           needs the patched SDHLT: built once (git, cmake, C++)
   worlddl   media/wd_<map>.gcd GameCube world bake         needs --xash3d-gc DIR (a checkout of xash3d-gc)
   props     media/gp_<map>.gcp static props and terrain    needs --xash3d-gc DIR
 The maps stage builds SDHLT with the bsp30ext patch (third_party/sdhlt-bsp30ext, pinned to v1.3.1) the first time
@@ -39,7 +40,7 @@ points at one you built. worlddl and props bake the maps the maps stage compiled
 where sources are MOHAA main folders or pk3 files, game_root is <sd>/xash3d/<gamedir>, maps the map names
 ("" = every map the stage knows), and work a scratch folder kept between runs.
 
-Needs Python 3.8+, Pillow and numpy (menu, loading), ffmpeg (audio), and for the map stages SDHLT and an xash3d-gc checkout.
+Needs Python 3.8+, Pillow and numpy (menu, loading, map textures), ffmpeg (audio), and for the map stages SDHLT and an xash3d-gc checkout.
 Nothing it writes may be shared: it is your game's data.
 """
 import argparse
@@ -376,7 +377,7 @@ def stage_maps(sources, game_root, maps, work):
             fh.write(read(known[m]))
         print("   %s: converting" % m)
         _quiet(bsp19_to_map.main, [src, "-o", os.path.join(d, m + ".map"), "--wad", os.path.join(d, m + ".wad")]
-               + flags.get(m, []) + [a for s in sources for a in ("--scripts", s)], log)
+               + flags.get(m, []) + [a for s in sources for a in ("--scripts", s, "--textures", s)], log)
         print("   %s: compiling (SDHLT)" % m)
         # the textures go inside the BSP, so nothing on the card points back at this work folder
         _run([csg, "-wadinclude", m + ".wad", m], d, log)
@@ -471,6 +472,11 @@ def missing_tools(stage):
             import PIL  # noqa: F401
         except ImportError:
             return "needs Pillow and numpy (pip install pillow numpy)"
+    if stage in ("maps", "props"):
+        try:
+            import PIL  # noqa: F401
+        except ImportError:
+            return "needs Pillow (pip install pillow)"
     if stage in ("music", "movie") and not shutil.which("ffmpeg"):
         return "needs ffmpeg"
     if stage == "maps" and not sdhlt_dir():

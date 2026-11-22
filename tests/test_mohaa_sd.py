@@ -143,6 +143,7 @@ class MohaaSdTest(unittest.TestCase):
                 calls.append(("convert", argv))
                 self.assertEqual(open(argv[0], "rb").read(), b"IBSP-t1")
                 self.assertIn("--scripts", argv)
+                self.assertIn("--textures", argv)   # real textures from the same sources
                 out = argv[argv.index("-o") + 1][:-4]
                 for ext, text in ((".map", "{}"), (".mcol", "MCOL"), (".nodes", "n"), (".props", "p")):
                     open(out + ext, "w").write(text)
