@@ -261,13 +261,13 @@ def convert_wav(data, dest, loop=False):
     return None
 
 
-def main():
+def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("inputs", nargs="+", help="MOHAA main directory, pk3 files or loose directories")
     ap.add_argument("--out", required=True, help="output directory (outside the repository)")
     ap.add_argument("--maps", help="comma-separated map names (default: every maps/*.scr)")
     ap.add_argument("--wav", action="store_true", help="also convert the referenced samples")
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
     scripts = collect(args.inputs, (".scr",))
     aliases = {}
