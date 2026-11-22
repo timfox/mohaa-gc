@@ -122,7 +122,7 @@ class MohaaSdTest(unittest.TestCase):
             def tool(name, body):
                 path = os.path.join(bin_, name)
                 with open(path, "w") as f:
-                    f.write("#!/bin/sh\necho %s \"$@\" >> '%s'\n%s\n" % (name, os.path.join(tmp, "calls"), body))
+                    f.write("#!/bin/sh\n# -hull2alias\necho %s \"$@\" >> '%s'\n%s\n" % (name, os.path.join(tmp, "calls"), body))
                 os.chmod(path, 0o755)
 
             os.makedirs(bin_)
@@ -187,9 +187,9 @@ class MohaaSdTest(unittest.TestCase):
             pak(os.path.join(game, "main", "pak0.pk3"))
             with mock.patch.dict(os.environ, {"PATH": os.path.join(tmp, "nothing")}), \
                     mock.patch.object(mohaa_sd, "STAGES", {k: mohaa_sd.STAGES[k] for k in ("maps", "worlddl", "scripts")}):
-                rc, log = run(["--mohaa", game, "--sd", sd, "--maps", "t1"])
+                rc, log = run(["--mohaa", game, "--sd", sd, "--maps", "t1", "--tools-dir", os.path.join(tmp, "t")])
             self.assertEqual(rc, 0, log)
-            self.assertIn("skipping maps: needs SDHLT", log)
+            self.assertIn("skipping maps: needs the patched SDHLT (building it needs bash", log)
             self.assertIn("skipping worlddl: needs --xash3d-gc", log)
             self.assertIn("== scripts:", log)
 
@@ -211,6 +211,40 @@ class MohaaSdTest(unittest.TestCase):
             self.assertEqual(open(os.path.join(root, "liblist.gam")).read(), 'game "mine"\n')
             run(["--mohaa", game, "--sd", sd, "--gamedir", "dod", "--maps", "t1", "--stages", "scripts"])
             self.assertFalse(os.path.exists(os.path.join(sd, "xash3d", "dod", "liblist.gam")))   # never over DoD's
+
+    def test_sdhlt_is_built_once_and_stock_sdhlt_is_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            stock, tools = os.path.join(tmp, "stock"), os.path.join(tmp, "tools")
+            os.makedirs(stock)
+            for name in mohaa_sd.SDHLT:   # an unpatched SDHLT on PATH: no -hull2alias
+                with open(os.path.join(stock, name), "w") as f:
+                    f.write("#!/bin/sh\n")
+                os.chmod(os.path.join(stock, name), 0o755)
+            build = os.path.join(tmp, "build.sh")
+            with open(build, "w") as f:   # stands in for third_party/sdhlt-bsp30ext/build.sh <workdir>
+                f.write('echo built >> "%s"\nmkdir -p "$1/SDHLT/tools"\nfor t in sdHLCSG sdHLBSP sdHLVIS; do\n'
+                        '  printf "#!/bin/sh\\n# -hull2alias\\n" > "$1/SDHLT/tools/$t"; chmod +x "$1/SDHLT/tools/$t"\n'
+                        'done\n' % os.path.join(tmp, "builds"))
+            built = os.path.join(tools, "sdhlt", "SDHLT", "tools")
+            try:
+                mohaa_sd.CONFIG.update(sdhlt=None, tools_dir=tools, build_sdhlt=True)
+                with mock.patch.dict(os.environ, {"PATH": stock + os.pathsep + os.environ["PATH"]}), \
+                        mock.patch.object(mohaa_sd, "SDHLT_BUILD", build), \
+                        mock.patch.object(mohaa_sd, "sdhlt_buildable", lambda: None), redirect_stdout(io.StringIO()):
+                    mohaa_sd._found.clear()
+                    self.assertIsNone(mohaa_sd.sdhlt_dir())   # the stock one on PATH is refused
+                    for _ in range(2):
+                        mohaa_sd._found.clear()
+                        self.assertEqual(mohaa_sd.ensure_sdhlt(), built)
+                    mohaa_sd.CONFIG.update(sdhlt=stock)
+                    mohaa_sd._found.clear()
+                    with self.assertRaises(SystemExit):   # --sdhlt at a stock build is an error, not a rebuild
+                        mohaa_sd.ensure_sdhlt()
+            finally:
+                mohaa_sd.CONFIG.update(sdhlt=None, tools_dir=None)
+                mohaa_sd._found.clear()
+            with open(os.path.join(tmp, "builds")) as f:
+                self.assertEqual(f.read().count("built"), 1)   # built once, then reused
 
     def test_map_flags(self):
         flags = mohaa_sd.map_flags()

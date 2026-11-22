@@ -4,7 +4,7 @@
     python3 tools/mohaa_sd.py --mohaa "C:/Games/EA GAMES/MOHAA" --sd /media/SDCARD
     python3 tools/mohaa_sd.py --cd /mnt/cd1 /mnt/cd2 --sd /media/SDCARD --maps m1l1,m5l2b
     python3 tools/mohaa_sd.py --mohaa ~/MOHAA --sd ./sdcard --stages music --list
-    python3 tools/mohaa_sd.py --mohaa ~/MOHAA --sd ./sdcard --maps m1l1 --sdhlt ~/SDHLT/tools --xash3d-gc ~/xash3d-gc
+    python3 tools/mohaa_sd.py --mohaa ~/MOHAA --sd ./sdcard --maps m1l1 --xash3d-gc ~/xash3d-gc
 
 The release disc holds no game data. Everything MOHAA brings (the main menu room, music, sounds, scripts, maps, collision,
 props and terrain; the intro movie is still to come) is converted here from files you own and written under
@@ -27,10 +27,12 @@ Stages run in this order (--stages picks some; by default every one whose tools 
   music     soundtracks and tracks                         needs ffmpeg
   sounds    per-map sound tables and samples
   scripts   level scripts and the global/ libraries
-  maps      maps/<map>.bsp (+ .mcol collision, .nodes)     needs SDHLT: --sdhlt DIR (third_party/sdhlt-bsp30ext)
+  maps      maps/<map>.bsp (+ .mcol collision, .nodes)     needs the patched SDHLT: built once (git, cmake, C++)
   worlddl   media/wd_<map>.gcd GameCube world bake         needs --xash3d-gc DIR (a checkout of xash3d-gc)
   props     media/gp_<map>.gcp static props and terrain    needs --xash3d-gc DIR
-worlddl and props bake the maps the maps stage compiled (they keep its work folder). Each stage is a function
+The maps stage builds SDHLT with the bsp30ext patch (third_party/sdhlt-bsp30ext, pinned to v1.3.1) the first time
+into --tools-dir (default ~/.local/share/mohaa-gc, %LOCALAPPDATA%\\mohaa-gc on Windows) and reuses it; --sdhlt
+points at one you built. worlddl and props bake the maps the maps stage compiled (they keep its work folder). Each stage is a function
     stage(sources, game_root, maps, work) -> list of written paths
 where sources are MOHAA main folders or pk3 files, game_root is <sd>/xash3d/<gamedir>, maps the map names
 ("" = every map the stage knows), and work a scratch folder kept between runs.
@@ -189,14 +191,81 @@ def stage_scripts(sources, game_root, maps, work):
     return _written(game_root, before)
 
 
-# Tools the map stages run that are not Python in this repo. main() fills these from --sdhlt and --xash3d-gc.
-CONFIG = {"sdhlt": None, "xash3d_gc": None, "fast_vis": False}
+# Tools the map stages run that are not Python in this repo. main() fills these from the command line.
+CONFIG = {"sdhlt": None, "xash3d_gc": None, "fast_vis": False, "tools_dir": None, "build_sdhlt": True}
 SDHLT = ("sdHLCSG", "sdHLBSP", "sdHLVIS")
+SDHLT_BUILD = os.path.join(os.path.dirname(HERE), "third_party", "sdhlt-bsp30ext", "build.sh")
+_found = {}
 
 
-def sdhlt_tool(name):
-    """Path of an SDHLT program (from --sdhlt, else PATH), or None."""
-    return shutil.which(name, path=CONFIG["sdhlt"]) if CONFIG["sdhlt"] else shutil.which(name)
+def tools_dir():
+    """Where the converter keeps tools it builds (the patched SDHLT): --tools-dir, else a per-user data folder."""
+    if CONFIG["tools_dir"]:
+        return CONFIG["tools_dir"]
+    if os.name == "nt":
+        base = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")
+    else:
+        base = os.environ.get("XDG_DATA_HOME") or os.path.join(os.path.expanduser("~"), ".local", "share")
+    return os.path.join(base, "mohaa-gc")
+
+
+def sdhlt_patched(folder):
+    """True if folder holds all three SDHLT programs and its sdHLBSP is the bsp30ext build (it knows -hull2alias:
+    a stock SDHLT compiles maps the GameCube can't hold)."""
+    tools = [shutil.which(t, path=folder) for t in SDHLT]
+    if not all(tools):
+        return False
+    with open(tools[1], "rb") as fh:
+        return b"hull2alias" in fh.read()
+
+
+def sdhlt_dir():
+    """The patched SDHLT's folder: --sdhlt (only), else the one the converter built, else PATH. None if none."""
+    if "sdhlt" not in _found:
+        if CONFIG["sdhlt"]:   # the one asked for, or none
+            cands = [CONFIG["sdhlt"]]
+        else:
+            cands = [os.path.join(tools_dir(), "sdhlt", "SDHLT", "tools")]
+            p = shutil.which(SDHLT[1])
+            if p:
+                cands.append(os.path.dirname(p))
+        _found["sdhlt"] = next((c for c in cands if os.path.isdir(c) and sdhlt_patched(c)), None)
+    return _found["sdhlt"]
+
+
+def sdhlt_buildable():
+    """Why the patched SDHLT can't be built here, or None."""
+    if not CONFIG["build_sdhlt"]:
+        return "--no-build-sdhlt"
+    lack = [t for t in ("bash", "git", "cmake") if not shutil.which(t)]
+    if not any(shutil.which(c) for c in ("c++", "g++", "clang++")):
+        lack.append("a C++ compiler")
+    return ("building it needs " + ", ".join(lack)) if lack else None
+
+
+def ensure_sdhlt(log=print):
+    """The patched SDHLT's folder, building it once into tools_dir() (pinned SDHLT v1.3.1 plus
+    third_party/sdhlt-bsp30ext) when there is none."""
+    found = sdhlt_dir()
+    if found:
+        return found
+    if CONFIG["sdhlt"]:
+        raise SystemExit("--sdhlt %s: no sdHLCSG/sdHLBSP/sdHLVIS with the bsp30ext patch (-hull2alias) there"
+                         % CONFIG["sdhlt"])
+    why = sdhlt_buildable()
+    if why:
+        raise SystemExit("needs the patched SDHLT (%s): %s; or build it with %s and pass --sdhlt <dir>/SDHLT/tools"
+                         % (", ".join(SDHLT), why, os.path.relpath(SDHLT_BUILD)))
+    work = os.path.join(tools_dir(), "sdhlt")
+    os.makedirs(work, exist_ok=True)
+    blog = os.path.join(work, "build.log")
+    log("   building the patched SDHLT once into %s (a few minutes; log: %s)" % (work, blog))
+    _run(["bash", SDHLT_BUILD, work], work, blog)
+    _found.pop("sdhlt", None)
+    found = sdhlt_dir()
+    if not found:
+        raise SystemExit("SDHLT built, but no patched sdHLBSP in %s; see %s" % (work, blog))
+    return found
 
 
 def engine_script(name):
@@ -265,11 +334,8 @@ def stage_maps(sources, game_root, maps, work):
     import bsp19_to_map
     from ubersound import read
     known, names = _map_names(sources, maps)
-    tools = [sdhlt_tool(t) for t in SDHLT]
-    if not all(tools):
-        raise SystemExit("needs SDHLT (%s): build it with third_party/sdhlt-bsp30ext/build.sh and pass --sdhlt "
-                         "<dir>/SDHLT/tools" % ", ".join(SDHLT))
-    csg, bsp, vis = tools
+    folder = ensure_sdhlt()
+    csg, bsp, vis = (shutil.which(t, path=folder) for t in SDHLT)
     flags = map_flags()
     out_maps = os.path.join(game_root, "maps")
     os.makedirs(out_maps, exist_ok=True)
@@ -379,8 +445,10 @@ def missing_tools(stage):
             return "needs Pillow and numpy (pip install pillow numpy)"
     if stage == "music" and not shutil.which("ffmpeg"):
         return "needs ffmpeg"
-    if stage == "maps" and not all(sdhlt_tool(t) for t in SDHLT):
-        return "needs SDHLT (--sdhlt)"
+    if stage == "maps" and not sdhlt_dir():
+        why = "--sdhlt %s is not the patched SDHLT" % CONFIG["sdhlt"] if CONFIG["sdhlt"] else sdhlt_buildable()
+        if why:
+            return "needs the patched SDHLT (%s)" % why
     if stage in ("worlddl", "props") and not CONFIG["xash3d_gc"]:
         return "needs --xash3d-gc"
     return None
@@ -422,7 +490,11 @@ def main(argv=None):
     ap.add_argument("--maps", default="", help="comma-separated maps (default: all the stage knows)")
     ap.add_argument("--stages", help="comma-separated stages (default: every one whose tools are here; have: %s)"
                     % ", ".join(STAGES))
-    ap.add_argument("--sdhlt", help="folder holding sdHLCSG, sdHLBSP, sdHLVIS (default: PATH)")
+    ap.add_argument("--sdhlt", help="folder holding the patched sdHLCSG, sdHLBSP, sdHLVIS (default: the one built "
+                    "into --tools-dir, else PATH; built from third_party/sdhlt-bsp30ext when there is none)")
+    ap.add_argument("--tools-dir", help="where built tools are kept between runs (default: %s)" % tools_dir())
+    ap.add_argument("--no-build-sdhlt", dest="build_sdhlt", action="store_false",
+                    help="never build SDHLT (the maps stage is skipped without one)")
     ap.add_argument("--xash3d-gc", dest="xash3d_gc", help="xash3d-gc checkout, for the GameCube bakes (worlddl, props)")
     ap.add_argument("--fast-vis", action="store_true", help="sdHLVIS -fast (quicker compiles, more overdraw)")
     ap.add_argument("--work", help="scratch folder kept between runs (default <sd>/.mohaa-work)")
@@ -430,7 +502,9 @@ def main(argv=None):
     a = ap.parse_args(argv)
     if not a.mohaa and not a.cd:
         ap.error("give --mohaa or --cd (or both)")
-    CONFIG.update(sdhlt=a.sdhlt, xash3d_gc=a.xash3d_gc, fast_vis=a.fast_vis)
+    CONFIG.update(sdhlt=a.sdhlt, xash3d_gc=a.xash3d_gc, fast_vis=a.fast_vis, tools_dir=a.tools_dir,
+                  build_sdhlt=a.build_sdhlt)
+    _found.clear()
     if a.stages:
         stages = [s.strip() for s in a.stages.split(",") if s.strip()]
         for s in stages:
