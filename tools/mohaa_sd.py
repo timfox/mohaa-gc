@@ -219,7 +219,8 @@ def stage_scripts(sources, game_root, maps, work):
 
 
 # Tools the map stages run that are not Python in this repo. main() fills these from the command line.
-CONFIG = {"sdhlt": None, "xash3d_gc": None, "fast_vis": False, "tools_dir": None, "build_sdhlt": True}
+CONFIG = {"sdhlt": None, "xash3d_gc": None, "fast_vis": False, "tools_dir": None, "build_sdhlt": True,
+          "texture_size": None}
 SDHLT = ("sdHLCSG", "sdHLBSP", "sdHLVIS")
 SDHLT_BUILD = os.path.join(os.path.dirname(HERE), "third_party", "sdhlt-bsp30ext", "build.sh")
 _found = {}
@@ -364,6 +365,9 @@ def stage_maps(sources, game_root, maps, work):
     folder = ensure_sdhlt()
     csg, bsp, vis = (shutil.which(t, path=folder) for t in SDHLT)
     flags = map_flags()
+    size = CONFIG["texture_size"]
+    textures = [] if size == 0 else [a for s in sources for a in ("--textures", s)] + (["--texture-size", str(size)]
+                                                                                    if size else [])
     out_maps = os.path.join(game_root, "maps")
     os.makedirs(out_maps, exist_ok=True)
     written = []
@@ -377,7 +381,7 @@ def stage_maps(sources, game_root, maps, work):
             fh.write(read(known[m]))
         print("   %s: converting" % m)
         _quiet(bsp19_to_map.main, [src, "-o", os.path.join(d, m + ".map"), "--wad", os.path.join(d, m + ".wad")]
-               + flags.get(m, []) + [a for s in sources for a in ("--scripts", s, "--textures", s)], log)
+               + flags.get(m, []) + [a for s in sources for a in ("--scripts", s)] + textures, log)
         print("   %s: compiling (SDHLT)" % m)
         # the textures go inside the BSP, so nothing on the card points back at this work folder
         _run([csg, "-wadinclude", m + ".wad", m], d, log)
@@ -531,13 +535,16 @@ def main(argv=None):
                     help="never build SDHLT (the maps stage is skipped without one)")
     ap.add_argument("--xash3d-gc", dest="xash3d_gc", help="xash3d-gc checkout, for the GameCube bakes (worlddl, props)")
     ap.add_argument("--fast-vis", action="store_true", help="sdHLVIS -fast (quicker compiles, more overdraw)")
+    ap.add_argument("--texture-size", type=int, default=None,
+                    help="largest map texture side (default 128; smaller saves BSP and lightmap space; "
+                         "0 = placeholder checkers)")
     ap.add_argument("--work", help="scratch folder kept between runs (default <sd>/.mohaa-work)")
     ap.add_argument("--list", action="store_true", help="list every file written")
     a = ap.parse_args(argv)
     if not a.mohaa and not a.cd:
         ap.error("give --mohaa or --cd (or both)")
     CONFIG.update(sdhlt=a.sdhlt, xash3d_gc=a.xash3d_gc, fast_vis=a.fast_vis, tools_dir=a.tools_dir,
-                  build_sdhlt=a.build_sdhlt)
+                  build_sdhlt=a.build_sdhlt, texture_size=a.texture_size)
     _found.clear()
     if a.stages:
         stages = [s.strip() for s in a.stages.split(",") if s.strip()]
