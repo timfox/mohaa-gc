@@ -18,7 +18,15 @@ The result goes where the GameCube main menu (mainui BackgroundBitmap) looks fir
                                             150 KiB of texture memory for the whole sheet
     resource/gc_menu/background.tga/.bmp    the whole sheet at 320x240 (single-sheet path, host tools)
 
-These are the same files and sizes the disc build bakes from DoD's own splash, so on the SD card they
+It also writes the retail menu's working parts, which mainui turns into MOHAA's main menu:
+
+    resource/gc_menu/mohaa_main.txt         the layout: sign rect, spots (action, rect, lit image, sign),
+                                            buttons (Quit, Back to game) and click sounds
+    resource/gc_menu/mohaa/*.tga            each spot's rect of the room with its hover art drawn in (opaque,
+                                            loaded only while lit), its sign, the Quit / Back to game art
+    sound/mohaa/menu/*.wav                  sound/menu/apply.wav and back.wav as 22 kHz mono PCM
+
+The background files are the same files and sizes the disc build bakes from DoD's own splash, so on the SD card they
 take the place of the disc's copies; without them the disc's DoD background shows as before.
 The output is retail data: write it outside the repository and never commit it.
 """
@@ -173,6 +181,135 @@ def compose(inputs, urc=URC):
     return sheet
 
 
+# What each retail main menu button does, by its stuffcommand, as a GameCube main menu action.
+ACTIONS = (
+    (re.compile(r"pushmenu\s+briefingroom", re.I), "newgame"),
+    (re.compile(r"pushmenu\s+multiplayer", re.I), "multiplayer"),
+    (re.compile(r"pushmenu\s+options", re.I), "options"),
+    (re.compile(r"pushmenu\s+war_records", re.I), "records"),
+    (re.compile(r"spmap\s+credits", re.I), "credits"),
+    (re.compile(r"^\s*quit\b", re.I), "quit"),
+    (re.compile(r"popmenu", re.I), "resume"),
+)
+SIGN = re.compile(r"set\s+ui_signshader\s+(\S+)", re.I)
+# The menu's click sounds (clicksound) by the mainui sound they stand in for.
+SOUNDS = (("launch", "sound/menu/apply.wav"), ("out", "sound/menu/back.wav"))
+ROOM = OUT + "/mohaa"
+LAYOUT = OUT + "/mohaa_main.txt"
+
+
+def action_of(cmd):
+    for pat, name in ACTIONS:
+        if pat.search(cmd):
+            return name
+    return None
+
+
+def room_menu(inputs, urc=URC):
+    """The retail main menu's working parts, or None: {"sheet": the room (PIL RGB 640x480), "sign": rect,
+    "spots": [(action, rect, hover PIL image of the whole rect, sign PIL image or None)],
+    "buttons": [(action, rect, normal, focus)], "sounds": [(mainui sound, game path, bytes)]}.
+
+    A spot is a part of the room that lights up under the cursor (the map, the doors, the projector);
+    its hover image is the room under the rect with the hover art drawn in, so it can be drawn opaque."""
+    from PIL import Image
+
+    files = collect(inputs, (".urc", ".shader", ".wav") + IMAGE_EXTS)
+    if urc not in files:
+        return None
+    sheet = compose(inputs, urc)
+    if sheet is None:
+        return None
+    width, height, items = parse_urc(read(files[urc]).decode("latin-1"))
+    shaders = {}
+    for path in sorted(p for p in files if p.startswith("scripts/") and p.endswith(".shader")):
+        for k, v in parse_shaders(read(files[path]).decode("latin-1")).items():
+            shaders.setdefault(k, v)
+    sx, sy = SHEET[0] / float(width), SHEET[1] / float(height)
+
+    def image(shader):
+        path = find_image(files, shaders.get(shader.lower(), shader))
+        return Image.open(io.BytesIO(read(files[path]))).convert("RGBA") if path else None
+
+    menu = {"sheet": sheet, "sign": None, "spots": [], "buttons": [], "sounds": []}
+    for it in items:
+        rect = tuple(int(float(v)) for v in it.get("rect", [])[:4])
+        if len(rect) < 4:
+            continue
+        rect = (round(rect[0] * sx), round(rect[1] * sy), round(rect[2] * sx), round(rect[3] * sy))
+        if it["type"].lower() == "label" and "linkcvartoshader" in it and it.get("name", [""])[0].lower() == "sign":
+            menu["sign"] = rect
+            continue
+        if it["type"].lower() != "button" or "enabledcvar" in it:
+            continue
+        action = action_of(" ".join(it.get("stuffcommand", [])))
+        if not action:
+            continue
+        hover = image(it["hovershader"][0]) if "hovershader" in it else None
+        x, y, w, h = rect
+        sign = SIGN.search(" ".join(it.get("hovercommand", [])))
+        if action in ("quit", "resume"):
+            normal = image(it["shader"][0]) if "shader" in it else None
+            if normal is not None and hover is not None:
+                menu["buttons"].append((action, rect, normal.resize((w, h), Image.LANCZOS).convert("RGB"),
+                                        hover.resize((w, h), Image.LANCZOS).convert("RGB")))
+            continue
+        if hover is None:
+            continue
+        lit = sheet.convert("RGBA").crop((x, y, x + w, y + h))
+        lit.alpha_composite(hover.resize((w, h), Image.LANCZOS))
+        menu["spots"].append((action, rect, lit.convert("RGB"),
+                              image(sign.group(1)).convert("RGB") if sign and image(sign.group(1)) else None))
+    menu["spots"].sort(key=lambda s: (s[1][0] + s[1][2] / 2.0, s[1][1]))   # left to right across the room
+    for name, path in SOUNDS:
+        if path in files:
+            menu["sounds"].append((name, path, read(files[path])))
+    return menu
+
+
+def write_room_menu(menu, game_root):
+    """Write the retail main menu's parts and resource/gc_menu/mohaa_main.txt under game_root (the
+    GameCube main menu draws the room menu when that file is there); returns the written paths."""
+    import ubersound
+
+    room = os.path.join(game_root, *ROOM.split("/"))
+    os.makedirs(room, exist_ok=True)
+    written = []
+
+    def save(img, name):
+        p = os.path.join(room, name)
+        img.save(p, format="TGA")
+        written.append(p)
+        return ROOM + "/" + name
+
+    lines = ["// The retail MOHAA main menu for the GameCube main menu (mainui), written by",
+             "// mohaa-gc tools/mohaa_menu.py from the player's own ui/main.urc. Rects are x y w h on a",
+             "// 640x480 screen. spot: a part of the room that lights up (hover image) and names itself on the",
+             "// sign; button: a picture button (normal, focus). The action is what A / Enter opens.",
+             "screen %d %d" % SHEET]
+    if menu["sign"]:
+        lines.append("sign %d %d %d %d" % menu["sign"])
+    for i, (action, rect, lit, sign) in enumerate(menu["spots"]):
+        hover = save(lit, "spot%d_%s.tga" % (i, action))
+        signp = save(sign, "sign%d_%s.tga" % (i, action)) if sign is not None else "-"
+        lines.append("spot %s %d %d %d %d %s %s" % ((action,) + rect + (hover, signp)))
+    for action, rect, normal, focus in menu["buttons"]:
+        lines.append("button %s %d %d %d %d %s %s" % ((action,) + rect + (
+            save(normal, "%s.tga" % action), save(focus, "%s_h.tga" % action))))
+    for name, path, data in menu["sounds"]:
+        rel = "sound/mohaa/" + path[len("sound/"):]
+        dest = os.path.join(game_root, *rel.split("/"))
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        if ubersound.convert_wav(data, dest) is None:
+            written.append(dest)
+            lines.append("sound %s %s" % (name, rel))
+    p = os.path.join(game_root, *LAYOUT.split("/"))
+    with open(p, "w", newline="\n") as fh:
+        fh.write("\n".join(lines) + "\n")
+    written.append(p)
+    return written
+
+
 def cmpr_encode(rgb):
     """GX CMPR (DXT1, opaque) of an HxWx3 uint8 array (sides multiples of 8): per 4x4 block the endpoints
     are the extremes along the block's principal colour axis, and blocks go in 8x8 tiles of 2x2,
@@ -291,6 +428,10 @@ def main(argv=None):
     if a.out:
         for p in write_gc_menu(sheet, a.out):
             print("wrote %s" % p)
+        menu = room_menu(a.inputs)
+        if menu:
+            for p in write_room_menu(menu, a.out):
+                print("wrote %s" % p)
     return 0
 
 
