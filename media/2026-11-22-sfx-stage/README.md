@@ -8,8 +8,8 @@ Command:
 
 ```sh
 python3 tools/mohaa_sd.py --cd retail/cd/disc1 retail/cd/disc2 \
-  --sd /tmp/mohaa-sfx-gate-20261122 \
-  --work /tmp/mohaa-sfx-gate-work-20261122 \
+  --sd /tmp/mohaa-sfx-resample-20261122 \
+  --work /tmp/mohaa-sfx-resample-work-20261122 \
   --stages sounds --list
 ```
 
@@ -25,6 +25,13 @@ Three scripted MP3 samples were decoded by ffmpeg and written as GameCube-friend
 
 The generated `.snd` tables reference these WAV paths. The three WAV headers
 were inspected; `medicdance.wav` contains the loop cue used by GoldSrc.
+
+WAV and MP3 sources now pass through FFmpeg's SWR band-limited resampler before
+being written as little-endian mono 16-bit PCM. The full stage produced 378
+samples at 22,050 Hz and one source-preserving 18,100 Hz sample; all 379 outputs
+are mono 16-bit WAVs at or below the GameCube target rate. The gate source
+`GateWoodOpen_01.wav` kept its duration across conversion: 173,573 frames at
+44,100 Hz became 86,786 frames at 22,050 Hz.
 
 The converter's resolver now follows MOHAA's prefix lookup: the exact alias and
 non-underscore suffix variants are candidates together, while underscore suffixes
