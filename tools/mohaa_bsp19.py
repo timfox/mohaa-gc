@@ -157,6 +157,7 @@ class TerrainPatch:
 	base_z: int
 	shader: int
 	heights: list  # 81 world-space heights, row-major (index = j * 9 + i, i along x)
+	tex: tuple = ()  # texCoord[2][2][2]: (s, t) at the corners (x0 y0, x0 y1, x1 y0, x1 y1), as read
 
 	@property
 	def origin(self):
@@ -297,7 +298,8 @@ def load_bytes(data: bytes, name: str = "<memory>") -> Bsp:
 		x, y = struct.unpack_from("<2b", rec, 36)
 		base, shader = struct.unpack_from("<hH", rec, 38)
 		raw = struct.unpack_from("<81B", rec, 304)
-		bsp.terrain.append(TerrainPatch(x, y, base, shader, [base + 2 * h for h in raw]))
+		tex = struct.unpack_from("<8f", rec, 4)
+		bsp.terrain.append(TerrainPatch(x, y, base, shader, [base + 2 * h for h in raw], tex))
 
 	if version >= 19:
 		for rec in _records(lump(LUMP_STATICMODELDEF), SZ_STATICMODEL):
