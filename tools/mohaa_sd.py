@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Make a DoD-GC SD card from your own copy of Medal of Honor: Allied Assault.
+"""Make the SD card for MOHAA on GameCube from your own copy of Medal of Honor: Allied Assault.
 
     python3 tools/mohaa_sd.py --mohaa "C:/Games/EA GAMES/MOHAA" --sd /media/SDCARD
     python3 tools/mohaa_sd.py --cd /mnt/cd1 /mnt/cd2 --sd /media/SDCARD --maps m1l1,m5l2b
@@ -9,7 +9,7 @@
 The release disc holds no game data. Everything MOHAA brings (music, sounds, scripts, maps, collision, props
 and terrain; the intro movie is still to come) is converted here from files you own and written under
 
-    <sd>/xash3d/<gamedir>/          (gamedir: dod)
+    <sd>/xash3d/<gamedir>/          (gamedir: mohaa)
 
 which the GameCube engine reads at runtime: sd:/ (SD2SP2) or carda:/ cardb:/ (SD Gecko), on top of the disc.
 
@@ -371,7 +371,7 @@ def main(argv=None):
     ap.add_argument("--mohaa", help="installed MOHAA folder (holding main/)")
     ap.add_argument("--cd", nargs="+", help="install CD folders (holding DATA1.HDR / DATAn.CAB)")
     ap.add_argument("--sd", required=True, help="SD card root (or a folder to copy onto one later)")
-    ap.add_argument("--gamedir", default="dod", help="game folder under xash3d/ (default dod)")
+    ap.add_argument("--gamedir", default="mohaa", help="game folder under xash3d/ (default mohaa)")
     ap.add_argument("--maps", default="", help="comma-separated maps (default: all the stage knows)")
     ap.add_argument("--stages", help="comma-separated stages (default: every one whose tools are here; have: %s)"
                     % ", ".join(STAGES))
