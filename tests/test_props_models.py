@@ -105,6 +105,34 @@ class PackTest(unittest.TestCase):
 		self.assertEqual((stats["world_models"], stats["instances"], stats["models"]), (2, 2, 2))
 		self.assertIn(b"*world/terrain_0_0", data)
 
+	def test_patches_and_soups_become_world_meshes(self):
+		import mohaa_bsp19 as b19
+		bsp = b19.Bsp("t", 19, 0, 0, {})
+		bsp.shaders = [b19.Shader("textures/ground/mud", 0, 1, 0), b19.Shader("textures/sky/sky", b19.SURF_SKY, 0, 0)]
+		# a flat 3x3 patch facing up (z), 0..64, and a soup quad wound clockwise seen from above
+		pts = [(x * 32.0, y * 32.0, 0.0) for y in range(3) for x in range(3)]
+		soup = [(100.0, 0.0, 8.0), (100.0, 32.0, 8.0), (132.0, 32.0, 8.0), (132.0, 0.0, 8.0)]
+		bsp.drawverts = pts + soup
+		bsp.drawvert_normals = [(0.0, 0.0, 1.0)] * len(bsp.drawverts)
+		bsp.drawvert_st = [(p[0] / 64, p[1] / 64) for p in bsp.drawverts]
+		bsp.drawindexes = [0, 1, 2, 0, 2, 3]
+		bsp.surfaces = [b19.Surface(0, b19.MST_PATCH, 9, 0, 3, 3, 0.0, 0, 0),
+			b19.Surface(0, b19.MST_TRIANGLE_SOUP, 4, 6, 0, 0, 0.0, 9, 0),
+			b19.Surface(1, b19.MST_TRIANGLE_SOUP, 4, 6, 0, 0, 0.0, 9, 0)]	# sky: left out
+		bsp.models = [b19.Model((0, 0, 0), (0, 0, 0), 0, 3, 0, 0)]
+		meshes = pm.surface_meshes(bsp, 0.5, steps=2)
+		self.assertEqual(len(meshes), 1)
+		name, centre, surfaces = meshes[0]
+		self.assertTrue(name.startswith(pm.WORLD_PREFIX))
+		shader, verts, tris = surfaces[0]
+		self.assertEqual((shader, len(verts), len(tris)), ("textures/ground/mud", 9 + 4, 8 + 2))
+		for a, b, c in tris:	# all counter-clockwise seen from above, like the props
+			e1 = [verts[b][k] - verts[a][k] for k in range(2)]
+			e2 = [verts[c][k] - verts[a][k] for k in range(2)]
+			self.assertGreater(e1[0] * e2[1] - e1[1] * e2[0], 0)
+		self.assertEqual(verts[8][6:8], (1.0, 1.0))	# the patch's far corner keeps its st
+		self.assertEqual(round(verts[4][0] + centre[0], 4), 16.0)	# patch middle at map x 32 * 0.5
+
 	def test_read_props(self):
 		with tempfile.NamedTemporaryFile("w", suffix=".props", delete=False) as f:
 			f.write("# header\n1 2 3 0 90 0 0.5 static/rock%20big.tik\n")

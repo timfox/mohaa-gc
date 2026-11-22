@@ -131,6 +131,7 @@ class Surface:
 	patch_height: int
 	subdivisions: float
 	first_vert: int = 0
+	first_index: int = 0
 
 
 @dataclass
@@ -193,6 +194,9 @@ class Bsp:
 	num_lightmaps: int = 0
 	num_drawverts: int = 0
 	drawverts: list = field(default_factory=list)  # xyz of each draw vertex (patch control points)
+	drawvert_st: list = field(default_factory=list)  # (s, t) of each draw vertex
+	drawvert_normals: list = field(default_factory=list)  # normal of each draw vertex
+	drawindexes: list = field(default_factory=list)  # triangle indexes, relative to a surface's first_vert
 	terrain: list = field(default_factory=list)
 	static_models: list = field(default_factory=list)
 
@@ -269,7 +273,7 @@ def load_bytes(data: bytes, name: str = "<memory>") -> Bsp:
 		v = struct.unpack_from("<12i3f9f2if", rec)
 		bsp.surfaces.append(Surface(
 			shader=v[0], surface_type=v[2], num_verts=v[4], num_indexes=v[6],
-			patch_width=v[24], patch_height=v[25], subdivisions=v[26], first_vert=v[3],
+			patch_width=v[24], patch_height=v[25], subdivisions=v[26], first_vert=v[3], first_index=v[5],
 		))
 
 	sides = lump(LUMP_BRUSHSIDES)
@@ -293,6 +297,10 @@ def load_bytes(data: bytes, name: str = "<memory>") -> Bsp:
 	dv = lump(LUMP_DRAWVERTS)
 	bsp.num_drawverts = len(dv) // SZ_DRAWVERT
 	bsp.drawverts = [struct.unpack_from("<3f", dv, i * SZ_DRAWVERT) for i in range(bsp.num_drawverts)]
+	bsp.drawvert_st = [struct.unpack_from("<2f", dv, i * SZ_DRAWVERT + 12) for i in range(bsp.num_drawverts)]
+	bsp.drawvert_normals = [struct.unpack_from("<3f", dv, i * SZ_DRAWVERT + 28) for i in range(bsp.num_drawverts)]
+	di = lump(LUMP_DRAWINDEXES)
+	bsp.drawindexes = list(struct.unpack_from("<%di" % (len(di) // 4), di))
 
 	for rec in _records(lump(LUMP_TERRAIN), SZ_TERRAPATCH):
 		x, y = struct.unpack_from("<2b", rec, 36)

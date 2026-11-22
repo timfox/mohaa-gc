@@ -6,8 +6,8 @@
 It reads the .props sidecar that bsp19_to_map.py writes, loads each model's .tik, posed .skd mesh
 and textures from the paks, and writes the models, their textures and every instance into one file.
 Props cost the engine no edict and no model slot. Their collision is already in the map.
-With --bsp the map's LOD terrain is added too, as "*world/" meshes in map units: the converter
-gives terrain collision only, so without them the ground is not drawn.
+With --bsp the map's LOD terrain, curved patches and triangle soups are added too, as "*world/"
+meshes in map units: the converter gives them collision only, so without them that ground is not drawn.
 
 The output is built from retail data: write it outside the repository and never commit it.
 
@@ -156,6 +156,108 @@ def terrain_meshes(bsp, scale: float, max_models: int = WORLD_MAX_MODELS):
 	return out
 
 
+def _bez(a, b, c, t):
+	u = 1.0 - t
+	return tuple(u * u * x + 2 * u * t * y + t * t * z for x, y, z in zip(a, b, c))
+
+
+def _facing(verts, tris):
+	"""Sum over tris of (counter-clockwise face normal . vertex normals): negative when the tris wind the other way."""
+	tot = 0.0
+	for a, b, c in tris:
+		pa, pb, pc = verts[a], verts[b], verts[c]
+		e1 = [pb[k] - pa[k] for k in range(3)]
+		e2 = [pc[k] - pa[k] for k in range(3)]
+		n = (e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0])
+		tot += sum(n[k] * (pa[3 + k] + pb[3 + k] + pc[3 + k]) for k in range(3))
+	return tot
+
+
+def patch_mesh(ctrl, w, h, steps=4):
+	"""A Quake 3 biquadratic patch (w x h control vertices, row-major, both odd, each a tuple of
+	floats: position, normal, st) as (verts, tris), every 3x3 piece cut steps x steps."""
+	if w < 3 or h < 3 or not (w & 1) or not (h & 1) or len(ctrl) < w * h:
+		return [], []
+	cp = lambda i, j: ctrl[j * w + i]  # noqa: E731
+	nu, nv = (w - 1) // 2 * steps, (h - 1) // 2 * steps
+	verts = []
+	for y in range(nv + 1):
+		j = min(y // steps, (h - 1) // 2 - 1)
+		tv = (y - j * steps) / steps
+		for x in range(nu + 1):
+			i = min(x // steps, (w - 1) // 2 - 1)
+			tu = (x - i * steps) / steps
+			cols = [_bez(cp(2 * i, 2 * j + r), cp(2 * i + 1, 2 * j + r), cp(2 * i + 2, 2 * j + r), tu) for r in range(3)]
+			verts.append(_bez(cols[0], cols[1], cols[2], tv))
+	tris = []
+	row = nu + 1
+	for y in range(nv):
+		for x in range(nu):
+			a = y * row + x
+			tris += [(a, a + row, a + 1), (a + 1, a + row, a + row + 1)]
+	return verts, tris
+
+
+def surface_meshes(bsp, scale: float, max_models: int = WORLD_MAX_MODELS // 2, steps: int = 4):
+	"""The world's curved patches and triangle soups (MOHAA's mesh ground, rocks and rubble), which
+	the converter keeps only as collision, as world meshes like terrain_meshes(): grouped by a grid
+	whose cell grows until the meshes fit max_models. Sky and nodraw surfaces are left out."""
+	import mohaa_bsp19 as b19
+
+	if not bsp.models or not bsp.drawverts:
+		return []
+	m = bsp.models[0]
+	pieces = []	# (shader, verts in map units, tris, centre)
+	for si in range(m.first_surface, min(m.first_surface + m.num_surfaces, len(bsp.surfaces))):
+		sf = bsp.surfaces[si]
+		if sf.surface_type not in (b19.MST_PATCH, b19.MST_TRIANGLE_SOUP):
+			continue
+		sh = bsp.shaders[sf.shader] if 0 <= sf.shader < len(bsp.shaders) else None
+		if sh is None or sh.surface_flags & (b19.SURF_SKY | b19.SURF_NODRAW) or "nodraw" in sh.name.lower():
+			continue
+		lo, hi = sf.first_vert, sf.first_vert + sf.num_verts
+		if hi > len(bsp.drawverts):
+			continue
+		dv = [(*bsp.drawverts[k], *bsp.drawvert_normals[k], *bsp.drawvert_st[k]) for k in range(lo, hi)]
+		if sf.surface_type == b19.MST_PATCH:
+			verts, tris = patch_mesh(dv, sf.patch_width, sf.patch_height, steps)
+		else:
+			idx = bsp.drawindexes[sf.first_index:sf.first_index + sf.num_indexes]
+			verts = dv
+			tris = [tuple(idx[k:k + 3]) for k in range(0, len(idx) - 2, 3) if max(idx[k:k + 3]) < len(dv)]
+		if not tris:
+			continue
+		verts = [(*v[:3], *_unit(v[3:6]), *v[6:8]) for v in verts]
+		if _facing(verts, tris) < 0:	# the props draw counter-clockwise: wind each surface to match its normals
+			tris = [(a, c, b) for a, b, c in tris]
+		c = tuple(0.5 * (min(v[a] for v in verts) + max(v[a] for v in verts)) for a in range(3))
+		pieces.append((sh.name, verts, tris, c))
+	if not pieces:
+		return []
+	side = 1024.0
+	while True:
+		chunks = {}
+		for p in pieces:
+			chunks.setdefault((int(p[3][0] // side), int(p[3][1] // side)), []).append(p)
+		if len(chunks) <= max_models or side >= 65536:
+			break
+		side *= 1.5
+	out = []
+	for key in sorted(chunks):
+		ps = chunks[key]
+		allv = [v for p in ps for v in p[1]]
+		centre = tuple(0.5 * (min(v[a] for v in allv) + max(v[a] for v in allv)) * scale for a in range(3))
+		by_shader = {}
+		for name, verts, tris, _ in ps:
+			vv, tt = by_shader.setdefault(name, ([], []))
+			base = len(vv)
+			vv += [(v[0] * scale - centre[0], v[1] * scale - centre[1], v[2] * scale - centre[2], *v[3:]) for v in verts]
+			tt += [(a + base, b + base, c + base) for a, b, c in tris]
+		out.append((f"{WORLD_PREFIX}mesh_{key[0]}_{key[1]}", centre,
+			[(sh, v, t) for sh, (v, t) in sorted(by_shader.items())]))
+	return out
+
+
 def build(files, read, props, max_side=MAX_TEXTURE, world=()):
 	"""(pack bytes, stats) for the props, reading models and textures from files {path: entry}.
 	world: terrain_meshes() output, added as models drawn at scale 1."""
@@ -275,7 +377,9 @@ def main(argv=None) -> int:
 		import mohaa_bsp19 as b19
 		from bsp19_to_map import DEFAULT_SCALE
 
-		world = terrain_meshes(b19.load(args.bsp), args.scale if args.scale else DEFAULT_SCALE)
+		bsp = b19.load(args.bsp)
+		sc = args.scale if args.scale else DEFAULT_SCALE
+		world = terrain_meshes(bsp, sc) + surface_meshes(bsp, sc)
 	data, stats = build(files, read, read_props(props_path), args.max_texture, world)
 	with open(args.out, "wb") as f:
 		f.write(data)
