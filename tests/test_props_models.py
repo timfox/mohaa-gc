@@ -55,7 +55,7 @@ class PackTest(unittest.TestCase):
 		self.assertEqual((stats["models"], stats["instances"], stats["textures"]), (1, 2, 1))
 		self.assertEqual((stats["models_unloaded"], stats["instances_unloaded"]), (1, 1))
 		magic, ver, ntex, nmod, ninst = struct.unpack_from("<4s4i", data, 0)
-		self.assertEqual((magic, ver, ntex, nmod, ninst), (b"MPRP", 1, 1, 1, 2))
+		self.assertEqual((magic, ver, ntex, nmod, ninst), (b"MPRP", 2, 1, 1, 2))
 		at = 20
 		name = data[at:at + 32].rstrip(b"\0")
 		w, h, flags = struct.unpack_from("<2HI", data, at + 32)
@@ -73,7 +73,9 @@ class PackTest(unittest.TestCase):
 		at += 64 + 28
 		ti, nv, nt = struct.unpack_from("<3i", data, at)
 		self.assertEqual((ti, nv, nt), (0, 4, 2))
-		at += 12 + nv * 20 + nt * 6
+		v0 = struct.unpack_from("<8f", data, at + 12)
+		self.assertEqual([round(c, 4) for c in v0[3:6]], [1.0, 0.0, 0.0])  # normal (0,0,1) posed: on x
+		at += 12 + nv * 32 + nt * 6
 		inst = struct.unpack_from("<i7f", data, at)
 		self.assertEqual(inst[0], 0)
 		self.assertAlmostEqual(inst[7], 0.766, places=5)

@@ -14,7 +14,7 @@ Format (little-endian, like .mcol):
   texture: name[32], u16 width, u16 height, u32 flags (1 = alpha tested), palette 256 x RGBA,
            width*height palette indices (index 255 is transparent when alpha tested)
   model:   name[64], mins[3], maxs[3], numSurfaces; then per surface:
-           texture index (-1 = none), numVerts, numTris, verts (x y z s t as floats), tris (3 x u16)
+           texture index (-1 = none), numVerts, numTris, verts (x y z nx ny nz s t as floats), tris (3 x u16)
   instance: model index, origin[3], angles[3] (pitch yaw roll), scale
 Model positions are in MOHAA units with the .tik scale applied; an instance's scale (from .props)
 converts them to the map's units.
@@ -31,7 +31,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import mohaa_skd as skd  # noqa: E402
 
 MAGIC = b"MPRP"
-VERSION = 1
+VERSION = 2  # 2: vertices carry their normal
 MAX_TEXTURE = 128  # largest side, so a map's textures stay a few hundred KiB on the GameCube
 TEX_ALPHA = 1
 
@@ -66,6 +66,11 @@ def encode_texture(data: bytes, max_side: int = MAX_TEXTURE):
 	for i in range(256):
 		rgba += bytes(pal[i * 3:i * 3 + 3]) + (b"\0" if tested and i == 255 else b"\xff")
 	return w, h, TEX_ALPHA if tested else 0, bytes(rgba), bytes(idx)
+
+
+def _unit(n):
+	length = (n[0] * n[0] + n[1] * n[1] + n[2] * n[2]) ** 0.5
+	return (n[0] / length, n[1] / length, n[2] / length) if length > 1e-6 else (0.0, 0.0, 1.0)
 
 
 def read_props(path):
@@ -132,8 +137,8 @@ def build(files, read, props, max_side=MAX_TEXTURE):
 							tex_index[tpath] = len(textures)
 							textures.append((tpath, encode_texture(img, max_side)))
 					ti = tex_index[tpath]
-				verts = [(p[0] * tik.scale, p[1] * tik.scale, p[2] * tik.scale, uv[0], uv[1])
-				         for p, uv in zip(s.positions, s.uvs)]
+				verts = [(p[0] * tik.scale, p[1] * tik.scale, p[2] * tik.scale, *_unit(n), uv[0], uv[1])
+				         for p, n, uv in zip(s.positions, s.normals, s.uvs)]
 				surfs.append((ti, verts, s.triangles))
 				stats["triangles"] += len(s.triangles)
 			lo, hi = mesh.bounds()
@@ -155,7 +160,7 @@ def build(files, read, props, max_side=MAX_TEXTURE):
 			if len(verts) > 0xffff:
 				raise skd.SkdError(f"{name}: a surface has more than 65535 vertices")
 			out += struct.pack("<3i", ti, len(verts), len(tris))
-			out += b"".join(struct.pack("<5f", *v) for v in verts)
+			out += b"".join(struct.pack("<8f", *v) for v in verts)
 			out += b"".join(struct.pack("<3H", *t) for t in tris)
 	for mi, origin, angles, scale in instances:
 		out += struct.pack("<i7f", mi, *origin, *angles, scale)
