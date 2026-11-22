@@ -462,7 +462,7 @@ class StaticPropsTest(unittest.TestCase):
 	def test_props_scale_origin_and_model(self):
 		bsp = b19.load_bytes(make_sample_bsp.build(19), "sample")
 		bsp.static_models = [b19.StaticModel("static/tree_winter_smallpine.tik", (100.0, -50.0, 8.0), (0.0, 90.0, 0.0), 1.5),
-		                     b19.StaticModel("static\\rock big.tik", (0.0, 0.0, 0.0), (0.0, 0.0, 0.0), 0.0),
+		                     b19.StaticModel("Static\\\\rock big.tik", (0.0, 0.0, 0.0), (0.0, 0.0, 0.0), 0.0),
 		                     b19.StaticModel("", (0.0, 0.0, 0.0), (0.0, 0.0, 0.0), 1.0)]
 		text, n = conv.static_props(bsp, 0.5)
 		self.assertEqual(n, 2)

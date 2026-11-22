@@ -766,7 +766,7 @@ def static_props(bsp, scale):
 	them from this list. Their collision is already in the map (MOHAA ships clip brushes around them)."""
 	lines = ["# mohaa static models: x y z pitch yaw roll scale model (spaces in model as %20)"]
 	for sm in bsp.static_models:
-		model = sm.model.strip().replace("\\", "/")
+		model = re.sub(r"/+", "/", sm.model.strip().replace("\\", "/")).lower()  # static//x.tik is static/x.tik
 		if not model:
 			continue
 		x, y, z = (c * scale for c in sm.origin)
