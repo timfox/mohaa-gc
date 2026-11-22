@@ -41,10 +41,11 @@ sources, confirming that current live calls were preserved.
 
 The audit still reports unresolved script aliases: `sanford_and_son`,
 `den_m2l2_258b`, `wave_laps`, `dfr_panic_35c_13`, `flak88_hit`, `temp`,
-`dfr_m5l3_add01`, `radio_watchout`, and `gate_large_open`. The repeated
-`dfr_panic_35c_13` occurs on two maps. These remain unresolved rather than being
-assigned invented sounds. The DoD runtime has a larger 512-sample channel pool,
-but this map's runtime behavior still needs validation.
+`dfr_m5l3_add01`, and `gate_large_open`. The repeated `dfr_panic_35c_13` occurs
+on two maps. The earlier `radio_watchout` warning came from a call inside a
+block comment and is no longer reported. These eight aliases remain unresolved
+rather than being assigned invented sounds. The DoD runtime has a larger
+512-sample channel pool, but this map's runtime behavior still needs validation.
 
 The generated stage was written under `/tmp` and removed after this audit.
 Retail assets and converted audio are not committed. No test suite or hardware
