@@ -181,6 +181,8 @@ class MohaaSdTest(unittest.TestCase):
                         "media/gp_t1.gcp", "media/pt_t1.gct"):
                 self.assertTrue(os.path.isfile(os.path.join(root, rel)), rel)
             self.assertFalse(os.path.exists(os.path.join(root, "maps", "t2.bsp")))   # only the map asked for
+            # Create Game's map list (the engine can't write it on the card)
+            self.assertEqual(open(os.path.join(root, "maps.lst")).read(), 't1 "t1"\n')
             sdhlt = open(os.path.join(tmp, "calls")).read().splitlines()
             self.assertEqual([c.split()[0] for c in sdhlt], ["sdHLCSG", "sdHLBSP", "sdHLVIS"] * 2)   # twice: see below
             self.assertIn("-wadinclude t1.wad", sdhlt[0])
@@ -189,6 +191,16 @@ class MohaaSdTest(unittest.TestCase):
             self.assertEqual([c[0] for c in calls], ["convert", "light", "convert", "light", "pack"])
             self.assertEqual([c[1][c[1].index("--texture-size") + 1] for c in calls if c[0] == "convert"], ["128", "64"])
             self.assertIn("t1: 513 KB over the GameCube's 3072 KB map budget with 128-texel textures; again at 64", log)
+
+    def test_maps_lst_lists_every_compiled_map_m1l1_first(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertIsNone(mohaa_sd.write_maps_lst(tmp))
+            os.makedirs(os.path.join(tmp, "maps"))
+            for m in ("m2l1", "m1l1", "m1l2a"):
+                open(os.path.join(tmp, "maps", m + ".bsp"), "w").close()
+            open(os.path.join(tmp, "maps", "m1l1.mcol"), "w").close()
+            path = mohaa_sd.write_maps_lst(tmp)
+            self.assertEqual(open(path).read(), 'm1l1 "m1l1"\nm1l2a "m1l2a"\nm2l1 "m2l1"\n')
 
     def test_stages_without_their_tools_are_skipped(self):
         with tempfile.TemporaryDirectory() as tmp:

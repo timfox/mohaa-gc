@@ -220,7 +220,7 @@ def stage_scripts(sources, game_root, maps, work):
 
 # Tools the map stages run that are not Python in this repo. main() fills these from the command line.
 CONFIG = {"sdhlt": None, "xash3d_gc": None, "fast_vis": False, "tools_dir": None, "build_sdhlt": True,
-          "texture_size": None}
+          "texture_size": None, "texture_budget": None}
 SDHLT = ("sdHLCSG", "sdHLBSP", "sdHLVIS")
 SDHLT_BUILD = os.path.join(os.path.dirname(HERE), "third_party", "sdhlt-bsp30ext", "build.sh")
 _found = {}
@@ -396,6 +396,8 @@ def stage_maps(sources, game_root, maps, work):
         sizes = [size] if size is not None else [TEXTURE_SIZE, TEXTURE_FALLBACK]
         for k, size in enumerate(sizes):
             textures = [] if size == 0 else [a for s in sources for a in ("--textures", s)] + ["--texture-size", str(size)]
+            if textures and CONFIG["texture_budget"]:
+                textures += ["--texture-budget", str(CONFIG["texture_budget"])]
             print("   %s: converting" % m)
             _quiet(bsp19_to_map.main, [src, "-o", os.path.join(d, m + ".map"), "--wad", os.path.join(d, m + ".wad")]
                    + flags.get(m, []) + [a for s in sources for a in ("--scripts", s)] + textures, log)
@@ -421,7 +423,26 @@ def stage_maps(sources, game_root, maps, work):
             if os.path.isfile(side):
                 shutil.copy(side, os.path.join(out_maps, m + ext))
                 written.append(os.path.join(out_maps, m + ext))
+    lst = write_maps_lst(game_root)
+    if lst:
+        written.append(lst)
     return written
+
+
+def write_maps_lst(game_root):
+    """maps.lst, the list the menu's Create Game offers: every compiled map in the game folder, as
+    `name "title"`. The engine can't write it on the GameCube's read-only card path, so without it Create Game
+    has no map. Returns its path, or None when there is no map."""
+    folder = os.path.join(game_root, "maps")
+    names = sorted(f[:-4] for f in os.listdir(folder) if f.lower().endswith(".bsp")) if os.path.isdir(folder) else []
+    if not names:
+        return None
+    # m1l1 first: the campaign's opening map, and the one Create Game selects
+    names.sort(key=lambda n: (n != "m1l1", n))
+    path = os.path.join(game_root, "maps.lst")
+    with open(path, "w") as fh:
+        fh.writelines('%s "%s"\n' % (n, n) for n in names)
+    return path
 
 
 def _compiled(game_root, work, maps, need):
@@ -563,13 +584,17 @@ def main(argv=None):
     ap.add_argument("--texture-size", type=int, default=None,
                     help="largest map texture side (default: 128, or 64 for a map that would go over the "
                          "GameCube's 3 MB map budget; 0 = placeholder checkers)")
+    ap.add_argument("--texture-budget", type=int, default=None, metavar="KB",
+                    help="most texture bytes a map carries; the biggest textures shrink first (default: "
+                         "bsp19_to_map's)")
     ap.add_argument("--work", help="scratch folder kept between runs (default <sd>/.mohaa-work)")
     ap.add_argument("--list", action="store_true", help="list every file written")
     a = ap.parse_args(argv)
     if not a.mohaa and not a.cd:
         ap.error("give --mohaa or --cd (or both)")
     CONFIG.update(sdhlt=a.sdhlt, xash3d_gc=a.xash3d_gc, fast_vis=a.fast_vis, tools_dir=a.tools_dir,
-                  build_sdhlt=a.build_sdhlt, texture_size=a.texture_size)
+                  build_sdhlt=a.build_sdhlt, texture_size=a.texture_size,
+                  texture_budget=a.texture_budget)
     _found.clear()
     if a.stages:
         stages = [s.strip() for s in a.stages.split(",") if s.strip()]

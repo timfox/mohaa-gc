@@ -239,8 +239,8 @@ class TextureFit:
 
 	def plan(self, shaders, budget=TEXDATA_BUDGET, max_texel=MAX_TEXEL):
 		"""Pick each shader's WAD size before any side is fitted: at most max_texel texels per map unit
-		(the placeholders' one texel a unit: more means more SDHLT face splits and luxels), then halve every
-		texture until the texture lump fits budget bytes. Returns (largest side, bytes)."""
+		(the placeholders' one texel a unit: more means more SDHLT face splits and luxels), then halve the
+		biggest textures until the texture lump fits budget bytes. Returns (largest side, bytes)."""
 		want = {}
 		for sh in sorted(set(s.lower() for s in shaders)):
 			src = self.images.source_size(sh)
@@ -251,13 +251,20 @@ class TextureFit:
 				dens = [math.sqrt(_dot(fit[axis][0], fit[axis][0])) for *_, fit in self.by_shader.get(sh, ())]
 				lim.append(self.scale * max_texel / max(dens) if dens and max(dens) > 0 else self.images.max_side)
 			want[sh] = tuple(_pow2_at_most(src[i], min(self.images.max_side, max(8, int(lim[i])))) for i in (0, 1))
-		cap = self.images.max_side
-		while True:
-			sizes = {sh: (min(w, cap), min(h, cap)) for sh, (w, h) in want.items()}
-			total = sum(miptex_bytes(w, h) for w, h in sizes.values())
-			if total <= budget or cap <= 8:
+		# over budget: halve the biggest texture's longer side, one at a time, so a few large textures give way
+		# before every small one does
+		sizes = dict(want)
+		total = sum(miptex_bytes(w, h) for w, h in sizes.values())
+		while total > budget:
+			big = max((sh for sh, (w, h) in sizes.items() if max(w, h) > 8),
+			          key=lambda sh: (miptex_bytes(*sizes[sh]), sh), default=None)
+			if big is None:
 				break
-			cap //= 2
+			w, h = sizes[big]
+			total -= miptex_bytes(w, h)
+			sizes[big] = (w // 2, h) if w >= h else (w, h // 2)
+			total += miptex_bytes(*sizes[big])
+		cap = max((max(wh) for wh in sizes.values()), default=self.images.max_side)
 		self.images._size.update(sizes)
 		return cap, total
 
