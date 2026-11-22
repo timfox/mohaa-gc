@@ -4,6 +4,7 @@
 #include "morpheus.h"
 #include "dod_mohaa_paths.h"
 #include "dod_mohaa_pool.h"
+#include "dod_mohaa_tags.h"
 
 static MohaaPool g_pool;  /* used when the backend gives a region (DodMohaaBackend.pool) */
 
@@ -166,6 +167,25 @@ typedef struct DodMover {
 #define MAX_MOODS 8
 #define DOD_MOHAA_MAX_ROUTES 48	/* one per grunt slot */
 #define MUSIC_PATH 80
+#define DOD_MOHAA_MAX_CINE 64
+#define DOD_MOHAA_ANIM_DEFAULT 1.0f	/* seconds an animation with no baked length plays before "animdone" */
+
+/* An entity a cutscene drives: its MOHAA model and animation (for tags and animdone), what it is glued to, where an
+   actor aims, a turret's view. */
+typedef struct DodCine {
+	uint32_t id;
+	int model;               /* index in S.tags, -1 none */
+	uint32_t anim;           /* hash of the animation playing, 0 none */
+	float anim_start, anim_end;
+	int done_pending;        /* "animdone" not yet sent */
+	uint32_t glue;           /* follows this entity */
+	int glue_angles;
+	int has_aim;
+	uint32_t aim_id;
+	float aim[3];            /* GoldSrc units, when aim_id is 0 */
+	int has_view;
+	float view[3];           /* "viewangles" a script set (a turret the player rides) */
+} DodCine;
 
 typedef struct DodSound {
 	uint32_t hash;           /* of the alias, lowercase */
@@ -203,7 +223,20 @@ static struct {
 	MohaaPaths paths;
 	int path_links;
 	struct { uint32_t id; int order; float goal[3]; unsigned short node, goal_node; } routes[DOD_MOHAA_MAX_ROUTES];
+	/* cutscenes: maps/<map>.tags, the entities they drive, the player's state */
+	MohaaTags tags;
+	DodCine cine[DOD_MOHAA_MAX_CINE];
+	uint32_t player;          /* the player a cutscene holds (locked, glued or riding), 0 none */
+	int player_locked;
+	uint32_t ride;            /* the turret the player rides ("doUse $player"): their eyes follow it */
+	int ride_fresh;           /* the ride just began: set the view, then follow its turns */
+	float ride_yaw;
+	int drawhud_off;          /* "drawhud 0" */
+	int hud_sent;             /* DOD_MOHAA_HUD_* bits last given to the backend, -1 none yet */
 } S;
+
+static DodCine *cine(uint32_t id, int create);
+static int is_player(uint32_t id);
 
 /* ------------------------------------------------------------------ */
 /* helpers                                                              */
@@ -257,6 +290,11 @@ static void forget(uint32_t id)
 	for (i = 0; i < DOD_MOHAA_MAX_ROUTES; i++)
 		if (S.routes[i].id == id)
 			S.routes[i].id = 0;
+	for (i = 0; i < DOD_MOHAA_MAX_CINE; i++)
+		if (S.cine[i].id == id)
+			memset(&S.cine[i], 0, sizeof(S.cine[i]));
+	if (S.ride == id)
+		S.ride = 0;
 }
 
 /* destination argument: a vector in MOHAA units, or an entity to move onto */
@@ -449,6 +487,16 @@ static int h_get_field(void *user, const ms_value *l, const char *name, ms_value
 		*out = ms_float(S.be.get_health(l->u.id));
 		return 1;
 	}
+	if (!strcmp(name, "viewangles")) {
+		const DodCine *k = cine(l->u.id, 0);
+		if (k && k->has_view)
+			*out = ms_vec(k->view[0], k->view[1], k->view[2]);
+		else {
+			get_vec(l->u.id, DOD_MOHAA_ANGLES, v);
+			*out = ms_vec(v[0], v[1], v[2]);
+		}
+		return 1;
+	}
 	if (!strcmp(name, "targetname") || !strcmp(name, "classname") || !strcmp(name, "model")) {
 		int what = name[0] == 't' ? DOD_MOHAA_TARGETNAME : name[0] == 'c' ? DOD_MOHAA_CLASSNAME : DOD_MOHAA_MODEL;
 		const char *s = S.be.get_str(l->u.id, what);
@@ -483,6 +531,17 @@ static int h_set_field(void *user, const ms_value *l, const char *name, const ms
 	}
 	if (!strcmp(name, "health")) {
 		S.be.set_health(l->u.id, ms_to_float(val));
+		return 1;
+	}
+	if (!strcmp(name, "viewangles") && val->type == MS_VECTOR) {
+		/* a turret's view (the player riding it turns with it, see cine_think); the player's own view */
+		DodCine *k = cine(l->u.id, 1);
+		if (is_player(l->u.id) && S.be.view)
+			S.be.view(l->u.id, val->u.v, 0);
+		if (k) {
+			memcpy(k->view, val->u.v, sizeof(k->view));
+			k->has_view = 1;
+		}
 		return 1;
 	}
 	if (!strcmp(name, "targetname")) {
@@ -1271,15 +1330,280 @@ static int c_ignored(ms_call *c)
 	return 0;
 }
 
-/* "$e gettagposition <tag>" / "gettagangles": no TIKI skeletons here, so a tag sits at the entity's own origin
-   and faces its way (good enough for spawning effects or aiming at a bone) */
+/* ------------------------------------------------------------------ */
+/* Cutscenes                                                            */
+/* ------------------------------------------------------------------ */
+/* MOHAA plays its in-game cutscenes in the running level, not as films. m1l1's opening is the model case: an
+ * animated path model (vehicles/gmctruckpath_opening.tik) carries tags for the truck, each squad member and the
+ * camera; a script loop copies those tags onto the truck, the actors and a script_origin every frame; the player is
+ * put on a turret glued to that origin with physics off, and handed control back when the ride ends. Actors play
+ * scripted animations and the script waits on "animdone". So the pieces here are:
+ *   - model / anim / anim_scripted / anim_noclip: which baked model and animation an entity plays (maps/<map>.tags,
+ *     mohaa-gc tools/mohaa_tags.py), and "animdone" when that animation's real length has passed;
+ *   - gettagposition / gettagangles: the tag at the animation's current time, placed by the entity's origin and
+ *     angles, so everything the script hangs on the path moves along it;
+ *   - glue / unglue: an entity (or the player) follows another every frame;
+ *   - physics_off / physics_on, freezeplayer / releaseplayer: the player's own movement stops and starts;
+ *   - doUse $player on a turret and its "viewangles": the player's eyes ride the turret and their view turns as
+ *     the script turns it, while they can still look around (GameCube pad: the stick still looks);
+ *   - drawhud: MOHAA's HUD switch; a locked player also loses the crosshair and weapon readout;
+ *   - aimat + animscript ".../shoot.scr", radiusdamage: a scripted shot or blast that sets off MOHAA damage
+ *     triggers (m1l1's bazooka hits the papers truck to end the ride).
+ * Without a .tags file the commands still run: tags sit at the entity's origin and animations last a second. */
+
+static DodCine *cine(uint32_t id, int create)
+{
+	int i, free_slot = -1;
+	if (!id)
+		return NULL;
+	for (i = 0; i < DOD_MOHAA_MAX_CINE; i++) {
+		if (S.cine[i].id == id)
+			return &S.cine[i];
+		if (!S.cine[i].id && free_slot < 0)
+			free_slot = i;
+	}
+	if (!create || free_slot < 0)
+		return NULL;
+	memset(&S.cine[free_slot], 0, sizeof(DodCine));
+	S.cine[free_slot].id = id;
+	S.cine[free_slot].model = -1;
+	return &S.cine[free_slot];
+}
+
+static uint32_t the_player(void)
+{
+	uint32_t id = 0;
+	if (S.be.find("player", &id, 1) < 1 || !valid(id))
+		return 0;
+	return id;
+}
+
+static int is_player(uint32_t id)
+{
+	return id && id == the_player();
+}
+
+static const char *anim_name(ms_call *c, int i, char *buf, size_t size)
+{
+	return ms_tostring(ms_arg(c, i), buf, size);
+}
+
+/* "$e model <tik>" */
+static int c_model(ms_call *c)
+{
+	char buf[128];
+	DodCine *k = cine(target_id(c), 1);
+	if (k) {
+		k->model = MohaaTags_Model(&S.tags, MohaaTags_Hash(anim_name(c, 0, buf, sizeof(buf))));
+		k->anim = 0;
+	}
+	return 0;
+}
+
+/* "$e anim <name>" (and anim_scripted, anim_noclip): animdone when it would have ended */
+static int c_anim(ms_call *c)
+{
+	char buf[96];
+	DodCine *k = cine(target_id(c), 1);
+	float len;
+	if (!k)
+		return 0;
+	k->anim = MohaaTags_Hash(anim_name(c, 0, buf, sizeof(buf)));
+	len = MohaaTags_Length(&S.tags, k->model, k->anim);
+	k->anim_start = S.now;
+	k->anim_end = S.now + (len >= 0.0f ? len : DOD_MOHAA_ANIM_DEFAULT);
+	k->done_pending = 1;
+	return 0;
+}
+
+static void apply_hud(void)
+{
+	const int bits = (S.drawhud_off ? DOD_MOHAA_HUD_ALL : 0) | (S.player_locked || S.ride ? DOD_MOHAA_HUD_WEAPON : 0);
+	if (bits == S.hud_sent || !S.be.hud)
+		return;
+	S.hud_sent = bits;
+	S.be.hud(bits);
+}
+
+static void lock_player(uint32_t id, int on)
+{
+	if (!id)
+		return;
+	if (on)
+		S.player = id;
+	S.player_locked = on;
+	if (S.be.player_lock)
+		S.be.player_lock(id, on);
+	apply_hud();
+}
+
+/* "$e physics_off" / "physics_on": the player stops and starts moving; other entities have no physics to stop */
+static int c_physics(ms_call *c)
+{
+	const uint32_t id = target_id(c);
+	if (is_player(id))
+		lock_player(id, strstr(ms_call_name(c), "off") != NULL);
+	return 0;
+}
+
+/* "freezeplayer" / "releaseplayer" */
+static int c_freezeplayer(ms_call *c)
+{
+	lock_player(the_player(), ms_call_name(c)[0] == 'f');
+	return 0;
+}
+
+/* "$e glue $parent [angles]": follow parent's origin (and angles unless 0) until unglued */
+static int c_glue(ms_call *c)
+{
+	const uint32_t id = target_id(c);
+	const ms_value *p = ms_arg(c, 0);
+	DodCine *k;
+	if (p->type != MS_ENTITY || !valid(p->u.id) || p->u.id == id || !(k = cine(id, 1)))
+		return 0;
+	k->glue = p->u.id;
+	k->glue_angles = ms_argc(c) > 1 ? ms_arg_int(c, 1) != 0 : 1;
+	if (is_player(id))
+		S.player = id;
+	return 0;
+}
+
+static int c_unglue(ms_call *c)
+{
+	DodCine *k = cine(target_id(c), 0);
+	if (k)
+		k->glue = 0;
+	return 0;
+}
+
+/* "$turret doUse $player": the player gets on (or, again, off) the turret. The VM folds case, so this is also
+   "douse" (put out a fire), which names no player and stays a no-op. */
+static int c_douse(ms_call *c)
+{
+	const uint32_t id = target_id(c);
+	const ms_value *p = ms_arg(c, 0);
+	if (p->type != MS_ENTITY || !is_player(p->u.id))
+		return 0;
+	if (S.ride == id) {
+		S.ride = 0;
+	} else {
+		S.ride = id;
+		S.ride_fresh = 1;
+		S.player = p->u.id;
+	}
+	apply_hud();
+	return 0;
+}
+
+/* "drawhud 0|1" */
+static int c_drawhud(ms_call *c)
+{
+	S.drawhud_off = ms_arg_int(c, 0) == 0;
+	apply_hud();
+	return 0;
+}
+
+/* "$actor aimat <target>" */
+static int c_aimat(ms_call *c)
+{
+	const ms_value *t = ms_arg(c, 0);
+	DodCine *k = cine(target_id(c), 1);
+	if (!k)
+		return 0;
+	k->has_aim = 0;
+	k->aim_id = 0;
+	if (t->type == MS_ENTITY && valid(t->u.id)) {
+		k->has_aim = 1;
+		k->aim_id = t->u.id;
+	} else if (t->type == MS_VECTOR) {
+		k->has_aim = 1;
+		scale_in(t->u.v, k->aim);
+	}
+	return 0;
+}
+
+#define DOD_MOHAA_SHOT_RADIUS 48.0f	/* GoldSrc units round a scripted shot's aim point that it hurts */
+#define DOD_MOHAA_SHOT_DAMAGE 200.0f	/* a rocket's worth: scripted shots are bazookas and set pieces */
+
+/* "$actor animscript anim/shoot.scr": actors have no weapons to fire here, so a scripted shot lands at the aim point */
+static int c_animscript(ms_call *c)
+{
+	char buf[96];
+	const uint32_t id = target_id(c);
+	DodCine *k = cine(id, 0);
+	float at[3];
+	if (!k || !k->has_aim || !strstr(anim_name(c, 0, buf, sizeof(buf)), "shoot") || !S.be.damage_at)
+		return 0;
+	if (k->aim_id) {
+		if (!valid(k->aim_id))
+			return 0;
+		get_vec(k->aim_id, DOD_MOHAA_ORIGIN, at);
+	} else {
+		memcpy(at, k->aim, sizeof(at));
+	}
+	S.be.damage_at(id, at, DOD_MOHAA_SHOT_RADIUS, DOD_MOHAA_SHOT_DAMAGE);
+	return 0;
+}
+
+/* "radiusdamage <origin> <damage> <radius> [constant]" */
+static int c_radiusdamage(ms_call *c)
+{
+	float o[3], g[3];
+	if (!S.be.damage_at || ms_arg(c, 0)->type != MS_VECTOR)
+		return 0;
+	ms_arg_vector(c, 0, o);
+	scale_in(o, g);
+	S.be.damage_at(0, g, ms_arg_float(c, 2) * DOD_MOHAA_SCALE, ms_arg_float(c, 1));
+	return 0;
+}
+
+/* A tag of the entity's model now, in MOHAA world units and angles. 0 when it has no such baked tag. */
+static int tag_now(uint32_t id, const char *tag, float pos[3], float ang[3])
+{
+	const DodCine *k = cine(id, 0);
+	const MohaaTagModel *m;
+	float o[3], a[3], p[3], q[4], tm[3][3], em[3][3], wm[3][3];
+	int t, an, r, cc;
+	if (!k || k->model < 0 || k->model >= S.tags.nmodels)
+		return 0;
+	m = &S.tags.models[k->model];
+	t = MohaaTags_Tag(m, MohaaTags_Hash(tag));
+	if (t < 0 || !m->nanims)
+		return 0;
+	an = k->anim ? MohaaTags_Anim(m, k->anim) : -1;
+	if (an < 0)
+		an = MohaaTags_Anim(m, MohaaTags_Hash("idle"));
+	if (an < 0)
+		an = 0;
+	MohaaTags_Sample(m, an, t, k->anim && MohaaTags_Anim(m, k->anim) == an ? S.now - k->anim_start : 0.0f, p, q);
+	get_vec(id, DOD_MOHAA_ORIGIN, o);
+	scale_out(o, o);
+	get_vec(id, DOD_MOHAA_ANGLES, a);
+	MohaaTags_AnglesMatrix(a, em);
+	MohaaTags_QuatMatrix(q, tm);
+	for (r = 0; r < 3; r++) {
+		pos[r] = o[r] + em[r][0] * p[0] + em[r][1] * p[1] + em[r][2] * p[2];
+		for (cc = 0; cc < 3; cc++)
+			wm[r][cc] = em[r][0] * tm[0][cc] + em[r][1] * tm[1][cc] + em[r][2] * tm[2][cc];
+	}
+	MohaaTags_MatrixAngles(wm, ang);
+	return 1;
+}
+
+/* "$e gettagposition <tag>" / "gettagangles": the baked tag when there is one; otherwise the tag sits at the
+   entity's own origin and faces its way (good enough for spawning effects or aiming at a bone) */
 static int c_gettag(ms_call *c)
 {
-	float v[3], out[3];
+	char buf[96];
+	float v[3], out[3], ang[3];
 	const uint32_t id = target_id(c);
 	const int angles = strstr(ms_call_name(c), "angles") != NULL;
 	if (!valid(id)) {
 		ms_return(c, NULL);
+		return 0;
+	}
+	if (!is_node(id) && tag_now(id, anim_name(c, 0, buf, sizeof(buf)), out, ang)) {
+		ms_return_vector(c, angles ? ang : out);
 		return 0;
 	}
 	get_vec(id, angles ? DOD_MOHAA_ANGLES : DOD_MOHAA_ORIGIN, v);
@@ -1289,6 +1613,79 @@ static int c_gettag(ms_call *c)
 		scale_out(v, out);
 	ms_return_vector(c, out);
 	return 0;
+}
+
+/* Once a frame, after the scripts ran: animations that ended, glued entities, the held player and their view. */
+static void cine_think(void)
+{
+	int i;
+	uint32_t player = S.player;
+	for (i = 0; i < DOD_MOHAA_MAX_CINE && S.vm; i++) {
+		DodCine *k = &S.cine[i];
+		if (!k->id)
+			continue;
+		if (!valid(k->id)) {
+			memset(k, 0, sizeof(*k));
+			continue;
+		}
+		if (k->done_pending && S.now >= k->anim_end) {
+			ms_value ent = ms_entity(k->id);
+			k->done_pending = 0;
+			ms_notify(S.vm, &ent, "animdone");
+		}
+	}
+	for (i = 0; i < DOD_MOHAA_MAX_CINE; i++) {
+		DodCine *k = &S.cine[i];
+		float v[3];
+		if (!k->id || !k->glue || k->id == player)
+			continue;
+		if (!valid(k->glue)) {
+			k->glue = 0;
+			continue;
+		}
+		get_vec(k->glue, DOD_MOHAA_ORIGIN, v);
+		S.be.set_vec(k->id, DOD_MOHAA_ORIGIN, v);
+		if (k->glue_angles) {
+			get_vec(k->glue, DOD_MOHAA_ANGLES, v);
+			S.be.set_vec(k->id, DOD_MOHAA_ANGLES, v);
+		}
+	}
+	if (!player || !valid(player)) {
+		S.player = 0;
+		return;
+	}
+	if (S.ride && !valid(S.ride))
+		S.ride = 0;
+	{
+		const DodCine *pk = cine(player, 0);
+		float v[3];
+		if (S.ride) {
+			/* the turret's view position is its origin: the player's eyes go there */
+			get_vec(S.ride, DOD_MOHAA_ORIGIN, v);
+			if (S.be.place_player)
+				S.be.place_player(player, v, 1);
+		} else if (pk && pk->glue && valid(pk->glue)) {
+			get_vec(pk->glue, DOD_MOHAA_ORIGIN, v);
+			if (S.be.place_player)
+				S.be.place_player(player, v, 0);
+		}
+	}
+	if (S.ride && S.be.view) {
+		const DodCine *rk = cine(S.ride, 0);
+		if (rk && rk->has_view) {
+			if (S.ride_fresh) {
+				const float a[3] = {rk->view[0], rk->view[1], 0.0f};
+				S.be.view(player, a, 0);
+				S.ride_fresh = 0;
+			} else if (rk->view[1] != S.ride_yaw) {
+				const float d[3] = {0.0f, rk->view[1] - S.ride_yaw, 0.0f};
+				S.be.view(player, d, 1);
+			}
+			S.ride_yaw = rk->view[1];
+		}
+	}
+	if (!S.ride && !S.player_locked && !(cine(player, 0) && cine(player, 0)->glue))
+		S.player = 0;
 }
 
 /* "$e velocity (x y z)": a push in MOHAA units per second */
@@ -1530,8 +1927,23 @@ static void register_commands(ms_vm *vm)
 		{"rotatezup", MS_ON_ENTITY, c_rotate_rel},
 		{"rotatezdown", MS_ON_ENTITY, c_rotate_rel},
 		{"followpath", MS_ON_ENTITY, c_followpath},
+		/* cutscenes (see "Cutscenes" above) */
+		{"model", MS_ON_ENTITY, c_model},
+		{"anim", MS_ON_ENTITY, c_anim},
+		{"anim_scripted", MS_ON_ENTITY, c_anim},
+		{"anim_noclip", MS_ON_ENTITY, c_anim},
+		{"animscript", MS_ON_ENTITY, c_animscript},
+		{"aimat", MS_ON_ENTITY, c_aimat},
+		{"glue", MS_ON_ENTITY, c_glue},
+		{"unglue", MS_ON_ENTITY, c_unglue},
+		{"physics_off", MS_ON_ENTITY, c_physics},
+		{"physics_on", MS_ON_ENTITY, c_physics},
+		{"douse", MS_ON_ENTITY, c_douse},
+		{"freezeplayer", MS_ON_THREAD, c_freezeplayer},
+		{"releaseplayer", MS_ON_THREAD, c_freezeplayer},
+		{"drawhud", MS_ON_THREAD, c_drawhud},
+		{"radiusdamage", MS_ON_THREAD, c_radiusdamage},
 		{"endpath", MS_ON_ENTITY, c_stopdrive},
-		{"anim_scripted", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"forceactivate", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"setcvar", MS_ON_THREAD, c_setcvar},
 		{"addobjective", MS_ON_THREAD, c_addobjective},
@@ -1541,20 +1953,13 @@ static void register_commands(ms_vm *vm)
 		/* animation, TIKI models, attachment, vehicles and turrets, weapons and inventory: none of it exists on the
 		   GameCube side yet. Accepted so a mission keeps going; README "Not yet" lists what they would need. */
 		{"american", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
-		{"anim", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
-		{"animscript", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"attach", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"bind", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
-		{"douse", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"forcelegsstate", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
-		{"glue", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"gren_awareness", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"holster", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
-		{"model", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"nodamage", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"takedamage", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
-		{"physics_off", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
-		{"physics_on", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"scale", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"setplayerusable", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"threatbias", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
@@ -1643,6 +2048,15 @@ void Dod_MohaaShutdown(void)
 	MohaaPaths_Free(&S.paths);
 	S.path_links = 0;
 	memset(S.routes, 0, sizeof(S.routes));
+	MohaaTags_Free(&S.tags, S.be.alloc);
+	memset(S.cine, 0, sizeof(S.cine));
+	if (S.player_locked && S.be.player_lock && S.player)
+		S.be.player_lock(S.player, 0);	/* a level that ends mid-cutscene must not leave the player stuck */
+	S.player = S.ride = 0;
+	S.player_locked = S.ride_fresh = S.drawhud_off = 0;
+	if (S.hud_sent > 0 && S.be.hud)
+		S.be.hud(0);
+	S.hud_sent = -1;
 	memset(&g_pool, 0, sizeof(g_pool));
 	heap_drop();   /* normally empty: the VM freed its blocks */
 }
@@ -1654,6 +2068,7 @@ void Dod_MohaaDropPool(void)
 	/* the region is gone (or about to be reused): forget everything in it without freeing */
 	S.vm = NULL;
 	S.sounds = NULL;
+	memset(&S.tags, 0, sizeof(S.tags));
 	Dod_MohaaShutdown();   /* frees the overflow blocks on the heap too */
 	S.be.alloc = default_alloc;
 }
@@ -1676,6 +2091,26 @@ static void node_key(void *ctx, int node, const char *key, const char *value)
 {
 	(void)ctx;
 	Dod_MohaaEntityKey(DOD_MOHAA_NODE_ID | (uint32_t)node, key, value);
+}
+
+/* maps/<map>.tags (mohaa-gc tools/mohaa_tags.py): cutscene model tags and animation lengths */
+static void tags_load(const char *mapname)
+{
+	char path[128], msg[320];
+	size_t len = 0;
+	char *data;
+	snprintf(path, sizeof(path), "maps/%s.tags", mapname);
+	data = S.be.load_file(path, &len);
+	if (!data)
+		return;
+	if (MohaaTags_Load(&S.tags, data, len, S.be.alloc))
+		snprintf(msg, sizeof(msg), "mohaa: %s: %d models with tags, %d animation lengths, %u KB\n", path,
+			S.tags.nmodels, S.tags.ndur, (unsigned)(S.tags.size / 1024u));
+	else
+		snprintf(msg, sizeof(msg), "mohaa: %s is unreadable or did not fit, cutscene tags sit at entity origins\n", path);
+	S.be.print(DOD_MOHAA_PRINT_CONSOLE, msg);
+	if (S.be.free_file)
+		S.be.free_file(data);
 }
 
 static void nodes_load(const char *mapname)
@@ -1760,6 +2195,7 @@ int Dod_MohaaLevelInit(const DodMohaaBackend *backend, const char *mapname, floa
 	S.rng = 0x2545F491u ^ (uint32_t)(now * 1000.0f);   /* variants differ from run to run */
 	sounds_load(mapname);
 	nodes_load(mapname);
+	tags_load(mapname);
 	/* a level that never names its soundtrack plays music/<map>.mood (MOHAA's .mus files are named after the map) */
 	if (moods_load(mapname)) {
 		S.mood = mood_find("normal");
@@ -1832,6 +2268,8 @@ void Dod_MohaaThink(float now)
 	}
 	if (S.vm)
 		ms_frame(S.vm, now);
+	if (S.vm)
+		cine_think();
 }
 
 void Dod_MohaaNotify(uint32_t id, const char *event)

@@ -22,8 +22,8 @@ Sources (give one or both):
                 and reused.
 
 Stages run in this order (--stages picks some; by default every one whose tools are found):
-  menu      main menu background: MOHAA's war room         needs Pillow and numpy
-            (resource/gc_menu/; without it the disc's DoD background shows)
+  menu      the retail main menu: the war room, its lit      needs Pillow and numpy
+            spots, sign, Quit and click sounds (resource/gc_menu/; without it the stock menu shows)
   loading   loading screens: the retail ones, per map          needs Pillow and numpy
             (resource/gc_loading/; without them the engine's LOADING plaque shows)
   music     soundtracks and tracks                         needs ffmpeg
@@ -169,7 +169,11 @@ def stage_menu(sources, game_root, maps, work):
     sheet = mohaa_menu.compose(sources)
     if sheet is None:
         raise SystemExit("no ui/main.urc menu in the sources")
-    return mohaa_menu.write_gc_menu(sheet, game_root)
+    written = mohaa_menu.write_gc_menu(sheet, game_root)
+    menu = mohaa_menu.room_menu(sources)
+    if menu:   # the retail menu's hotspots, sign, Quit and click sounds (resource/gc_menu/mohaa_main.txt)
+        written += mohaa_menu.write_room_menu(menu, game_root)
+    return written
 
 
 def stage_loading(sources, game_root, maps, work):
@@ -215,6 +219,19 @@ def stage_scripts(sources, game_root, maps, work):
     before = _snapshot(game_root)
     if ss.main(list(sources) + ["--out", game_root, "--maps", ",".join(maps)]):
         raise SystemExit("scripts stage failed")
+    return _written(game_root, before)
+
+
+def stage_tags(sources, game_root, maps, work):
+    """Cutscene model tags and animation lengths (maps/<map>.tags) for the level scripts' "gettagposition" and
+    "waittill animdone": m1l1's opening ride follows its truck path model frame by frame."""
+    import mohaa_tags
+    maps = maps or sorted(map_sources(sources))
+    if not maps:
+        return []
+    before = _snapshot(game_root)
+    if mohaa_tags.main(list(sources) + ["--out", game_root, "--maps", ",".join(maps)]):
+        raise SystemExit("tags stage failed")
     return _written(game_root, before)
 
 
@@ -507,6 +524,7 @@ STAGES = {
     "music": stage_music,
     "sounds": stage_sounds,
     "scripts": stage_scripts,
+    "tags": stage_tags,
     "maps": stage_maps,
     "worlddl": stage_worlddl,
     "props": stage_props,
