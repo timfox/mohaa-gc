@@ -165,6 +165,9 @@ def main(argv=None):
         print("converted %d tracks, %d missing, %d failed" % (done, len(missing), len(failed)))
         for src in missing[:20]:
             print("  missing %s" % src)
+        if any(src.startswith("sound/amb_stereo/") for src in missing):
+            print("  note: MOHAA stores these in the separate Sound AmbStereo Files CD group; "
+                  "supply both install CDs with mohaa_sd.py --cd, or include main/sound/amb_stereo")
         for src, why in failed[:20]:
             print("  failed %s: %s" % (src, why.splitlines()[0]))
     return 0

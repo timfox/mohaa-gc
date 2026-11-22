@@ -7,6 +7,14 @@ missions are converted into formats the existing dod-gc runtime already plays.
 No retail game data lives in this repository. Point the tools at your own
 copy of the game's `.pk3` files.
 
+The `music` stage also needs MOHAA's loose tracks. If it reports missing
+`sound/amb_stereo/` files, include the install CDs with the installed folder so
+the separate **Sound AmbStereo Files** group is unpacked:
+
+```bash
+python3 tools/mohaa_sd.py --cd /path/to/cd1 /path/to/cd2 --mohaa ~/MOHAA --sd /media/SDCARD --stages music
+```
+
 ## Map pipeline (planned)
 
 ```
