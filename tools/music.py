@@ -20,7 +20,9 @@ Samples are relative to sound/ and move under sound/mohaa/music/, named by their
 game falls back to music/<map>.mood when a level never names its soundtrack.
 
 --convert also writes every referenced track (mood files and tmstart cues) to
-<out>/sound/mohaa/music/*.wav as 16-bit PCM at 22050 Hz, mono unless --stereo, using ffmpeg. The
+<out>/sound/mohaa/music/*.wav as 16-bit PCM at 22050 Hz, mono unless --stereo, using ffmpeg. Each track is
+raised by up to --lift-db (8 dB) with its peak kept under -1 dBFS: retail tracks peak near -9 dB and played
+too quietly under the GameCube's mixer. The
 GameCube streams PCM from disc; decoding mp3 on the Gekko costs too much. Retail installs keep the
 music loose in main/sound/music (it is not in the paks), so point the inputs at the installed main
 directory. Missing tracks are listed.
@@ -80,10 +82,31 @@ def cues(text):
     return [(p.lower(), cmd.lower() == "tmstartloop") for cmd, p in CUE.findall(text)]
 
 
-def convert(data, dest, stereo):
-    """mp3/wav bytes -> 22050 Hz 16-bit wav via ffmpeg. Returns an error string or None."""
+LIFT_DB = 8.0       # MOHAA's tracks peak around -9 dB: on the GameCube mixer they played under the effects
+CEILING_DB = -1.0   # never lifted past this peak, so nothing clips
+MAX_VOLUME = re.compile(r"max_volume:\s*(-?[\d.]+|-inf) dB")
+
+
+def peak_db(data):
+    """The track's peak in dBFS (ffmpeg volumedetect), or None if it can't be measured."""
+    r = subprocess.run(["ffmpeg", "-v", "info", "-nostats", "-i", "pipe:0", "-af", "volumedetect", "-f", "null", "-"],
+                       input=data, capture_output=True)
+    m = MAX_VOLUME.search(r.stderr.decode(errors="replace"))
+    return None if r.returncode or not m or m.group(1) == "-inf" else float(m.group(1))
+
+
+def lift_for(peak, lift_db=LIFT_DB, ceiling_db=CEILING_DB):
+    """dB to add: up to lift_db, but never past ceiling_db at the peak; never quieter."""
+    return 0.0 if peak is None else max(0.0, min(lift_db, ceiling_db - peak))
+
+
+def convert(data, dest, stereo, lift_db=LIFT_DB):
+    """mp3/wav bytes -> 22050 Hz 16-bit wav via ffmpeg, lifted by up to lift_db (peak kept under CEILING_DB).
+    Returns an error string or None."""
     os.makedirs(os.path.dirname(dest), exist_ok=True)
-    r = subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", "pipe:0", "-ar", "22050", "-ac",
+    gain = lift_for(peak_db(data), lift_db) if lift_db > 0 else 0.0
+    af = ["-af", "volume=%.2fdB" % gain] if gain >= 0.05 else []
+    r = subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", "pipe:0"] + af + ["-ar", "22050", "-ac",
                         "2" if stereo else "1", "-c:a", "pcm_s16le", "-f", "wav", dest],
                        input=data, capture_output=True)
     return r.stderr.decode(errors="replace").strip() or "ffmpeg failed" if r.returncode else None
@@ -95,6 +118,9 @@ def main(argv=None):
     ap.add_argument("--out", required=True, help="output directory (outside the repository)")
     ap.add_argument("--convert", action="store_true", help="also convert the referenced tracks (needs ffmpeg)")
     ap.add_argument("--stereo", action="store_true", help="keep two channels (twice the disc space)")
+    ap.add_argument("--lift-db", type=float, default=LIFT_DB,
+                    help="raise each track by up to this many dB, keeping its peak under %.0f dBFS (default %%(default)s; 0 = as is)"
+                    % CEILING_DB)
     args = ap.parse_args(argv)
 
     texts = collect(args.inputs, (".mus", ".scr"))
@@ -131,7 +157,7 @@ def main(argv=None):
             if src not in audio:
                 missing.append(src)
                 continue
-            why = convert(read(audio[src]), os.path.join(args.out, "sound", rel), args.stereo)
+            why = convert(read(audio[src]), os.path.join(args.out, "sound", rel), args.stereo, args.lift_db)
             if why:
                 failed.append((src, why))
             else:
