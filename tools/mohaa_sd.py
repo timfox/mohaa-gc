@@ -6,7 +6,7 @@
     python3 tools/mohaa_sd.py --mohaa ~/MOHAA --sd ./sdcard --stages music --list
     python3 tools/mohaa_sd.py --mohaa ~/MOHAA --sd ./sdcard --maps m1l1 --sdhlt ~/SDHLT/tools --xash3d-gc ~/xash3d-gc
 
-The release disc holds no game data. Everything MOHAA brings (the main menu room, music, sounds, scripts, maps, collision,
+The release disc holds no game data. Everything MOHAA brings (the main menu room, loading screens, music, sounds, scripts, maps, collision,
 props and terrain; the intro movie is still to come) is converted here from files you own and written under
 
     <sd>/xash3d/<gamedir>/          (gamedir: mohaa)
@@ -24,6 +24,8 @@ Sources (give one or both):
 Stages run in this order (--stages picks some; by default every one whose tools are found):
   menu      main menu background: MOHAA's war room         needs Pillow and numpy
             (resource/gc_menu/; without it the disc's DoD background shows)
+  loading   loading screens: the retail ones, per map          needs Pillow and numpy
+            (resource/gc_loading/; without them the engine's LOADING plaque shows)
   music     soundtracks and tracks                         needs ffmpeg
   sounds    per-map sound tables and samples
   scripts   level scripts and the global/ libraries
@@ -35,7 +37,7 @@ worlddl and props bake the maps the maps stage compiled (they keep its work fold
 where sources are MOHAA main folders or pk3 files, game_root is <sd>/xash3d/<gamedir>, maps the map names
 ("" = every map the stage knows), and work a scratch folder kept between runs.
 
-Needs Python 3.8+, Pillow and numpy (menu), ffmpeg (audio), and for the map stages SDHLT and an xash3d-gc checkout.
+Needs Python 3.8+, Pillow and numpy (menu, loading), ffmpeg (audio), and for the map stages SDHLT and an xash3d-gc checkout.
 Nothing it writes may be shared: it is your game's data.
 """
 import argparse
@@ -154,6 +156,19 @@ def stage_menu(sources, game_root, maps, work):
     if sheet is None:
         raise SystemExit("no ui/main.urc menu in the sources")
     return mohaa_menu.write_gc_menu(sheet, game_root)
+
+
+def stage_loading(sources, game_root, maps, work):
+    """The loading screens: MOHAA's own (ui/loading_*.urc), one per map that has one plus the default, baked for the
+    GameCube engine (resource/gc_loading/<map>.cmp, default.cmp). With --maps, the default and those maps only."""
+    import mohaa_loading
+    items = mohaa_loading.screens(sources)
+    if not items:
+        raise SystemExit("no ui/loading_*.urc screens in the sources")
+    if maps:
+        want = set(m.lower() for m in maps) | {"default"}
+        items = [it for it in items if it[0] in want]
+    return mohaa_loading.write_loading(items, game_root)
 
 
 def stage_music(sources, game_root, maps, work):
@@ -360,6 +375,7 @@ def stage_props(sources, game_root, maps, work):
 # (tools/intro_movie.py stage_intro) plugs in here with the same signature.
 STAGES = {
     "menu": stage_menu,
+    "loading": stage_loading,
     "music": stage_music,
     "sounds": stage_sounds,
     "scripts": stage_scripts,
@@ -371,7 +387,7 @@ STAGES = {
 
 def missing_tools(stage):
     """Why a stage can't run here (a tool it needs is missing), or None."""
-    if stage == "menu":
+    if stage in ("menu", "loading"):
         try:
             import numpy  # noqa: F401
             import PIL  # noqa: F401
