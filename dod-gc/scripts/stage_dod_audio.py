@@ -72,10 +72,6 @@ CORE_SFX_COMBAT = [
     "weapons/pl_gun1.wav",
     "weapons/pl_gun2.wav",
     "weapons/pl_gun3.wav",
-    "player/pl_step1.wav",
-    "player/pl_step2.wav",
-    "player/pl_step3.wav",
-    "player/pl_step4.wav",
     "player/pl_shell1.wav",
     "buttons/button10.wav",
     "common/wpn_select.wav",
@@ -99,13 +95,16 @@ GRENADE_SFX = {
 }
 
 
-# Retail player and item events the game plays itself (pain and death grunts, pickups, a hard landing) and the side
-# announcers (round start, point captured). Grunts are short; announcers are 1-3 s, so they are staged 8-bit like voices.
+# Retail player and item events the game plays itself (concrete and other surface footsteps, pain and death grunts,
+# pickups, a hard landing) and the side announcers (round start, point captured). These are required by map gameplay;
+# they stay in the small per-map pack while the larger generic SFX set remains opt-in. Announcers are staged 8-bit.
 PLAYER_EVENT_SFX = {
     **{f"player/damage{n}.wav": 0.70 for n in range(1, 12)},
     **{f"player/dmbullo{n}.wav": 0.70 for n in range(1, 4)},
     "player/pl_fallpain.wav": 0.70,
-    # footsteps on the floors retail has and the stock code lacked (wood, gravel, snow), and dirt for grass, sand and leaves
+    # Concrete is the default step path in PM_PlayStepSound; keep it even when --core-sfx is off. The other surfaces
+    # cover retail wood, gravel and snow, with dirt used for grass, sand and leaves.
+    **{f"player/pl_step{n}.wav": 0.50 for n in range(1, 5)},
     **{f"player/pl_{kind}{n}.wav": 0.50 for kind in ("wood", "gravel", "snow", "dirt") for n in range(1, 5)},
     "items/weaponpickup.wav": 0.45,
     "items/ammopickup.wav": 0.45,
@@ -447,8 +446,8 @@ def stage_grenade_sfx(
     lean_media: Path | None = None,
     weapon_table: Path | None = None,
 ) -> dict:
-    """Stage the grenade clips and every gun's fire/reload clip from the weapon
-    table (dod sound first, valve as fallback)."""
+    """Stage map-required player events, grenade clips and weapon fire/reload clips
+    (DoD sound first, Valve as fallback)."""
     roots = [dod_sound]
     if valve_sound and valve_sound.is_dir():
         roots.append(valve_sound)
@@ -603,7 +602,7 @@ def main() -> int:
         )
         payload["grenade_sfx"] = grenades
         print(
-            f"grenade + gun SFX: files={grenades['files']} ({grenades['bytes'] / 1024:.0f} KiB)"
+            f"map-event + grenade + gun SFX: files={grenades['files']} ({grenades['bytes'] / 1024:.0f} KiB)"
             + (f" missing={grenades['missing']}" if grenades["missing"] else "")
         )
 
