@@ -355,6 +355,21 @@ def _quiet(fn, argv, log):
         raise SystemExit("%s failed, see %s" % (fn.__module__, log))
 
 
+TEXTURE_SIZE = 128            # map textures' largest side by default
+TEXTURE_FALLBACK = 64         # a map over its budget at TEXTURE_SIZE is built again at this
+BSP_UNLIT_MAX = 3 * 1048576   # xash3d-gc's compact load: the BSP without its lighting lump (README, map_flags.txt)
+LUMP_LIGHTING = 8
+
+
+def bsp_unlit_size(path):
+    """The BSP30's size without its lighting lump (the part the GameCube's map budget counts)."""
+    import struct
+    with open(path, "rb") as fh:
+        head = fh.read(4 + 15 * 8)
+    _, ln = struct.unpack_from("<ii", head, 4 + LUMP_LIGHTING * 8)
+    return os.path.getsize(path) - ln
+
+
 def stage_maps(sources, game_root, maps, work):
     """Each map compiled for the GameCube: maps/<map>.bsp lit with MOHAA's own light, plus its .mcol collision
     and .nodes path nodes. Needs SDHLT (third_party/sdhlt-bsp30ext/build.sh builds the patched one)."""
@@ -365,9 +380,6 @@ def stage_maps(sources, game_root, maps, work):
     folder = ensure_sdhlt()
     csg, bsp, vis = (shutil.which(t, path=folder) for t in SDHLT)
     flags = map_flags()
-    size = CONFIG["texture_size"]
-    textures = [] if size == 0 else [a for s in sources for a in ("--textures", s)] + (["--texture-size", str(size)]
-                                                                                    if size else [])
     out_maps = os.path.join(game_root, "maps")
     os.makedirs(out_maps, exist_ok=True)
     written = []
@@ -379,17 +391,30 @@ def stage_maps(sources, game_root, maps, work):
         src = os.path.join(d, m + "_mohaa.bsp")   # the retail map, kept for the props stage
         with open(src, "wb") as fh:
             fh.write(read(known[m]))
-        print("   %s: converting" % m)
-        _quiet(bsp19_to_map.main, [src, "-o", os.path.join(d, m + ".map"), "--wad", os.path.join(d, m + ".wad")]
-               + flags.get(m, []) + [a for s in sources for a in ("--scripts", s)] + textures, log)
-        print("   %s: compiling (SDHLT)" % m)
-        # the textures go inside the BSP, so nothing on the card points back at this work folder
-        _run([csg, "-wadinclude", m + ".wad", m], d, log)
-        _run([bsp, "-hull2alias", m], d, log)
-        _run([vis] + (["-fast"] if CONFIG["fast_vis"] else []) + [m], d, log)
-        print("   %s: lighting" % m)
         dest = os.path.join(out_maps, m + ".bsp")
-        _quiet(bsp19_lightmaps.main, [src, os.path.join(d, m + ".bsp"), "-o", dest], log)
+        size = CONFIG["texture_size"]
+        sizes = [size] if size is not None else [TEXTURE_SIZE, TEXTURE_FALLBACK]
+        for k, size in enumerate(sizes):
+            textures = [] if size == 0 else [a for s in sources for a in ("--textures", s)] + ["--texture-size", str(size)]
+            print("   %s: converting" % m)
+            _quiet(bsp19_to_map.main, [src, "-o", os.path.join(d, m + ".map"), "--wad", os.path.join(d, m + ".wad")]
+                   + flags.get(m, []) + [a for s in sources for a in ("--scripts", s)] + textures, log)
+            print("   %s: compiling (SDHLT)" % m)
+            # the textures go inside the BSP, so nothing on the card points back at this work folder
+            _run([csg, "-wadinclude", m + ".wad", m], d, log)
+            _run([bsp, "-hull2alias", m], d, log)
+            _run([vis] + (["-fast"] if CONFIG["fast_vis"] else []) + [m], d, log)
+            print("   %s: lighting" % m)
+            _quiet(bsp19_lightmaps.main, [src, os.path.join(d, m + ".bsp"), "-o", dest], log)
+            over = bsp_unlit_size(dest) - BSP_UNLIT_MAX
+            if over <= 0:
+                break
+            if k + 1 < len(sizes):
+                print("   %s: %d KB over the GameCube's %d KB map budget with %d-texel textures; again at %d"
+                      % (m, over // 1024 + 1, BSP_UNLIT_MAX // 1024, size, sizes[k + 1]))
+            else:
+                print("   %s: warning: %d KB over the GameCube's %d KB map budget (without its light)"
+                      % (m, over // 1024 + 1, BSP_UNLIT_MAX // 1024))
         written.append(dest)
         for ext in (".mcol", ".nodes"):
             side = os.path.join(d, m + ext)
@@ -536,8 +561,8 @@ def main(argv=None):
     ap.add_argument("--xash3d-gc", dest="xash3d_gc", help="xash3d-gc checkout, for the GameCube bakes (worlddl, props)")
     ap.add_argument("--fast-vis", action="store_true", help="sdHLVIS -fast (quicker compiles, more overdraw)")
     ap.add_argument("--texture-size", type=int, default=None,
-                    help="largest map texture side (default 128; smaller saves BSP and lightmap space; "
-                         "0 = placeholder checkers)")
+                    help="largest map texture side (default: 128, or 64 for a map that would go over the "
+                         "GameCube's 3 MB map budget; 0 = placeholder checkers)")
     ap.add_argument("--work", help="scratch folder kept between runs (default <sd>/.mohaa-work)")
     ap.add_argument("--list", action="store_true", help="list every file written")
     a = ap.parse_args(argv)

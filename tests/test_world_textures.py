@@ -104,6 +104,20 @@ class WorldTexturesTest(unittest.TestCase):
 		other = [x for x in sides if x is not m][0]
 		self.assertNotEqual(float(other.group(14)), 1.0)
 
+	def test_a_slivers_fit_keeps_the_projection(self):
+		with tempfile.TemporaryDirectory() as tmp:
+			pak(Path(tmp) / "pak0.pk3")
+			images = wt.Images([tmp])
+			scale = 72.0 / 94.0
+			bsp = slab_bsp()
+			# s and t run along the same direction: SDHLT would call that alignment malformed
+			bsp.drawvert_st = [(p[0] / 128.0, p[0] / 128.0 + p[1] / 4096.0) for p in bsp.drawverts]
+			fit = wt.TextureFit(bsp, images, scale)
+			conv.convert(bsp, scale, texture_fit=fit)
+		self.assertEqual(fit.stats["sides_fitted"], 0)
+		self.assertEqual(fit.stats["sides_unfit"], 1)
+		self.assertEqual(fit.stats["sides_projected"], 6)
+
 	def test_miptex_and_wad(self):
 		with tempfile.TemporaryDirectory() as tmp:
 			pak(Path(tmp) / "pak0.pk3", 64, 32)

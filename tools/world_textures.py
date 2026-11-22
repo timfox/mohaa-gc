@@ -33,6 +33,8 @@ TEXTURE_SIZE = 128   # largest WAD side: about one texel per map unit, as the pl
 PLANE_DOT = 0.995    # normals this close are one plane
 PLANE_DIST = 1.0     # MOHAA units
 MIPS = 4
+MAX_AXIS_COS = 0.5   # fitted S and T axes closer than 60 degrees: a sliver's fit, kept projected instead
+MIN_DENSITY, MAX_DENSITY = 1.0 / 16, 8.0   # texels per map unit a side may get
 
 
 def _dot(a, b):
@@ -182,7 +184,7 @@ class TextureFit:
 	def __init__(self, bsp: b19.Bsp, images: Images, scale: float):
 		self.images, self.scale = images, scale
 		self.by_shader = {}   # shader name -> [(n, dist, lo, hi, ((a, b), (a, b)) in MOHAA units and 0..1 st)]
-		self.stats = {"sides_fitted": 0, "sides_projected": 0, "surfaces": 0}
+		self.stats = {"sides_fitted": 0, "sides_projected": 0, "sides_unfit": 0, "surfaces": 0}
 		for sf in bsp.surfaces:
 			if sf.surface_type != b19.MST_PLANAR or sf.num_verts < 3 or not 0 <= sf.shader < len(bsp.shaders):
 				continue
@@ -241,15 +243,26 @@ class TextureFit:
 		lo = tuple(min(p[i] for p in local) for i in range(3))
 		hi = tuple(max(p[i] for p in local) for i in range(3))
 		fit = self._pick(shader, n, d_gs / sc - _dot(n, offset), lo, hi)
-		if fit is None:
-			self.stats["sides_projected"] += 1
-			dens = self.density(shader)
-			if dens is None:
-				return None
-			(u, v) = base_axes
-			# keep the box projection, at the texture's density on the rest of the map
-			return (u, 0.0, v, 0.0, 1.0 / (dens[0] * w / sc), 1.0 / (dens[1] * h / sc))
-		self.stats["sides_fitted"] += 1
+		got = self._fitted(fit, w, h, offset) if fit is not None else None
+		if got is not None:
+			self.stats["sides_fitted"] += 1
+			return got
+		if fit is not None:
+			self.stats["sides_unfit"] += 1
+		self.stats["sides_projected"] += 1
+		dens = self.density(shader)
+		if dens is None:
+			return None
+		(u, v) = base_axes
+		# keep the box projection, at the texture's density on the rest of the map
+		ds = min(MAX_DENSITY, max(MIN_DENSITY, dens[0] * w / sc))
+		dt = min(MAX_DENSITY, max(MIN_DENSITY, dens[1] * h / sc))
+		return (u, 0.0, v, 0.0, 1.0 / ds, 1.0 / dt)
+
+	def _fitted(self, fit, w, h, offset):
+		"""The Valve-220 axes for a fitted surface, or None if they would make SDHLT's texture alignment
+		malformed: S and T nearly parallel (a sliver's fit), or texels far too dense or sparse."""
+		sc = self.scale
 		out = []
 		for (a, b), texels in zip(fit, (w, h)):
 			# MOHAA: s = a . p_local + b (0..1 per repeat); map: texel = s * texels, p_local = p_map / sc - offset
@@ -260,4 +273,8 @@ class TextureFit:
 				return None
 			out.append((tuple(c / k for c in a_map), shift, 1.0 / k))
 		(su, ss, sk), (tu, ts, tk) = out
+		if abs(_dot(su, tu)) > MAX_AXIS_COS:
+			return None
+		if not all(MIN_DENSITY <= 1.0 / k <= MAX_DENSITY for k in (sk, tk)):
+			return None
 		return (su, ss, tu, ts, sk, tk)
