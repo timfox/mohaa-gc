@@ -1,0 +1,201 @@
+"""Tests for tools/mohaa_menu.py on a made-up menu (no retail data)."""
+import io
+import os
+import struct
+import sys
+import tempfile
+import unittest
+import zipfile
+from contextlib import redirect_stdout
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)
+sys.path.insert(0, os.path.join(ROOT, "tools"))
+
+try:
+    import numpy as np
+    from PIL import Image
+except ImportError:  # pragma: no cover
+    np = Image = None
+
+import mohaa_menu  # noqa: E402
+import mohaa_sd  # noqa: E402
+
+URC = """menu "main" 639 479 NONE 0
+virtualres 1
+resource
+Label
+{
+name "Default"
+rect 480 0 256 512
+shader "room_b"
+}
+resource
+Label
+{
+name "Default"
+rect 0 0 512 512
+shader "room_a"
+}
+resource
+Label
+{
+rect 0 0 256 256
+shader "textures/mohmenu/voodoo/main_a.tga"
+enabledcvar "ui_voodoo"
+}
+resource
+Button
+{
+name "map"
+rect 100 100 64 32
+shader "bigmap"
+hovershader "bigmap_h"
+stuffcommand "pushmenu briefingroom"
+}
+resource
+Button
+{
+name "quit"
+rect 536 448 96 24
+shader "textures/mohmenu/quit"
+stuffcommand "quit"
+}
+resource
+Button
+{
+rect 0 172 128 128
+shader "menu_button_trans"
+}
+"""
+
+SHADER = """// menu
+room_a
+{
+   nomipmaps
+   {
+      blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+	clampMap textures/mohmenu/main_a.tga
+   }
+}
+room_b
+{
+   {
+	clampMap textures/mohmenu/main_b.tga
+   }
+}
+bigmap
+{
+   {
+      animMap 24 textures/mohmenu/map1.tga textures/mohmenu/map2.tga
+   }
+}
+menu_button_trans
+{
+	{
+		map $whiteimage
+	}
+}
+"""
+
+RED, BLUE, GREEN, WHITE = (200, 0, 0), (0, 0, 200), (0, 200, 0), (255, 255, 255)
+
+
+def tga(colour, size):
+    b = io.BytesIO()
+    Image.new("RGB", size, colour).save(b, format="TGA")
+    return b.getvalue()
+
+
+def make_pak(path):
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr("ui/main.urc", URC)
+        z.writestr("scripts/mohmenu.shader", SHADER)
+        z.writestr("textures/mohmenu/main_a.tga", tga(RED, (512, 512)))
+        z.writestr("textures/mohmenu/main_b.tga", tga(BLUE, (256, 512)))
+        z.writestr("textures/mohmenu/map1.tga", tga(GREEN, (128, 128)))
+        z.writestr("textures/mohmenu/quit.tga", tga(WHITE, (96, 24)))
+        z.writestr("textures/mohmenu/voodoo/main_a.tga", tga(WHITE, (256, 256)))
+
+
+@unittest.skipIf(np is None, "needs Pillow and numpy")
+class MenuTest(unittest.TestCase):
+    def test_parse(self):
+        w, h, items = mohaa_menu.parse_urc(URC)
+        self.assertEqual((w, h), (640, 480))
+        self.assertEqual([i["type"] for i in items], ["Label", "Label", "Label", "Button", "Button", "Button"])
+        self.assertEqual(mohaa_menu.room_pieces(items), [
+            ("room_b", (480, 0, 256, 512)), ("room_a", (0, 0, 512, 512)), ("bigmap", (100, 100, 64, 32)),
+            ("menu_button_trans", (0, 172, 128, 128))])
+        sh = mohaa_menu.parse_shaders(SHADER)
+        self.assertEqual(sh["room_a"], "textures/mohmenu/main_a.tga")
+        self.assertEqual(sh["bigmap"], "textures/mohmenu/map1.tga")
+        self.assertNotIn("menu_button_trans", sh)
+
+    def test_compose_draws_the_room_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            make_pak(os.path.join(tmp, "pak0.pk3"))
+            sheet = mohaa_menu.compose([tmp])
+        self.assertEqual(sheet.size, (640, 480))
+        self.assertEqual(sheet.getpixel((10, 10)), RED)       # main_a over main_b, voodoo tile skipped
+        self.assertEqual(sheet.getpixel((600, 10)), BLUE)      # main_b where main_a ends
+        self.assertEqual(sheet.getpixel((120, 110)), GREEN)    # map piece, first anim frame, scaled to rect
+        self.assertEqual(sheet.getpixel((580, 460)), BLUE)     # no quit button
+        self.assertEqual(sheet.getpixel((10, 200)), RED)       # invisible hit box draws nothing
+
+    def test_no_menu(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with zipfile.ZipFile(os.path.join(tmp, "pak0.pk3"), "w") as z:
+                z.writestr("maps/t1.scr", "main:\nend\n")
+            self.assertIsNone(mohaa_menu.compose([tmp]))
+
+    def test_cmpr_round_trip(self):
+        rng = np.random.default_rng(1)
+        img = np.zeros((16, 16, 3), np.uint8)
+        img[:8, :8] = (255, 0, 0)
+        img[:8, 8:] = (0, 255, 0)
+        img[8:] = np.linspace(0, 255, 16, dtype=np.uint8)[None, :, None]
+        data = mohaa_menu.cmpr_encode(img)
+        self.assertEqual(len(data), 16 * 16 // 2)
+        back = mohaa_menu.cmpr_decode(data, 16, 16).astype(int)
+        self.assertLess(np.abs(back - img.astype(int)).max(), 24)
+        noise = rng.integers(0, 255, (8, 8, 3), dtype=np.uint8)
+        self.assertEqual(mohaa_menu.cmpr_decode(mohaa_menu.cmpr_encode(noise), 8, 8).shape, (8, 8, 3))
+
+    def test_gc_menu_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            make_pak(os.path.join(tmp, "pak0.pk3"))
+            out = os.path.join(tmp, "out")
+            written = mohaa_menu.write_gc_menu(mohaa_menu.compose([tmp]), out)
+            menu = os.path.join(out, "resource", "gc_menu")
+            self.assertEqual(sorted(os.path.basename(p) for p in written), sorted(
+                ["background.tga", "background.bmp", "BackgroundLayout.txt"]
+                + ["bg_%d_%d.%s" % (r, c, e) for r in range(2) for c in range(2) for e in ("tga", "cmp")]))
+            with open(os.path.join(menu, "BackgroundLayout.txt")) as f:
+                layout = f.read().split()
+            self.assertEqual(layout[:3], ["resolution", "320", "240"])
+            self.assertIn("resource/gc_menu/bg_1_1.tga", layout)
+            self.assertEqual(Image.open(os.path.join(menu, "bg_0_0.tga")).size, (160, 120))
+            self.assertEqual(Image.open(os.path.join(menu, "background.tga")).size, (320, 240))
+            with open(os.path.join(menu, "bg_0_1.cmp"), "rb") as f:
+                data = f.read()
+            self.assertEqual(data[:4], b"GCMP")
+            self.assertEqual(struct.unpack(">HH", data[4:8]), (320, 240))
+            self.assertEqual(len(data), 32 + 320 * 240 // 2)
+            px = mohaa_menu.cmpr_decode(data[32:], 320, 240)[10, 300]   # x=620 on the sheet: main_b
+            self.assertLess(np.abs(px.astype(int) - BLUE).max(), 12)
+
+    def test_sd_stage(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            game, sd = os.path.join(tmp, "MOHAA"), os.path.join(tmp, "sd")
+            os.makedirs(os.path.join(game, "main"))
+            make_pak(os.path.join(game, "main", "pak0.pk3"))
+            with redirect_stdout(io.StringIO()) as log:
+                rc = mohaa_sd.main(["--mohaa", game, "--sd", sd, "--stages", "menu"])
+            self.assertEqual(rc, 0, log.getvalue())
+            self.assertTrue(os.path.isfile(os.path.join(sd, "xash3d", "mohaa", "resource", "gc_menu", "bg_1_1.cmp")))
+            self.assertIn("== menu: 11 files", log.getvalue())
+
+
+if __name__ == "__main__":
+    unittest.main()
