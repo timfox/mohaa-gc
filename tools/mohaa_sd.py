@@ -6,8 +6,8 @@
     python3 tools/mohaa_sd.py --mohaa ~/MOHAA --sd ./sdcard --stages music --list
     python3 tools/mohaa_sd.py --mohaa ~/MOHAA --sd ./sdcard --maps m1l1 --xash3d-gc ~/xash3d-gc
 
-The release disc holds no game data. Everything MOHAA brings (music, sounds, scripts, maps, collision, props
-and terrain; the intro movie is still to come) is converted here from files you own and written under
+The release disc holds no game data. Everything MOHAA brings (the main menu room, music, sounds, scripts, maps, collision,
+props and terrain; the intro movie is still to come) is converted here from files you own and written under
 
     <sd>/xash3d/<gamedir>/          (gamedir: mohaa)
 
@@ -22,6 +22,8 @@ Sources (give one or both):
                 and reused.
 
 Stages run in this order (--stages picks some; by default every one whose tools are found):
+  menu      main menu background: MOHAA's war room         needs Pillow and numpy
+            (resource/gc_menu/; without it the disc's DoD background shows)
   music     soundtracks and tracks                         needs ffmpeg
   sounds    per-map sound tables and samples
   scripts   level scripts and the global/ libraries
@@ -35,7 +37,7 @@ points at one you built. worlddl and props bake the maps the maps stage compiled
 where sources are MOHAA main folders or pk3 files, game_root is <sd>/xash3d/<gamedir>, maps the map names
 ("" = every map the stage knows), and work a scratch folder kept between runs.
 
-Needs Python 3.8+, ffmpeg (audio), and for the map stages SDHLT and an xash3d-gc checkout.
+Needs Python 3.8+, Pillow and numpy (menu), ffmpeg (audio), and for the map stages SDHLT and an xash3d-gc checkout.
 Nothing it writes may be shared: it is your game's data.
 """
 import argparse
@@ -144,6 +146,16 @@ def _snapshot(root):
         for f in files:
             s.add(os.path.join(base, f))
     return s
+
+
+def stage_menu(sources, game_root, maps, work):
+    """The main menu background: MOHAA's main menu room (ui/main.urc) baked as the GameCube menu sheet
+    (resource/gc_menu/bg_<r>_<c>.cmp/.tga, BackgroundLayout.txt, background.tga/.bmp)."""
+    import mohaa_menu
+    sheet = mohaa_menu.compose(sources)
+    if sheet is None:
+        raise SystemExit("no ui/main.urc menu in the sources")
+    return mohaa_menu.write_gc_menu(sheet, game_root)
 
 
 def stage_music(sources, game_root, maps, work):
@@ -413,6 +425,7 @@ def stage_props(sources, game_root, maps, work):
 # name -> function, in the order they run (maps before the bakes that read the compiled map). The intro movie
 # (tools/intro_movie.py stage_intro) plugs in here with the same signature.
 STAGES = {
+    "menu": stage_menu,
     "music": stage_music,
     "sounds": stage_sounds,
     "scripts": stage_scripts,
@@ -424,6 +437,12 @@ STAGES = {
 
 def missing_tools(stage):
     """Why a stage can't run here (a tool it needs is missing), or None."""
+    if stage == "menu":
+        try:
+            import numpy  # noqa: F401
+            import PIL  # noqa: F401
+        except ImportError:
+            return "needs Pillow and numpy (pip install pillow numpy)"
     if stage == "music" and not shutil.which("ffmpeg"):
         return "needs ffmpeg"
     if stage == "maps" and not sdhlt_dir():
