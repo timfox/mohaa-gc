@@ -58,6 +58,9 @@ export DODGC_CONTENT_VALVE="${DODGC_CONTENT_VALVE:-$DODGC_ROOT/content/valve}"
 
 # All DoD artifacts stay under this repo — never OUT/xash3d-gc.iso / boot.dol.
 export DODGC_OUT="${DODGC_OUT:-$DODGC_ROOT/out}"
+# The game this fork builds: mohaa (MOHAA content in its own game folder, mohaa/, over dod/ through
+# fallback_dir; DOL linked with XASH_GAMEDIR=mohaa) or dod (plain DoD-GC). Same game code either way.
+export DODGC_GAME="${DODGC_GAME:-mohaa}"
 export DODGC_DOL="${DODGC_DOL:-$DODGC_OUT/dodgc.dol}"
 export DODGC_ISO="${DODGC_ISO:-$DODGC_OUT/dodgc.iso}"
 export DODGC_HANDOFF="${DODGC_HANDOFF:-$DODGC_OUT/gamecube-handoff.txt}"

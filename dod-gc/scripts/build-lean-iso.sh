@@ -216,6 +216,39 @@ VMIN="${DODGC_LEAN_VALVE:-$XASH3D_GC_ISO_CACHE/valve-menu-min}"
 [[ -d "$LEAN" ]] || { echo "error: lean DoD tree missing: $LEAN" >&2; exit 1; }
 [[ -d "$VMIN" ]] || { echo "error: lean valve tree missing: $VMIN" >&2; exit 1; }
 
+# mohaa: the disc's primary game folder is mohaa/, holding only our own text (gameinfo.txt,
+# liblist.gam, gamecube.cfg, the intro playlist). Everything converted from the player's MOHAA is
+# read from sd:/xash3d/mohaa/ (tools/mohaa_sd.py); the lean DoD and valve trees go on as dod/ and
+# valve/, which mohaa falls back to. Dolphin cannot emulate the SD adapter, so a test disc can carry
+# converted content in mohaa/ with DODGC_MOHAA_TEST_DIR=<converter output>/xash3d/mohaa (never a
+# release disc).
+GDATA="$LEAN"
+if [[ "$DODGC_GAME" == mohaa ]]; then
+	GDATA="$XASH3D_GC_ISO_CACHE/mohaa-disc"
+	rm -rf "$GDATA"
+	mkdir -p "$GDATA/media" "$GDATA/maps"
+	python3 -c 'import sys; sys.path.insert(0, sys.argv[1]); import mohaa_sd; mohaa_sd.write_gameinfo(sys.argv[2], "mohaa")' \
+		"$DODGC_ROOT/../tools" "$GDATA" >/dev/null
+	# GCube_HasGameAssets wants liblist.gam and a maps/ folder in the game folder.
+	printf 'MOHAA maps are read from sd:/xash3d/mohaa/maps/ (tools/mohaa_sd.py).\n' > "$GDATA/maps/README.txt"
+	[[ ! -f "$LEAN/media/StartupVids.txt" ]] || cp -f "$LEAN/media/StartupVids.txt" "$GDATA/media/StartupVids.txt"
+	# The disc builder bakes the menu sheet and logo banner (resource/gc_menu/) from the primary game
+	# folder. Give it DoD's menu sources, or mohaa/ gets the synthetic sheet (a white block for a
+	# logo) on top of dod's. The converter's menu stage on the SD card overrides this with MOHAA's own.
+	if [[ -d "$LEAN/resource" ]]; then
+		mkdir -p "$GDATA/resource"
+		rsync -a "$LEAN/resource/" "$GDATA/resource/"
+	fi
+	[[ ! -f "$LEAN/media/logo.avi" ]] || cp -f "$LEAN/media/logo.avi" "$GDATA/media/"
+	if [[ -n "${DODGC_MOHAA_TEST_DIR:-}" ]]; then
+		[[ -d "$DODGC_MOHAA_TEST_DIR" ]] || { echo "error: DODGC_MOHAA_TEST_DIR missing: $DODGC_MOHAA_TEST_DIR" >&2; exit 1; }
+		rsync -a --exclude '.mohaa-work' --exclude 'gameinfo.txt' --exclude 'liblist.gam' \
+			"$DODGC_MOHAA_TEST_DIR/" "$GDATA/"
+		echo "==> TEST DISC: MOHAA data from $DODGC_MOHAA_TEST_DIR on the disc (not for release)"
+	fi
+	echo "==> game folder: mohaa/ over dod/ ($(find "$GDATA" -type f | wc -l) files)"
+fi
+
 # Film plan: camera paths under cine/ and a marked block at the end of listenserver.cfg. Both are
 # cleared on every build, so a disc built without --film carries neither.
 FILM_BEGIN="// >>> film block (build-lean-iso.sh --film)"
@@ -280,11 +313,12 @@ pack() {
 	local args=(
 		--dol "$DODGC_DOL"
 		--output "$tmp"
-		--data "$LEAN"
-		--gamedir dod
+		--data "$GDATA"
+		--gamedir "$DODGC_GAME"
 		--extra-data "valve=$VMIN"
 		--no-auto-extra-gamedirs
 	)
+	if [[ "$GDATA" != "$LEAN" ]]; then args+=(--extra-data "dod=$LEAN"); fi
 	# Solo listen / peer-connect boots own gamecube.cfg; otherwise use play defaults.
 	if [[ -z "$LISTEN" && -z "$CONNECT" ]]; then
 		args+=(--play)
@@ -325,7 +359,7 @@ pack() {
 			(( DUMPFRAMES )) && echo "dumpframes"
 			[[ -n "$DUMPEYE" ]] && echo "dumpeye $DUMPEYE"
 			[[ -n "$TAS" ]] && echo "tas $TAS"
-		} > "$LEAN/gamecube.cfg"
+		} > "$GDATA/gamecube.cfg"
 		echo "==> listenserver cfg: $LISTEN net=$([[ $WANT_NET -eq 1 ]] && echo "${NET_IP:-dhcp}" || echo off) world_render=$WORLD_RENDER dumpframes=$DUMPFRAMES tas=${TAS:-off}"
 	elif [[ -n "$CONNECT" ]]; then
 		{
@@ -344,7 +378,7 @@ pack() {
 			# Keep the peer CapFaces capture aligned with the listen host's
 			# explicitly selected spawn/atlas eye.
 			[[ -n "$DUMPEYE" ]] && echo "dumpeye $DUMPEYE"
-		} > "$LEAN/gamecube.cfg"
+		} > "$GDATA/gamecube.cfg"
 		echo "==> connect cfg: $CONNECT net=${NET_IP:-dhcp} map=${MAP:-} world_render=$WORLD_RENDER dumpframes=$DUMPFRAMES"
 	fi
 	echo "==> packaging $out ($mode) startup_vids=$([[ $SKIP_STARTUP_VIDS -eq 0 ]] && echo on || echo off) net=$([[ $WANT_NET -eq 1 ]] && echo on || echo off) listen=${LISTEN:-} connect=${CONNECT:-} net_ip=${NET_IP:-}"

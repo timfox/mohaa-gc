@@ -82,7 +82,11 @@ if git -C "$DODGC_HLSDK" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
 	fi
 fi
 
-ENGINE_DOL="$DODGC_ENGINE/OUT/bin/dodgc.dol"
+case "$DODGC_GAME" in
+	dod) ENGINE_DOL="$DODGC_ENGINE/OUT/bin/dodgc.dol" ;;
+	mohaa) ENGINE_DOL="$DODGC_ENGINE/OUT/bin/mohaagc.dol" ;;
+	*) echo "error: DODGC_GAME must be mohaa or dod (got $DODGC_GAME)" >&2; exit 2 ;;
+esac
 ENGINE_HLSDK_DOD="$DODGC_ENGINE/OUT/hlsdk-gamecube/dod"
 
 if (( ! ISO_ONLY )); then
@@ -138,10 +142,18 @@ if (( ! ISO_ONLY )); then
 			--remove-section=.eh_frame --remove-section='.eh_frame.*' "$archive"
 	done
 
+	# mohaa links the same DoD game archives under its own game folder name (the engine looks for
+	# <destdir>/<gamedir>/dlls/libhl_gamecube_ppc.a).
+	if [[ "$DODGC_GAME" != dod ]]; then
+		rm -rf "$SDK_PRIVATE/$DODGC_GAME"
+		cp -a "$SDK_PRIVATE/dod" "$SDK_PRIVATE/$DODGC_GAME"
+	fi
+
 	# Build DOL only inside the engine tree; disc packaging happens here with dodgc.iso.
+	echo "==> [dod-gc] linking $(basename "$ENGINE_DOL") (XASH_GAMEDIR=$DODGC_GAME, DoD game code)"
 	XASH3D_GC_SKIP_DISC_BUILD=1 \
-	HLSDK_GAMECUBE_GAMEDIR=dod \
-		bash scripts/build-gamecube.sh --game-profile=dod
+	HLSDK_GAMECUBE_GAMEDIR="$DODGC_GAME" \
+		bash scripts/build-gamecube.sh --game-profile="$DODGC_GAME"
 
 	if [[ ! -f "$ENGINE_DOL" ]]; then
 		echo "error: expected $ENGINE_DOL after build" >&2

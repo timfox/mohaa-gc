@@ -17,9 +17,11 @@ def remove_once(path: Path, old: str) -> None:
 		path.write_text(text.replace(old, "", 1))
 
 
-def replace_once(path: Path, old: str, new: str) -> None:
+def replace_once(path: Path, old: str, new: str, done: str = "") -> None:
+	"""Replace old with new once. Already applied when new (or the optional done text, for a step a later
+	one rewrites) is in the file."""
 	text = path.read_text()
-	if new in text:
+	if new in text or ( done and done in text ):
 		return
 	if old not in text:
 		raise SystemExit(f"integration anchor not found in {path}: {old[:90]!r}")
@@ -926,14 +928,47 @@ def main() -> int:
 			'#endif\n',
 		)
 		create_game = args.engine_dir / "3rdparty/mainui/menus/CreateGame.cpp"
+		# The pinned mainui already carries this step (and a rerun after the mohaa step below no longer
+		# matches its new text exactly): skip it once dodMaps exists.
+		if "const bool dodMaps" not in create_game.read_text():
+			replace_once(
+				create_game,
+				'\tif( !EngFuncs::CreateMapsList( true ) || (afile = (char *)EngFuncs::COM_LoadFile( "maps.lst", NULL )) == NULL )\n',
+				'\t/* The disc staging step writes the exact DoD map list. Re-scanning BSPs\n'
+				'\t * on every Create Game open needlessly parses multi-megabyte lumps on GX. */\n'
+				'\tconst bool dodMaps = !stricmp( gMenu.m_gameinfo.gamefolder, "dod" );\n'
+				'\tif(( !dodMaps && !EngFuncs::CreateMapsList( true ) )\n'
+				'\t\t|| (afile = (char *)EngFuncs::COM_LoadFile( "maps.lst", NULL )) == NULL )\n',
+			)
+		# mohaa (mohaa-gc's game folder over dod) stages its map list the same way. A second step, since
+		# the pinned mainui already carries the dod-only line above.
 		replace_once(
 			create_game,
-			'\tif( !EngFuncs::CreateMapsList( true ) || (afile = (char *)EngFuncs::COM_LoadFile( "maps.lst", NULL )) == NULL )\n',
-			'\t/* The disc staging step writes the exact DoD map list. Re-scanning BSPs\n'
-			'\t * on every Create Game open needlessly parses multi-megabyte lumps on GX. */\n'
-			'\tconst bool dodMaps = !stricmp( gMenu.m_gameinfo.gamefolder, "dod" );\n'
-			'\tif(( !dodMaps && !EngFuncs::CreateMapsList( true ) )\n'
-			'\t\t|| (afile = (char *)EngFuncs::COM_LoadFile( "maps.lst", NULL )) == NULL )\n',
+			'\tconst bool dodMaps = !stricmp( gMenu.m_gameinfo.gamefolder, "dod" );\n',
+			'\tconst bool dodMaps = !stricmp( gMenu.m_gameinfo.gamefolder, "dod" )\n'
+			'\t\t|| !stricmp( gMenu.m_gameinfo.gamefolder, "mohaa" ); /* mohaa-gc: mohaa over dod */\n',
+		)
+		# mohaa keeps DoD's menu until it has its own: the menu code knows DoD by its folder name.
+		main_menu = args.engine_dir / "3rdparty/mainui/menus/Main.cpp"
+		replace_once(
+			main_menu,
+			'\treturn !stricmp( gMenu.m_gameinfo.gamefolder, "dod" )\n'
+			'\t\t|| !stricmp( gMenu.m_gameinfo.title, "Day of Defeat" );\n',
+			'\treturn !stricmp( gMenu.m_gameinfo.gamefolder, "dod" )\n'
+			'\t\t|| !stricmp( gMenu.m_gameinfo.gamefolder, "mohaa" ) /* mohaa-gc: mohaa over dod */\n'
+			'\t\t|| !stricmp( gMenu.m_gameinfo.title, "Day of Defeat" );\n',
+		)
+		progress = args.engine_dir / "3rdparty/mainui/menus/ConnectionProgress.cpp"
+		replace_once(
+			progress,
+			"\telse if( key == 'A' || ( !stricmp( gMenu.m_gameinfo.gamefolder, \"dod\" ) && key == 'B' ) )\n",
+			"\telse if( key == 'A' || (( !stricmp( gMenu.m_gameinfo.gamefolder, \"dod\" )\n"
+			"\t\t|| !stricmp( gMenu.m_gameinfo.gamefolder, \"mohaa\" )) && key == 'B' ) )\n",
+		)
+		replace_once(
+			progress,
+			'\tif( stricmp( gMenu.m_gameinfo.gamefolder, "dod" ) )\n',
+			'\tif( stricmp( gMenu.m_gameinfo.gamefolder, "dod" ) && stricmp( gMenu.m_gameinfo.gamefolder, "mohaa" ) )\n',
 		)
 		pad = args.engine_dir / "engine/platform/gamecube/in_gamecube.c"
 		replace_once(
@@ -1079,6 +1114,7 @@ def main() -> int:
 		'\t\t\tif( !stricmp( gameleaf, "dod" ) )\n'
 		'\t\t\t\treturn new CHalfLifeDoD;\n'
 		'\t\t\treturn new CHalfLifeTeamplay;\n',
+		done='\t\t\tif( !stricmp( gameleaf, "dod" ) || !stricmp( gameleaf, "mohaa" ) )\n',
 	)
 	# The worldrender listen route skips game.cfg, so mp_teamplay stays 0 and the
 	# game would build vanilla deathmatch rules (no CHalfLifeDoD, no bots). mp_teamlist stays the
@@ -1090,6 +1126,19 @@ def main() -> int:
 		'\tif( !stricmp( gameleaf, "dod" ) && gpGlobals->deathmatch )\n\t{\n\t\tCVAR_SET_FLOAT( "mp_teamplay", 1 );\n'
 		'\t\tCVAR_SET_STRING( "mp_teamlist", "Allies;Axis" );\n\t}\n'
 		'\tif( !gpGlobals->deathmatch )\n\t{\n\t\t// generic half-life\n',
+		done='\tif(( !stricmp( gameleaf, "dod" ) || !stricmp( gameleaf, "mohaa" )) && gpGlobals->deathmatch )\n',
+	)
+	# mohaa (mohaa-gc's game folder over dod) runs the same rules. Separate steps, so an SDK that already
+	# carries the dod-only lines (a pinned or earlier-integrated tree) takes them too.
+	replace_once(
+		dlls / "gamerules.cpp",
+		'\t\t\tif( !stricmp( gameleaf, "dod" ) )\n\t\t\t\treturn new CHalfLifeDoD;\n',
+		'\t\t\tif( !stricmp( gameleaf, "dod" ) || !stricmp( gameleaf, "mohaa" ) )\n\t\t\t\treturn new CHalfLifeDoD;\n',
+	)
+	replace_once(
+		dlls / "gamerules.cpp",
+		'\tif( !stricmp( gameleaf, "dod" ) && gpGlobals->deathmatch )\n',
+		'\tif(( !stricmp( gameleaf, "dod" ) || !stricmp( gameleaf, "mohaa" )) && gpGlobals->deathmatch )\n',
 	)
 	# Mounted guns (func_tank): the stock Half-Life tank aims at and fires on the first client in its view with no team check
 	# (CFuncTank::FindTarget returns the player), so an active func_tank killed the Axis bots at their own spawn on avalanche

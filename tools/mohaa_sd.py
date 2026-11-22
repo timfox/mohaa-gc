@@ -56,6 +56,7 @@ sys.path.insert(0, HERE)
 CD_GROUPS = {
     "Music Files": "sound/music",
     "Sound AmbStereo Files": "sound/amb_stereo",
+    "Video Files": "video",          # intro.RoQ + intro.mp3 for the movie stage
 }
 
 
@@ -90,8 +91,14 @@ def unpack_cds(dirs, work, log=print):
     """Unpack the music groups and every pk3 from the CDs' cabinets into <work>/cd/main; returns that folder."""
     out = os.path.join(work, "cd", "main")
     done = os.path.join(work, "cd", ".done")
+    groups_key = "\n".join(sorted(CD_GROUPS)) + "\n"
     if os.path.exists(done):
-        return out
+        with open(done) as fh:
+            if fh.read() == groups_key:
+                return out
+        # unpacked by a version that took fewer groups (no video/ before the movie stage): redo it
+        log("the CD unpack in %s predates the current file groups; unpacking again" % out)
+        shutil.rmtree(os.path.join(work, "cd", "groups"), ignore_errors=True)
     unshield = shutil.which("unshield")
     if not unshield:
         raise SystemExit("--cd needs the unshield program (Debian/Ubuntu: apt install unshield; macOS: brew install unshield)")
@@ -130,7 +137,8 @@ def unpack_cds(dirs, work, log=print):
                 os.makedirs(os.path.dirname(dest), exist_ok=True)
                 os.replace(src, dest)
     shutil.rmtree(groups_out, ignore_errors=True)
-    open(done, "w").close()
+    with open(done, "w") as fh:
+        fh.write(groups_key)
     return out
 
 
@@ -148,6 +156,9 @@ def _snapshot(root):
         for f in files:
             s.add(os.path.join(base, f))
     return s
+
+
+from intro_movie import stage_intro  # noqa: E402
 
 
 def stage_menu(sources, game_root, maps, work):
@@ -437,8 +448,8 @@ def stage_props(sources, game_root, maps, work):
     return written
 
 
-# name -> function, in the order they run (maps before the bakes that read the compiled map). The intro movie
-# (tools/intro_movie.py stage_intro) plugs in here with the same signature.
+# name -> function, in the order they run (maps before the bakes that read the compiled map). movie is
+# tools/intro_movie.py: media/mohaa_intro.gcvid + .gcpcm, which the boot playlist plays and A/B/Start skips.
 STAGES = {
     "menu": stage_menu,
     "loading": stage_loading,
@@ -448,6 +459,7 @@ STAGES = {
     "maps": stage_maps,
     "worlddl": stage_worlddl,
     "props": stage_props,
+    "movie": stage_intro,
 }
 
 
@@ -459,7 +471,7 @@ def missing_tools(stage):
             import PIL  # noqa: F401
         except ImportError:
             return "needs Pillow and numpy (pip install pillow numpy)"
-    if stage == "music" and not shutil.which("ffmpeg"):
+    if stage in ("music", "movie") and not shutil.which("ffmpeg"):
         return "needs ffmpeg"
     if stage == "maps" and not sdhlt_dir():
         why = "--sdhlt %s is not the patched SDHLT" % CONFIG["sdhlt"] if CONFIG["sdhlt"] else sdhlt_buildable()
