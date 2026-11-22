@@ -53,7 +53,7 @@ class MohaaSdTest(unittest.TestCase):
             stages = "music,scripts" if shutil.which("ffmpeg") else "scripts"
             rc, log = run(["--mohaa", game, "--sd", sd, "--maps", "t1", "--stages", stages, "--list"])
             self.assertEqual(rc, 0)
-            root = os.path.join(sd, "xash3d", "dod")
+            root = os.path.join(sd, "xash3d", "mohaa")
             self.assertTrue(os.path.isfile(os.path.join(root, "maps", "t1.scr")))
             if shutil.which("ffmpeg"):
                 self.assertTrue(os.path.isfile(os.path.join(root, "music", "t1.mood")))
@@ -95,7 +95,7 @@ class MohaaSdTest(unittest.TestCase):
             self.assertFalse(os.path.exists(os.path.join(main, "readme.txt")))
             with open(os.path.join(tmp, "runs")) as f:
                 self.assertEqual(f.read().count("ran"), 1)   # the second run reuses the unpacked set
-            self.assertTrue(os.path.isfile(os.path.join(sd, "xash3d", "dod", "maps", "t1.scr")))
+            self.assertTrue(os.path.isfile(os.path.join(sd, "xash3d", "mohaa", "maps", "t1.scr")))
 
     def test_a_failing_stage_does_not_stop_the_rest(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -106,7 +106,7 @@ class MohaaSdTest(unittest.TestCase):
             self.assertEqual(rc, 1)
             self.assertIn("== sounds: FAILED", log)
             self.assertIn("failed stages: sounds", log)
-            self.assertTrue(os.path.isfile(os.path.join(sd, "xash3d", "dod", "maps", "t1.scr")))
+            self.assertTrue(os.path.isfile(os.path.join(sd, "xash3d", "mohaa", "maps", "t1.scr")))
 
     def test_maps_and_bakes(self):
         """maps -> worlddl -> props with stand-ins for SDHLT, the xash3d-gc bakers and the Python converters."""
@@ -169,7 +169,7 @@ class MohaaSdTest(unittest.TestCase):
             self.assertEqual(rc, 0, log)
             self.assertLess(log.index("== maps"), log.index("== worlddl"))   # pipeline order, whatever was asked
             self.assertLess(log.index("== worlddl"), log.index("== props"))
-            root = os.path.join(sd, "xash3d", "dod")
+            root = os.path.join(sd, "xash3d", "mohaa")
             for rel in ("maps/t1.bsp", "maps/t1.mcol", "maps/t1.nodes", "media/wd_t1.gcd", "media/wd_t1_lf.gcd",
                         "media/gp_t1.gcp", "media/pt_t1.gct"):
                 self.assertTrue(os.path.isfile(os.path.join(root, rel)), rel)
@@ -192,6 +192,25 @@ class MohaaSdTest(unittest.TestCase):
             self.assertIn("skipping maps: needs SDHLT", log)
             self.assertIn("skipping worlddl: needs --xash3d-gc", log)
             self.assertIn("== scripts:", log)
+
+    def test_gameinfo(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            game, sd = os.path.join(tmp, "MOHAA"), os.path.join(tmp, "sd")
+            os.makedirs(os.path.join(game, "main"))
+            pak(os.path.join(game, "main", "pak0.pk3"))
+            rc, log = run(["--mohaa", game, "--sd", sd, "--maps", "t1", "--stages", "scripts"])
+            self.assertEqual(rc, 0, log)
+            root = os.path.join(sd, "xash3d", "mohaa")
+            info = open(os.path.join(root, "gameinfo.txt")).read()
+            self.assertIn('gamedir\t\t"mohaa"', info)
+            self.assertIn('fallback_dir\t"dod"', info)
+            self.assertIn('fallback_dir "dod"', open(os.path.join(root, "liblist.gam")).read())
+            with open(os.path.join(root, "liblist.gam"), "w") as f:
+                f.write('game "mine"\n')   # someone else's: left alone
+            run(["--mohaa", game, "--sd", sd, "--maps", "t1", "--stages", "scripts"])
+            self.assertEqual(open(os.path.join(root, "liblist.gam")).read(), 'game "mine"\n')
+            run(["--mohaa", game, "--sd", sd, "--gamedir", "dod", "--maps", "t1", "--stages", "scripts"])
+            self.assertFalse(os.path.exists(os.path.join(sd, "xash3d", "dod", "liblist.gam")))   # never over DoD's
 
     def test_map_flags(self):
         flags = mohaa_sd.map_flags()
