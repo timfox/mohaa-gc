@@ -925,21 +925,24 @@ static void test_vehicle_drive(void)
 	Dod_MohaaShutdown();
 }
 
+/* one line per test, so a run reads as a list (tools/capture_run.py records it) */
+#define RUN(t) do { t(); printf("  %-40s ok\n", #t); fflush(stdout); } while (0)
+
 int main(void)
 {
-	test_no_script_no_vm();
-	test_level_flow_and_movers();
-	test_waittill_trigger_and_freed();
-	test_budget_refuses_cleanly();
-	test_actors();
-	test_sounds();
-	test_music();
-	test_routes();
-	test_setthread_and_quiet_commands();
-	test_late_entities_and_moved_keys();
-	test_pool_allocator();
-	test_pool_backend();
-	test_vehicle_drive();
+	RUN(test_no_script_no_vm);
+	RUN(test_level_flow_and_movers);
+	RUN(test_waittill_trigger_and_freed);
+	RUN(test_budget_refuses_cleanly);
+	RUN(test_actors);
+	RUN(test_sounds);
+	RUN(test_music);
+	RUN(test_routes);
+	RUN(test_setthread_and_quiet_commands);
+	RUN(test_late_entities_and_moved_keys);
+	RUN(test_pool_allocator);
+	RUN(test_pool_backend);
+	RUN(test_vehicle_drive);
 	Dod_MohaaShutdown();
 	assert(Dod_MohaaPathNodes(NULL) == 0);
 	printf("dod_mohaa_test: ok\n");
