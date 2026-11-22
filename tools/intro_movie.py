@@ -7,7 +7,7 @@
 No MOHAA data ships with DoD-GC. The player points this at their own install (or a folder they
 unpacked from their CDs, or a single movie file) and it writes, under the SD card root:
 
-    xash3d/mohaa/media/mohaa_intro.gcvid   video: 320x160 RGB565, 8x8-tile delta frames (engine "GCV2")
+    xash3d/mohaa/media/mohaa_intro.gcvid   video: 320x240 RGB565 (letterboxed), 8x8-tile delta frames (engine "GCV2")
     xash3d/mohaa/media/mohaa_intro.gcpcm   audio: 48 kHz stereo signed 16-bit big-endian ("GCPA")
 
 The disc only carries media/StartupVids.txt naming media/mohaa_intro.avi. The engine finds the
@@ -16,9 +16,9 @@ the disc, and streams them from the card. A missing movie is skipped and the men
 Start skips the movie on the pad (xash3d-gc in_keys.c).
 
 Bandwidth: the SD adapter on a real GameCube reads a few MB/s at best, and the decoder streams the
-file when it is too big for ARAM. Keyframes are raw RGB565 (100 KiB at 320x160), so a movie that
-changes every pixel every frame costs 1.5 MB/s at 15 fps. The frame keeps the movie's shape (the
-engine letterboxes it), so MOHAA's 512x256 intro becomes 320x160, not a stretched 320x240. Two things keep it lower: a tile is only
+file when it is too big for ARAM. Keyframes are raw RGB565 (150 KiB at 320x240), but the picture
+keeps the movie's shape: MOHAA's 512x256 intro is a 320x160 picture between black bars, and the bars
+never change, so a picture that changes every pixel every frame costs about 1.5 MB/s at 15 fps. Two things keep it lower: a tile is only
 re-sent when it differs from what the decoder already shows by more than the lowest bit per colour
 channel (--exact turns this off), and --fps / --size trade smoothness or detail for rate. The tool
 prints the average rate; aim for under about 1.5 MB/s on hardware.
@@ -126,16 +126,22 @@ def _materialize(entry, tmpdir, name):
     return path
 
 
-def encode_gcvid(source, dest, width=320, height=240, fps=15, exact=False, ffmpeg="ffmpeg"):
-    """Write a GCV2 stream from any movie ffmpeg reads. Returns (frames, keyframes, bytes)."""
+def encode_gcvid(source, dest, width=320, height=240, fps=15, exact=False, ffmpeg="ffmpeg", picture_height=None):
+    """Write a GCV2 stream from any movie ffmpeg reads. Returns (frames, keyframes, bytes).
+
+    picture_height < height letterboxes: the movie is scaled to width x picture_height and centred
+    on black. The bars never change, so after the first keyframe they cost nothing to stream."""
     if width % GCVID_TILE or height % GCVID_TILE or width > GCVID_MAX_W or height > GCVID_MAX_H:
         raise ValueError("size must be a multiple of 8, at most %dx%d" % (GCVID_MAX_W, GCVID_MAX_H))
     frame_size = width * height * 2
     tiles_x, tiles_y = width // GCVID_TILE, height // GCVID_TILE
     row = GCVID_TILE * 2
+    vf = "fps=%d,scale=%d:%d:flags=lanczos" % (fps, width, picture_height or height)
+    if picture_height and picture_height < height:
+        vf += ",pad=%d:%d:0:%d:black" % (width, height, (height - picture_height) // 2)
     proc = subprocess.Popen(
         [ffmpeg, "-v", "error", "-i", source, "-an",
-         "-vf", "fps=%d,scale=%d:%d:flags=lanczos" % (fps, width, height),
+         "-vf", vf,
          "-pix_fmt", "rgb565le", "-f", "rawvideo", "-"],
         stdout=subprocess.PIPE)
     offsets, keyframes = [], 0
@@ -215,10 +221,11 @@ def encode_gcpcm(source, dest, ffmpeg="ffmpeg"):
 
 
 def fit_height(source, width, ffmpeg="ffmpeg"):
-    """Frame height for width that keeps the movie's shape, a multiple of 8, at most 240.
+    """Picture height for width that keeps the movie's shape, a multiple of 8, at most 240.
 
-    The engine letterboxes by the frame's aspect, so MOHAA's 512x256 intro becomes 320x160 rather
-    than being stretched to 4:3 (and costs a third less to stream)."""
+    MOHAA's 512x256 intro becomes a 320x160 picture with black bars in a 320x240 frame, rather than
+    being stretched to 4:3. (The engine only draws 320x240 GCVID frames: a 320x160 frame opened and
+    played its audio but showed black in Dolphin.)"""
     info = subprocess.run([ffmpeg, "-hide_banner", "-i", source], capture_output=True, text=True).stderr
     m = re.search(r"Video:.*?(\d{2,5})x(\d{2,5})", info)
     if not m:
@@ -247,9 +254,11 @@ def convert_intro(inputs, game_root, width=320, height=None, fps=15, exact=False
     try:
         with tempfile.TemporaryDirectory() as tmp:
             src = _materialize(entry, tmp, name)
+            picture = None
             if height is None:
-                height = fit_height(src, width, ffmpeg)
-            frames, keys, size = encode_gcvid(src, gcvid, width, height, fps, exact, ffmpeg)
+                height = GCVID_MAX_H
+                picture = fit_height(src, width, ffmpeg)
+            frames, keys, size = encode_gcvid(src, gcvid, width, height, fps, exact, ffmpeg, picture)
             written = [gcvid]
             # MOHAA's intro.RoQ is silent; its music is video/intro.mp3 beside it.
             track = find_soundtrack(inputs, name)

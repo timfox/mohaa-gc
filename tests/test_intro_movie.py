@@ -60,6 +60,11 @@ def decode_gcvid(path):
     return (w, h, fps_num, fps_den, count, flags), frames
 
 
+def mock_path_without_unshield():
+    from unittest import mock
+    return mock.patch.dict(os.environ, {"PATH": os.path.dirname(shutil.which("ffmpeg") or "/usr/bin") + "/nonexistent"})
+
+
 @unittest.skipUnless(HAVE_FFMPEG, "needs ffmpeg")
 class IntroMovieTest(unittest.TestCase):
     def setUp(self):
@@ -101,13 +106,13 @@ class IntroMovieTest(unittest.TestCase):
         self.assertEqual(written, [os.path.join(media, "mohaa_intro.gcvid"), os.path.join(media, "mohaa_intro.gcpcm")])
 
         (w, h, fps_num, fps_den, count, flags), frames = decode_gcvid(written[0])
-        self.assertEqual((w, h, fps_num, fps_den, flags), (320, 160, 15, 1, 8))  # 2:1 kept
+        self.assertEqual((w, h, fps_num, fps_den, flags), (320, 240, 15, 1, 8))  # engine frame size
         self.assertTrue(28 <= count <= 32, count)  # 2 s at 15 fps
 
         # The decoded frames track the source within the lowest bit per channel.
         ref = subprocess.run(
             ["ffmpeg", "-v", "error", "-i", os.path.join(video, "intro.RoQ"), "-an",
-             "-vf", "fps=15,scale=320:160:flags=lanczos", "-pix_fmt", "rgb565le", "-f", "rawvideo", "-"],
+             "-vf", "fps=15,scale=320:160:flags=lanczos,pad=320:240:0:40:black", "-pix_fmt", "rgb565le", "-f", "rawvideo", "-"],
             capture_output=True, check=True).stdout
         fs = w * h * 2
         for i in (0, count // 2, count - 1):
@@ -116,6 +121,12 @@ class IntroMovieTest(unittest.TestCase):
             for a, b in zip(struct.unpack("<%dH" % (fs // 2), src), struct.unpack("<%dH" % (fs // 2), got)):
                 worst = max(worst, abs((a >> 11) - (b >> 11)), abs(((a >> 5) & 63) - ((b >> 5) & 63)), abs((a & 31) - (b & 31)))
             self.assertLessEqual(worst, 1, "frame %d" % i)
+
+        # Letterbox bars: 40 black rows above and below, never re-sent after the first keyframe.
+        bar = 320 * 40 * 2
+        for f in frames:
+            self.assertEqual(f[:bar], bytes(bar))
+            self.assertEqual(f[-bar:], bytes(bar))
 
         pcm = open(written[1], "rb").read()
         self.assertEqual(pcm[:4], b"GCPA")
@@ -141,6 +152,20 @@ class IntroMovieTest(unittest.TestCase):
         self.assertEqual(rc, 0, out.getvalue())
         self.assertIn("xash3d/mohaa/media/mohaa_intro.gcvid", out.getvalue())
         self.assertIn("xash3d/mohaa/media/mohaa_intro.gcpcm", out.getvalue())
+
+    def test_old_cd_unpack_is_redone_for_new_groups(self):
+        import mohaa_sd
+        work = os.path.join(self.tmp, "work")
+        os.makedirs(os.path.join(work, "cd"))
+        open(os.path.join(work, "cd", ".done"), "w").close()   # an unpack from before "Video Files"
+        logs = []
+        with self.assertRaises(SystemExit):   # it tries again: no unshield / cabinets here
+            with mock_path_without_unshield():
+                mohaa_sd.unpack_cds([self.tmp], work, log=logs.append)
+        self.assertTrue(any("unpacking again" in m for m in logs))
+        with open(os.path.join(work, "cd", ".done"), "w") as fh:
+            fh.write("\n".join(sorted(mohaa_sd.CD_GROUPS)) + "\n")
+        self.assertEqual(mohaa_sd.unpack_cds([self.tmp], work), os.path.join(work, "cd", "main"))
 
     def test_exact_mode_is_lossless_and_static_frames_cost_nothing(self):
         src = os.path.join(self.tmp, "still.avi")
