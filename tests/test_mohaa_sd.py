@@ -193,95 +193,24 @@ class MohaaSdTest(unittest.TestCase):
             self.assertIn("skipping worlddl: needs --xash3d-gc", log)
             self.assertIn("== scripts:", log)
 
-    def test_map_flags(self):
-        flags = mohaa_sd.map_flags()
-        self.assertIn("--detail-walls", flags["m2l1"])
-        self.assertNotIn("#", " ".join(sum(flags.values(), [])))
-
-    def test_maps_and_bakes(self):
-        """maps -> worlddl -> props with stand-ins for SDHLT, the xash3d-gc bakers and the Python converters."""
-        with tempfile.TemporaryDirectory() as tmp:
-            game, sd, bin_, xg = (os.path.join(tmp, n) for n in ("MOHAA", "sd", "sdhlt", "xash3d-gc"))
-            os.makedirs(os.path.join(game, "main"))
-            with zipfile.ZipFile(os.path.join(game, "main", "pak0.pk3"), "w") as z:
-                z.writestr("maps/t1.bsp", b"IBSP-t1")
-                z.writestr("maps/t2.bsp", b"IBSP-t2")
-                z.writestr("maps/t1.scr", SCR)
-            calls = []
-
-            def tool(name, body):
-                path = os.path.join(bin_, name)
-                with open(path, "w") as f:
-                    f.write("#!/bin/sh\necho %s \"$@\" >> '%s'\n%s\n" % (name, os.path.join(tmp, "calls"), body))
-                os.chmod(path, 0o755)
-
-            os.makedirs(bin_)
-            for name in ("sdHLCSG", "sdHLVIS"):
-                tool(name, "")
-            tool("sdHLBSP", 'for m; do :; done; echo BSP30 > "$m.bsp"')
-            os.makedirs(os.path.join(xg, "scripts"))
-            with open(os.path.join(xg, "scripts", "bake_worlddl_goldsrc.py"), "w") as f:
-                f.write("import sys\no = sys.argv[sys.argv.index('--out') + 1]\n"
-                        "open(o, 'w').write('wd'); open(o[:-4] + '_lf.gcd', 'w').write('lf')\n")
-            with open(os.path.join(xg, "scripts", "bake_props_goldsrc.py"), "w") as f:
-                f.write("import os, sys\na = sys.argv\nm = os.path.basename(a[a.index('--map') + 1])[:-4]\n"
-                        "o = a[a.index('--out') + 1]\nassert open(a[a.index('--mprop') + 1]).read() == 'mprop'\n"
-                        "open(os.path.join(o, 'gp_%s.gcp' % m), 'w').write('gp')\n"
-                        "open(os.path.join(o, 'pt_%s.gct' % m), 'w').write('pt')\n")
-
-            def convert(argv):
-                calls.append(("convert", argv))
-                self.assertEqual(open(argv[0], "rb").read(), b"IBSP-t1")
-                self.assertIn("--scripts", argv)
-                out = argv[argv.index("-o") + 1][:-4]
-                for ext, text in ((".map", "{}"), (".mcol", "MCOL"), (".nodes", "n"), (".props", "p")):
-                    open(out + ext, "w").write(text)
-                return 0
-
-            def light(argv):
-                calls.append(("light", argv))
-                self.assertEqual(open(argv[1]).read(), "BSP30\n")
-                shutil.copy(argv[1], argv[argv.index("-o") + 1])
-                return 0
-
-            def pack(argv):
-                calls.append(("pack", argv))
-                open(argv[argv.index("-o") + 1], "w").write("mprop")
-                return 0
-
-            import bsp19_lightmaps
-            import bsp19_to_map
-            import props_models
-            with mock.patch.object(bsp19_to_map, "main", convert), mock.patch.object(bsp19_lightmaps, "main", light), \
-                    mock.patch.object(props_models, "main", pack):
-                rc, log = run(["--mohaa", game, "--sd", sd, "--maps", "t1", "--stages", "props,maps,worlddl",
-                               "--sdhlt", bin_, "--xash3d-gc", xg, "--list"])
-            self.assertEqual(rc, 0, log)
-            self.assertLess(log.index("== maps"), log.index("== worlddl"))   # pipeline order, whatever was asked
-            self.assertLess(log.index("== worlddl"), log.index("== props"))
-            root = os.path.join(sd, "xash3d", "dod")
-            for rel in ("maps/t1.bsp", "maps/t1.mcol", "maps/t1.nodes", "media/wd_t1.gcd", "media/wd_t1_lf.gcd",
-                        "media/gp_t1.gcp", "media/pt_t1.gct"):
-                self.assertTrue(os.path.isfile(os.path.join(root, rel)), rel)
-            self.assertFalse(os.path.exists(os.path.join(root, "maps", "t2.bsp")))   # only the map asked for
-            sdhlt = open(os.path.join(tmp, "calls")).read().splitlines()
-            self.assertEqual([c.split()[0] for c in sdhlt], ["sdHLCSG", "sdHLBSP", "sdHLVIS"])
-            self.assertIn("-wadinclude t1.wad", sdhlt[0])
-            self.assertIn("-hull2alias", sdhlt[1])
-            self.assertEqual([c[0] for c in calls], ["convert", "light", "pack"])
-
-    def test_stages_without_their_tools_are_skipped(self):
+    def test_gameinfo(self):
         with tempfile.TemporaryDirectory() as tmp:
             game, sd = os.path.join(tmp, "MOHAA"), os.path.join(tmp, "sd")
             os.makedirs(os.path.join(game, "main"))
             pak(os.path.join(game, "main", "pak0.pk3"))
-            with mock.patch.dict(os.environ, {"PATH": os.path.join(tmp, "nothing")}), \
-                    mock.patch.object(mohaa_sd, "STAGES", {k: mohaa_sd.STAGES[k] for k in ("maps", "worlddl", "scripts")}):
-                rc, log = run(["--mohaa", game, "--sd", sd, "--maps", "t1"])
+            rc, log = run(["--mohaa", game, "--sd", sd, "--maps", "t1", "--stages", "scripts"])
             self.assertEqual(rc, 0, log)
-            self.assertIn("skipping maps: needs SDHLT", log)
-            self.assertIn("skipping worlddl: needs --xash3d-gc", log)
-            self.assertIn("== scripts:", log)
+            root = os.path.join(sd, "xash3d", "mohaa")
+            info = open(os.path.join(root, "gameinfo.txt")).read()
+            self.assertIn('gamedir\t\t"mohaa"', info)
+            self.assertIn('fallback_dir\t"dod"', info)
+            self.assertIn('fallback_dir "dod"', open(os.path.join(root, "liblist.gam")).read())
+            with open(os.path.join(root, "liblist.gam"), "w") as f:
+                f.write('game "mine"\n')   # someone else's: left alone
+            run(["--mohaa", game, "--sd", sd, "--maps", "t1", "--stages", "scripts"])
+            self.assertEqual(open(os.path.join(root, "liblist.gam")).read(), 'game "mine"\n')
+            run(["--mohaa", game, "--sd", sd, "--gamedir", "dod", "--maps", "t1", "--stages", "scripts"])
+            self.assertFalse(os.path.exists(os.path.join(sd, "xash3d", "dod", "liblist.gam")))   # never over DoD's
 
     def test_map_flags(self):
         flags = mohaa_sd.map_flags()

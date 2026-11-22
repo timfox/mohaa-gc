@@ -11,6 +11,7 @@ and terrain; the intro movie is still to come) is converted here from files you 
 
     <sd>/xash3d/<gamedir>/          (gamedir: mohaa)
 
+with its own gameinfo.txt and liblist.gam (falling back to dod/ for what MOHAA does not bring),
 which the GameCube engine reads at runtime: sd:/ (SD2SP2) or carda:/ cardb:/ (SD Gecko), on top of the disc.
 
 Sources (give one or both):
@@ -366,6 +367,33 @@ def missing_tools(stage):
     return None
 
 
+TITLE = "Medal of Honor: Allied Assault"
+MARK = "written by mohaa-gc tools/mohaa_sd.py"
+
+
+def write_gameinfo(game_root, gamedir, fallback="dod"):
+    """The game folder's gameinfo.txt and liblist.gam: our own text, not game data. The game runs DoD-GC's game
+    code with this folder on top of dod/ (fallback_dir), so whatever MOHAA does not bring comes from DoD.
+    A file someone else wrote is left alone."""
+    files = {
+        "gameinfo.txt": ("// MOHAA on GameCube, %s\n" % MARK
+                         + "basedir\t\t\"valve\"\ngamedir\t\t\"%s\"\nfallback_dir\t\"%s\"\n" % (gamedir, fallback)
+                         + "title\t\t\"%s\"\nstartmap\t\"m1l1\"\n" % TITLE),
+        "liblist.gam": ("// MOHAA on GameCube, %s\n" % MARK
+                        + "game \"%s\"\nfallback_dir \"%s\"\nstartmap \"m1l1\"\n" % (TITLE, fallback)),
+    }
+    written = []
+    for name, text in files.items():
+        path = os.path.join(game_root, name)
+        if os.path.isfile(path) and MARK not in open(path, errors="replace").read():
+            print("keeping %s (not ours)" % path)
+            continue
+        with open(path, "w", newline="\n") as fh:
+            fh.write(text)
+        written.append(path)
+    return written
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--mohaa", help="installed MOHAA folder (holding main/)")
@@ -414,6 +442,8 @@ def main(argv=None):
     os.makedirs(game_root, exist_ok=True)
     print("sources: %s" % ", ".join(sources))
     print("writing: %s" % game_root)
+    if a.gamedir.lower() != "dod":   # never over DoD's own folder
+        write_gameinfo(game_root, a.gamedir)
     total, failed = 0, []
     for s in stages:
         print("== %s" % s)
