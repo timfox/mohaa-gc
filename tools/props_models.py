@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Pack a map's static props (trees, rocks ...) into one <map>.mprop file for the engine to draw.
 
-    python3 tools/props_models.py "/path/to/MOHAA/main" out/m6l1a.props -o out/m6l1a.mprop
+    python3 tools/props_models.py "/path/to/MOHAA/main" out/m6l1a.props -o out/m6l1a.mprop [--bsp m6l1a.bsp]
 
 It reads the .props sidecar that bsp19_to_map.py writes, loads each model's .tik, posed .skd mesh
 and textures from the paks, and writes the models, their textures and every instance into one file.
 Props cost the engine no edict and no model slot. Their collision is already in the map.
+With --bsp the map's LOD terrain is added too, as "*world/" meshes in map units: the converter
+gives terrain collision only, so without them the ground is not drawn.
 
 The output is built from retail data: write it outside the repository and never commit it.
 
@@ -96,8 +98,67 @@ def _image(files, path, read):
 	return None
 
 
-def build(files, read, props, max_side=MAX_TEXTURE):
-	"""(pack bytes, stats) for the props, reading models and textures from files {path: entry}."""
+WORLD_PREFIX = "*world/"  # a world mesh: drawn whole wherever it is, no impostor, no far cell
+WORLD_MAX_MODELS = 96
+
+
+def terrain_meshes(bsp, scale: float, max_models: int = WORLD_MAX_MODELS):
+	"""MOHAA's LOD terrain as world meshes: [(name, centre, [(shader, verts, tris)])], positions in map
+	units around the centre (the instance scale is 1). The converter gives terrain only collision; this
+	is what draws it. Patches are grouped G x G per mesh, G growing until the meshes fit max_models."""
+	import mohaa_bsp19 as b19
+
+	n = b19.TERRAIN_SAMPLES
+	if not bsp.terrain:
+		return []
+	group = 2
+	while True:
+		chunks = {}
+		for tp in bsp.terrain:
+			chunks.setdefault((tp.x // (8 * group), tp.y // (8 * group)), []).append(tp)
+		if len(chunks) <= max_models or group >= 64:
+			break
+		group *= 2
+	out = []
+	for key in sorted(chunks):
+		pts = []
+		for tp in chunks[key]:
+			x0, y0 = tp.origin
+			pts += [(x0, y0, min(tp.heights)), (x0 + 512, y0 + 512, max(tp.heights))]
+		centre = tuple(0.5 * (min(p[a] for p in pts) + max(p[a] for p in pts)) * scale for a in range(3))
+		by_shader = {}
+		for tp in chunks[key]:
+			name = bsp.shaders[tp.shader].name if 0 <= tp.shader < len(bsp.shaders) else ""
+			verts, tris = by_shader.setdefault(name, ([], []))
+			base = len(verts)
+			x0, y0 = tp.origin
+			tc = tp.tex if len(tp.tex) == 8 else (0, 0, 0, 1, 1, 0, 1, 1)
+			h = lambda i, j: tp.heights[min(max(j, 0), n - 1) * n + min(max(i, 0), n - 1)]  # noqa: E731
+			for j in range(n):
+				for i in range(n):
+					fx, fy = i / (n - 1), j / (n - 1)
+					w00, w01, w10, w11 = (1 - fx) * (1 - fy), (1 - fx) * fy, fx * (1 - fy), fx * fy
+					s_ = w00 * tc[0] + w01 * tc[2] + w10 * tc[4] + w11 * tc[6]
+					t_ = w00 * tc[1] + w01 * tc[3] + w10 * tc[5] + w11 * tc[7]
+					nx = (h(i - 1, j) - h(i + 1, j)) / (2.0 * b19.TERRAIN_CELL)
+					ny = (h(i, j - 1) - h(i, j + 1)) / (2.0 * b19.TERRAIN_CELL)
+					nrm = _unit((nx, ny, 1.0))
+					pos = tuple((v * scale) - c for v, c in zip(
+						(x0 + i * b19.TERRAIN_CELL, y0 + j * b19.TERRAIN_CELL, tp.heights[j * n + i]), centre))
+					verts.append((*pos, *nrm, s_, t_))
+			for j in range(n - 1):
+				for i in range(n - 1):
+					a = base + j * n + i
+					# the collision's diagonal (bsp19_to_map._terrain_triangles), counter-clockwise from above
+					tris += [(a, a + 1, a + n), (a + n + 1, a + n, a + 1)]
+		out.append((f"{WORLD_PREFIX}terrain_{key[0]}_{key[1]}", centre,
+			[(sh, v, t) for sh, (v, t) in sorted(by_shader.items())]))
+	return out
+
+
+def build(files, read, props, max_side=MAX_TEXTURE, world=()):
+	"""(pack bytes, stats) for the props, reading models and textures from files {path: entry}.
+	world: terrain_meshes() output, added as models drawn at scale 1."""
 	shaders = {}
 	for p, e in sorted(files.items()):
 		if p.endswith(".shader"):
@@ -150,6 +211,33 @@ def build(files, read, props, max_side=MAX_TEXTURE):
 			continue
 		instances.append((mi, origin, angles, scale))
 
+	stats["world_models"] = 0
+	for name, centre, surfaces in world:
+		surfs, lo, hi = [], [1e30] * 3, [-1e30] * 3
+		for shader, verts, tris in surfaces:
+			tpath = shaders.get(shader.lower(), skd.norm(shader)) if shader else ""
+			ti = -1
+			if tpath:
+				if tpath not in tex_index:
+					img = _image(files, tpath, read)
+					if img is None:
+						tex_index[tpath] = -1
+						stats["textures_missing"] += 1
+					else:
+						tex_index[tpath] = len(textures)
+						textures.append((tpath, encode_texture(img, max_side)))
+				ti = tex_index[tpath]
+			for v in verts:
+				for a in range(3):
+					lo[a], hi[a] = min(lo[a], v[a]), max(hi[a], v[a])
+			surfs.append((ti, verts, tris))
+			stats["triangles"] += len(tris)
+		if not surfs:
+			continue
+		instances.append((len(models), centre, (0.0, 0.0, 0.0), 1.0))
+		models.append((name, tuple(lo), tuple(hi), surfs))
+		stats["world_models"] += 1
+
 	out = bytearray(MAGIC + struct.pack("<4i", VERSION, len(textures), len(models), len(instances)))
 	for name, (w, h, flags, pal, idx) in textures:
 		out += name.encode("latin-1")[-31:].ljust(32, b"\0") + struct.pack("<2HI", w, h, flags) + pal + idx
@@ -175,12 +263,20 @@ def main(argv=None) -> int:
 	ap.add_argument("main", nargs="+", help="MOHAA main folder or pk3 files, then the .props sidecar last")
 	ap.add_argument("-o", "--out", required=True, help="the .mprop file to write")
 	ap.add_argument("--max-texture", type=int, default=MAX_TEXTURE, help="largest texture side (power of two)")
+	ap.add_argument("--bsp", help="the map's MOHAA .bsp: its terrain is added as world meshes (drawn, not just collided)")
+	ap.add_argument("--scale", type=float, default=None, help="map scale for the terrain (default: the converter's)")
 	args = ap.parse_args(argv)
 	*mains, props_path = args.main
 	if not mains:
 		ap.error("give the MOHAA main folder (or pk3 files) and then the .props file")
 	files = collect(mains, (".tik", ".skd", ".skc", ".shader", ".tga", ".jpg", ".png"))
-	data, stats = build(files, read, read_props(props_path), args.max_texture)
+	world = []
+	if args.bsp:
+		import mohaa_bsp19 as b19
+		from bsp19_to_map import DEFAULT_SCALE
+
+		world = terrain_meshes(b19.load(args.bsp), args.scale if args.scale else DEFAULT_SCALE)
+	data, stats = build(files, read, read_props(props_path), args.max_texture, world)
 	with open(args.out, "wb") as f:
 		f.write(data)
 	print(f"wrote {args.out} ({len(data)} bytes)")

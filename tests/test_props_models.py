@@ -81,6 +81,30 @@ class PackTest(unittest.TestCase):
 		self.assertAlmostEqual(inst[7], 0.766, places=5)
 		self.assertEqual(len(data), at + 2 * 32)
 
+	def test_terrain_becomes_world_meshes(self):
+		import mohaa_bsp19 as b19
+		bsp = b19.Bsp("t", 19, 0, 0, {})
+		bsp.shaders = [b19.Shader("textures/terrain/snow", 0, 1, 0)]
+		heights = [100 + 2 * (k % 9) for k in range(81)]	# rises along x
+		tex = (0.0, 0.0, 0.0, 4.0, 4.0, 0.0, 4.0, 4.0)
+		bsp.terrain = [b19.TerrainPatch(0, 0, 100, 0, heights, tex), b19.TerrainPatch(8, 0, 100, 0, heights, tex),
+			b19.TerrainPatch(64, 64, 100, 0, heights, tex)]
+		meshes = pm.terrain_meshes(bsp, 0.5)
+		self.assertEqual(len(meshes), 2)	# two patches side by side share a mesh, the far one has its own
+		name, centre, surfaces = meshes[0]
+		self.assertTrue(name.startswith(pm.WORLD_PREFIX))
+		shader, verts, tris = surfaces[0]
+		self.assertEqual((shader, len(verts), len(tris)), ("textures/terrain/snow", 2 * 81, 2 * 128))
+		# map units around the centre: the first patch spans x 0..256 (512 at scale 0.5)
+		xs = [v[0] + centre[0] for v in verts[:81]]
+		self.assertEqual((min(xs), max(xs)), (0.0, 256.0))
+		self.assertEqual(verts[80][6:8], (4.0, 4.0))	# far corner's texture coordinates
+		self.assertLess(verts[40][3], 0.0)	# the slope rises along x: the normal leans back
+		files = dict(self.files(), **{"textures/terrain/snow.jpg": tga(64, 64)})
+		data, stats = pm.build(files, lambda e: e, [], world=meshes)
+		self.assertEqual((stats["world_models"], stats["instances"], stats["models"]), (2, 2, 2))
+		self.assertIn(b"*world/terrain_0_0", data)
+
 	def test_read_props(self):
 		with tempfile.NamedTemporaryFile("w", suffix=".props", delete=False) as f:
 			f.write("# header\n1 2 3 0 90 0 0.5 static/rock%20big.tik\n")
