@@ -56,7 +56,24 @@ class Mohaa:
 		sraw = self._lump(data, version, b19.LUMP_SURFACES)
 		self.tris = []  # (n, d, p0, p1, p2, lm0, lm1, lm2, page, rect)
 		self.grid: dict = {}
+		# Brush entity surfaces are stored around the entity's origin, and
+		# bsp19_to_map.py moves their brushes out by it: do the same here.
+		shift = {}
+		for e in bsp.entities[1:]:
+			model = e.get("model", "")
+			if not model.startswith("*"):
+				continue
+			try:
+				mi = int(model[1:])
+				org = tuple(float(c) for c in e.get("origin", "0 0 0").split()[:3])
+			except ValueError:
+				continue
+			if 0 < mi < len(bsp.models) and len(org) == 3 and any(org):
+				m = bsp.models[mi]
+				for k in range(m.first_surface, m.first_surface + m.num_surfaces):
+					shift[k] = org
 		for k in range(len(sraw) // b19.SZ_SURFACE):
+			ox, oy, oz = shift.get(k, (0.0, 0.0, 0.0))
 			v = struct.unpack_from("<12i", sraw, k * b19.SZ_SURFACE)
 			stype, first_vert, num_verts, first_index, num_index = v[2], v[3], v[4], v[5], v[6]
 			page, lx, ly, lw, lh = v[7], v[8], v[9], v[10], v[11]
@@ -71,7 +88,7 @@ class Mohaa:
 				if o + b19.SZ_DRAWVERT > len(dv):
 					break
 				x, y, z = struct.unpack_from("<3f", dv, o)
-				pos.append((x * scale, y * scale, z * scale))
+				pos.append(((x + ox) * scale, (y + oy) * scale, (z + oz) * scale))
 				lmst.append(struct.unpack_from("<2f", dv, o + 20))
 				vnorm.append(struct.unpack_from("<3f", dv, o + 28))
 			if len(pos) < num_verts:
