@@ -286,9 +286,16 @@ edict_t *DodGrunts_ScriptSpawn( int team, const Vector &origin, float yaw )
 	CDodGrunt *e = GruntDress( i, team );
 	if( !e )
 		return NULL;
-	/* a script origin is on the floor (MOHAA actors stand on their origin); the pool keeps the body's centre */
-	DodGrunt_SpawnScripted( &g_pool, i, team, origin.x, origin.y, origin.z + 36.0f, yaw, gpGlobals->time );
-	UTIL_SetOrigin( e->pev, Vector( origin.x, origin.y, origin.z + 36.0f ) );
+	/* a script origin is meant to be on the floor (MOHAA actors stand on their origin, and MOHAA drops them onto it), but
+	 * mappers leave them a little above or below the ground, and a standing grunt never looks for the floor again:
+	 * find it here, from a little above the origin down. The pool keeps the body's centre. */
+	float feet = origin.z;
+	TraceResult tr;
+	UTIL_TraceLine( origin + Vector( 0, 0, 48 ), origin - Vector( 0, 0, 256 ), ignore_monsters, NULL, &tr );
+	if( !tr.fStartSolid && tr.flFraction < 1.0f )
+		feet = tr.vecEndPos.z;
+	DodGrunt_SpawnScripted( &g_pool, i, team, origin.x, origin.y, feet + 36.0f, yaw, gpGlobals->time );
+	UTIL_SetOrigin( e->pev, Vector( origin.x, origin.y, feet + 36.0f ) );
 	e->pev->angles = Vector( 0, yaw, 0 );
 	return e->edict();
 }
