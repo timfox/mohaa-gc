@@ -921,7 +921,8 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
             detail_walls: bool = False, wall_cell: float = THIN_WALL_CELL,
             collision_aabb: float = 0.0, collision_reach: float = 0.0, collision_exact: float = 0.0,
             mesh=None, mesh_terrain: bool = False, mesh_patch_tol: float = 0.0, mesh_angled: bool = True,
-            merge_static_models: bool = False, script_words: set | None = None, texture_fit=None):
+            merge_static_models: bool = False, script_words: set | None = None, texture_fit=None,
+            skyname: str | None = None):
 	"""mesh: a mesh_collision.Collision that angled detail (mesh_angled, under
 	simplify_collision), terrain heightfields (mesh_terrain) and solid world patches
 	(mesh_patch_tol > 0) are added to.
@@ -937,6 +938,10 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 	ws_keys = {"classname": "worldspawn", "mapversion": "220"}
 	if wad_name:
 		ws_keys["wad"] = wad_name
+	if skyname:
+		if not re.fullmatch(r"[A-Za-z0-9_-]+", skyname):
+			raise ValueError(f"invalid skyname {skyname!r}")
+		ws_keys["skyname"] = skyname
 	if "message" in world:
 		ws_keys["message"] = world["message"]
 	# MOHAA's far plane: fog to farplane_color and nothing drawn past it. Retail's dense
@@ -1456,6 +1461,7 @@ def main(argv=None) -> int:
 	ap.add_argument("--scripts", action="append", metavar="PATH",
 	                help="MOHAA main directory or pk3 (repeatable): targetnames the level's scripts never use "
 	                     "are dropped, so those brush models and triggers merge too")
+	ap.add_argument("--skyname", help="GameCube cubemap root from MOHAA's skyParms shader (set by the SD stager)")
 	args = ap.parse_args(argv)
 
 	mesh = mesh_collision.Collision()
@@ -1485,7 +1491,7 @@ def main(argv=None) -> int:
 	                                         not args.thin_detail_in_world, args.detail_walls, args.wall_cell,
 	                                         args.collision_aabb, args.collision_reach, args.collision_exact,
 	                                         mesh, not args.no_mesh_terrain, args.mesh_patch_tol, args.mesh_collision,
-	                                         not args.keep_brush_models, words, texture_fit=fit)
+	                                         not args.keep_brush_models, words, texture_fit=fit, skyname=args.skyname)
 	args.out.write_text(text)
 	ntext, nnodes = path_nodes(bsp, args.scale)
 	if nnodes:

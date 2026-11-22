@@ -109,6 +109,8 @@ python3 tools/bsp19_lightmaps.py retail/main/Pak5.pk3:maps/m1l1.bsp m1l1.bsp   #
 
 `bsp19_lightgrid.py` copies MOHAA's light grid (the colours retail lights soldiers and other models with, one per 32 units) to `media/lg_<map>.gcg`, keeping MOHAA's run-length layout so the GameCube engine can sample it from ARAM. Its colours are scaled to match the lightmaps.
 
+The maps stage resolves each BSP's sky shader through the retail `scripts/sky.shader`, reads its six `skyParms` environment images from the paks, and writes 128x128 GameCube CMPR faces as `media/sky_<env><side>.cmp`. It also writes that environment root as the compiled map's `skyname`. For example, m1l2a's `textures/sky/africanight` resolves to `env/mohnight1`, avoiding the renderer's clear-colour fallback when the source BSP has no GoldSrc `skyname` key.
+
 Writes a Valve-220 .map that SDHLT compiles to BSP30. Stage one only covers brushes:
 
 - Every brush is rebuilt from its planes. Bevel and duplicate planes drop out, and the world is scaled by `--scale` (default 72/94).

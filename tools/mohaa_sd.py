@@ -31,7 +31,7 @@ Stages run in this order (--stages picks some; by default every one whose tools 
   music     soundtracks and tracks                         needs ffmpeg
   sounds    per-map sound tables and samples
   scripts   level scripts and the global/ libraries
-  maps      maps/<map>.bsp with MOHAA's textures (+ .mcol collision, .nodes, media/lg_<map>.gcg light grid)
+  maps      maps/<map>.bsp with MOHAA's textures and skybox (+ .mcol collision, .nodes, media/lg_<map>.gcg light grid)
                                                            needs the patched SDHLT: built once (git, cmake, C++)
   worlddl   media/wd_<map>.gcd GameCube world bake         needs --xash3d-gc DIR (a checkout of xash3d-gc)
   props     media/gp_<map>.gcp static props and terrain    needs --xash3d-gc DIR
@@ -407,6 +407,7 @@ def stage_maps(sources, game_root, maps, work):
     import bsp19_lightgrid
     import bsp19_lightmaps
     import bsp19_to_map
+    import mohaa_sky
     from ubersound import read
     known, names = _map_names(sources, maps)
     folder = ensure_sdhlt()
@@ -425,8 +426,12 @@ def stage_maps(sources, game_root, maps, work):
         src_dir = os.path.join(d, "source")
         os.makedirs(src_dir, exist_ok=True)
         src = os.path.join(src_dir, m + ".bsp")
+        source_bsp = read(known[m])
         with open(src, "wb") as fh:
-            fh.write(read(known[m]))
+            fh.write(source_bsp)
+        skyname, sky_files = mohaa_sky.stage_map_sky(sources, m, source_bsp, game_root)
+        if skyname:
+            print("   %s: skybox %s (%d new CMPR faces)" % (m, skyname, len(sky_files)))
         dest = os.path.join(out_maps, m + ".bsp")
         size = CONFIG["texture_size"]
         sizes = [size] if size is not None else [TEXTURE_SIZE, TEXTURE_FALLBACK]
@@ -435,7 +440,10 @@ def stage_maps(sources, game_root, maps, work):
             if textures and CONFIG["texture_budget"]:
                 textures += ["--texture-budget", str(CONFIG["texture_budget"])]
             print("   %s: converting" % m)
-            _quiet(bsp19_to_map.main, [src, "-o", os.path.join(d, m + ".map"), "--wad", os.path.join(d, m + ".wad")]
+            convert_args = [src, "-o", os.path.join(d, m + ".map"), "--wad", os.path.join(d, m + ".wad")]
+            if skyname:
+                convert_args += ["--skyname", skyname]
+            _quiet(bsp19_to_map.main, convert_args
                    + flags.get(m, []) + [a for s in sources for a in ("--scripts", s)] + textures, log)
             print("   %s: compiling (SDHLT)" % m)
             # the textures go inside the BSP, so nothing on the card points back at this work folder
