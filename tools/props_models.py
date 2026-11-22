@@ -15,8 +15,9 @@ Format (little-endian, like .mcol):
   "MPRP" version numTextures numModels numInstances
   texture: name[32], u16 width, u16 height, u32 flags (1 = alpha tested), palette 256 x RGBA,
            width*height palette indices (index 255 is transparent when alpha tested)
-  model:   name[64], mins[3], maxs[3], numSurfaces; then per surface:
-           texture index (-1 = none), numVerts, numTris, verts (x y z nx ny nz s t as floats), tris (3 x u16)
+  model:   name[64], mins[3], maxs[3], numSurfaces, flags (1 = vertices carry light); then per surface:
+           texture index (-1 = none), numVerts, numTris, verts (x y z nx ny nz s t as floats, then with
+           flag 1 the light as RGBA bytes, MOHAA's own: one overbright bit down), tris (3 x u16)
   instance: model index, origin[3], angles[3] (pitch yaw roll), scale
 Model positions are in MOHAA units with the .tik scale applied; an instance's scale (from .props)
 converts them to the map's units.
@@ -34,7 +35,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import mohaa_skd as skd  # noqa: E402
 
 MAGIC = b"MPRP"
-VERSION = 2  # 2: vertices carry their normal
+VERSION = 3  # 2: vertices carry their normal. 3: a model flag word; world meshes carry MOHAA's light
+MODEL_LIT = 1
+UNLIT = (75.0, 75.0, 75.0)  # light of a world vertex MOHAA gave none (stored one overbright bit down)
 MAX_TEXTURE = 128  # largest side, so a map's textures stay a few hundred KiB on the GameCube
 TEX_ALPHA = 1
 
@@ -117,7 +120,7 @@ TERRAIN_TOL = 6.0	# map units a coarser terrain grid may stray from the full 9 x
 TERRAIN_SKIRT = 24.0	# map units the skirt of a coarse patch hangs below its edge, over the cracks
 
 
-def _terrain_patch(tp, scale, centre, tol, verts, tris):
+def _terrain_patch(tp, scale, centre, tol, verts, tris, bsp=None):
 	"""One LOD terrain patch into verts/tris (map units around centre): the coarsest grid (every 4th, 2nd
 	or every sample) whose bilinear fill stays within tol of all 81 heights. A coarse patch's edges can
 	miss a finer neighbour's middle samples, so it gets a skirt hanging below its rim to hide the crack."""
@@ -155,7 +158,8 @@ def _terrain_patch(tp, scale, centre, tol, verts, tris):
 		nrm = _unit((nx, ny, 1.0))
 		pos = tuple(v * scale - c for v, c in zip(
 			(x0 + i * b19.TERRAIN_CELL, y0 + j * b19.TERRAIN_CELL, H(i, j) - dz), centre))
-		return (*pos, *nrm, s_, t_)
+		lit = b19.terrain_light(bsp, tp, min(max(i, 0), n - 1), min(max(j, 0), n - 1)) if bsp is not None else None
+		return (*pos, *nrm, s_, t_, *(lit or UNLIT))
 
 	m = (n - 1) // step + 1
 	base = len(verts)
@@ -211,7 +215,7 @@ def terrain_meshes(bsp, scale: float, max_models: int = WORLD_MAX_MODELS, tol: f
 		for tp in chunks[key]:
 			name = bsp.shaders[tp.shader].name if 0 <= tp.shader < len(bsp.shaders) else ""
 			verts, tris = by_shader.setdefault(name, ([], []))
-			_terrain_patch(tp, scale, centre, tol, verts, tris)
+			_terrain_patch(tp, scale, centre, tol, verts, tris, bsp)
 		out.append((f"{WORLD_PREFIX}terrain_{key[0]}_{key[1]}", centre,
 			[(sh, v, t) for sh, (v, t) in sorted(by_shader.items())]))
 	return out
@@ -292,7 +296,11 @@ def surface_meshes(bsp, scale: float, max_models: int = WORLD_MAX_MODELS // 2, t
 		lo, hi = sf.first_vert, sf.first_vert + sf.num_verts
 		if hi > len(bsp.drawverts):
 			continue
-		dv = [(*bsp.drawverts[k], *bsp.drawvert_normals[k], *bsp.drawvert_st[k]) for k in range(lo, hi)]
+		lmst = bsp.drawvert_lmst or [(0.0, 0.0)] * len(bsp.drawverts)
+		vcol = bsp.drawvert_color or [(150, 150, 150, 255)] * len(bsp.drawverts)
+		# the light rides along: lightmap (s, t) and vertex colour are interpolated like the rest
+		dv = [(*bsp.drawverts[k], *bsp.drawvert_normals[k], *bsp.drawvert_st[k], *lmst[k], *vcol[k][:3])
+			for k in range(lo, hi)]
 		if sf.surface_type == b19.MST_PATCH:
 			verts, tris = patch_mesh(dv, sf.patch_width, sf.patch_height, tol)
 		else:
@@ -301,7 +309,12 @@ def surface_meshes(bsp, scale: float, max_models: int = WORLD_MAX_MODELS // 2, t
 			tris = [tuple(idx[k:k + 3]) for k in range(0, len(idx) - 2, 3) if max(idx[k:k + 3]) < len(dv)]
 		if not tris:
 			continue
-		verts = [(*v[:3], *_unit(v[3:6]), *v[6:8]) for v in verts]
+		def light(v):
+			if sf.lightmap >= 0:
+				return b19.lightmap_rgb(bsp, sf.lightmap, v[8], v[9]) or UNLIT
+			return tuple(v[10:13])
+
+		verts = [(*v[:3], *_unit(v[3:6]), *v[6:8], *light(v)) for v in verts]
 		if _facing(verts, tris) < 0:	# the props draw counter-clockwise: wind each surface to match its normals
 			tris = [(a, c, b) for a, b, c in tris]
 		c = tuple(0.5 * (min(v[a] for v in verts) + max(v[a] for v in verts)) for a in range(3))
@@ -425,12 +438,19 @@ def build(files, read, props, max_side=MAX_TEXTURE, world=()):
 		out += name.encode("latin-1")[-31:].ljust(32, b"\0") + struct.pack("<2HI", w, h, flags) + pal + idx
 		stats["texture_bytes"] += len(pal) + len(idx)
 	for name, lo, hi, surfs in models:
-		out += name.encode("latin-1")[-63:].ljust(64, b"\0") + struct.pack("<6fi", *lo, *hi, len(surfs))
+		lit = all(len(v) >= 11 for _, verts, _ in surfs for v in verts)
+		out += name.encode("latin-1")[-63:].ljust(64, b"\0") + struct.pack("<6f2i", *lo, *hi, len(surfs),
+			MODEL_LIT if lit else 0)
+		stats["world_models_lit"] = stats.get("world_models_lit", 0) + lit
 		for ti, verts, tris in surfs:
 			if len(verts) > 0xffff:
 				raise skd.SkdError(f"{name}: a surface has more than 65535 vertices")
 			out += struct.pack("<3i", ti, len(verts), len(tris))
-			out += b"".join(struct.pack("<8f", *v) for v in verts)
+			if lit:
+				out += b"".join(struct.pack("<8f4B", *v[:8], *(int(max(0.0, min(255.0, c)) + 0.5) for c in v[8:11]), 255)
+					for v in verts)
+			else:
+				out += b"".join(struct.pack("<8f", *v[:8]) for v in verts)
 			out += b"".join(struct.pack("<3H", *t) for t in tris)
 	for mi, origin, angles, scale in instances:
 		out += struct.pack("<i7f", mi, *origin, *angles, scale)

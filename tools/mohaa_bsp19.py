@@ -132,6 +132,7 @@ class Surface:
 	subdivisions: float
 	first_vert: int = 0
 	first_index: int = 0
+	lightmap: int = -1  # lightmap page, -1 = lit by its vertex colours
 
 
 @dataclass
@@ -159,6 +160,10 @@ class TerrainPatch:
 	shader: int
 	heights: list  # 81 world-space heights, row-major (index = j * 9 + i, i along x)
 	tex: tuple = ()  # texCoord[2][2][2]: (s, t) at the corners (x0 y0, x0 y1, x1 y0, x1 y1), as read
+	lm_page: int = -1  # its lightmap page
+	lm_s: int = 0  # the lightmap texel of sample (0, 0)
+	lm_t: int = 0
+	lm_scale: int = 1  # lightmap texels per 64-unit cell
 
 	@property
 	def origin(self):
@@ -197,6 +202,9 @@ class Bsp:
 	drawvert_st: list = field(default_factory=list)  # (s, t) of each draw vertex
 	drawvert_normals: list = field(default_factory=list)  # normal of each draw vertex
 	drawindexes: list = field(default_factory=list)  # triangle indexes, relative to a surface's first_vert
+	drawvert_lmst: list = field(default_factory=list)  # lightmap (s, t) of each draw vertex, 0..1 over a page
+	drawvert_color: list = field(default_factory=list)  # RGBA of each draw vertex (vertex-lit light)
+	lightmaps: bytes = b""  # 128 x 128 RGB pages, one overbright bit down
 	terrain: list = field(default_factory=list)
 	static_models: list = field(default_factory=list)
 
@@ -274,6 +282,7 @@ def load_bytes(data: bytes, name: str = "<memory>") -> Bsp:
 		bsp.surfaces.append(Surface(
 			shader=v[0], surface_type=v[2], num_verts=v[4], num_indexes=v[6],
 			patch_width=v[24], patch_height=v[25], subdivisions=v[26], first_vert=v[3], first_index=v[5],
+			lightmap=v[7],
 		))
 
 	sides = lump(LUMP_BRUSHSIDES)
@@ -293,12 +302,15 @@ def load_bytes(data: bytes, name: str = "<memory>") -> Bsp:
 	leaf_size = SZ_LEAF_V19 if version >= 19 else SZ_LEAF_V17
 	bsp.num_leafs = len(lump(LUMP_LEAFS)) // leaf_size
 	bsp.num_nodes = len(lump(LUMP_NODES)) // 36
-	bsp.num_lightmaps = len(lump(LUMP_LIGHTMAPS)) // LIGHTMAP_BYTES
+	bsp.lightmaps = lump(LUMP_LIGHTMAPS)
+	bsp.num_lightmaps = len(bsp.lightmaps) // LIGHTMAP_BYTES
 	dv = lump(LUMP_DRAWVERTS)
 	bsp.num_drawverts = len(dv) // SZ_DRAWVERT
 	bsp.drawverts = [struct.unpack_from("<3f", dv, i * SZ_DRAWVERT) for i in range(bsp.num_drawverts)]
 	bsp.drawvert_st = [struct.unpack_from("<2f", dv, i * SZ_DRAWVERT + 12) for i in range(bsp.num_drawverts)]
 	bsp.drawvert_normals = [struct.unpack_from("<3f", dv, i * SZ_DRAWVERT + 28) for i in range(bsp.num_drawverts)]
+	bsp.drawvert_lmst = [struct.unpack_from("<2f", dv, i * SZ_DRAWVERT + 20) for i in range(bsp.num_drawverts)]
+	bsp.drawvert_color = [struct.unpack_from("<4B", dv, i * SZ_DRAWVERT + 40) for i in range(bsp.num_drawverts)]
 	di = lump(LUMP_DRAWINDEXES)
 	bsp.drawindexes = list(struct.unpack_from("<%di" % (len(di) // 4), di))
 
@@ -307,7 +319,10 @@ def load_bytes(data: bytes, name: str = "<memory>") -> Bsp:
 		base, shader = struct.unpack_from("<hH", rec, 38)
 		raw = struct.unpack_from("<81B", rec, 304)
 		tex = struct.unpack_from("<8f", rec, 4)
-		bsp.terrain.append(TerrainPatch(x, y, base, shader, [base + 2 * h for h in raw], tex))
+		lm_scale, lm_s, lm_t = struct.unpack_from("<3B", rec, 1)
+		lm_page = struct.unpack_from("<H", rec, 42)[0]
+		bsp.terrain.append(TerrainPatch(x, y, base, shader, [base + 2 * h for h in raw], tex,
+			lm_page, lm_s, lm_t, max(1, lm_scale)))
 
 	if version >= 19:
 		for rec in _records(lump(LUMP_STATICMODELDEF), SZ_STATICMODEL):
@@ -317,6 +332,33 @@ def load_bytes(data: bytes, name: str = "<memory>") -> Bsp:
 			bsp.static_models.append(StaticModel(_cstr(rec[:128]), origin, angles, scale))
 
 	return bsp
+
+
+def lightmap_rgb(bsp: Bsp, page: int, s: float, t: float) -> tuple | None:
+	"""Bilinear light (0..255 floats, as stored: one overbright bit down) at lightmap (s, t) of a page."""
+	if page < 0 or (page + 1) * LIGHTMAP_BYTES > len(bsp.lightmaps):
+		return None
+	x = min(max(s * 128.0 - 0.5, 0.0), 127.0)
+	y = min(max(t * 128.0 - 0.5, 0.0), 127.0)
+	x0, y0 = int(x), int(y)
+	x1, y1 = min(x0 + 1, 127), min(y0 + 1, 127)
+	fx, fy = x - x0, y - y0
+	lm, base = bsp.lightmaps, page * LIGHTMAP_BYTES
+	acc = [0.0, 0.0, 0.0]
+	for xx, yy, w in ((x0, y0, (1 - fx) * (1 - fy)), (x1, y0, fx * (1 - fy)), (x0, y1, (1 - fx) * fy), (x1, y1, fx * fy)):
+		o = base + (yy * 128 + xx) * 3
+		acc[0] += lm[o] * w
+		acc[1] += lm[o + 1] * w
+		acc[2] += lm[o + 2] * w
+	return tuple(acc)
+
+
+def terrain_light(bsp: Bsp, tp: TerrainPatch, i: int, j: int) -> tuple | None:
+	"""The light at height sample (i, j) of a terrain patch: lm_scale lightmap texels per 64-unit cell,
+	texel (lm_s, lm_t) at sample (0, 0), s along x."""
+	if tp.lm_page < 0 or tp.lm_s + 8 * tp.lm_scale > 127 + 1 or tp.lm_t + 8 * tp.lm_scale > 127 + 1:
+		return None
+	return lightmap_rgb(bsp, tp.lm_page, (tp.lm_s + i * tp.lm_scale + 0.5) / 128.0, (tp.lm_t + j * tp.lm_scale + 0.5) / 128.0)
 
 
 def load(path) -> Bsp:
