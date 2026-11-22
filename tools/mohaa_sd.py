@@ -59,6 +59,11 @@ sys.path.insert(0, HERE)
 CD_GROUPS = {
     "Music Files": "sound/music",
     "Sound AmbStereo Files": "sound/amb_stereo",
+    "Sound Amb Files": "sound/amb",
+    "Sound Mechanics Files": "sound/mechanics",
+    "Sound Vehicle Files": "sound/vehicle",
+    "Sound Weapons Files": "sound/weapons",
+    "Sound Dialogue Files": "sound/dialogue",
     "Video Files": "video",          # intro.RoQ + intro.mp3 for the movie stage
 }
 
@@ -91,13 +96,13 @@ def find_cab_set(dirs):
 
 
 def unpack_cds(dirs, work, log=print):
-    """Unpack the music groups and every pk3 from the CDs' cabinets into <work>/cd/main; returns that folder."""
+    """Unpack the media groups and every pk3 from the CDs' cabinets into <work>/cd/main; returns that folder."""
     out = os.path.join(work, "cd", "main")
     done = os.path.join(work, "cd", ".done")
-    # unshield -L replaces spaces in group-directory names with underscores
+    # unshield -L lowercases group-directory names and replaces spaces with underscores
     # ("Sound AmbStereo Files" -> "sound_ambstereo_files"). Version the cache
-    # so a previous extract that only copied the PK3s is unpacked again.
-    groups_key = "unshield-lowercase-groups-v2\n" + "\n".join(sorted(CD_GROUPS)) + "\n"
+    # so prior extracts without the complete sound groups are unpacked again.
+    groups_key = "unshield-lowercase-groups-v3\n" + "\n".join(sorted(CD_GROUPS)) + "\n"
     if os.path.exists(done):
         with open(done) as fh:
             if fh.read() == groups_key:
@@ -138,7 +143,8 @@ def unpack_cds(dirs, work, log=print):
                 if f.lower().endswith(".pk3"):
                     dest = os.path.join(out, f.lower())
                 elif sub:
-                    dest = os.path.join(out, sub, f.lower())
+                    rel = os.path.relpath(src, gdir).lower()
+                    dest = os.path.join(out, sub, rel)
                 else:
                     continue
                 os.makedirs(os.path.dirname(dest), exist_ok=True)
@@ -565,8 +571,8 @@ def missing_tools(stage):
             import PIL  # noqa: F401
         except ImportError:
             return "needs Pillow (pip install pillow)"
-    if stage in ("music", "movie") and not shutil.which("ffmpeg"):
-        return "needs ffmpeg"
+    if stage in ("music", "movie", "sounds") and not shutil.which("ffmpeg"):
+        return "needs ffmpeg (MP3/audio conversion)"
     if stage == "maps" and not sdhlt_dir():
         why = "--sdhlt %s is not the patched SDHLT" % CONFIG["sdhlt"] if CONFIG["sdhlt"] else sdhlt_buildable()
         if why:

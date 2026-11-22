@@ -7,13 +7,18 @@ missions are converted into formats the existing dod-gc runtime already plays.
 No retail game data lives in this repository. Point the tools at your own
 copy of the game's `.pk3` files.
 
-The `music` stage also needs MOHAA's loose tracks. If it reports missing
-`sound/amb_stereo/` files, include the install CDs with the installed folder so
-the separate **Sound AmbStereo Files** group is unpacked:
+The CDs hold loose music, ambience, vehicle, mechanics, weapons and dialogue
+samples outside the PK3 files. Pass the CDs with your installed folder so the
+stager can unpack those InstallShield groups, then run both sound stages:
 
 ```bash
-python3 tools/mohaa_sd.py --cd /path/to/cd1 /path/to/cd2 --mohaa ~/MOHAA --sd /media/SDCARD --stages music
+python3 tools/mohaa_sd.py --cd /path/to/cd1 /path/to/cd2 --mohaa ~/MOHAA --sd /media/SDCARD --stages sounds,music
 ```
+
+The SFX stage writes map-specific `maps/<map>.snd` tables and native 22.05 kHz-or-lower mono
+PCM samples under `sound/mohaa/`. It keeps nested retail dialogue paths intact. The music stage
+still needs separate loose tracks when the install's `main/` folder does not contain them; see
+`--music-source` below.
 
 If the loose music files were extracted separately from the `main/` folder,
 pass that directory with `--music-source`; it is read only by the music stage:
