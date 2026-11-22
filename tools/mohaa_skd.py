@@ -304,6 +304,43 @@ def parse_shaders(text: str) -> dict:
 	return out
 
 
+def parse_shader_blends(text: str) -> dict:
+	"""{shader name: "filter" or "add"} for shaders whose first mapped stage blends by colour, not alpha:
+	a filter (GL_DST_COLOR GL_ZERO, GL_ZERO GL_SRC_COLOR) darkens through a mostly white image, an add
+	(GL_ONE GL_ONE) brightens through a mostly black one. Drawn opaque, both show their background."""
+	out, depth, name, stage, first = {}, 0, None, [], set()
+	toks = re.findall(r'"[^"]*"|\{|\}|[^\s{}]+', re.sub(r"//[^\n]*", "", text))
+	for k, tok in enumerate(toks):
+		low = tok.lower()
+		if tok == "{":
+			depth += 1
+			if depth == 2:
+				stage = []
+		elif tok == "}":
+			if depth == 2 and name is not None and name not in first and any(
+					t in ("map", "clampmap", "animmap") for t in stage):
+				first.add(name)
+				mode = None
+				if "blendfunc" in stage:
+					i = stage.index("blendfunc")
+					a = stage[i + 1] if i + 1 < len(stage) else ""
+					b = stage[i + 2] if i + 2 < len(stage) else ""
+					if a == "filter" or (a, b) in (("gl_dst_color", "gl_zero"), ("gl_zero", "gl_src_color")):
+						mode = "filter"
+					elif a == "add" or (a, b) == ("gl_one", "gl_one"):
+						mode = "add"
+				if mode:
+					out[name] = mode
+			depth = max(depth - 1, 0)
+			if depth == 0:
+				name = None
+		elif depth == 0:
+			name = tok.strip('"').lower()
+		elif depth == 2:
+			stage.append(low)
+	return out
+
+
 def surface_texture(tik: Tik, surface: str, shaders: dict) -> str:
 	sh = tik.shaders.get(surface.lower()) or tik.shaders.get("all") or tik.shaders.get("*") or ""
 	return shaders.get(sh.lower(), norm(sh)) if sh else ""

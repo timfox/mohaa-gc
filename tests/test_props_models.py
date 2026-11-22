@@ -133,6 +133,22 @@ class PackTest(unittest.TestCase):
 		self.assertEqual(verts[8][6:8], (1.0, 1.0))	# the patch's far corner keeps its st
 		self.assertEqual(round(verts[4][0] + centre[0], 4), 16.0)	# patch middle at map x 32 * 0.5
 
+	def test_filter_and_add_shaders_cut_out(self):
+		text = ("netting\n{\n {\n  map textures/m/net.tga\n  blendFunc GL_DST_COLOR GL_ZERO\n }\n}\n"
+			"glow\n{\n {\n  map textures/m/glow.tga\n  blendFunc add\n }\n}\n"
+			"plain\n{\n {\n  map textures/m/plain.tga\n }\n {\n  map $lightmap\n  blendFunc filter\n }\n}\n")
+		self.assertEqual(skd.parse_shader_blends(text), {"netting": "filter", "glow": "add"})
+		from PIL import Image
+		img = Image.new("RGB", (16, 16), (255, 255, 255))
+		img.paste((20, 20, 20), (0, 0, 8, 16))	# the dark strands of the net
+		buf = io.BytesIO()
+		img.save(buf, format="TGA")
+		w, h, flags, pal, idx = pm.encode_texture(buf.getvalue(), blend="filter")
+		self.assertEqual(flags, pm.TEX_ALPHA)
+		self.assertNotEqual(idx[0], 255)	# a strand stays
+		self.assertEqual(idx[15], 255)	# the white between them is cut
+		self.assertEqual(pm.encode_texture(buf.getvalue())[2], 0)	# without the blend: opaque, as before
+
 	def test_read_props(self):
 		with tempfile.NamedTemporaryFile("w", suffix=".props", delete=False) as f:
 			f.write("# header\n1 2 3 0 90 0 0.5 static/rock%20big.tik\n")

@@ -45,12 +45,22 @@ def _pow2_at_most(n, cap):
 	return p
 
 
-def encode_texture(data: bytes, max_side: int = MAX_TEXTURE):
+FILTER_CUT = 200	# a filter stage's texels brighter than this (luma) barely darken: cut out
+ADD_CUT = 40	# an add stage's texels darker than this barely brighten: cut out
+
+
+def encode_texture(data: bytes, max_side: int = MAX_TEXTURE, blend: str | None = None):
 	"""(width, height, flags, palette bytes, index bytes) from a TGA/JPG/PNG: power-of-two sides of at
-	most max_side, 8-bit palette. Images with real alpha get index 255 for alpha under 128."""
+	most max_side, 8-bit palette. Images with real alpha get index 255 for alpha under 128. blend
+	"filter" or "add" (parse_shader_blends) turns the colour blend into a cut-out by brightness."""
 	from PIL import Image
 
 	img = Image.open(io.BytesIO(data)).convert("RGBA")
+	if blend in ("filter", "add"):
+		luma = img.convert("L")
+		keep = luma.point(lambda v: 255 if v <= FILTER_CUT else 0) if blend == "filter" \
+			else luma.point(lambda v: 255 if v >= ADD_CUT else 0)
+		img.putalpha(keep)
 	tested = img.getchannel("A").getextrema()[0] < 128  # judged at full size: thin holes can blur away
 	w, h = _pow2_at_most(img.width, max_side), _pow2_at_most(img.height, max_side)
 	img = img.resize((w, h), Image.LANCZOS)
@@ -261,12 +271,16 @@ def surface_meshes(bsp, scale: float, max_models: int = WORLD_MAX_MODELS // 2, s
 def build(files, read, props, max_side=MAX_TEXTURE, world=()):
 	"""(pack bytes, stats) for the props, reading models and textures from files {path: entry}.
 	world: terrain_meshes() output, added as models drawn at scale 1."""
-	shaders = {}
+	shaders, blends = {}, {}
 	for p, e in sorted(files.items()):
 		if p.endswith(".shader"):
-			shaders.update(skd.parse_shaders(read(e).decode("latin-1")))
+			text = read(e).decode("latin-1")
+			shaders.update(skd.parse_shaders(text))
+			blends.update(skd.parse_shader_blends(text))
+	blend_of = {shaders[n]: m for n, m in blends.items() if n in shaders}	# texture path: blend
 	stats = {"instances": 0, "instances_unloaded": 0, "models": 0, "models_unloaded": 0, "textures": 0,
-	         "textures_missing": 0, "triangles": 0, "texture_bytes": 0}
+	         "textures_missing": 0, "triangles": 0, "texture_bytes": 0,
+	         "textures_blend_cutout": 0}
 	models, model_index, textures, tex_index = [], {}, [], {}
 	instances = []
 	models_done = set()
@@ -298,7 +312,8 @@ def build(files, read, props, max_side=MAX_TEXTURE, world=()):
 							stats["textures_missing"] += 1
 						else:
 							tex_index[tpath] = len(textures)
-							textures.append((tpath, encode_texture(img, max_side)))
+							textures.append((tpath, encode_texture(img, max_side, blend_of.get(tpath))))
+							stats["textures_blend_cutout"] += tpath in blend_of
 					ti = tex_index[tpath]
 				verts = [(p[0] * tik.scale, p[1] * tik.scale, p[2] * tik.scale, *_unit(n), uv[0], uv[1])
 				         for p, n, uv in zip(s.positions, s.normals, s.uvs)]
@@ -327,7 +342,8 @@ def build(files, read, props, max_side=MAX_TEXTURE, world=()):
 						stats["textures_missing"] += 1
 					else:
 						tex_index[tpath] = len(textures)
-						textures.append((tpath, encode_texture(img, max_side)))
+						textures.append((tpath, encode_texture(img, max_side, blend_of.get(tpath))))
+						stats["textures_blend_cutout"] += tpath in blend_of
 				ti = tex_index[tpath]
 			for v in verts:
 				for a in range(3):
