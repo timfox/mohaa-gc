@@ -1360,7 +1360,7 @@ def main(argv=None) -> int:
 	                     "get texture axes fitted to MOHAA's surfaces (world_textures.py)")
 	ap.add_argument("--texture-size", type=int, default=None, help="largest WAD texture side (default 128)")
 	ap.add_argument("--texture-budget", type=int, default=None, metavar="KB",
-	                help="the map's textures in KB (default 400: the GameCube keeps them in MEM1)")
+	                help="the map's textures in KB (default 1024)")
 	ap.add_argument("--scale", type=float, default=DEFAULT_SCALE)
 	ap.add_argument("--terrain-brushes", action="store_true",
 	                help="also write LOD terrain as wedge brushes (GoldSrc-native terrain collision)")

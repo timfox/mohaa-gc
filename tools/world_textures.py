@@ -36,7 +36,9 @@ MIPS = 4
 MAX_AXIS_COS = 0.5   # fitted S and T axes closer than 60 degrees: a sliver's fit, kept projected instead
 MIN_DENSITY, MAX_DENSITY = 1.0 / 16, 8.0   # texels per map unit a side may get
 MAX_TEXEL = 1.0      # texels per map unit plan() allows, as the placeholders had
-TEXDATA_BUDGET = 400 * 1024   # a map's texture lump: m1l1's placeholders (406 KB) loaded; 1.2 MB did not
+TEXDATA_BUDGET = 1024 * 1024  # a map's texture lump. xash3d-gc ca7e9b3 frees it at load when the world
+                              # texture pack exists (m1l1's 1.2 MB used to crowd out its collision); this keeps
+                              # the BSP well under its 3 MiB cap
 
 
 def miptex_bytes(w, h):
@@ -238,8 +240,7 @@ class TextureFit:
 	def plan(self, shaders, budget=TEXDATA_BUDGET, max_texel=MAX_TEXEL):
 		"""Pick each shader's WAD size before any side is fitted: at most max_texel texels per map unit
 		(the placeholders' one texel a unit: more means more SDHLT face splits and luxels), then halve every
-		texture until the texture lump fits budget bytes. The GameCube keeps a map's textures in MEM1: m1l1 at
-		128 texels (1.2 MB of textures) left no room for its collision. Returns (largest side, bytes)."""
+		texture until the texture lump fits budget bytes. Returns (largest side, bytes)."""
 		want = {}
 		for sh in sorted(set(s.lower() for s in shaders)):
 			src = self.images.source_size(sh)
