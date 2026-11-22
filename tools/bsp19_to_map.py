@@ -760,6 +760,22 @@ def path_nodes(bsp, scale):
 	return "\n".join(lines) + "\n", len(lines) - 1
 
 
+def static_props(bsp, scale):
+	"""Static models (trees, rocks, crates: LUMP_STATICMODELDEF) for the <map>.props sidecar, one line
+	each, origin and model scale converted. They cost no edict and no model slot: the engine draws
+	them from this list. Their collision is already in the map (MOHAA ships clip brushes around them)."""
+	lines = ["# mohaa static models: x y z pitch yaw roll scale model (spaces in model as %20)"]
+	for sm in bsp.static_models:
+		model = re.sub(r"/+", "/", sm.model.strip().replace("\\", "/")).lower()  # static//x.tik is static/x.tik
+		if not model:
+			continue
+		x, y, z = (c * scale for c in sm.origin)
+		p, yw, r = sm.angles
+		lines.append(f"{_f(x)} {_f(y)} {_f(z)} {_f(p)} {_f(yw)} {_f(r)} {_f((sm.scale or 1.0) * scale)} "
+		             f"{model.replace('%', '%25').replace(' ', '%20')}")
+	return "\n".join(lines) + "\n", len(lines) - 1
+
+
 def reach_points(bsp, scale):
 	pts = []
 	for e in bsp.entities[1:]:
@@ -1394,6 +1410,12 @@ def main(argv=None) -> int:
 		npath = args.out.with_suffix(".nodes")
 		npath.write_text(ntext)
 		print(f"{name}: wrote {npath} ({nnodes} path nodes)")
+	ptext, nprops = static_props(bsp, args.scale)
+	if nprops:
+		ppath = args.out.with_suffix(".props")
+		ppath.write_text(ptext)
+		kinds = len({line.rsplit(" ", 1)[1] for line in ptext.splitlines()[1:]})
+		print(f"{name}: wrote {ppath} ({nprops} static models, {kinds} different)")
 	if mesh.brushes or mesh.terrain or mesh.tris:
 		mpath = args.out.with_suffix(".mcol")
 		npl, nbr, nsd, nnd = mesh.write(mpath)

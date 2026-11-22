@@ -458,6 +458,20 @@ class StaticBrushModelTest(unittest.TestCase):
 		self.assertEqual(text.count('"mohaa_classname" "script_object"'), 5)
 
 
+class StaticPropsTest(unittest.TestCase):
+	def test_props_scale_origin_and_model(self):
+		bsp = b19.load_bytes(make_sample_bsp.build(19), "sample")
+		bsp.static_models = [b19.StaticModel("static/tree_winter_smallpine.tik", (100.0, -50.0, 8.0), (0.0, 90.0, 0.0), 1.5),
+		                     b19.StaticModel("Static\\\\rock big.tik", (0.0, 0.0, 0.0), (0.0, 0.0, 0.0), 0.0),
+		                     b19.StaticModel("", (0.0, 0.0, 0.0), (0.0, 0.0, 0.0), 1.0)]
+		text, n = conv.static_props(bsp, 0.5)
+		self.assertEqual(n, 2)
+		lines = text.splitlines()
+		self.assertTrue(lines[0].startswith("#"))
+		self.assertEqual(lines[1], "50 -25 4 0 90 0 0.75 static/tree_winter_smallpine.tik")
+		self.assertEqual(lines[2], "0 0 0 0 0 0 0.5 static/rock%20big.tik")
+
+
 class ClassifyTest(unittest.TestCase):
 	def test_weapon_clip_alone_lets_players_through(self):
 		self.assertEqual(conv.classify(0x28040000), "nonsolid")   # DETAIL | WEAPONCLIP (m6l1a snowclip)
