@@ -1,0 +1,12 @@
+Probe time: 2026-11-22 07:39 PT (Dolphin host logs report 07:39:29 guest time)
+Evidence class: guest runtime under Dolphin; not physical GameCube hardware.
+Route: m1l2a direct-map listenserver smoke, 25 second cap, startup video skipped.
+MOHAA content repo: /home/tim/Desktop/mohaa-gc, main HEAD 26772c9fa2eab608231cbdd0fdedadbd32ed51c9, map_flags working change applied after probe.
+DoD game repo: 243fc1050449b36fec82324d49491d583a4810a3 (clean at build).
+Xash3D-GC repo: cd5e31a683507e28f73af3898315899c408ca2d8 (codex/mohaa-local-diagnostics).
+DOL SHA-256: 00058c7af6468840062e39d0ef5536af6ce2d5537f188e7051b1cdda29bcd17e
+ISO SHA-256: 3084782107ed3f20eba57019ea558b290a28dae3faf5a3b2706aa5acea5b5bba
+Dolphin executable: /home/tim/.local/xash3d-gc-baseline/3rdparty/dolphin/build/Binaries/dolphin-emu
+Dolphin source revision, graphics backend, config, input/TAS, compiler/libogc versions: not captured by the probe harness.
+Guest evidence: map loaded; MAP_READY; mission script invocation; 352 entities spawned; renderer world display ready; 34 FPS in final screenshot.
+Known limitation: screenshot is predominantly dark brown with little readable scene detail. Map/runtime startup is verified; visual parity, controls, audio, and hardware behavior remain unverified.
