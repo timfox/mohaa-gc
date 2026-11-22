@@ -68,6 +68,8 @@ python3 tools/bsp19_lightmaps.py retail/main/Pak5.pk3:maps/m1l1.bsp m1l1.bsp   #
 
 `bsp19_lightmaps.py` lights the compiled BSP30 with the light MOHAA shipped, so no sdHLRAD run is needed. Each lit face gets a GoldSrc lightmap (one luxel per 16 texels), and each luxel samples the MOHAA lightmap of the coplanar MOHAA surface under it. Luxels with no MOHAA surface within 24 units take their face's average, and a face with no coplanar MOHAA surface at all (one the conversion made up) samples the nearest MOHAA surface facing its way within 96 units, or failing that gets the map's average light rather than a flat grey that glows at night. MOHAA stores light one overbright bit down, so samples are doubled, and the default `--gain` of 2.5 adds a little more because at 2.0 the night towns of m1l1 read too dark on the GameCube. Without a lighting lump the map draws fullbright, and on the GameCube the models drew black. Like every converter step, it runs on the user's own install.
 
+`bsp19_lightgrid.py` copies MOHAA's light grid (the colours retail lights soldiers and other models with, one per 32 units) to `media/lg_<map>.gcg`, keeping MOHAA's run-length layout so the GameCube engine can sample it from ARAM. Its colours are scaled to match the lightmaps.
+
 Writes a Valve-220 .map that SDHLT compiles to BSP30. Stage one only covers brushes:
 
 - Every brush is rebuilt from its planes. Bevel and duplicate planes drop out, and the world is scaled by `--scale` (default 72/94).

@@ -29,7 +29,7 @@ Stages run in this order (--stages picks some; by default every one whose tools 
   music     soundtracks and tracks                         needs ffmpeg
   sounds    per-map sound tables and samples
   scripts   level scripts and the global/ libraries
-  maps      maps/<map>.bsp with MOHAA's textures (+ .mcol collision, .nodes)
+  maps      maps/<map>.bsp with MOHAA's textures (+ .mcol collision, .nodes, media/lg_<map>.gcg light grid)
                                                            needs the patched SDHLT: built once (git, cmake, C++)
   worlddl   media/wd_<map>.gcd GameCube world bake         needs --xash3d-gc DIR (a checkout of xash3d-gc)
   props     media/gp_<map>.gcp static props and terrain    needs --xash3d-gc DIR
@@ -373,6 +373,7 @@ def bsp_unlit_size(path):
 def stage_maps(sources, game_root, maps, work):
     """Each map compiled for the GameCube: maps/<map>.bsp lit with MOHAA's own light, plus its .mcol collision
     and .nodes path nodes. Needs SDHLT (third_party/sdhlt-bsp30ext/build.sh builds the patched one)."""
+    import bsp19_lightgrid
     import bsp19_lightmaps
     import bsp19_to_map
     from ubersound import read
@@ -416,6 +417,13 @@ def stage_maps(sources, game_root, maps, work):
                 print("   %s: warning: %d KB over the GameCube's %d KB map budget (without its light)"
                       % (m, over // 1024 + 1, BSP_UNLIT_MAX // 1024))
         written.append(dest)
+        # MOHAA's light grid: how retail lights soldiers and other models
+        grid = os.path.join(game_root, "media", "lg_%s.gcg" % m)
+        try:
+            _quiet(bsp19_lightgrid.main, [src, "-o", grid], log)
+            written.append(grid)
+        except (ValueError, SystemExit) as e:
+            print("   %s: no light grid (%s); models light from the floor" % (m, e))
         for ext in (".mcol", ".nodes"):
             side = os.path.join(d, m + ext)
             if os.path.isfile(side):
