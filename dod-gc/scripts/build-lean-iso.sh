@@ -240,6 +240,9 @@ if [[ "$DODGC_GAME" == mohaa ]]; then
 		rsync -a "$LEAN/resource/" "$GDATA/resource/"
 	fi
 	[[ ! -f "$LEAN/media/logo.avi" ]] || cp -f "$LEAN/media/logo.avi" "$GDATA/media/"
+	# The engine reads delta.lst from the game folder's bootstrap pk3 before any map loads; without it
+	# every load dies in Delta_InitFields ("couldn't load file delta.lst"). It is DoD's own file.
+	[[ ! -f "$LEAN/delta.lst" ]] || cp -f "$LEAN/delta.lst" "$GDATA/delta.lst"
 	if [[ -n "${DODGC_MOHAA_TEST_DIR:-}" ]]; then
 		[[ -d "$DODGC_MOHAA_TEST_DIR" ]] || { echo "error: DODGC_MOHAA_TEST_DIR missing: $DODGC_MOHAA_TEST_DIR" >&2; exit 1; }
 		rsync -a --exclude '.mohaa-work' --exclude 'gameinfo.txt' --exclude 'liblist.gam' \
