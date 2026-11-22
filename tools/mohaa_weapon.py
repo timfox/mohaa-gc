@@ -28,20 +28,26 @@ def _name(value: str, size: int) -> bytes:
 	return b + b"\0" * (size - len(b))
 
 
-def _texture(data: bytes, size: int):
+def _texture(data: bytes, max_size: int):
 	from PIL import Image
 	from io import BytesIO
 
 	image = Image.open(BytesIO(data)).convert("RGB")
-	if image.size != (size, size):
-		image = image.resize((size, size), Image.Resampling.LANCZOS)
+	width, height = image.size
+	if width > max_size or height > max_size:
+		scale = max_size / max(width, height)
+		width = max(1, int(round(width * scale)))
+		height = max(1, int(round(height * scale)))
+	if image.size != (width, height):
+		image = image.resize((width, height), Image.Resampling.LANCZOS)
 	image = image.quantize(colors=256, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
 	palette = (image.getpalette() or [])[:768]
 	palette += [0] * (768 - len(palette))
-	return image.tobytes(), bytes(palette)
+	return image.tobytes(), bytes(palette), width, height
 
 
-def _static_mdl(name: str, positions, normals, triangles, pixels: bytes, palette: bytes, size: int) -> bytes:
+def _static_mdl(name: str, positions, normals, triangles, pixels: bytes, palette: bytes,
+				texture_width: int, texture_height: int) -> bytes:
 	"""Write a one-bone, one-sequence, one-texture GoldSrc studio v10 model."""
 	lo = tuple(min(p[i] for p in positions) for i in range(3))
 	hi = tuple(max(p[i] for p in positions) for i in range(3))
@@ -102,7 +108,7 @@ def _static_mdl(name: str, positions, normals, triangles, pixels: bytes, palette
 	                 len(positions), vinfo, vertindex, len(normals), ninfo, normindex, 0, 0)
 	struct.pack_into("<i", out, bpindex + 72, modelindex)
 	texindex = len(out)
-	out += _name(name + ".bmp", 64) + struct.pack("<iiii", 0, size, size, 0)
+	out += _name(name + ".bmp", 64) + struct.pack("<iiii", 0, texture_width, texture_height, 0)
 	skinindex = len(out)
 	out += struct.pack("<h", 0)
 	align()
@@ -159,7 +165,7 @@ def convert(main_paths, weapon: str, output: Path, skin_size: int = 256, scale: 
 		kept.append(surface)
 	if not kept or not texture_path:
 		raise ValueError("no textured surfaces remain after filtering")
-	pixels, palette = _texture(read(files[texture_path]), skin_size)
+	pixels, palette, texture_width, texture_height = _texture(read(files[texture_path]), skin_size)
 	unit_scale = (tik.scale if scale is None else scale) * (72.0 / 94.0)
 	positions, normals, triangles = [], [], []
 	position_ids, normal_ids = {}, {}
@@ -178,13 +184,14 @@ def convert(main_paths, weapon: str, output: Path, skin_size: int = 256, scale: 
 					normal_ids[nkey] = len(normals)
 					normals.append(n)
 				u, v = surface.uvs[index]
-				s = min(skin_size - 1, max(0, int(round(u * (skin_size - 1)))))
-				t = min(skin_size - 1, max(0, int(round((1.0 - v) * (skin_size - 1)))))
+				s = min(texture_width - 1, max(0, int(round(u * (texture_width - 1)))))
+				t = min(texture_height - 1, max(0, int(round((1.0 - v) * (texture_height - 1)))))
 				corners.append((position_ids[pkey], normal_ids[nkey], s, t))
 			triangles.append(corners)
 	if len(positions) > 2048 or len(normals) > 2048 or len(triangles) > 4096:
 		raise ValueError(f"mesh exceeds GoldSrc v10 limits: {len(positions)} verts, {len(normals)} normals, {len(triangles)} tris")
-	data = _static_mdl(output.stem, positions, normals, triangles, pixels, palette, skin_size)
+	data = _static_mdl(output.stem, positions, normals, triangles, pixels, palette,
+					texture_width, texture_height)
 	output.parent.mkdir(parents=True, exist_ok=True)
 	output.write_bytes(data)
 	return len(positions), len(normals), len(triangles), texture_path, unit_scale
