@@ -51,11 +51,12 @@ class MohaaSdTest(unittest.TestCase):
             pak(os.path.join(game, "Main", "pak0.pk3"))
             wav(os.path.join(game, "Main", "sound", "music", "sting.wav"))
             self.assertEqual(mohaa_sd.find_main(game), os.path.join(game, "Main"))
-            stages = "music,scripts" if shutil.which("ffmpeg") else "scripts"
+            stages = "music,scripts,tags" if shutil.which("ffmpeg") else "scripts,tags"
             rc, log = run(["--mohaa", game, "--sd", sd, "--maps", "t1", "--stages", stages, "--list"])
             self.assertEqual(rc, 0)
             root = os.path.join(sd, "xash3d", "mohaa")
             self.assertTrue(os.path.isfile(os.path.join(root, "maps", "t1.scr")))
+            self.assertTrue(os.path.isfile(os.path.join(root, "maps", "t1.tags")))
             if shutil.which("ffmpeg"):
                 self.assertTrue(os.path.isfile(os.path.join(root, "music", "t1.mood")))
                 with wave.open(os.path.join(root, "sound", "mohaa", "music", "sting.wav")) as w:

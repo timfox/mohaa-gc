@@ -3,6 +3,7 @@
 #include "util.h"
 #include "cbase.h"
 #include "player.h"
+#include "weapons.h"
 #include "gamerules.h"
 #include "dod_game.h"
 #include "dod_runtime.h"
@@ -467,6 +468,153 @@ static void M_Fade( float seconds, float r, float g, float b, float alpha, int o
 		out ? FFADE_OUT | FFADE_STAYOUT : FFADE_IN );
 }
 
+/* ---- cutscenes (see "Cutscenes" in dod_mohaa.c) ---- */
+
+static uint32_t g_locked_player;	/* held by physics_off / freezeplayer: no walking, no firing */
+static int g_saved_movetype;
+static string_t g_saved_viewmodel;	/* the weapon model, put away while the HUD's weapon part is hidden */
+static int g_hud_hide;
+
+static CBasePlayer *PlayerFor( uint32_t id )
+{
+	edict_t *e = EdictFor( id );
+	CBaseEntity *ent = e ? CBaseEntity::Instance( e ) : NULL;
+	return ent && ent->IsPlayer() ? (CBasePlayer *)ent : NULL;
+}
+
+static void M_PlayerLock( uint32_t id, int locked )
+{
+	CBasePlayer *pl = PlayerFor( id );
+	if( !pl )
+		return;
+	if( locked && g_locked_player != id )
+	{
+		g_locked_player = id;
+		g_saved_movetype = pl->pev->movetype;
+		/* noclip: the script places them every frame, nothing pulls them down between; FL_FROZEN zeroes their
+		 * move input (pm_shared) but leaves the view free, as MOHAA's physics_off does */
+		pl->pev->movetype = MOVETYPE_NOCLIP;
+		pl->pev->flags |= FL_FROZEN;
+		pl->pev->velocity = g_vecZero;
+	}
+	else if( !locked && g_locked_player == id )
+	{
+		g_locked_player = 0;
+		pl->pev->movetype = g_saved_movetype ? g_saved_movetype : MOVETYPE_WALK;
+		pl->pev->flags &= ~FL_FROZEN;
+		pl->pev->velocity = g_vecZero;
+	}
+}
+
+static void M_PlacePlayer( uint32_t id, const float pos[3], int eye )
+{
+	CBasePlayer *pl = PlayerFor( id );
+	if( !pl )
+		return;
+	Vector p( pos[0], pos[1], pos[2] );
+	/* GoldSrc's player origin is the middle of the hull: eyes are view_ofs above it, feet mins.z below */
+	p = eye ? p - pl->pev->view_ofs : p - Vector( 0, 0, pl->pev->mins.z );
+	UTIL_SetOrigin( pl->pev, p );
+	pl->pev->velocity = g_vecZero;
+}
+
+static void M_View( uint32_t id, const float a[3], int add )
+{
+	CBasePlayer *pl = PlayerFor( id );
+	if( !pl )
+		return;
+	if( add )
+	{
+		/* svc_addangle: turn by this much and keep whatever the player is looking at on their own */
+		pl->pev->avelocity.y += a[1];
+		pl->pev->fixangle = 2;
+		return;
+	}
+	pl->pev->angles = pl->pev->v_angle = Vector( a[0], a[1], a[2] );
+	pl->pev->fixangle = 1;
+}
+
+static void M_Hud( int hide )
+{
+	g_hud_hide = hide;
+	for( int i = 1; i <= gpGlobals->maxClients; i++ )
+	{
+		CBasePlayer *pl = (CBasePlayer *)UTIL_PlayerByIndex( i );
+		if( !pl )
+			continue;
+		pl->m_iHideHUD &= ~( HIDEHUD_ALL | HIDEHUD_WEAPONS | HIDEHUD_FLASHLIGHT );
+		if( hide & DOD_MOHAA_HUD_ALL )
+			pl->m_iHideHUD |= HIDEHUD_ALL;
+		if( hide & DOD_MOHAA_HUD_WEAPON )
+			pl->m_iHideHUD |= HIDEHUD_WEAPONS | HIDEHUD_FLASHLIGHT;
+		if( hide & ( DOD_MOHAA_HUD_ALL | DOD_MOHAA_HUD_WEAPON ) )
+		{
+			if( pl->pev->viewmodel )
+			{
+				g_saved_viewmodel = pl->pev->viewmodel;
+				pl->pev->viewmodel = 0;
+			}
+		}
+		else if( g_saved_viewmodel && !pl->pev->viewmodel )
+		{
+			pl->pev->viewmodel = g_saved_viewmodel;
+			g_saved_viewmodel = 0;
+		}
+	}
+}
+
+/* While held, the player cannot fire either (FL_FROZEN only stops movement). */
+static void CutsceneThink( void )
+{
+	CBasePlayer *pl = g_locked_player ? PlayerFor( g_locked_player ) : NULL;
+	if( g_locked_player && !pl )
+		g_locked_player = 0;
+	if( pl )
+	{
+		pl->m_flNextAttack = UTIL_WeaponTimeBase() + 0.2f;
+		pl->pev->button &= ~( IN_ATTACK | IN_ATTACK2 | IN_RELOAD | IN_USE );
+	}
+	if( g_hud_hide && pl && pl->pev->viewmodel )
+	{
+		g_saved_viewmodel = pl->pev->viewmodel;	/* a weapon deployed meanwhile stays put away */
+		pl->pev->viewmodel = 0;
+	}
+}
+
+#define MOHAA_DAMAGE_REARM 0.5f
+
+/* A MOHAA damage trigger (the converter gives it spawnflags 2, so no one fires it by touch) whose box holds the point
+ * fires as if touched: its targets, its setthread, "waittill trigger". A trigger_once fires only the first time. */
+static void M_DamageAt( uint32_t attacker, const float point[3], float radius, float damage )
+{
+	edict_t *by = attacker ? EdictFor( attacker ) : NULL;
+	CBaseEntity *who = by ? CBaseEntity::Instance( by ) : NULL;
+	Vector p( point[0], point[1], point[2] );
+	if( damage > 0.0f && radius > 0.0f )
+		::RadiusDamage( p, who ? who->pev : VARS( INDEXENT( 0 ) ), who ? who->pev : VARS( INDEXENT( 0 ) ), damage, radius,
+			CLASS_NONE, DMG_BLAST );
+	for( int i = gpGlobals->maxClients + 1; i < gpGlobals->maxEntities; i++ )
+	{
+		edict_t *e = INDEXENT( i );
+		if( !e || e->free || !e->pvPrivateData || !( e->v.spawnflags & 2 ) || !e->v.netname )
+			continue;
+		const char *cn = STRING( e->v.classname );
+		if( strncmp( cn, "trigger_multiple", 16 ) && strncmp( cn, "trigger_once", 12 ) )
+			continue;
+		if( p.x < e->v.absmin.x - radius || p.y < e->v.absmin.y - radius || p.z < e->v.absmin.z - radius ||
+		    p.x > e->v.absmax.x + radius || p.y > e->v.absmax.y + radius || p.z > e->v.absmax.z + radius )
+			continue;
+		if( e->v.dmgtime > gpGlobals->time )
+			continue;
+		const int once = !strcmp( cn, "trigger_once" );
+		e->v.dmgtime = once ? 1e9f : gpGlobals->time + MOHAA_DAMAGE_REARM;
+		CBaseEntity *t = CBaseEntity::Instance( e );
+		if( t && !FStringNull( t->pev->target ) )
+			t->SUB_UseTargets( who, USE_TOGGLE, 0 );
+		DodGC_MohaaTrigger( e, by );
+	}
+}
+
 static int M_Actor( uint32_t id, int order, const float pos[3] )
 {
 	edict_t *e = EdictFor( id );
@@ -664,6 +812,14 @@ void DodGC_MohaaLevelInit( void )
 	b.get_cvar = M_GetCvar;
 	b.fade = M_Fade;
 	b.set_cvar = M_SetCvar;
+	b.player_lock = M_PlayerLock;
+	b.place_player = M_PlacePlayer;
+	b.view = M_View;
+	b.hud = M_Hud;
+	b.damage_at = M_DamageAt;
+	g_locked_player = 0;	/* a new map starts everyone free (the last map's VM let go in its shutdown) */
+	g_saved_viewmodel = 0;
+	g_hud_hide = 0;
 	g_nwaiting = 0;	/* the last map's waiting soldiers went with it */
 	memset( g_actors, 0, sizeof( g_actors ) );
 	memset( g_dead, 0, sizeof( g_dead ) );
@@ -708,6 +864,7 @@ void DodGC_MohaaEntityKey( edict_t *e, const char *key, const char *value )
 void DodGC_MohaaThink( void )
 {
 	Dod_MohaaThink( gpGlobals->time );
+	CutsceneThink();
 	MusicSend();
 	ActorsWaitingThink();
 }
