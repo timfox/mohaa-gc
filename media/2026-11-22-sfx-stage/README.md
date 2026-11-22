@@ -8,8 +8,8 @@ Command:
 
 ```sh
 python3 tools/mohaa_sd.py --cd retail/cd/disc1 retail/cd/disc2 \
-  --sd /tmp/mohaa-sfx-prefix-20261122 \
-  --work /tmp/mohaa-sfx-prefix-work-20261122 \
+  --sd /tmp/mohaa-sfx-cleancomments-20261122 \
+  --work /tmp/mohaa-sfx-cleancomments-work-20261122 \
   --stages sounds --list
 ```
 
@@ -33,6 +33,11 @@ start separate alias families. The local OpenMOHAA reference implementation
 `arty_leadin08` sample to the `arty_leadin` family on `m3l1a`, `m3l1b`, and `m5l3`;
 the regenerated tables reference and include its converted WAV. `m3l1a` now lists
 103 distinct samples, above the tool's advisory budget of 96.
+
+The script scanner removes `//` and `/* ... */` comments outside quoted strings
+before finding calls, includes, and alias definitions. A full campaign rerun
+after this change retained the same 378 conversions and two unavailable cello
+sources, confirming that current live calls were preserved.
 
 The audit still reports unresolved script aliases: `sanford_and_son`,
 `den_m2l2_258b`, `wave_laps`, `dfr_panic_35c_13`, `flak88_hit`, `temp`,
