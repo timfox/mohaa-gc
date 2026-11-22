@@ -6,19 +6,25 @@
 # Abbreviations used in the comments: W = --detail-walls, B/C = grid 32/64 with z 16.
 
 m1l3c     --thin-detail-in-world
+# The default m1l2a compile reached 8,853 world leaves and leaked; keep detail
+# in wall models and seal the map for a bounded VIS tree.
+m1l2a     --detail-walls --seal-box
+m4l0      --seal-box
+m5l1a     --detail-walls --seal-box
+training  --seal-box
 # --detail-world + --seal-box left ~8k world leaves that all see each other: 6 MB of VIS.
 # Detail walls with the seal box keep them sealed with few leaves (as on m5l2b).
 mohdm4    --detail-walls --seal-box
 obj_team4 --detail-walls --seal-box
 mohdm5    --detail-walls --seal-box --simplify-collision --collision-grid 32 --collision-grid-z 16
-m5l1b     --simplify-collision --collision-grid 32 --collision-grid-z 16
-m5l3      --simplify-collision --collision-grid 16 --collision-grid-z 16 --collision-aabb 0.4 --collision-reach 768 --collision-exact 128
+m5l1b     --detail-walls --seal-box --simplify-collision --collision-grid 32 --collision-grid-z 16
+m5l3      --detail-walls --seal-box --simplify-collision --collision-grid 16 --collision-grid-z 16 --collision-aabb 0.4 --collision-reach 768 --collision-exact 128
 m4l2      --simplify-collision --collision-grid 16 --collision-grid-z 16 --collision-aabb 0.4 --collision-reach 768 --collision-exact 128
 # world leaves over 8192: detail into walls
 m6l1c     --detail-walls
 m2l1      --detail-walls
 obj_team3 --detail-walls
-m3l2      --detail-walls
+m3l2      --detail-walls --seal-box
 mohdm7    --detail-walls
 m6l3a     --detail-walls
 # leaves and clipnodes. --mesh-collision: angled detail goes to <map>.mcol for xash3d-gc
@@ -26,7 +32,7 @@ m6l3a     --detail-walls
 m4l3      --detail-walls --simplify-collision --collision-grid 32 --collision-grid-z 16
 mohdm3    --detail-walls --simplify-collision --collision-grid 32 --collision-grid-z 16
 m4l1      --detail-walls --simplify-collision --collision-grid 64 --collision-grid-z 16 --mesh-collision
-m3l3      --detail-walls --simplify-collision --collision-grid 64 --collision-grid-z 16 --mesh-collision
+m3l3      --detail-walls --seal-box --simplify-collision --collision-grid 64 --collision-grid-z 16 --mesh-collision
 obj_team2 --detail-walls --simplify-collision --collision-grid 16 --collision-grid-z 16 --collision-reach 768
 m6l2a     --detail-walls --simplify-collision --collision-grid 64 --collision-grid-z 16 --mesh-collision
 m6l2b     --detail-walls --simplify-collision --collision-grid 64 --collision-grid-z 16 --mesh-collision

@@ -685,8 +685,19 @@ def seal_box_brushes(bsp, scale, stats, margin=256.0, wall=16.0):
 	gaps we can't find: the space between the map and the box counts as inside, so
 	outward faces are kept and VIS has more to chew on, but hull 0 seals."""
 	m = bsp.models[0]
-	lo = [max(-WORLD_LIMIT + wall, m.mins[i] * scale - margin) for i in range(3)]
-	hi = [min(WORLD_LIMIT - wall, m.maxs[i] * scale + margin) for i in range(3)]
+	lo = [m.mins[i] * scale for i in range(3)]
+	hi = [m.maxs[i] * scale for i in range(3)]
+	# Brush-model bounds omit named points that sit above or outside the shell
+	# (m3l2 has a live info_target above its highest brush). Enclose in-world
+	# entity origins too, but ignore MOHAA's out-of-world placeholder sentinels.
+	for entity in bsp.entities[1:]:
+		point = tuple(c * scale for c in parse_vec(entity.get("origin", "")))
+		if any(abs(c) > WORLD_LIMIT - wall - margin for c in point):
+			continue
+		lo = [min(lo[i], point[i]) for i in range(3)]
+		hi = [max(hi[i], point[i]) for i in range(3)]
+	lo = [max(-WORLD_LIMIT + wall, c - margin) for c in lo]
+	hi = [min(WORLD_LIMIT - wall, c + margin) for c in hi]
 	out = []
 	for ax in range(3):
 		for side in (0, 1):
@@ -1071,12 +1082,32 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 		stem = name.rstrip("0123456789")
 		return not (stem != name and len(stem) >= 3 and stem in script_words)
 
+	# A few retail maps park duplicate script_model placeholders at MOHAA's
+	# 99999-unit sentinel. They are outside GoldSrc's world and make SDHLT
+	# report a leak, even when a real in-map instance with the same targetname
+	# exists. Keep the valid instance and omit only those unusable duplicates.
+	valid_target_points = set()
+	for entity in bsp.entities[1:]:
+		name = entity.get("targetname")
+		if not name or entity.get("model", "").startswith("*") or entity.get("classname", "").lower() not in (
+				"script_model", "script_origin", "script_object"):
+			continue
+		origin = parse_vec(entity.get("origin", ""))
+		if max(abs(c * scale) for c in origin) <= WORLD_LIMIT:
+			valid_target_points.add(name)
+
 	for e in bsp.entities[1:]:
 		cn = e.get("classname", "")
 		model = e.get("model", "")
 		if merge_static_models and unused_name(e):
 			e = {k: v for k, v in e.items() if k != "targetname"}
 			stats["targetnames_unused"] += 1
+		name = e.get("targetname")
+		if (name in valid_target_points and not model.startswith("*")
+				and cn.lower() in ("script_model", "script_origin", "script_object")
+				and max(abs(c * scale) for c in parse_vec(e.get("origin", ""))) > WORLD_LIMIT):
+			stats["script_points_oob_duplicate_dropped"] += 1
+			continue
 		if model.startswith("*"):
 			try:
 				mi = int(model[1:])
