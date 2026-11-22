@@ -278,6 +278,15 @@ static CDodGrunt *GruntDress( int i, int team )
 	return e;
 }
 
+/* The floor under a spot: traced from a little above it down, so a spot slightly in the ground or above it both land on
+ * the surface. A spot with nothing under it within reach keeps its height. Returns the feet height. */
+static float GruntFloor( const Vector &at )
+{
+	TraceResult tr;
+	UTIL_TraceLine( at + Vector( 0, 0, 48 ), at - Vector( 0, 0, 256 ), ignore_monsters, NULL, &tr );
+	return !tr.fStartSolid && tr.flFraction < 1.0f ? tr.vecEndPos.z : at.z;
+}
+
 edict_t *DodGrunts_ScriptSpawn( int team, const Vector &origin, float yaw )
 {
 	const int i = DodGrunt_FreeScriptSlot( &g_pool );
@@ -287,13 +296,8 @@ edict_t *DodGrunts_ScriptSpawn( int team, const Vector &origin, float yaw )
 	if( !e )
 		return NULL;
 	/* a script origin is meant to be on the floor (MOHAA actors stand on their origin, and MOHAA drops them onto it), but
-	 * mappers leave them a little above or below the ground, and a standing grunt never looks for the floor again:
-	 * find it here, from a little above the origin down. The pool keeps the body's centre. */
-	float feet = origin.z;
-	TraceResult tr;
-	UTIL_TraceLine( origin + Vector( 0, 0, 48 ), origin - Vector( 0, 0, 256 ), ignore_monsters, NULL, &tr );
-	if( !tr.fStartSolid && tr.flFraction < 1.0f )
-		feet = tr.vecEndPos.z;
+	 * mappers leave them a little above or below the ground, and a standing grunt never looks for the floor again */
+	const float feet = GruntFloor( origin );
 	DodGrunt_SpawnScripted( &g_pool, i, team, origin.x, origin.y, feet + 36.0f, yaw, gpGlobals->time );
 	UTIL_SetOrigin( e->pev, Vector( origin.x, origin.y, feet + 36.0f ) );
 	e->pev->angles = Vector( 0, yaw, 0 );
@@ -383,6 +387,8 @@ static bool GruntSpawn( int i, int team )
 		/* a spread around the spawn so a wave does not stand in one spot */
 		origin.x += RANDOM_FLOAT( -64.0f, 64.0f );
 		origin.y += RANDOM_FLOAT( -64.0f, 64.0f );
+		/* a spawn point's origin is a player's centre, 36 above the floor (MOHAA's are on it): stand on the floor */
+		origin.z = GruntFloor( origin );
 	}
 	CDodGrunt *e = GruntDress( i, team );
 	if( !e )
@@ -479,13 +485,14 @@ static void GruntCheck( int i )
 	UTIL_TraceHull( from, to, dont_ignore_monsters, head_hull, e->edict(), &tr );
 	const int clear = !tr.fStartSolid && tr.flFraction >= 1.0f;
 	DodGrunt_MoveChecked( &g_pool, i, clear );
-	/* The floor under where it stands now: it follows slopes in steps, up to 160 units a second. */
-	UTIL_TraceLine( Vector( from.x, from.y, from.z ), Vector( from.x, from.y, from.z - 96.0f ), ignore_monsters, e->edict(), &tr );
+	/* The floor under where it stands now: it follows slopes in steps. Traced from the top of the head, so ground that
+	 * rose above the feet (walking up a hill) is still found instead of starting the trace inside it. */
+	UTIL_TraceLine( Vector( from.x, from.y, from.z + 36.0f ), Vector( from.x, from.y, from.z - 96.0f ), ignore_monsters, e->edict(), &tr );
 	g_pool.stats.floor_traces++;
 	if( tr.flFraction < 1.0f && !tr.fStartSolid ) {
 		const float want = tr.vecEndPos.z + 36.0f;
 		const float dz = want - g_pool.z[i];
-		g_pool.z[i] += dz > 12.0f ? 12.0f : ( dz < -12.0f ? -12.0f : dz );
+		g_pool.z[i] += dz > 18.0f ? 18.0f : ( dz < -18.0f ? -18.0f : dz );	/* 120 units a second */
 	} else if( tr.flFraction >= 1.0f ) {
 		g_pool.z[i] -= 6.0f;	/* a drop: let it fall to the next floor */
 	}
