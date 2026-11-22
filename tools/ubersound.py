@@ -74,11 +74,57 @@ def read(entry):
 TOKEN = re.compile(r'"([^"]*)"|(\S+)')
 
 
+def strip_comments(text):
+    """Remove MOHAA block and line comments before parsing script commands."""
+    out, i, state = [], 0, "code"
+    while i < len(text):
+        ch = text[i]
+        if state == "code":
+            if text.startswith("//", i):
+                out.append(" ")
+                i += 2
+                state = "line"
+            elif text.startswith("/*", i):
+                out.append(" ")
+                i += 2
+                state = "block"
+            elif ch == '"':
+                out.append(ch)
+                i += 1
+                state = "string"
+            else:
+                out.append(ch)
+                i += 1
+        elif state == "line":
+            if ch in "\r\n":
+                out.append(ch)
+                state = "code"
+            i += 1
+        elif state == "block":
+            if text.startswith("*/", i):
+                i += 2
+                state = "code"
+            elif ch in "\r\n":
+                out.append(ch)
+                i += 1
+            else:
+                i += 1
+        else:  # quoted string
+            out.append(ch)
+            if ch == "\\" and i + 1 < len(text):
+                out.append(text[i + 1])
+                i += 2
+            else:
+                i += 1
+                if ch == '"':
+                    state = "code"
+    return "".join(out)
+
+
 def parse_aliases(text):
     """{alias: [(path, volume, mindist, channel)]} from ubersound script text."""
     out = {}
-    for raw in text.splitlines():
-        line = raw.split("//", 1)[0]
+    for line in strip_comments(text).splitlines():
         toks = [a if a else b for a, b in TOKEN.findall(line)]
         low = [t.lower() for t in toks]
         for kw in ("aliascache", "alias"):
@@ -118,8 +164,7 @@ def map_aliases(scripts, mapname):
         if path in seen or path not in scripts:
             continue
         seen.add(path)
-        text = read(scripts[path]).decode("latin-1")
-        text = "\n".join(line.split("//", 1)[0] for line in text.splitlines())
+        text = strip_comments(read(scripts[path]).decode("latin-1"))
         for cmd, n in PLAY.findall(text):
             n = n.lower()
             if "." in n or n in NOT_ALIAS:
