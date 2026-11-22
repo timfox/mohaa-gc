@@ -6,7 +6,7 @@ Dolphin visual probe of a temporary MOHAA GameCube ISO built from Xash3D-GC comm
 - Result: `newgame world render ready`; no fatal/error path in the guest log.
 - HUD allocator: 128 KiB borrowed decode-buffer arena; the log records evictions 0 through 3 as later decodes safely evicted and reacquired the cells.
 - Screenshot: `final.png` (640×480, captured in gameplay).
-- Selected guest log lines: `guest-key-lines.txt`; full Dolphin log remains in the temporary probe directory.
+- Selected guest log lines: `guest-key-lines.txt`; the raw Dolphin log was removed with the temporary probe artifacts after verification.
 - Toolchain: devkitPPC 16.1.0, libogc at `/opt/devkitpro/libogc`; Dolphin binary `/home/tim/.local/xash3d-gc-baseline/3rdparty/dolphin/build/Binaries/dolphin-emu`.
 - Physics caps: 256 physents / 32 moveents, matching the staged MOHAA game DLL.
 
