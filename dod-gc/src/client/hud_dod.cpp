@@ -43,7 +43,13 @@ void CHudDod::InitState( void )
 	/* A `set cl_dodhud 0` from a config that ran before the HUD came up must survive: reuse the cvar when it exists. */
 	m_pCvar = gEngfuncs.pfnGetCvarPointer( "cl_dodhud" );
 	if( !m_pCvar )
-		m_pCvar = gEngfuncs.pfnRegisterVariable( "cl_dodhud", "1", FCVAR_ARCHIVE );
+	{
+		/* MOHAA shares this client DLL but must use its own HUD path. Default
+		 * the DoD retail overlay on only for the DoD game directory; an explicit
+		 * cl_dodhud value in a user config still takes precedence above. */
+		const char *default_value = HUD_IsGame( "dod" ) ? "1" : "0";
+		m_pCvar = gEngfuncs.pfnRegisterVariable( "cl_dodhud", default_value, FCVAR_ARCHIVE );
+	}
 	/* The engine's lean/probe route (CapFaces, vid_gamecube.c) paints its own TEAM / HP / AMMO bars; it checks this flag so it
 	 * does not draw a second ammo readout over the retail one. */
 	if( !gEngfuncs.pfnGetCvarPointer( "gc_hud_retail" ))
