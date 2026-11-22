@@ -15,8 +15,9 @@ playsound/loopsound, and writes <out>/maps/<map>.snd:
     door_open mohaa/mechanics/door_01.wav 0.80 160 auto
     door_open mohaa/mechanics/door_02.wav 0.80 160 auto     <- variants: the game picks one at random
 
-An alias with no exact definition resolves to its numbered variants (door_open1, door_open2...),
-the way MOHAA does. Samples move under sound/mohaa/ so they cannot clash with DoD's own.
+MOHAA looks up aliases by prefix: an exact alias and its non-underscore suffix variants
+(door_open1, door_open2...) are all candidates, while an underscore suffix starts a separate
+family. Samples move under sound/mohaa/ so they cannot clash with DoD's own.
 
 --wav also writes the referenced samples to <out>/sound/mohaa/..., as GoldSrc-friendly 16-bit
 mono PCM at 22050 Hz or less, from 8/16-bit PCM or IMA ADPCM WAVs and MP3s decoded by ffmpeg.
@@ -144,10 +145,11 @@ def resolve(aliases, name):
 
 
 def _alias_rows(aliases, name):
-    if name in aliases:
-        return aliases[name]
-    variants = sorted(k for k in aliases if k.startswith(name) and k[len(name):].isdigit())
-    return [row for key in variants for row in aliases[key]]
+    # Match Alias_ListFindRandom: every name sharing this prefix participates unless the
+    # next character is '_'. This includes both the exact alias and suffix variants.
+    keys = (key for key in sorted(aliases)
+            if key.startswith(name) and (len(key) == len(name) or key[len(name)] != "_"))
+    return [row for key in keys for row in aliases[key]]
 
 
 def intentionally_silent(aliases, name):
