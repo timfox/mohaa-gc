@@ -32,3 +32,25 @@ The remaining source gaps are:
 
 No local copy of these files was found in the retail tree or `/mnt/datasets/mohaa-gc-run`.
 The m5l1b cue remains an unresolved campaign audio gap; no replacement audio was synthesized.
+
+## Isolated GameCube build probe
+
+On 2026-11-22, the staged m1l1 gameplay data was copied to
+`/tmp/mohaa-audio-runtime-20261122-0945/mohaa`, then the four converted m1l1 WAVs above were
+added to that temporary copy. The retail SD stage and ISO caches were not changed. A current
+MOHAA DOL and 138 MB intro-only test ISO were built under that temporary directory using the
+MOHAA source checkout, Xash3D-GC revision `bb5b942577`, the DoD GameCube build scripts, and the
+HLSDK integration checkout. The ISO was assembled as a test disc, not a release image.
+
+- DOL SHA-256: `e507c3f1c2377ec06dc2edbe53cb0bcb885fa2d991392f08b533fa4e032766c1`
+- ISO SHA-256: `0173c74c989186f3c750f7ac88f58058a8440d8ecc0e7eecf2d917482ab4fa75`
+- The ISO staging cache contains all four WAVs under `sound/mohaa/music/`.
+- Dolphin could not provide runtime evidence in this environment. Direct and Xvfb launches
+  could not connect to X11; an offscreen launch opened the emulator UI but produced no guest
+  window or OSReport. PulseAudio capture was denied by the sandbox. Music playback therefore
+  remains unverified; the build and disc content are verified only.
+
+The first build retry also found that the temporary mainui checkout lacked its tracked `miniutl`
+source directory. That directory was copied into the isolated build tree, after which the DOL
+build succeeded. No submodule initialization was run, and the original `MultiEmulator` symlink was
+left untouched.
