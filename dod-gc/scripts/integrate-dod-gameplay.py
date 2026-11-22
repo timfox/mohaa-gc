@@ -931,7 +931,8 @@ def main() -> int:
 			'\tif( !EngFuncs::CreateMapsList( true ) || (afile = (char *)EngFuncs::COM_LoadFile( "maps.lst", NULL )) == NULL )\n',
 			'\t/* The disc staging step writes the exact DoD map list. Re-scanning BSPs\n'
 			'\t * on every Create Game open needlessly parses multi-megabyte lumps on GX. */\n'
-			'\tconst bool dodMaps = !stricmp( gMenu.m_gameinfo.gamefolder, "dod" );\n'
+			'\tconst bool dodMaps = !stricmp( gMenu.m_gameinfo.gamefolder, "dod" )\n'
+			'\t\t|| !stricmp( gMenu.m_gameinfo.gamefolder, "mohaa" ); /* mohaa-gc: mohaa over dod */\n'
 			'\tif(( !dodMaps && !EngFuncs::CreateMapsList( true ) )\n'
 			'\t\t|| (afile = (char *)EngFuncs::COM_LoadFile( "maps.lst", NULL )) == NULL )\n',
 		)
@@ -1076,7 +1077,7 @@ def main() -> int:
 		dlls / "gamerules.cpp",
 		'\t\t\tg_teamplay = 1;\n\t\t\treturn new CHalfLifeTeamplay;\n',
 		'\t\t\tg_teamplay = 1;\n'
-		'\t\t\tif( !stricmp( gameleaf, "dod" ) )\n'
+		'\t\t\tif( !stricmp( gameleaf, "dod" ) || !stricmp( gameleaf, "mohaa" ) )\n'
 		'\t\t\t\treturn new CHalfLifeDoD;\n'
 		'\t\t\treturn new CHalfLifeTeamplay;\n',
 	)
@@ -1087,7 +1088,7 @@ def main() -> int:
 	replace_once(
 		dlls / "gamerules.cpp",
 		'\tif( !gpGlobals->deathmatch )\n\t{\n\t\t// generic half-life\n',
-		'\tif( !stricmp( gameleaf, "dod" ) && gpGlobals->deathmatch )\n\t{\n\t\tCVAR_SET_FLOAT( "mp_teamplay", 1 );\n'
+		'\tif(( !stricmp( gameleaf, "dod" ) || !stricmp( gameleaf, "mohaa" )) && gpGlobals->deathmatch )\n\t{\n\t\tCVAR_SET_FLOAT( "mp_teamplay", 1 );\n'
 		'\t\tCVAR_SET_STRING( "mp_teamlist", "Allies;Axis" );\n\t}\n'
 		'\tif( !gpGlobals->deathmatch )\n\t{\n\t\t// generic half-life\n',
 	)

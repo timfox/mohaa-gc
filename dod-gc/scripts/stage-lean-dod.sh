@@ -620,7 +620,7 @@ cp -f "$SRC/autoexec.cfg" "$LEAN/" 2>/dev/null || printf '\n' > "$LEAN/autoexec.
 
 # Boot intro: MOHAA's own cinematic, read from the player's SD card. The disc carries no movie,
 # only this playlist; tools/mohaa_sd.py (movie stage) writes sd:/xash3d/mohaa/media/mohaa_intro.gcvid
-# + .gcpcm from the player's MOHAA, and the engine (built with --gc-overlay=mohaa) finds them over dod. With no movie on the
+# + .gcpcm from the player's MOHAA, and the mohaa game (mohaagc.dol) reads them from the card. With no movie on the
 # card the engine skips the entry and opens the menu; A, B or Start skips it while it plays.
 # valve.avi is no longer staged: the disc builder replaces the playlist with sierra/valve whenever it
 # finds them. DODGC_STARTUP_VIDS overrides the list (space-separated, e.g. "media/valve.avi" plus
