@@ -1,0 +1,10 @@
+GameCube build inputs: `DEVKITPRO=/opt/devkitpro`, `XASH_GC_PM_MAX_PHYSENTS=256`, `XASH_GC_PM_MAX_MOVEENTS=32`, HLSDK MOHAA server/client archives rebuilt from the current DoD integration source, all output isolated under `/tmp/mohaa-friendly/`.
+
+ISO route:
+  bash scripts/build-lean-iso.sh --skip-stage --intro-only --skip-startup-vids --listen m1l2a --full-map --world-render --dumpeye '5349 -3867 95 0 180'
+
+Dolphin probe:
+  bash scripts/probe-playtest.sh --route mohaa-m1l2a-adaptive-scratch --duration 25 --skip-video --ready-regex 'MAP_READY m1l2a|newgame world render ready|WorldDL dumpeye aim'
+
+DOL SHA-256: 40b51fa7b9bf81a1a1f44802acb9860e6fd35608fe3751fcb7e602920c230943
+ISO SHA-256: 11043f16c1539382bcb4a81c6555acce79ea668df624dcd48e68a04fa8ed6d8a
