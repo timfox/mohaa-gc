@@ -173,6 +173,21 @@ BUILD_DATA="$XASH3D_GC_ISO_CACHE/dod"
 BUILD_VALVE="$XASH3D_GC_ISO_CACHE/valve"
 mkdir -p "$BUILD_DATA"
 rsync -a --delete "$DODGC_CONTENT_DOD/" "$BUILD_DATA/"
+# Extra content laid over the DoD tree (colon-separated dirs, later ones win), such as MOHAA music built by
+# mohaa-gc tools/music.py (music/*.mood, sound/mohaa/music/*.wav). Converted retail data stays outside the
+# repo and outside the Steam install; this only copies it into the disc's staging cache.
+if [[ -n "${DODGC_CONTENT_EXTRA:-}" ]]; then
+	IFS=':' read -r -a _extra <<< "$DODGC_CONTENT_EXTRA"
+	for _dir in "${_extra[@]}"; do
+		[[ -z "$_dir" ]] && continue
+		if [[ ! -d "$_dir" ]]; then
+			echo "error: DODGC_CONTENT_EXTRA dir missing: $_dir" >&2
+			exit 1
+		fi
+		rsync -a "$_dir/" "$BUILD_DATA/"
+		echo "==> [dod-gc] overlaid $_dir"
+	done
+fi
 cat > "$BUILD_DATA/game.cfg" <<'EOF'
 mp_teamplay 1
 mp_teamlist "Allies;Axis"
