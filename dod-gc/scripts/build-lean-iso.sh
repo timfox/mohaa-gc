@@ -134,14 +134,17 @@ done
 
 # Keep discs without a staged map lightweight; map-bearing play builds render
 # CapFaces by default so Create Game can use its packed BSP path and lean mode.
-if [[ -z "$MAP" && "$WORLD_RENDER_EXPLICIT" -eq 0 ]]; then
+# MOHAA's maps are never on the disc (they come from the player's SD card), so a mohaa disc keeps
+# the world render without a staged map: without gcworldrender a map loaded from the menu reaches
+# signon but never draws ("newgame world screen alloc failed", grey screen).
+if [[ -z "$MAP" && "$WORLD_RENDER_EXPLICIT" -eq 0 && "${DODGC_GAME:-}" != mohaa ]]; then
 	WORLD_RENDER=0
 fi
 if (( DUMPFRAMES )) && [[ -z "$SMOKE" && -z "$LISTEN" && -z "$CONNECT" ]]; then
 	echo "error: --dumpframes requires --smoke, --listen, or --connect" >&2
 	exit 2
 fi
-if (( WORLD_RENDER )) && [[ -z "$MAP" ]]; then
+if (( WORLD_RENDER )) && [[ -z "$MAP" && "${DODGC_GAME:-}" != mohaa ]]; then
 	echo "error: --world-render needs a staged map (--map, --smoke, or --listen)" >&2
 	exit 2
 fi

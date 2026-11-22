@@ -7,6 +7,7 @@
 #include "gamerules.h"
 #include "teamplay_gamerules.h"
 #include "dod_runtime.h"
+#include "dod_mohaa.h"
 #include "usercmd.h"
 #include "client.h"
 #include "dod_hud.h"
@@ -99,6 +100,7 @@ static float g_spec_next_think;
  * observer flags reset) undid a join made there, and bots are not yet marked as
  * bots at that point. */
 static BOOL g_spec_join_pending[DOD_MAX_PLAYERS + 1];
+static float g_mission_join_seen[DOD_MAX_PLAYERS + 1];	/* when a MOHAA mission's human was first seen holding to join */
 static int gmsgDodHud;
 static int gmsgDodBoard;
 static int gmsgDodVoice;
@@ -373,6 +375,16 @@ static void DodGC_JoinSpectator( CBasePlayer *pPlayer )
 
 static void DodGC_ShowTeamMenu( CBasePlayer *pPlayer );
 
+/* A MOHAA mission (maps/<map>.scr running): retail single player has no side or class menu, the
+ * player is an American soldier and the level script hands out the weapons. */
+static BOOL DodGC_MohaaMission( void )
+{
+	DodMohaaStats stats;
+	memset( &stats, 0, sizeof( stats ) );
+	Dod_MohaaGetStats( &stats );
+	return stats.active ? TRUE : FALSE;
+}
+
 /* A human who has not joined yet waits at the side menu as an observer instead of being dropped
  * onto a team with a default kit. */
 static void DodGC_HoldForJoin( CBasePlayer *pPlayer )
@@ -381,6 +393,11 @@ static void DodGC_HoldForJoin( CBasePlayer *pPlayer )
 	DodGC_EnterObserver( pPlayer, FALSE );
 	if( index >= 1 && index <= DOD_MAX_PLAYERS )
 		g_dod_pending_team[index] = 0;
+	if( DodGC_MohaaMission() ) {
+		/* joined as an Allied rifleman by the spectator think on its next pass, with no menu */
+		ALERT( at_console, "DoD join: %s joins the MOHAA mission as an Allied soldier\n", STRING( pPlayer->pev->netname ) );
+		return;
+	}
 	DodGC_ShowTeamMenu( pPlayer );
 	ALERT( at_console, "DoD join: %s waits at the side menu\n", STRING( pPlayer->pev->netname ) );
 }
@@ -632,6 +649,7 @@ CHalfLifeDoD::CHalfLifeDoD()
 	memset( g_spec_last_target, 0, sizeof( g_spec_last_target ) );
 	g_spec_next_think = 0.0f;
 	memset( g_spec_join_pending, 0, sizeof( g_spec_join_pending ) );
+	memset( g_mission_join_seen, 0, sizeof( g_mission_join_seen ) );
 	memset( g_autojoin_seen, 0, sizeof( g_autojoin_seen ) );
 	memset( g_autotele_seen, 0, sizeof( g_autotele_seen ) );
 	memset( g_autotele_done, 0, sizeof( g_autotele_done ) );
@@ -1051,6 +1069,8 @@ void CHalfLifeDoD::InitHUD( CBasePlayer *pPlayer )
 			g_spec_join_pending[index] = TRUE;
 		return;
 	}
+	if( DodGC_MohaaMission() )
+		return;	/* no side menu in a MOHAA mission (DodGC_HoldForJoin) */
 	DodGC_ShowTeamMenu( pPlayer );
 }
 
@@ -1531,6 +1551,19 @@ static void DodGC_SpectatorThink( void )
 		}
 		if( !pSpec || !pSpec->IsPlayer() || !pSpec->IsObserver() || DodBots_IsBot( pSpec ) )
 			continue;
+		/* a MOHAA mission joins the human as an Allied soldier, a second after the observer hold (as dod_gc_autojoin
+		 * waits: a join made too early was undone by the observer reset) */
+		if( i <= DOD_MAX_PLAYERS && !g_join_done[i] && !CVAR_GET_STRING( "dod_gc_join" )[0] && DodGC_MohaaMission() ) {
+			if( g_mission_join_seen[i] == 0.0f )
+				g_mission_join_seen[i] = gpGlobals->time;
+			else if( gpGlobals->time - g_mission_join_seen[i] > 1.0f ) {
+				g_join_done[i] = TRUE;
+				g_mission_join_seen[i] = 0.0f;
+				ALERT( at_console, "DoD join: the human joins the MOHAA mission (Allies, rifleman)\n" );
+				DodGC_HumanJoin( pSpec, DOD_TEAM_ALLIES, DOD_CLASS_RIFLEMAN );
+			}
+			continue;
+		}
 		if( i <= DOD_MAX_PLAYERS && !g_join_done[i] && CVAR_GET_STRING( "dod_gc_join" )[0] ) {
 			float delay = 0.0f;
 			int team = 0, cls = 0;
