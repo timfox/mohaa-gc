@@ -141,7 +141,7 @@ if (( ! ISO_ONLY )); then
 	# Build DOL only inside the engine tree; disc packaging happens here with dodgc.iso.
 	XASH3D_GC_SKIP_DISC_BUILD=1 \
 	HLSDK_GAMECUBE_GAMEDIR=dod \
-		bash scripts/build-gamecube.sh --game-profile=dod
+		bash scripts/build-gamecube.sh --game-profile=dod --gc-overlay=mohaa
 
 	if [[ ! -f "$ENGINE_DOL" ]]; then
 		echo "error: expected $ENGINE_DOL after build" >&2

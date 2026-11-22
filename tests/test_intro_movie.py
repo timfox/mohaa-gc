@@ -95,9 +95,9 @@ class IntroMovieTest(unittest.TestCase):
         make_movie(os.path.join(video, "intro.RoQ"))
         make_movie(os.path.join(video, "EAlogo.RoQ"), seconds=1)
         sd = os.path.join(self.tmp, "sd")
-        game_root = os.path.join(sd, "xash3d", "dod")
+        game_root = os.path.join(sd, "xash3d", "mohaa")
         written = intro_movie.convert_intro([os.path.join(self.tmp, "install")], game_root, log=lambda *_: None)
-        media = os.path.join(sd, "xash3d", "dod", "media")
+        media = os.path.join(sd, "xash3d", "mohaa", "media")
         self.assertEqual(written, [os.path.join(media, "mohaa_intro.gcvid"), os.path.join(media, "mohaa_intro.gcpcm")])
 
         (w, h, fps_num, fps_den, count, flags), frames = decode_gcvid(written[0])
@@ -137,10 +137,10 @@ class IntroMovieTest(unittest.TestCase):
         self.assertEqual(mohaa_sd.CD_GROUPS["Video Files"], "video")
         out = io.StringIO()
         with redirect_stdout(out):
-            rc = mohaa_sd.main(["--mohaa", game, "--sd", sd, "--stages", "movie", "--list"])
+            rc = mohaa_sd.main(["--mohaa", game, "--sd", sd, "--gamedir", "mohaa", "--stages", "movie", "--list"])
         self.assertEqual(rc, 0, out.getvalue())
-        self.assertIn("xash3d/dod/media/mohaa_intro.gcvid", out.getvalue())
-        self.assertIn("xash3d/dod/media/mohaa_intro.gcpcm", out.getvalue())
+        self.assertIn("xash3d/mohaa/media/mohaa_intro.gcvid", out.getvalue())
+        self.assertIn("xash3d/mohaa/media/mohaa_intro.gcpcm", out.getvalue())
 
     def test_exact_mode_is_lossless_and_static_frames_cost_nothing(self):
         src = os.path.join(self.tmp, "still.avi")

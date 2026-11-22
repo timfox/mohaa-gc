@@ -38,7 +38,7 @@ echo "==> link dodgc.dol (XASH_GAMEDIR=dod, HL1SDK code)"
 cd "$DODGC_ENGINE"
 XASH3D_GC_SKIP_DISC_BUILD=1 \
 HLSDK_GAMECUBE_GAMEDIR=dod \
-	bash scripts/build-gamecube.sh --game-profile=dod
+	bash scripts/build-gamecube.sh --game-profile=dod --gc-overlay=mohaa
 
 [[ -f "$ENGINE_DOL" ]] || { echo "error: missing $ENGINE_DOL" >&2; exit 1; }
 cp -f "$ENGINE_DOL" "$DODGC_DOL"

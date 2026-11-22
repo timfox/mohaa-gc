@@ -24,3 +24,7 @@ MOHAA changes since the fork:
   - Music: `soundtrack`, `forcemusic`, and `stufftext` with the tm* commands.
   - `isalive`, `getcvar`, `fadeout`, `fadein`.
   - Path nodes named like entities.
+- Boot intro: the disc only names `media/mohaa_intro.avi` in `StartupVids.txt` (no movie, no
+  valve.avi). The DOL is linked with `--gc-overlay=mohaa` (xash3d-gc), so `sd:/xash3d/mohaa/` is
+  searched over `dod/`; the converter's movie stage writes the player's intro there. A, B or Start
+  skips it; with no movie on the card the menu opens straight away.

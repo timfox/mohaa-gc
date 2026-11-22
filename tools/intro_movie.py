@@ -7,11 +7,11 @@
 No MOHAA data ships with DoD-GC. The player points this at their own install (or a folder they
 unpacked from their CDs, or a single movie file) and it writes, under the SD card root:
 
-    xash3d/dod/media/mohaa_intro.gcvid   video: 320x160 RGB565, 8x8-tile delta frames (engine "GCV2")
-    xash3d/dod/media/mohaa_intro.gcpcm   audio: 48 kHz stereo signed 16-bit big-endian ("GCPA")
+    xash3d/mohaa/media/mohaa_intro.gcvid   video: 320x160 RGB565, 8x8-tile delta frames (engine "GCV2")
+    xash3d/mohaa/media/mohaa_intro.gcpcm   audio: 48 kHz stereo signed 16-bit big-endian ("GCPA")
 
 The disc only carries media/StartupVids.txt naming media/mohaa_intro.avi. The engine finds the
-.gcvid/.gcpcm companions through its file system, where sd:/xash3d/<game>/ is searched on top of
+.gcvid/.gcpcm companions through its file system, where sd:/xash3d/mohaa/ (a mod folder over dod) is searched on top of
 the disc, and streams them from the card. A missing movie is skipped and the menu comes up. A, B or
 Start skips the movie on the pad (xash3d-gc in_keys.c).
 
@@ -47,7 +47,7 @@ MOVIE_EXTS = (".roq", ".bik", ".avi", ".mpg", ".mpeg", ".smk", ".cin", ".ogv", "
 PREFERRED = ("video/intro.roq",)
 NOT_INTRO = ("logo", "2015", "sizzle", "credits")
 
-GAMEDIR = "dod"
+GAMEDIR = "mohaa"
 MEDIA_NAME = "mohaa_intro"
 
 GCVID_MAGIC = b"GCV2"
@@ -278,7 +278,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("inputs", nargs="+", help="MOHAA install or main/ folder, pk3 files, or the movie file")
     ap.add_argument("--sd", required=True, help="SD card root (or a staging folder laid out like one)")
-    ap.add_argument("--game", default=GAMEDIR, help="engine game folder on the card (default dod)")
+    ap.add_argument("--game", default=GAMEDIR, help="game folder on the card (default mohaa)")
     ap.add_argument("--size", default="320", help="frame width, or WIDTHxHEIGHT; multiples of 8, at most 320x240 (default 320 wide, height from the movie's shape)")
     ap.add_argument("--fps", type=int, default=15)
     ap.add_argument("--exact", action="store_true", help="re-send every tile that changes at all (bigger)")

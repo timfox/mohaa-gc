@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
-"""Make a DoD-GC SD card from your own copy of Medal of Honor: Allied Assault.
+"""Make the SD card for MOHAA on GameCube from your own copy of Medal of Honor: Allied Assault.
 
     python3 tools/mohaa_sd.py --mohaa "C:/Games/EA GAMES/MOHAA" --sd /media/SDCARD
     python3 tools/mohaa_sd.py --cd /mnt/cd1 /mnt/cd2 --sd /media/SDCARD --maps m1l1,m5l2b
     python3 tools/mohaa_sd.py --mohaa ~/MOHAA --sd ./sdcard --stages music --list
+    python3 tools/mohaa_sd.py --mohaa ~/MOHAA --sd ./sdcard --maps m1l1 --sdhlt ~/SDHLT/tools --xash3d-gc ~/xash3d-gc
 
-The release disc holds no game data. Everything MOHAA brings (music, sounds, scripts, and later maps, props,
-collision and the intro movie) is converted here from files you own and written under
+The release disc holds no game data. Everything MOHAA brings (music, sounds, scripts, maps, collision, props
+and terrain; the intro movie is still to come) is converted here from files you own and written under
 
-    <sd>/xash3d/<gamedir>/          (gamedir: dod)
+    <sd>/xash3d/<gamedir>/          (gamedir: mohaa)
 
+with its own gameinfo.txt and liblist.gam (falling back to dod/ for what MOHAA does not bring),
 which the GameCube engine reads at runtime: sd:/ (SD2SP2) or carda:/ cardb:/ (SD Gecko), on top of the disc.
 
 Sources (give one or both):
@@ -19,12 +21,20 @@ Sources (give one or both):
                 list both CDs). Needs the `unshield` program; the cabinets are unpacked to a work folder once
                 and reused.
 
-Stages (--stages, default all that are ready): see STAGES below. Each is a function
+Stages run in this order (--stages picks some; by default every one whose tools are found):
+  music     soundtracks and tracks                         needs ffmpeg
+  sounds    per-map sound tables and samples
+  scripts   level scripts and the global/ libraries
+  maps      maps/<map>.bsp (+ .mcol collision, .nodes)     needs SDHLT: --sdhlt DIR (third_party/sdhlt-bsp30ext)
+  worlddl   media/wd_<map>.gcd GameCube world bake         needs --xash3d-gc DIR (a checkout of xash3d-gc)
+  props     media/gp_<map>.gcp static props and terrain    needs --xash3d-gc DIR
+worlddl and props bake the maps the maps stage compiled (they keep its work folder). Each stage is a function
     stage(sources, game_root, maps, work) -> list of written paths
 where sources are MOHAA main folders or pk3 files, game_root is <sd>/xash3d/<gamedir>, maps the map names
 ("" = every map the stage knows), and work a scratch folder kept between runs.
 
-Needs Python 3.8+ and ffmpeg (for audio). Nothing it writes may be shared: it is your game's data.
+Needs Python 3.8+, ffmpeg (audio), and for the map stages SDHLT and an xash3d-gc checkout.
+Nothing it writes may be shared: it is your game's data.
 """
 import argparse
 import os
@@ -162,23 +172,231 @@ def stage_sounds(sources, game_root, maps, work):
 def stage_scripts(sources, game_root, maps, work):
     """The level scripts and the global/ libraries they use."""
     import stage_scripts as ss
+    maps = maps or sorted(map_sources(sources))
     if not maps:
-        return []   # stage_scripts needs names; with none given the maps stage decides (not ready yet)
+        return []
     before = _snapshot(game_root)
     if ss.main(list(sources) + ["--out", game_root, "--maps", ",".join(maps)]):
         raise SystemExit("scripts stage failed")
     return _written(game_root, before)
 
 
-# name -> (function, ready). Stages still to come plug in here with the same signature: maps (bsp19_to_map +
-# SDHLT), collision (.mcol), props (props_models --bsp, then xash3d-gc's bake_props_goldsrc.py), movie
-# (tools/intro_movie.py stage_intro).
+# Tools the map stages run that are not Python in this repo. main() fills these from --sdhlt and --xash3d-gc.
+CONFIG = {"sdhlt": None, "xash3d_gc": None, "fast_vis": False}
+SDHLT = ("sdHLCSG", "sdHLBSP", "sdHLVIS")
+
+
+def sdhlt_tool(name):
+    """Path of an SDHLT program (from --sdhlt, else PATH), or None."""
+    return shutil.which(name, path=CONFIG["sdhlt"]) if CONFIG["sdhlt"] else shutil.which(name)
+
+
+def engine_script(name):
+    """Path of an xash3d-gc script (from --xash3d-gc), or None."""
+    root = CONFIG["xash3d_gc"]
+    path = os.path.join(root, "scripts", name) if root else None
+    return path if path and os.path.isfile(path) else None
+
+
+def map_flags(path=os.path.join(HERE, "map_flags.txt")):
+    """{map: [bsp19_to_map flags]} from tools/map_flags.txt (the GameCube fit for each retail map)."""
+    flags = {}
+    if os.path.isfile(path):
+        for line in open(path):
+            words = line.split("#", 1)[0].split()
+            if words:
+                flags[words[0].lower()] = words[1:]
+    return flags
+
+
+def map_sources(sources):
+    """{map name: the MOHAA .bsp's game entry} across the sources (later ones win)."""
+    from ubersound import collect
+    found = {}
+    for path, entry in collect(sources, (".bsp",)).items():
+        if path.startswith("maps/") and path.count("/") == 1:
+            found[path[5:-4]] = entry
+    return found
+
+
+def _map_names(sources, maps):
+    known = map_sources(sources)
+    names = maps or sorted(known)
+    missing = [m for m in names if m not in known]
+    if missing:
+        raise SystemExit("no maps/%s.bsp in the sources" % ".bsp, maps/".join(missing))
+    return known, names
+
+
+def _run(cmd, cwd, log):
+    """Run one compile tool, keeping its output in log; a failure ends the stage with the log's tail."""
+    with open(log, "a") as fh:
+        fh.write("$ %s\n" % " ".join(cmd))
+        fh.flush()
+        r = subprocess.run(cmd, cwd=cwd, stdout=fh, stderr=subprocess.STDOUT)
+    if r.returncode:
+        tail = open(log, errors="replace").read().splitlines()[-8:]
+        raise SystemExit("%s failed (exit %d), see %s:\n      %s" % (os.path.basename(cmd[0]), r.returncode, log,
+                                                                   "\n      ".join(tail)))
+
+
+def _quiet(fn, argv, log):
+    """Call a tool's main(argv) with its prints sent to log; nonzero is a failure."""
+    import contextlib
+    with open(log, "a") as fh, contextlib.redirect_stdout(fh):
+        fh.write("$ %s %s\n" % (fn.__module__, " ".join(argv)))
+        rc = fn(argv)
+    if rc:
+        raise SystemExit("%s failed, see %s" % (fn.__module__, log))
+
+
+def stage_maps(sources, game_root, maps, work):
+    """Each map compiled for the GameCube: maps/<map>.bsp lit with MOHAA's own light, plus its .mcol collision
+    and .nodes path nodes. Needs SDHLT (third_party/sdhlt-bsp30ext/build.sh builds the patched one)."""
+    import bsp19_lightmaps
+    import bsp19_to_map
+    from ubersound import read
+    known, names = _map_names(sources, maps)
+    tools = [sdhlt_tool(t) for t in SDHLT]
+    if not all(tools):
+        raise SystemExit("needs SDHLT (%s): build it with third_party/sdhlt-bsp30ext/build.sh and pass --sdhlt "
+                         "<dir>/SDHLT/tools" % ", ".join(SDHLT))
+    csg, bsp, vis = tools
+    flags = map_flags()
+    out_maps = os.path.join(game_root, "maps")
+    os.makedirs(out_maps, exist_ok=True)
+    written = []
+    for m in names:
+        d = os.path.join(work, "maps", m)
+        os.makedirs(d, exist_ok=True)
+        log = os.path.join(d, "compile.log")
+        open(log, "w").close()
+        src = os.path.join(d, m + "_mohaa.bsp")   # the retail map, kept for the props stage
+        with open(src, "wb") as fh:
+            fh.write(read(known[m]))
+        print("   %s: converting" % m)
+        _quiet(bsp19_to_map.main, [src, "-o", os.path.join(d, m + ".map"), "--wad", os.path.join(d, m + ".wad")]
+               + flags.get(m, []) + [a for s in sources for a in ("--scripts", s)], log)
+        print("   %s: compiling (SDHLT)" % m)
+        # the textures go inside the BSP, so nothing on the card points back at this work folder
+        _run([csg, "-wadinclude", m + ".wad", m], d, log)
+        _run([bsp, "-hull2alias", m], d, log)
+        _run([vis] + (["-fast"] if CONFIG["fast_vis"] else []) + [m], d, log)
+        print("   %s: lighting" % m)
+        dest = os.path.join(out_maps, m + ".bsp")
+        _quiet(bsp19_lightmaps.main, [src, os.path.join(d, m + ".bsp"), "-o", dest], log)
+        written.append(dest)
+        for ext in (".mcol", ".nodes"):
+            side = os.path.join(d, m + ext)
+            if os.path.isfile(side):
+                shutil.copy(side, os.path.join(out_maps, m + ext))
+                written.append(os.path.join(out_maps, m + ext))
+    return written
+
+
+def _compiled(game_root, work, maps, need):
+    """The maps the maps stage has compiled (and that have work file `need`), limited to maps if given."""
+    root = os.path.join(work, "maps")
+    have = sorted(m for m in (os.listdir(root) if os.path.isdir(root) else [])
+                  if os.path.isfile(os.path.join(game_root, "maps", m + ".bsp"))
+                  and (not need or os.path.isfile(os.path.join(root, m, m + need))))
+    return [m for m in have if not maps or m in maps]
+
+
+def stage_worlddl(sources, game_root, maps, work):
+    """The GameCube world bake of each compiled map (media/wd_<map>.gcd, _lf.gcd), with xash3d-gc's baker."""
+    script = engine_script("bake_worlddl_goldsrc.py")
+    if not script:
+        raise SystemExit("needs --xash3d-gc <checkout> (scripts/bake_worlddl_goldsrc.py)")
+    media = os.path.join(game_root, "media")
+    os.makedirs(media, exist_ok=True)
+    written = []
+    for m in _compiled(game_root, work, maps, None):
+        out = os.path.join(media, "wd_%s.gcd" % m)
+        _run([sys.executable, script, "--map", os.path.join(game_root, "maps", m + ".bsp"), "--out", out],
+             media, os.path.join(work, "maps", m, "bake.log"))
+        written += [p for p in (out, out[:-4] + "_lf.gcd", out[:-4] + "_sb.gcd") if os.path.isfile(p)]
+    return written
+
+
+def stage_props(sources, game_root, maps, work):
+    """Each compiled map's static props, terrain and curved surfaces (media/gp_<map>.gcp, pt_<map>.gct):
+    props_models.py packs them from your paks, then xash3d-gc's baker lights them from the compiled map."""
+    import props_models
+    script = engine_script("bake_props_goldsrc.py")
+    if not script:
+        raise SystemExit("needs --xash3d-gc <checkout> (scripts/bake_props_goldsrc.py)")
+    media = os.path.join(game_root, "media")
+    os.makedirs(media, exist_ok=True)
+    written = []
+    for m in _compiled(game_root, work, maps, ".props"):
+        d = os.path.join(work, "maps", m)
+        log = os.path.join(d, "props.log")
+        open(log, "w").close()
+        mprop = os.path.join(d, m + ".mprop")
+        try:
+            _quiet(props_models.main, list(sources) + [os.path.join(d, m + ".props"), "-o", mprop,
+                                                       "--bsp", os.path.join(d, m + "_mohaa.bsp")], log)
+        except SystemExit:
+            if not os.path.isfile(mprop):
+                raise
+            print("   %s: some prop models or textures are missing (see %s)" % (m, log))
+        _run([sys.executable, script, "--map", os.path.join(game_root, "maps", m + ".bsp"), "--mprop", mprop,
+              "--out", media], media, log)
+        written += [p for p in (os.path.join(media, "gp_%s.gcp" % m), os.path.join(media, "pt_%s.gct" % m))
+                    if os.path.isfile(p)]
+    return written
+
+
+# name -> function, in the order they run (maps before the bakes that read the compiled map). movie is
+# tools/intro_movie.py: media/mohaa_intro.gcvid + .gcpcm, which the boot playlist plays and A/B/Start skips.
 STAGES = {
     "music": stage_music,
     "sounds": stage_sounds,
     "scripts": stage_scripts,
+    "maps": stage_maps,
+    "worlddl": stage_worlddl,
+    "props": stage_props,
     "movie": stage_intro,
 }
+
+
+def missing_tools(stage):
+    """Why a stage can't run here (a tool it needs is missing), or None."""
+    if stage in ("music", "movie") and not shutil.which("ffmpeg"):
+        return "needs ffmpeg"
+    if stage == "maps" and not all(sdhlt_tool(t) for t in SDHLT):
+        return "needs SDHLT (--sdhlt)"
+    if stage in ("worlddl", "props") and not CONFIG["xash3d_gc"]:
+        return "needs --xash3d-gc"
+    return None
+
+
+TITLE = "Medal of Honor: Allied Assault"
+MARK = "written by mohaa-gc tools/mohaa_sd.py"
+
+
+def write_gameinfo(game_root, gamedir, fallback="dod"):
+    """The game folder's gameinfo.txt and liblist.gam: our own text, not game data. The game runs DoD-GC's game
+    code with this folder on top of dod/ (fallback_dir), so whatever MOHAA does not bring comes from DoD.
+    A file someone else wrote is left alone."""
+    files = {
+        "gameinfo.txt": ("// MOHAA on GameCube, %s\n" % MARK
+                         + "basedir\t\t\"valve\"\ngamedir\t\t\"%s\"\nfallback_dir\t\"%s\"\n" % (gamedir, fallback)
+                         + "title\t\t\"%s\"\nstartmap\t\"m1l1\"\n" % TITLE),
+        "liblist.gam": ("// MOHAA on GameCube, %s\n" % MARK
+                        + "game \"%s\"\nfallback_dir \"%s\"\nstartmap \"m1l1\"\n" % (TITLE, fallback)),
+    }
+    written = []
+    for name, text in files.items():
+        path = os.path.join(game_root, name)
+        if os.path.isfile(path) and MARK not in open(path, errors="replace").read():
+            print("keeping %s (not ours)" % path)
+            continue
+        with open(path, "w", newline="\n") as fh:
+            fh.write(text)
+        written.append(path)
+    return written
 
 
 def main(argv=None):
@@ -186,18 +404,33 @@ def main(argv=None):
     ap.add_argument("--mohaa", help="installed MOHAA folder (holding main/)")
     ap.add_argument("--cd", nargs="+", help="install CD folders (holding DATA1.HDR / DATAn.CAB)")
     ap.add_argument("--sd", required=True, help="SD card root (or a folder to copy onto one later)")
-    ap.add_argument("--gamedir", default="dod", help="game folder under xash3d/ (default dod)")
+    ap.add_argument("--gamedir", default="mohaa", help="game folder under xash3d/ (default mohaa)")
     ap.add_argument("--maps", default="", help="comma-separated maps (default: all the stage knows)")
-    ap.add_argument("--stages", default=",".join(STAGES), help="comma-separated stages (default: %(default)s)")
+    ap.add_argument("--stages", help="comma-separated stages (default: every one whose tools are here; have: %s)"
+                    % ", ".join(STAGES))
+    ap.add_argument("--sdhlt", help="folder holding sdHLCSG, sdHLBSP, sdHLVIS (default: PATH)")
+    ap.add_argument("--xash3d-gc", dest="xash3d_gc", help="xash3d-gc checkout, for the GameCube bakes (worlddl, props)")
+    ap.add_argument("--fast-vis", action="store_true", help="sdHLVIS -fast (quicker compiles, more overdraw)")
     ap.add_argument("--work", help="scratch folder kept between runs (default <sd>/.mohaa-work)")
     ap.add_argument("--list", action="store_true", help="list every file written")
     a = ap.parse_args(argv)
     if not a.mohaa and not a.cd:
         ap.error("give --mohaa or --cd (or both)")
-    stages = [s.strip() for s in a.stages.split(",") if s.strip()]
-    for s in stages:
-        if s not in STAGES:
-            ap.error("unknown stage %r (have: %s)" % (s, ", ".join(STAGES)))
+    CONFIG.update(sdhlt=a.sdhlt, xash3d_gc=a.xash3d_gc, fast_vis=a.fast_vis)
+    if a.stages:
+        stages = [s.strip() for s in a.stages.split(",") if s.strip()]
+        for s in stages:
+            if s not in STAGES:
+                ap.error("unknown stage %r (have: %s)" % (s, ", ".join(STAGES)))
+        stages = [s for s in STAGES if s in stages]   # always in pipeline order
+    else:
+        stages = []
+        for s in STAGES:
+            why = missing_tools(s)
+            if why:
+                print("skipping %s: %s" % (s, why))
+            else:
+                stages.append(s)
     maps = [m.strip().lower() for m in a.maps.split(",") if m.strip()]
     work = a.work or os.path.join(a.sd, ".mohaa-work")
     os.makedirs(work, exist_ok=True)
@@ -214,6 +447,8 @@ def main(argv=None):
     os.makedirs(game_root, exist_ok=True)
     print("sources: %s" % ", ".join(sources))
     print("writing: %s" % game_root)
+    if a.gamedir.lower() != "dod":   # never over DoD's own folder
+        write_gameinfo(game_root, a.gamedir)
     total, failed = 0, []
     for s in stages:
         print("== %s" % s)
