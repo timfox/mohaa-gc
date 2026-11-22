@@ -38,7 +38,14 @@ TEX_SPECIAL = 1
 PLANE_DOT = 0.995  # normals this close are one plane
 PLANE_DIST = 2.0  # GoldSrc units
 NEAR = 24.0  # a luxel off every MOHAA triangle takes the nearest one this close
-FALLBACK = (150, 150, 150)
+# A face with no coplanar MOHAA surface (a GoldSrc face the conversion made up,
+# such as a clip hull cap or a terrain skirt) takes the nearest MOHAA surface
+# facing its way within this distance...
+WIDE = 96.0
+WIDE_DOT = 0.5
+# ...and failing that the map's average light, not a flat grey (a night map's
+# made-up faces glowed at 150 grey next to their dark neighbours).
+FALLBACK = (150, 150, 150)  # only when nothing in the map is lit
 BSP30_LUMPS = 15
 LUMP_LIGHTING = 8
 
@@ -146,6 +153,23 @@ class Mohaa:
 							out.append(t)
 		return out
 
+	def facing(self, n, p, radius) -> list:
+		"""Triangles facing within WIDE_DOT of n near p (any plane)."""
+		lo = [p[a] - radius for a in range(3)]
+		hi = [p[a] + radius for a in range(3)]
+		seen, out = set(), []
+		c0 = [math.floor(lo[a] / self.CELL) for a in range(3)]
+		c1 = [math.floor(hi[a] / self.CELL) for a in range(3)]
+		for x in range(c0[0], c1[0] + 1):
+			for y in range(c0[1], c1[1] + 1):
+				for z in range(c0[2], c1[2] + 1):
+					for ti in self.grid.get((x, y, z), ()):
+						if ti not in seen:
+							seen.add(ti)
+							if _dot(self.tris[ti][0], n) >= WIDE_DOT:
+								out.append(self.tris[ti])
+		return out
+
 	def sample(self, tri, p) -> tuple:
 		"""MOHAA light (0..255 floats, before the gain) at p on tri."""
 		_n, _d, (a, b, c), (la, lb, lc), page, rect = tri
@@ -220,6 +244,19 @@ def light_point(mohaa: Mohaa, cands: list, p):
 	return mohaa.sample(t, q)
 
 
+def light_wide(mohaa: Mohaa, cands: list, p, radius=WIDE):
+	"""The light of the closest point on any candidate triangle within radius."""
+	best, best_d = None, radius
+	for t in cands:
+		(u, v, w), _out = _clamp_tri(*_bary(*t[2], p))
+		a, b, c = t[2]
+		q = (a[0] * u + b[0] * v + c[0] * w, a[1] * u + b[1] * v + c[1] * w, a[2] * u + b[2] * v + c[2] * w)
+		d = math.dist(q, p)
+		if d <= best_d:
+			best, best_d = (t, q), d
+	return mohaa.sample(*best) if best else None
+
+
 def shift(rgb, gain):
 	"""Scale by the gain, keeping the hue when a channel passes 255 (as Q3)."""
 	r, g, b = (c * gain for c in rgb)
@@ -260,7 +297,9 @@ def relight(mohaa: Mohaa, data: bytes, gain: float = DEFAULT_GAIN):
 		texinfo.append((vecs[0:4], vecs[4:8], flags))
 	faces = bytearray(lump(7))
 	lighting = bytearray()
-	st = {"faces": 0, "lit": 0, "luxels": 0, "matched": 0, "near": 0, "fallback": 0}
+	st = {"faces": 0, "lit": 0, "luxels": 0, "matched": 0, "near": 0, "wide": 0, "fallback": 0}
+	lit_faces = []  # (face offset, samples, fill or None)
+	total, count = [0.0, 0.0, 0.0], 0
 	for fo in range(0, len(faces) - 19, 20):
 		planenum, side, firstedge, numedges, ti = struct.unpack_from("<Hhihh", faces, fo)
 		st["faces"] += 1
@@ -301,16 +340,40 @@ def relight(mohaa: Mohaa, data: bytes, gain: float = DEFAULT_GAIN):
 		got = [s for s in samples if s is not None]
 		st["luxels"] += len(samples)
 		st["matched"] += len(got)
+		if not got:
+			# No coplanar MOHAA surface: the nearest one facing this way.
+			ctr = tuple(sum(q[a] for q in pts) / len(pts) for a in range(3))
+			rad = max(math.dist(ctr, q) for q in pts) + WIDE
+			wide = mohaa.facing(n, ctr, rad)
+			if wide:
+				k = 0
+				for j in range(h):
+					for i in range(w):
+						r0 = (bs + i) * 16 - S[3]
+						r1 = (bt + j) * 16 - T[3]
+						p = tuple((inv[0][a] * r0 + inv[1][a] * r1 + inv[2][a] * dist) / det for a in range(3))
+						samples[k] = light_wide(mohaa, wide, p)
+						k += 1
+				got = [s for s in samples if s is not None]
+				if got:
+					st["wide"] += 1
+		fill = None
 		if got:
 			avg = [sum(s[c] for s in got) / len(got) for c in range(3)]
 			fill = shift(avg, gain)
+			for c in range(3):
+				total[c] += avg[c]
+			count += 1
 		else:
-			fill = bytes(FALLBACK)
 			st["fallback"] += 1
+		lit_faces.append((fo, samples, fill))
+		st["lit"] += 1
+	mapfill = shift([c / count for c in total], gain) if count else bytes(FALLBACK)
+	for fo, samples, fill in lit_faces:
+		fill = fill or mapfill
 		struct.pack_into("<4Bi", faces, fo + 12, 0, 255, 255, 255, len(lighting))
 		for s in samples:
 			lighting += shift(s, gain) if s is not None else fill
-		st["lit"] += 1
 
 	fo, _ = lumps[7]
 	out = bytearray(data)
