@@ -948,6 +948,28 @@ def main() -> int:
 			'\tconst bool dodMaps = !stricmp( gMenu.m_gameinfo.gamefolder, "dod" )\n'
 			'\t\t|| !stricmp( gMenu.m_gameinfo.gamefolder, "mohaa" ); /* mohaa-gc: mohaa over dod */\n',
 		)
+		# mohaa keeps DoD's menu until it has its own: the menu code knows DoD by its folder name.
+		main_menu = args.engine_dir / "3rdparty/mainui/menus/Main.cpp"
+		replace_once(
+			main_menu,
+			'\treturn !stricmp( gMenu.m_gameinfo.gamefolder, "dod" )\n'
+			'\t\t|| !stricmp( gMenu.m_gameinfo.title, "Day of Defeat" );\n',
+			'\treturn !stricmp( gMenu.m_gameinfo.gamefolder, "dod" )\n'
+			'\t\t|| !stricmp( gMenu.m_gameinfo.gamefolder, "mohaa" ) /* mohaa-gc: mohaa over dod */\n'
+			'\t\t|| !stricmp( gMenu.m_gameinfo.title, "Day of Defeat" );\n',
+		)
+		progress = args.engine_dir / "3rdparty/mainui/menus/ConnectionProgress.cpp"
+		replace_once(
+			progress,
+			"\telse if( key == 'A' || ( !stricmp( gMenu.m_gameinfo.gamefolder, \"dod\" ) && key == 'B' ) )\n",
+			"\telse if( key == 'A' || (( !stricmp( gMenu.m_gameinfo.gamefolder, \"dod\" )\n"
+			"\t\t|| !stricmp( gMenu.m_gameinfo.gamefolder, \"mohaa\" )) && key == 'B' ) )\n",
+		)
+		replace_once(
+			progress,
+			'\tif( stricmp( gMenu.m_gameinfo.gamefolder, "dod" ) )\n',
+			'\tif( stricmp( gMenu.m_gameinfo.gamefolder, "dod" ) && stricmp( gMenu.m_gameinfo.gamefolder, "mohaa" ) )\n',
+		)
 		pad = args.engine_dir / "engine/platform/gamecube/in_gamecube.c"
 		replace_once(
 			pad,

@@ -232,6 +232,14 @@ if [[ "$DODGC_GAME" == mohaa ]]; then
 	# GCube_HasGameAssets wants liblist.gam and a maps/ folder in the game folder.
 	printf 'MOHAA maps are read from sd:/xash3d/mohaa/maps/ (tools/mohaa_sd.py).\n' > "$GDATA/maps/README.txt"
 	[[ ! -f "$LEAN/media/StartupVids.txt" ]] || cp -f "$LEAN/media/StartupVids.txt" "$GDATA/media/StartupVids.txt"
+	# The disc builder bakes the menu sheet and logo banner (resource/gc_menu/) from the primary game
+	# folder. Give it DoD's menu sources, or mohaa/ gets the synthetic sheet (a white block for a
+	# logo) on top of dod's. The converter's menu stage on the SD card overrides this with MOHAA's own.
+	if [[ -d "$LEAN/resource" ]]; then
+		mkdir -p "$GDATA/resource"
+		rsync -a "$LEAN/resource/" "$GDATA/resource/"
+	fi
+	[[ ! -f "$LEAN/media/logo.avi" ]] || cp -f "$LEAN/media/logo.avi" "$GDATA/media/"
 	if [[ -n "${DODGC_MOHAA_TEST_DIR:-}" ]]; then
 		[[ -d "$DODGC_MOHAA_TEST_DIR" ]] || { echo "error: DODGC_MOHAA_TEST_DIR missing: $DODGC_MOHAA_TEST_DIR" >&2; exit 1; }
 		rsync -a --exclude '.mohaa-work' --exclude 'gameinfo.txt' --exclude 'liblist.gam' \
