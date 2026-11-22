@@ -3,7 +3,7 @@
 
     python3 tools/props_models.py "/path/to/MOHAA/main" out/m6l1a.props -o out/m6l1a.mprop [--bsp m6l1a.bsp]
 
-It reads the .props sidecar that bsp19_to_map.py writes, loads each model's .tik, posed .skd mesh
+It reads the .props sidecar that bsp19_to_map.py writes, loads each model's .tik and posed .skd/.skb mesh
 and textures from the paks, and writes the models, their textures and every instance into one file.
 Props cost the engine no edict and no model slot. Their collision is already in the map.
 With --bsp the map's LOD terrain, curved patches and triangle soups are added too, as "*world/"
@@ -471,7 +471,7 @@ def main(argv=None) -> int:
 	*mains, props_path = args.main
 	if not mains:
 		ap.error("give the MOHAA main folder (or pk3 files) and then the .props file")
-	files = collect(mains, (".tik", ".skd", ".skc", ".shader", ".tga", ".jpg", ".png"))
+	files = collect(mains, (".tik", ".skd", ".skb", ".skc", ".shader", ".tga", ".jpg", ".png"))
 	world = []
 	if args.bsp:
 		import mohaa_bsp19 as b19

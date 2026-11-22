@@ -22,14 +22,14 @@ Sources (give one or both):
                 and reused.
 
 Stages run in this order (--stages picks some; by default every one whose tools are found):
-  menu      main menu background: MOHAA's war room         needs Pillow and numpy
-            (resource/gc_menu/; without it the disc's DoD background shows)
+  menu      the retail main menu: the war room, its lit      needs Pillow and numpy
+            spots, sign, Quit and click sounds (resource/gc_menu/; without it the stock menu shows)
   loading   loading screens: the retail ones, per map          needs Pillow and numpy
             (resource/gc_loading/; without them the engine's LOADING plaque shows)
   music     soundtracks and tracks                         needs ffmpeg
   sounds    per-map sound tables and samples
   scripts   level scripts and the global/ libraries
-  maps      maps/<map>.bsp with MOHAA's textures (+ .mcol collision, .nodes)
+  maps      maps/<map>.bsp with MOHAA's textures (+ .mcol collision, .nodes, media/lg_<map>.gcg light grid)
                                                            needs the patched SDHLT: built once (git, cmake, C++)
   worlddl   media/wd_<map>.gcd GameCube world bake         needs --xash3d-gc DIR (a checkout of xash3d-gc)
   props     media/gp_<map>.gcp static props and terrain    needs --xash3d-gc DIR
@@ -92,7 +92,10 @@ def unpack_cds(dirs, work, log=print):
     """Unpack the music groups and every pk3 from the CDs' cabinets into <work>/cd/main; returns that folder."""
     out = os.path.join(work, "cd", "main")
     done = os.path.join(work, "cd", ".done")
-    groups_key = "\n".join(sorted(CD_GROUPS)) + "\n"
+    # unshield -L replaces spaces in group-directory names with underscores
+    # ("Sound AmbStereo Files" -> "sound_ambstereo_files"). Version the cache
+    # so a previous extract that only copied the PK3s is unpacked again.
+    groups_key = "unshield-lowercase-groups-v2\n" + "\n".join(sorted(CD_GROUPS)) + "\n"
     if os.path.exists(done):
         with open(done) as fh:
             if fh.read() == groups_key:
@@ -125,7 +128,8 @@ def unpack_cds(dirs, work, log=print):
         gdir = os.path.join(groups_out, group)
         if not os.path.isdir(gdir):
             continue
-        sub = next((v for k, v in CD_GROUPS.items() if k.lower() == group.lower()), None)
+        group_name = group.lower().replace(" ", "_")
+        sub = next((v for k, v in CD_GROUPS.items() if k.lower().replace(" ", "_") == group_name), None)
         for base, _, files in os.walk(gdir):
             for f in files:
                 src = os.path.join(base, f)
@@ -169,7 +173,11 @@ def stage_menu(sources, game_root, maps, work):
     sheet = mohaa_menu.compose(sources)
     if sheet is None:
         raise SystemExit("no ui/main.urc menu in the sources")
-    return mohaa_menu.write_gc_menu(sheet, game_root)
+    written = mohaa_menu.write_gc_menu(sheet, game_root)
+    menu = mohaa_menu.room_menu(sources)
+    if menu:   # the retail menu's hotspots, sign, Quit and click sounds (resource/gc_menu/mohaa_main.txt)
+        written += mohaa_menu.write_room_menu(menu, game_root)
+    return written
 
 
 def stage_loading(sources, game_root, maps, work):
@@ -233,7 +241,7 @@ def stage_tags(sources, game_root, maps, work):
 
 # Tools the map stages run that are not Python in this repo. main() fills these from the command line.
 CONFIG = {"sdhlt": None, "xash3d_gc": None, "fast_vis": False, "tools_dir": None, "build_sdhlt": True,
-          "texture_size": None}
+          "texture_size": None, "texture_budget": None}
 SDHLT = ("sdHLCSG", "sdHLBSP", "sdHLVIS")
 SDHLT_BUILD = os.path.join(os.path.dirname(HERE), "third_party", "sdhlt-bsp30ext", "build.sh")
 _found = {}
@@ -312,7 +320,9 @@ def ensure_sdhlt(log=print):
 def engine_script(name):
     """Path of an xash3d-gc script (from --xash3d-gc), or None."""
     root = CONFIG["xash3d_gc"]
-    path = os.path.join(root, "scripts", name) if root else None
+    # Stage commands change cwd before invoking the baker, so a relative
+    # --xash3d-gc path would otherwise be resolved from the output directory.
+    path = os.path.abspath(os.path.join(root, "scripts", name)) if root else None
     return path if path and os.path.isfile(path) else None
 
 
@@ -386,6 +396,7 @@ def bsp_unlit_size(path):
 def stage_maps(sources, game_root, maps, work):
     """Each map compiled for the GameCube: maps/<map>.bsp lit with MOHAA's own light, plus its .mcol collision
     and .nodes path nodes. Needs SDHLT (third_party/sdhlt-bsp30ext/build.sh builds the patched one)."""
+    import bsp19_lightgrid
     import bsp19_lightmaps
     import bsp19_to_map
     from ubersound import read
@@ -401,7 +412,11 @@ def stage_maps(sources, game_root, maps, work):
         os.makedirs(d, exist_ok=True)
         log = os.path.join(d, "compile.log")
         open(log, "w").close()
-        src = os.path.join(d, m + "_mohaa.bsp")   # the retail map, kept for the props stage
+        # Keep the retail BSP in its own directory: SDHLT writes <map>.bsp in
+        # d, while the converter derives the script name from the source stem.
+        src_dir = os.path.join(d, "source")
+        os.makedirs(src_dir, exist_ok=True)
+        src = os.path.join(src_dir, m + ".bsp")
         with open(src, "wb") as fh:
             fh.write(read(known[m]))
         dest = os.path.join(out_maps, m + ".bsp")
@@ -409,6 +424,8 @@ def stage_maps(sources, game_root, maps, work):
         sizes = [size] if size is not None else [TEXTURE_SIZE, TEXTURE_FALLBACK]
         for k, size in enumerate(sizes):
             textures = [] if size == 0 else [a for s in sources for a in ("--textures", s)] + ["--texture-size", str(size)]
+            if textures and CONFIG["texture_budget"]:
+                textures += ["--texture-budget", str(CONFIG["texture_budget"])]
             print("   %s: converting" % m)
             _quiet(bsp19_to_map.main, [src, "-o", os.path.join(d, m + ".map"), "--wad", os.path.join(d, m + ".wad")]
                    + flags.get(m, []) + [a for s in sources for a in ("--scripts", s)] + textures, log)
@@ -429,12 +446,38 @@ def stage_maps(sources, game_root, maps, work):
                 print("   %s: warning: %d KB over the GameCube's %d KB map budget (without its light)"
                       % (m, over // 1024 + 1, BSP_UNLIT_MAX // 1024))
         written.append(dest)
+        # MOHAA's light grid: how retail lights soldiers and other models
+        grid = os.path.join(game_root, "media", "lg_%s.gcg" % m)
+        try:
+            _quiet(bsp19_lightgrid.main, [src, "-o", grid], log)
+            written.append(grid)
+        except (ValueError, SystemExit) as e:
+            print("   %s: no light grid (%s); models light from the floor" % (m, e))
         for ext in (".mcol", ".nodes"):
             side = os.path.join(d, m + ext)
             if os.path.isfile(side):
                 shutil.copy(side, os.path.join(out_maps, m + ext))
                 written.append(os.path.join(out_maps, m + ext))
+    lst = write_maps_lst(game_root)
+    if lst:
+        written.append(lst)
     return written
+
+
+def write_maps_lst(game_root):
+    """maps.lst, the list the menu's Create Game offers: every compiled map in the game folder, as
+    `name "title"`. The engine can't write it on the GameCube's read-only card path, so without it Create Game
+    has no map. Returns its path, or None when there is no map."""
+    folder = os.path.join(game_root, "maps")
+    names = sorted(f[:-4] for f in os.listdir(folder) if f.lower().endswith(".bsp")) if os.path.isdir(folder) else []
+    if not names:
+        return None
+    # m1l1 first: the campaign's opening map, and the one Create Game selects
+    names.sort(key=lambda n: (n != "m1l1", n))
+    path = os.path.join(game_root, "maps.lst")
+    with open(path, "w") as fh:
+        fh.writelines('%s "%s"\n' % (n, n) for n in names)
+    return path
 
 
 def _compiled(game_root, work, maps, need):
@@ -479,7 +522,7 @@ def stage_props(sources, game_root, maps, work):
         mprop = os.path.join(d, m + ".mprop")
         try:
             _quiet(props_models.main, list(sources) + [os.path.join(d, m + ".props"), "-o", mprop,
-                                                       "--bsp", os.path.join(d, m + "_mohaa.bsp")], log)
+                                                       "--bsp", os.path.join(d, "source", m + ".bsp")], log)
         except SystemExit:
             if not os.path.isfile(mprop):
                 raise
@@ -577,13 +620,28 @@ def main(argv=None):
     ap.add_argument("--texture-size", type=int, default=None,
                     help="largest map texture side (default: 128, or 64 for a map that would go over the "
                          "GameCube's 3 MB map budget; 0 = placeholder checkers)")
+    ap.add_argument("--texture-budget", type=int, default=None, metavar="KB",
+                    help="most texture bytes a map carries; the biggest textures shrink first (default: "
+                         "bsp19_to_map's)")
     ap.add_argument("--work", help="scratch folder kept between runs (default <sd>/.mohaa-work)")
     ap.add_argument("--list", action="store_true", help="list every file written")
     a = ap.parse_args(argv)
     if not a.mohaa and not a.cd:
         ap.error("give --mohaa or --cd (or both)")
+    # Stages change cwd for native tools and the Xash bakers. Resolve every
+    # user-supplied path at the CLI boundary so relative paths keep working.
+    a.sd = os.path.abspath(a.sd)
+    if a.mohaa:
+        a.mohaa = os.path.abspath(a.mohaa)
+    if a.cd:
+        a.cd = [os.path.abspath(path) for path in a.cd]
+    for name in ("sdhlt", "tools_dir", "xash3d_gc", "work"):
+        value = getattr(a, name)
+        if value:
+            setattr(a, name, os.path.abspath(value))
     CONFIG.update(sdhlt=a.sdhlt, xash3d_gc=a.xash3d_gc, fast_vis=a.fast_vis, tools_dir=a.tools_dir,
-                  build_sdhlt=a.build_sdhlt, texture_size=a.texture_size)
+                  build_sdhlt=a.build_sdhlt, texture_size=a.texture_size,
+                  texture_budget=a.texture_budget)
     _found.clear()
     if a.stages:
         stages = [s.strip() for s in a.stages.split(",") if s.strip()]

@@ -204,7 +204,7 @@ struct ms_vm {
     int32_t     errors;
     uint32_t    rng;
     /* well known names */
-    uint32_t    n_size, n_removed;
+    uint32_t    n_size, n_removed, n_self;
 };
 
 /* memory */

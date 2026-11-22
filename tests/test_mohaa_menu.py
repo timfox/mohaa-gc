@@ -5,6 +5,7 @@ import struct
 import sys
 import tempfile
 import unittest
+import wave
 import zipfile
 from contextlib import redirect_stdout
 
@@ -52,6 +53,7 @@ rect 100 100 64 32
 shader "bigmap"
 hovershader "bigmap_h"
 stuffcommand "pushmenu briefingroom"
+hovercommand "set ui_signshader newgame_sign"
 }
 resource
 Button
@@ -59,7 +61,37 @@ Button
 name "quit"
 rect 536 448 96 24
 shader "textures/mohmenu/quit"
+hovershader "textures/mohmenu/quit_h"
+clicksound "sound/menu/back.wav"
 stuffcommand "quit"
+}
+resource
+Label
+{
+name "sign"
+rect 48 36 172 56
+linkcvar "ui_signshader"
+linkcvartoshader
+}
+resource
+Button
+{
+name "options"
+rect 0 172 128 128
+shader "menu_button_trans"
+hovershader "textures/mohmenu/options_h"
+stuffcommand "pushmenu options_main"
+hovercommand "set ui_signshader options_sign"
+}
+resource
+Button
+{
+name "dev"
+rect 436 156 24 48
+shader "menu_button_trans"
+hovershader "textures/mohmenu/options_h"
+stuffcommand "maplist"
+enabledcvar "developer"
 }
 resource
 Button
@@ -90,6 +122,18 @@ bigmap
       animMap 24 textures/mohmenu/map1.tga textures/mohmenu/map2.tga
    }
 }
+options_sign
+{
+	{
+	clampMap textures/mohmenu/options_sign.tga
+	}
+}
+bigmap_h
+{
+   {
+      clampMap textures/mohmenu/options_h.tga
+   }
+}
 menu_button_trans
 {
 	{
@@ -115,6 +159,16 @@ def make_pak(path):
         z.writestr("textures/mohmenu/main_b.tga", tga(BLUE, (256, 512)))
         z.writestr("textures/mohmenu/map1.tga", tga(GREEN, (128, 128)))
         z.writestr("textures/mohmenu/quit.tga", tga(WHITE, (96, 24)))
+        z.writestr("textures/mohmenu/quit_h.tga", tga(GREEN, (128, 32)))
+        z.writestr("textures/mohmenu/options_h.tga", tga(WHITE, (128, 128)))
+        z.writestr("textures/mohmenu/options_sign.tga", tga(BLUE, (256, 64)))
+        b = io.BytesIO()
+        with wave.open(b, "wb") as w:
+            w.setnchannels(2)
+            w.setsampwidth(2)
+            w.setframerate(44100)
+            w.writeframes(bytes(4 * 441))
+        z.writestr("sound/menu/back.wav", b.getvalue())
         z.writestr("textures/mohmenu/voodoo/main_a.tga", tga(WHITE, (256, 256)))
 
 
@@ -123,10 +177,11 @@ class MenuTest(unittest.TestCase):
     def test_parse(self):
         w, h, items = mohaa_menu.parse_urc(URC)
         self.assertEqual((w, h), (640, 480))
-        self.assertEqual([i["type"] for i in items], ["Label", "Label", "Label", "Button", "Button", "Button"])
+        self.assertEqual([i["type"] for i in items],
+                         ["Label", "Label", "Label", "Button", "Button", "Label", "Button", "Button", "Button"])
         self.assertEqual(mohaa_menu.room_pieces(items), [
             ("room_b", (480, 0, 256, 512)), ("room_a", (0, 0, 512, 512)), ("bigmap", (100, 100, 64, 32)),
-            ("menu_button_trans", (0, 172, 128, 128))])
+            ("menu_button_trans", (0, 172, 128, 128)), ("menu_button_trans", (0, 172, 128, 128))])
         sh = mohaa_menu.parse_shaders(SHADER)
         self.assertEqual(sh["room_a"], "textures/mohmenu/main_a.tga")
         self.assertEqual(sh["bigmap"], "textures/mohmenu/map1.tga")
@@ -185,6 +240,38 @@ class MenuTest(unittest.TestCase):
             px = mohaa_menu.cmpr_decode(data[32:], 320, 240)[10, 300]   # x=620 on the sheet: main_b
             self.assertLess(np.abs(px.astype(int) - BLUE).max(), 12)
 
+    def test_room_menu(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            make_pak(os.path.join(tmp, "pak0.pk3"))
+            menu = mohaa_menu.room_menu([tmp])
+            self.assertEqual(menu["sign"], (48, 36, 172, 56))
+            # left to right: the options radio (x 0), then the map (x 100); the developer button is left out
+            self.assertEqual([(a, r) for a, r, _, _ in menu["spots"]],
+                             [("options", (0, 172, 128, 128)), ("newgame", (100, 100, 64, 32))])
+            lit = menu["spots"][0][2]
+            self.assertEqual((lit.size, lit.getpixel((5, 5))), ((128, 128), WHITE))
+            self.assertEqual(menu["spots"][0][3].getpixel((5, 5)), BLUE)
+            self.assertIsNone(menu["spots"][1][3])                     # no newgame_sign shader in the paks
+            self.assertEqual([(a, r) for a, r, _, _ in menu["buttons"]], [("quit", (536, 448, 96, 24))])
+            self.assertEqual(menu["buttons"][0][3].getpixel((5, 5)), GREEN)
+            self.assertEqual([n for n, _, _ in menu["sounds"]], ["out"])
+            out = os.path.join(tmp, "out")
+            written = mohaa_menu.write_room_menu(menu, out)
+            with open(os.path.join(out, "resource", "gc_menu", "mohaa_main.txt")) as f:
+                lines = [l.split() for l in f if not l.startswith("//")]
+            self.assertEqual(lines, [
+                ["screen", "640", "480"], ["sign", "48", "36", "172", "56"],
+                ["spot", "options", "0", "172", "128", "128", "resource/gc_menu/mohaa/spot0_options.tga",
+                 "resource/gc_menu/mohaa/sign0_options.tga"],
+                ["spot", "newgame", "100", "100", "64", "32", "resource/gc_menu/mohaa/spot1_newgame.tga", "-"],
+                ["button", "quit", "536", "448", "96", "24", "resource/gc_menu/mohaa/quit.tga",
+                 "resource/gc_menu/mohaa/quit_h.tga"],
+                ["sound", "out", "sound/mohaa/menu/back.wav"]])
+            for p in written:
+                self.assertTrue(os.path.isfile(p), p)
+            with wave.open(os.path.join(out, "sound", "mohaa", "menu", "back.wav")) as w:
+                self.assertEqual((w.getnchannels(), w.getframerate()), (1, 22050))
+
     def test_sd_stage(self):
         with tempfile.TemporaryDirectory() as tmp:
             game, sd = os.path.join(tmp, "MOHAA"), os.path.join(tmp, "sd")
@@ -194,7 +281,8 @@ class MenuTest(unittest.TestCase):
                 rc = mohaa_sd.main(["--mohaa", game, "--sd", sd, "--stages", "menu"])
             self.assertEqual(rc, 0, log.getvalue())
             self.assertTrue(os.path.isfile(os.path.join(sd, "xash3d", "mohaa", "resource", "gc_menu", "bg_1_1.cmp")))
-            self.assertIn("== menu: 11 files", log.getvalue())
+            self.assertTrue(os.path.isfile(os.path.join(sd, "xash3d", "mohaa", "resource", "gc_menu", "mohaa_main.txt")))
+            self.assertIn("== menu: 18 files", log.getvalue())
 
 
 if __name__ == "__main__":
