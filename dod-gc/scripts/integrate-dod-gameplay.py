@@ -163,7 +163,11 @@ def integrate_gc_hud(client: Path) -> None:
 		'\t\t\tif( menubuf[0] >= \'1\' && menubuf[0] <= \'9\' && menubuf[1] == \'.\'\n'
 		'\t\t\t\t&& menubuf[0] - \'0\' == m_iGCSelectedSlot )\n'
 		'\t\t\t{ draw_r = 96; draw_g = 255; draw_b = 128; }\n'
-		'\t\t\tif( menu_ralign )\n')
+		'\t\t\tif( menu_ralign )\n',
+		'\t\t\tint draw_r = menu_r, draw_g = menu_g, draw_b = menu_b;\n'
+		'\t\t\tif( menubuf[0] >= \'1\' && menubuf[0] <= \'9\' && menubuf[1] == \'.\'\n'
+		'\t\t\t\t&& menubuf[0] - \'0\' == m_iGCSelectedSlot )\n'
+		'\t\t\t{ draw_r = 96; draw_g = 255; draw_b = 128; }\n')
 	menu_text = menu_cpp.read_text()
 	menu_text = menu_text.replace(
 		'\t\t\t\tmenu_x = gHUD.DrawHudStringReverse( menu_x, y, 0, menubuf, menu_r, menu_g, menu_b );\n'
@@ -174,7 +178,8 @@ def integrate_gc_hud(client: Path) -> None:
 	# 175 127 1 border) laid out by dod_hud_geom.h: inside the 5% safe area, under the objective row, above the status
 	# panel, as wide as its widest line. Text is clipped to the screen (it was clipped at x 320).
 	menu_text = menu_text.replace('static int menu_r, menu_g, menu_b, menu_x, menu_ralign;\n',
-		'static int menu_r, menu_g, menu_b, menu_x, menu_ralign;\nstatic int g_iGCMenuLeft = 20, g_iGCMenuBottom = 1 << 20;\n', 1)
+		'static int menu_r, menu_g, menu_b, menu_x, menu_ralign;\nstatic int g_iGCMenuLeft = 20, g_iGCMenuBottom = 1 << 20;\n',
+		1 if 'static int g_iGCMenuLeft' not in menu_text else 0)
 	menu_text = menu_text.replace(
 		'\tmenu_r\t\t= 255;\n\tmenu_g\t\t= 255;\n\tmenu_b\t\t= 255;\n',
 		'\t{\n'
@@ -211,7 +216,8 @@ def integrate_gc_hud(client: Path) -> None:
 		'\t\tg_iGCMenuLeft = px + (int)( DOD_HUD_PANEL_PAD * gsx + 0.5f );\n'
 		'\t\tg_iGCMenuBottom = py + ph - (int)( DOD_HUD_PANEL_PAD * gsy + 0.5f );\n'
 		'\t}\n'
-		'\tmenu_r\t\t= 255;\n\tmenu_g\t\t= 255;\n\tmenu_b\t\t= 255;\n', 1)
+		'\tmenu_r\t\t= 255;\n\tmenu_g\t\t= 255;\n\tmenu_b\t\t= 255;\n',
+		1 if 'pr = Dod_HudMenuPanel( lines' not in menu_text else 0)
 	menu_text = menu_text.replace('\tmenu_x\t\t= 20;\n', '\tmenu_x\t\t= g_iGCMenuLeft;\n', 1)
 	menu_text = menu_text.replace('\t\t\tmenu_x \t\t= 20;\n', '\t\t\tmenu_x \t\t= g_iGCMenuLeft;\n', 1)
 	menu_text = menu_text.replace('menu_x = gHUD.DrawHudString( menu_x, y, 320, menubuf,', 'menu_x = gHUD.DrawHudString( menu_x, y, ScreenWidth, menubuf,')
