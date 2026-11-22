@@ -21,7 +21,9 @@ family. Samples move under sound/mohaa/ so they cannot clash with DoD's own.
 
 --wav also writes the referenced samples to <out>/sound/mohaa/..., as GoldSrc-friendly 16-bit
 mono PCM at 22050 Hz or less, from 8/16-bit PCM or IMA ADPCM WAVs and MP3s decoded by ffmpeg.
-Samples a script plays with loopsound get a cue point, which makes GoldSrc loop them.
+FFmpeg's band-limited SWR resampler handles format conversion and downsampling; a pure Python
+fallback remains for WAV input when ffmpeg is unavailable. Samples a script plays with loopsound
+get a cue point, which makes GoldSrc loop them.
 
 The output is retail data: write it outside the repository and never commit it.
 """
@@ -324,6 +326,13 @@ def write_pcm_wav(dest, rate, pcm, loop):
 
 def convert_wav(data, dest, loop=False):
     """16-bit mono PCM at <= 22050 Hz. Returns None on success, or why it was skipped."""
+    ffmpeg = shutil.which("ffmpeg")
+    if ffmpeg:
+        rate = wav_rate(data)
+        if isinstance(rate, str):
+            return rate
+        return convert_ffmpeg(data, dest, min(rate, 22050), loop, ffmpeg)
+
     got = read_wav(data)
     if isinstance(got, str):
         return got
@@ -337,20 +346,44 @@ def convert_wav(data, dest, loop=False):
     return None
 
 
-def convert_mp3(data, dest, loop=False):
-    """Decode an MP3 alias to GameCube-friendly 22.05 kHz mono PCM WAV."""
-    ffmpeg = shutil.which("ffmpeg")
+def wav_rate(data):
+    """Return the source WAV rate without decoding its full sample payload."""
+    if data[:4] != b"RIFF" or data[8:12] != b"WAVE":
+        return "not a wav file"
+    pos = 12
+    while pos + 8 <= len(data):
+        cid = data[pos:pos + 4]
+        size = int.from_bytes(data[pos + 4:pos + 8], "little")
+        chunk = data[pos + 8:pos + 8 + size]
+        if cid == b"fmt ":
+            if len(chunk) < 8:
+                return "short fmt chunk"
+            rate = int.from_bytes(chunk[4:8], "little")
+            return rate if rate > 0 else "invalid sample rate"
+        pos += 8 + size + (size & 1)
+    return "no fmt chunk"
+
+
+def convert_ffmpeg(data, dest, rate, loop=False, ffmpeg=None):
+    """Decode/resample audio with FFmpeg's band-limited SWR filter, then write PCM WAV."""
+    ffmpeg = ffmpeg or shutil.which("ffmpeg")
     if not ffmpeg:
-        return "ffmpeg needed to convert MP3 sound samples"
+        return "ffmpeg needed for band-limited audio conversion"
     run = subprocess.run(
-        [ffmpeg, "-v", "error", "-i", "pipe:0", "-map", "0:a:0", "-ar", "22050", "-ac", "1",
-         "-f", "s16le", "-acodec", "pcm_s16le", "pipe:1"],
+        [ffmpeg, "-v", "error", "-i", "pipe:0", "-map", "0:a:0",
+         "-af", "aresample=%d:resampler=swr:filter_size=64:cutoff=0.95" % rate,
+         "-ar", str(rate), "-ac", "1", "-f", "s16le", "-acodec", "pcm_s16le", "pipe:1"],
         input=data, capture_output=True)
     if run.returncode or not run.stdout:
-        return "ffmpeg could not decode MP3 sound sample"
+        return "ffmpeg could not decode/resample sound sample"
     pcm = run.stdout[:len(run.stdout) - len(run.stdout) % 2]
-    write_pcm_wav(dest, 22050, pcm, loop)
+    write_pcm_wav(dest, rate, pcm, loop)
     return None
+
+
+def convert_mp3(data, dest, loop=False):
+    """Decode an MP3 alias to GameCube-friendly 22.05 kHz mono PCM WAV."""
+    return convert_ffmpeg(data, dest, 22050, loop)
 
 
 def main(argv=None):
