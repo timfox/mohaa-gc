@@ -1369,6 +1369,8 @@ def main(argv=None) -> int:
 	                help="MOHAA main directory or pk3 (repeatable): the WAD gets MOHAA's own images and brush sides "
 	                     "get texture axes fitted to MOHAA's surfaces (world_textures.py)")
 	ap.add_argument("--texture-size", type=int, default=None, help="largest WAD texture side (default 128)")
+	ap.add_argument("--texture-budget", type=int, default=None, metavar="KB",
+	                help="the map's textures in KB (default 1024)")
 	ap.add_argument("--scale", type=float, default=DEFAULT_SCALE)
 	ap.add_argument("--terrain-brushes", action="store_true",
 	                help="also write LOD terrain as wedge brushes (GoldSrc-native terrain collision)")
@@ -1440,6 +1442,11 @@ def main(argv=None) -> int:
 		import world_textures
 		images = world_textures.Images(args.textures, args.texture_size or world_textures.TEXTURE_SIZE)
 		fit = world_textures.TextureFit(bsp, images, args.scale)
+		used = {bsp.shaders[sh].name for _, sh in bsp.brushsides if 0 <= sh < len(bsp.shaders)
+		        and not bsp.shaders[sh].surface_flags & (b19.SURF_NODRAW | b19.SURF_SKY)
+		        and "/common/" not in bsp.shaders[sh].name.lower()}
+		cap, tex_bytes = fit.plan(used, args.texture_budget * 1024 if args.texture_budget else world_textures.TEXDATA_BUDGET)
+		print(f"{name}: textures at most {cap} texels a side, {tex_bytes // 1024} KB")
 	text, namer, stats, skipped = convert(bsp, args.scale, wad_key, args.terrain_brushes, args.terrain_tol, args.terrain_tex,
 	                                         not args.no_terrain_seal, args.detail_world, args.seal_box,
 	                                         args.simplify_collision,
