@@ -40,6 +40,7 @@ sys.path.insert(0, HERE)
 CD_GROUPS = {
     "Music Files": "sound/music",
     "Sound AmbStereo Files": "sound/amb_stereo",
+    "Video Files": "video",          # intro.RoQ + intro.mp3 for the movie stage
 }
 
 
@@ -134,6 +135,9 @@ def _snapshot(root):
     return s
 
 
+from intro_movie import stage_intro  # noqa: E402
+
+
 def stage_music(sources, game_root, maps, work):
     """Every soundtrack (music/<name>.mood) and track (sound/mohaa/music/*.wav, 22 kHz mono PCM)."""
     import music
@@ -173,6 +177,7 @@ STAGES = {
     "music": stage_music,
     "sounds": stage_sounds,
     "scripts": stage_scripts,
+    "movie": stage_intro,
 }
 
 

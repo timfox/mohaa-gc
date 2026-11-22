@@ -618,20 +618,21 @@ fi
 cp -f "$SRC/config.cfg" "$LEAN/" 2>/dev/null || true
 cp -f "$SRC/autoexec.cfg" "$LEAN/" 2>/dev/null || printf '\n' > "$LEAN/autoexec.cfg"
 
-# HL1 Valve intro (AVI; disc bake builds .gcvid/.gcpcm companions).
-# Retail StartupVids.txt is often webm-only — always force an .avi playlist when
-# valve.avi is present so interactive boots play the cinematic.
+# Boot intro: MOHAA's own cinematic, read from the player's SD card. The disc carries no movie,
+# only this playlist; tools/mohaa_sd.py (movie stage) writes sd:/xash3d/dod/media/mohaa_intro.gcvid
+# + .gcpcm from the player's MOHAA, and the engine finds them on top of the disc. With no movie on the
+# card the engine skips the entry and opens the menu; A, B or Start skips it while it plays.
+# valve.avi is no longer staged: the disc builder replaces the playlist with sierra/valve whenever it
+# finds them. DODGC_STARTUP_VIDS overrides the list (space-separated, e.g. "media/valve.avi" plus
+# DODGC_STAGE_VALVE_INTRO=1 for the old Valve intro).
 mkdir -p "$LEAN/media"
 if [[ "${DODGC_STAGE_INTRO:-1}" == "1" ]]; then
-	if [[ -f "$VALVE/media/valve.avi" ]]; then
+	printf '%s\n' ${DODGC_STARTUP_VIDS:-media/mohaa_intro.avi} > "$LEAN/media/StartupVids.txt"
+	echo "staged intro playlist: $(tr '\n' ' ' < "$LEAN/media/StartupVids.txt")(movie read from SD)"
+	if [[ "${DODGC_STAGE_VALVE_INTRO:-0}" == "1" && -f "$VALVE/media/valve.avi" ]]; then
 		cp -f "$VALVE/media/valve.avi" "$LEAN/media/"
-		printf 'media/valve.avi\n' > "$LEAN/media/StartupVids.txt"
-		echo "staged intro: media/valve.avi + StartupVids.txt"
-	else
-		: > "$LEAN/media/StartupVids.txt"
-		echo "warning: missing $VALVE/media/valve.avi — intro disabled" >&2
 	fi
-	# logo.avi is optional (menu banner bake / optional second cinematic).
+	# logo.avi is optional (menu banner bake).
 	[[ -f "$VALVE/media/logo.avi" ]] && cp -f "$VALVE/media/logo.avi" "$LEAN/media/"
 else
 	: > "$LEAN/media/StartupVids.txt"

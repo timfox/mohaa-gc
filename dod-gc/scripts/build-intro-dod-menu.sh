@@ -53,16 +53,11 @@ rsync -a --delete \
 	--exclude 'SAVE' --exclude 'logs' --exclude '*.tmp' \
 	"$DODGC_CONTENT_DOD/" "$BUILD_DATA/"
 
-# Same intro as HL1: Sierra/Valve startup vids + logo strip.
-rsync -a \
-	"$DODGC_CONTENT_VALVE/media/valve.avi" \
-	"$DODGC_CONTENT_VALVE/media/logo.avi" \
-	"$DODGC_CONTENT_VALVE/media/StartupVids.txt" \
-	"$BUILD_DATA/media/" 2>/dev/null || true
-# Fallback StartupVids if missing.
-if [[ ! -f "$BUILD_DATA/media/StartupVids.txt" ]]; then
-	printf '%s\n' 'media/valve.avi' > "$BUILD_DATA/media/StartupVids.txt"
-fi
+# Boot intro: MOHAA's cinematic from the player's SD card (see stage-lean-dod.sh); the disc only
+# names it. Logo strip for the menu banner.
+rsync -a "$DODGC_CONTENT_VALVE/media/logo.avi" "$BUILD_DATA/media/" 2>/dev/null || true
+rm -f "$BUILD_DATA/media/valve.avi" "$BUILD_DATA/media/sierra.avi"
+printf '%s\n' ${DODGC_STARTUP_VIDS:-media/mohaa_intro.avi} > "$BUILD_DATA/media/StartupVids.txt"
 # Prefer DoD logo_game; also expose as logo.tga for GC menu baker.
 if [[ -f "$BUILD_DATA/resource/logo_game.tga" && ! -f "$BUILD_DATA/resource/logo.tga" ]]; then
 	cp -f "$BUILD_DATA/resource/logo_game.tga" "$BUILD_DATA/resource/logo.tga"
