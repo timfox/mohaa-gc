@@ -1,0 +1,37 @@
+From 6540177990cfccb5d281f65988d948472ff756e5 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 22 Nov 2026 01:29:10 -0800
+Subject: [PATCH] build-lean-iso.sh: mohaa/ gets delta.lst, so its bootstrap
+ pk3 carries it
+
+The mohaa game folder held only gameinfo.txt, liblist.gam and the intro
+playlist, so the disc's bootstrap pk3 (built from that folder) had no
+delta.lst. Every map load on mohaagc.dol then died in Delta_InitFields:
+"couldn't load file delta.lst" (the dod/ copy is found, but reading it
+from the DIR path fails for memory at that point). Copy the lean DoD
+tree's delta.lst into mohaa/. Verified in Dolphin: New game -> m1l1
+loads and plays.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ dod-gc/scripts/build-lean-iso.sh | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/dod-gc/scripts/build-lean-iso.sh b/dod-gc/scripts/build-lean-iso.sh
+index 0d7fa82..7eaef43 100755
+--- a/dod-gc/scripts/build-lean-iso.sh
++++ b/dod-gc/scripts/build-lean-iso.sh
+@@ -229,6 +229,10 @@ if [[ "$DODGC_GAME" == mohaa ]]; then
+ 	mkdir -p "$GDATA/media" "$GDATA/maps"
+ 	python3 -c 'import sys; sys.path.insert(0, sys.argv[1]); import mohaa_sd; mohaa_sd.write_gameinfo(sys.argv[2], "mohaa")' \
+ 		"$DODGC_ROOT/../tools" "$GDATA" >/dev/null
++	# The bootstrap pk3 is built from this folder, and the engine reads delta.lst from it: without it a
++	# map load on mohaa dies with "Delta_InitFields: couldn't load file delta.lst" (the DoD copy in dod/
++	# is found, but its DIR read fails for memory at that point).
++	cp -f "$LEAN/delta.lst" "$GDATA/delta.lst"
+ 	# GCube_HasGameAssets wants liblist.gam and a maps/ folder in the game folder.
+ 	printf 'MOHAA maps are read from sd:/xash3d/mohaa/maps/ (tools/mohaa_sd.py).\n' > "$GDATA/maps/README.txt"
+ 	[[ ! -f "$LEAN/media/StartupVids.txt" ]] || cp -f "$LEAN/media/StartupVids.txt" "$GDATA/media/StartupVids.txt"
+-- 
+2.53.0
+
