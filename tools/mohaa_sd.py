@@ -28,6 +28,7 @@ Stages run in this order (--stages picks some; by default every one whose tools 
             spots, sign, Quit and click sounds (resource/gc_menu/; without it the stock menu shows)
   loading   loading screens: the retail ones, per map          needs Pillow and numpy
             (resource/gc_loading/; without them the engine's LOADING plaque shows)
+  hud       retail MOHAA HUD artwork as 32-bit Xash3D sprites (sprites/mohaa/; needs Pillow)
   music     soundtracks and tracks                         needs ffmpeg
   sounds    per-map sound tables and samples
   scripts   level scripts and the global/ libraries
@@ -199,6 +200,14 @@ def stage_loading(sources, game_root, maps, work):
         want = set(m.lower() for m in maps) | {"default"}
         items = [it for it in items if it[0] in want]
     return mohaa_loading.write_loading(items, game_root)
+
+
+def stage_hud(sources, game_root, maps, work):
+    """Convert retail HUD textures to RGBA Xash3D sprites for the GameCube renderer."""
+    import mohaa_hud
+    written = mohaa_hud.stage_hud(sources, game_root)
+    print("   MOHAA HUD: %d retail RGBA sprites" % len(written))
+    return written
 
 
 def stage_music(sources, game_root, maps, work):
@@ -555,6 +564,7 @@ def stage_props(sources, game_root, maps, work):
 STAGES = {
     "menu": stage_menu,
     "loading": stage_loading,
+    "hud": stage_hud,
     "music": stage_music,
     "sounds": stage_sounds,
     "scripts": stage_scripts,
@@ -574,6 +584,11 @@ def missing_tools(stage):
             import PIL  # noqa: F401
         except ImportError:
             return "needs Pillow and numpy (pip install pillow numpy)"
+    if stage == "hud":
+        try:
+            import PIL  # noqa: F401
+        except ImportError:
+            return "needs Pillow (pip install pillow)"
     if stage in ("maps", "props"):
         try:
             import PIL  # noqa: F401
