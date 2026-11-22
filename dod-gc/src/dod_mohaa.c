@@ -154,6 +154,10 @@ typedef struct DodMover {
 	float spin[3];           /* rotatex/y/z, degrees per second, kept across moves */
 	int moving;
 	float end_time;
+	/* "drive $path speed": the node it heads for now, along the path's target chain */
+	uint32_t drive_node;
+	float drive_speed;       /* GoldSrc units per second */
+	int driving;
 } DodMover;
 
 #define MAX_UNKNOWN 128
@@ -663,6 +667,85 @@ static int c_waitmove(ms_call *c)
 	start_move(m);
 	if (m->moving)
 		ms_call_wait_signal(c, ms_call_target(c), "movedone");
+	return 0;
+}
+
+/* ---- vehicles: "drive $path [speed]" moves the vehicle node to node along the path's target chain and says
+   "drive" at the end; there is no vehicle physics or model yet, so it glides from node to node ---- */
+
+static uint32_t next_node(uint32_t id)
+{
+	const char *t;
+	uint32_t ids[1];
+	if (!id || is_node(id) || !valid(id))
+		return 0;
+	t = S.be.get_str(id, DOD_MOHAA_TARGET);
+	if (!t || !*t)
+		return 0;
+	return h_find(NULL, t, ids, 1) == 1 ? ids[0] : 0;
+}
+
+static void drive_leg(DodMover *m)
+{
+	float org[3], to[3], d = 0.0f;
+	int i;
+	if (!m->drive_node || !valid(m->drive_node)) {
+		ms_value ent = ms_entity(m->id);
+		m->driving = 0;
+		m->drive_node = 0;
+		ms_notify(S.vm, &ent, "drive");
+		return;
+	}
+	get_vec(m->id, DOD_MOHAA_ORIGIN, org);
+	get_vec(m->drive_node, DOD_MOHAA_ORIGIN, to);
+	for (i = 0; i < 3; i++)
+		d += (to[i] - org[i]) * (to[i] - org[i]);
+	memcpy(m->dest, to, sizeof(to));
+	m->has_dest = 1;
+	m->time = sqrtf(d) / m->drive_speed;
+	if (m->time < 0.05f)
+		m->time = 0.05f;   /* one frame at least, so a path of nodes on one spot still ends */
+	start_move(m);
+}
+
+static int c_drive(ms_call *c)
+{
+	const ms_value *v = ms_arg(c, 0);
+	DodMover *m = mover(target_id(c), 1);
+	float speed = ms_argc(c) > 1 ? ms_arg_float(c, 1) : 200.0f;
+	if (!m)
+		return ms_call_error(c, "too many moving objects");
+	if (v->type != MS_ENTITY || !valid(v->u.id))
+		return ms_call_error(c, "drive: no such path");
+	m->drive_node = v->u.id;
+	m->drive_speed = (speed > 0.0f ? speed : 200.0f) * DOD_MOHAA_SCALE;
+	m->driving = 1;
+	drive_leg(m);
+	return 0;
+}
+
+/* "modifydrive speed ...": a new speed from the next node on */
+static int c_modifydrive(ms_call *c)
+{
+	DodMover *m = mover(target_id(c), 0);
+	const float speed = ms_arg_float(c, 0);
+	if (m && m->driving && speed > 0.0f)
+		m->drive_speed = speed * DOD_MOHAA_SCALE;
+	return 0;
+}
+
+/* "stop" / "fullstop": stays where it is, and the drive is over without "drive" */
+static int c_stopdrive(ms_call *c)
+{
+	static const float zero[3] = {0, 0, 0};
+	DodMover *m = mover(target_id(c), 0);
+	if (!m || !m->driving)
+		return 0;
+	m->driving = 0;
+	m->drive_node = 0;
+	m->moving = 0;
+	m->has_dest = 0;
+	S.be.set_velocity(m->id, zero, m->spin);
 	return 0;
 }
 
@@ -1457,6 +1540,19 @@ static void register_commands(ms_vm *vm)
 		{"spawn", MS_ON_THREAD, c_spawn},
 		{"centerprint", MS_ON_THREAD, c_centerprint},
 		{"queryturretslotentity", MS_ON_ENTITY, c_queryturretslotentity},
+		{"drive", MS_ON_ENTITY, c_drive},
+		{"modifydrive", MS_ON_ENTITY, c_modifydrive},
+		{"stop", MS_ON_ENTITY, c_stopdrive},
+		{"fullstop", MS_ON_ENTITY, c_stopdrive},
+		/* vehicle seats and locks: no one rides a vehicle yet */
+		{"lock", MS_ON_ENTITY, c_ignored},
+		{"unlock", MS_ON_ENTITY, c_ignored},
+		{"attachdriverslot", MS_ON_ENTITY, c_ignored},
+		{"attachpassengerslot", MS_ON_ENTITY, c_ignored},
+		{"attachturretslot", MS_ON_ENTITY, c_ignored},
+		{"detachdriverslot", MS_ON_ENTITY, c_ignored},
+		{"detachpassengerslot", MS_ON_ENTITY, c_ignored},
+		{"detachturretslot", MS_ON_ENTITY, c_ignored},
 		{NULL, 0, NULL}
 	};
 	int i;
@@ -1664,6 +1760,11 @@ void Dod_MohaaThink(float now)
 			S.be.set_vec(m->id, DOD_MOHAA_ANGLES, m->angles);
 		m->has_dest = m->has_angles = 0;
 		m->moving = 0;
+		if (m->driving) {
+			m->drive_node = next_node(m->drive_node);
+			drive_leg(m);
+			continue;
+		}
 		apply_spin(m);
 		ent = ms_entity(m->id);
 		ms_notify(S.vm, &ent, "movedone");

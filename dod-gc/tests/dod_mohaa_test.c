@@ -880,6 +880,39 @@ static void test_pool_backend(void)
 	Dod_MohaaShutdown();
 }
 
+static void test_vehicle_drive(void)
+{
+	DodMohaaBackend b = backend();
+	int truck, p1, p2, p3;
+	reset();
+	truck = add("truck", "info_target", 0, 0, 0);
+	p1 = add("p1", "info_target", 100, 0, 0);
+	p2 = add("p2", "info_target", 100, 100, 0);
+	p3 = add("p3", "info_target", 0, 100, 0);
+	strcpy(ents[p1].target, "p2");
+	strcpy(ents[p2].target, "p3");
+	files[0][0] = "maps/v.scr";
+	files[0][1] =
+		"main:\n"
+		"\tlevel waittill spawn\n"
+		"\t$truck lock\n"
+		"\t$truck attachdriverslot 0 $truck\n"
+		"\t$truck drive $p1 400 100 200 256\n"
+		"\t$truck waittill drive\n"
+		"\tprintln (\"arrived \" + level.time)\n"
+		"\t$truck drive $p1 400\n"
+		"\t$truck stop\n"
+		"\tprintln \"stopped\"\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "v", 0, 0));
+	run(0.05f, 3.0f);
+	assert(strstr(log_buf, "arrived ") && strstr(log_buf, "stopped"));
+	/* the whole chain, in order: it ends on p3 */
+	assert(ents[truck].origin[0] == ents[p3].origin[0] && ents[truck].origin[1] == ents[p3].origin[1]);
+	(void)p2;
+	Dod_MohaaShutdown();
+}
+
 int main(void)
 {
 	test_no_script_no_vm();
@@ -894,6 +927,7 @@ int main(void)
 	test_late_entities_and_moved_keys();
 	test_pool_allocator();
 	test_pool_backend();
+	test_vehicle_drive();
 	Dod_MohaaShutdown();
 	assert(Dod_MohaaPathNodes(NULL) == 0);
 	printf("dod_mohaa_test: ok\n");
