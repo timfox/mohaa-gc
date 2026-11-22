@@ -89,7 +89,7 @@ class PackTest(unittest.TestCase):
 		tex = (0.0, 0.0, 0.0, 4.0, 4.0, 0.0, 4.0, 4.0)
 		bsp.terrain = [b19.TerrainPatch(0, 0, 100, 0, heights, tex), b19.TerrainPatch(8, 0, 100, 0, heights, tex),
 			b19.TerrainPatch(64, 64, 100, 0, heights, tex)]
-		meshes = pm.terrain_meshes(bsp, 0.5)
+		meshes = pm.terrain_meshes(bsp, 0.5, tol=-1.0)	# every sample (the coarse grids are tested below)
 		self.assertEqual(len(meshes), 2)	# two patches side by side share a mesh, the far one has its own
 		name, centre, surfaces = meshes[0]
 		self.assertTrue(name.startswith(pm.WORLD_PREFIX))
@@ -104,6 +104,31 @@ class PackTest(unittest.TestCase):
 		data, stats = pm.build(files, lambda e: e, [], world=meshes)
 		self.assertEqual((stats["world_models"], stats["instances"], stats["models"]), (2, 2, 2))
 		self.assertIn(b"*world/terrain_0_0", data)
+
+	def test_smooth_terrain_takes_a_coarse_grid_with_a_skirt(self):
+		import mohaa_bsp19 as b19
+		bsp = b19.Bsp("t", 19, 0, 0, {})
+		bsp.shaders = [b19.Shader("textures/terrain/snow", 0, 1, 0)]
+		slope = [100 + 2 * (k % 9) for k in range(81)]	# a plane: the 3 x 3 grid holds it exactly
+		bump = list(slope)
+		bump[4 * 9 + 4] += 40	# one tall sample in the middle: only the full grid keeps it
+		tex = (0.0, 0.0, 0.0, 4.0, 4.0, 0.0, 4.0, 4.0)
+		for heights, nv, nt in ((slope, 9 + 4 * 3 * 2, 8 + 4 * 2 * 2), (bump, 81, 128)):
+			bsp.terrain = [b19.TerrainPatch(0, 0, 100, 0, heights, tex)]
+			(_, centre, surfaces), = pm.terrain_meshes(bsp, 1.0)
+			_, verts, tris = surfaces[0]
+			self.assertEqual((len(verts), len(tris)), (nv, nt))
+		bsp.terrain = [b19.TerrainPatch(0, 0, 100, 0, slope, tex)]
+		(_, centre, surfaces), = pm.terrain_meshes(bsp, 1.0)
+		_, verts, tris = surfaces[0]
+		self.assertEqual(round(verts[8][0] + centre[0], 3), 512.0)	# the far corner is still at the edge
+		self.assertEqual(verts[8][6:8], (4.0, 4.0))
+		zs = sorted({round(v[2] + centre[2], 3) for v in verts[9:]})
+		self.assertEqual(zs[0], 100 - pm.TERRAIN_SKIRT)	# the skirt hangs below the rim
+		for a, b, c in tris[:8]:	# the top still faces up
+			e1 = [verts[b][k] - verts[a][k] for k in range(2)]
+			e2 = [verts[c][k] - verts[a][k] for k in range(2)]
+			self.assertGreater(e1[0] * e2[1] - e1[1] * e2[0], 0)
 
 	def test_patches_and_soups_become_world_meshes(self):
 		import mohaa_bsp19 as b19

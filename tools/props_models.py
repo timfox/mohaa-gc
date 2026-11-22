@@ -113,7 +113,77 @@ WORLD_PREFIX = "*world/"  # a world mesh: drawn whole wherever it is, no imposto
 WORLD_MAX_MODELS = 96
 
 
-def terrain_meshes(bsp, scale: float, max_models: int = WORLD_MAX_MODELS):
+TERRAIN_TOL = 6.0	# map units a coarser terrain grid may stray from the full 9 x 9 heights
+TERRAIN_SKIRT = 24.0	# map units the skirt of a coarse patch hangs below its edge, over the cracks
+
+
+def _terrain_patch(tp, scale, centre, tol, verts, tris):
+	"""One LOD terrain patch into verts/tris (map units around centre): the coarsest grid (every 4th, 2nd
+	or every sample) whose bilinear fill stays within tol of all 81 heights. A coarse patch's edges can
+	miss a finer neighbour's middle samples, so it gets a skirt hanging below its rim to hide the crack."""
+	import mohaa_bsp19 as b19
+
+	n = b19.TERRAIN_SAMPLES
+	H = lambda i, j: tp.heights[min(max(j, 0), n - 1) * n + min(max(i, 0), n - 1)]  # noqa: E731
+	step = 1
+	for s_ in (4, 2):
+		ok = True
+		for j in range(n):
+			for i in range(n):
+				i0, j0 = min(i // s_ * s_, n - 1 - s_), min(j // s_ * s_, n - 1 - s_)
+				fx, fy = (i - i0) / s_, (j - j0) / s_
+				h = ((1 - fx) * (1 - fy) * H(i0, j0) + fx * (1 - fy) * H(i0 + s_, j0)
+				     + (1 - fx) * fy * H(i0, j0 + s_) + fx * fy * H(i0 + s_, j0 + s_))
+				if abs(h - H(i, j)) > tol:
+					ok = False
+					break
+			if not ok:
+				break
+		if ok:
+			step = s_
+			break
+	x0, y0 = tp.origin
+	tc = tp.tex if len(tp.tex) == 8 else (0, 0, 0, 1, 1, 0, 1, 1)
+
+	def vert(i, j, dz=0.0):
+		fx, fy = i / (n - 1), j / (n - 1)
+		w00, w01, w10, w11 = (1 - fx) * (1 - fy), (1 - fx) * fy, fx * (1 - fy), fx * fy
+		s_ = w00 * tc[0] + w01 * tc[2] + w10 * tc[4] + w11 * tc[6]
+		t_ = w00 * tc[1] + w01 * tc[3] + w10 * tc[5] + w11 * tc[7]
+		nx = (H(i - step, j) - H(i + step, j)) / (2.0 * step * b19.TERRAIN_CELL)
+		ny = (H(i, j - step) - H(i, j + step)) / (2.0 * step * b19.TERRAIN_CELL)
+		nrm = _unit((nx, ny, 1.0))
+		pos = tuple(v * scale - c for v, c in zip(
+			(x0 + i * b19.TERRAIN_CELL, y0 + j * b19.TERRAIN_CELL, H(i, j) - dz), centre))
+		return (*pos, *nrm, s_, t_)
+
+	m = (n - 1) // step + 1
+	base = len(verts)
+	for j in range(0, n, step):
+		for i in range(0, n, step):
+			verts.append(vert(i, j))
+	for j in range(m - 1):
+		for i in range(m - 1):
+			a = base + j * m + i
+			# the collision's diagonal (bsp19_to_map._terrain_triangles), counter-clockwise from above
+			tris += [(a, a + 1, a + m), (a + m + 1, a + m, a + 1)]
+	if step == 1:
+		return
+	# the skirt: each rim edge and a copy of it hanging below, wound to face out of the patch
+	rims = [[(i, 0) for i in range(0, n, step)],	# south, walking +x
+	        [(n - 1, j) for j in range(0, n, step)],	# east, walking +y
+	        [(i, n - 1) for i in range(n - 1, -1, -step)],	# north, walking -x
+	        [(0, j) for j in range(n - 1, -1, -step)]]	# west, walking -y
+	for rim in rims:
+		top = len(verts)
+		verts += [vert(i, j) for i, j in rim]
+		low = len(verts)
+		verts += [vert(i, j, TERRAIN_SKIRT) for i, j in rim]
+		for k in range(len(rim) - 1):
+			tris += [(top + k, low + k, top + k + 1), (top + k + 1, low + k, low + k + 1)]
+
+
+def terrain_meshes(bsp, scale: float, max_models: int = WORLD_MAX_MODELS, tol: float = TERRAIN_TOL):
 	"""MOHAA's LOD terrain as world meshes: [(name, centre, [(shader, verts, tris)])], positions in map
 	units around the centre (the instance scale is 1). The converter gives terrain only collision; this
 	is what draws it. Patches are grouped G x G per mesh, G growing until the meshes fit max_models."""
@@ -141,27 +211,7 @@ def terrain_meshes(bsp, scale: float, max_models: int = WORLD_MAX_MODELS):
 		for tp in chunks[key]:
 			name = bsp.shaders[tp.shader].name if 0 <= tp.shader < len(bsp.shaders) else ""
 			verts, tris = by_shader.setdefault(name, ([], []))
-			base = len(verts)
-			x0, y0 = tp.origin
-			tc = tp.tex if len(tp.tex) == 8 else (0, 0, 0, 1, 1, 0, 1, 1)
-			h = lambda i, j: tp.heights[min(max(j, 0), n - 1) * n + min(max(i, 0), n - 1)]  # noqa: E731
-			for j in range(n):
-				for i in range(n):
-					fx, fy = i / (n - 1), j / (n - 1)
-					w00, w01, w10, w11 = (1 - fx) * (1 - fy), (1 - fx) * fy, fx * (1 - fy), fx * fy
-					s_ = w00 * tc[0] + w01 * tc[2] + w10 * tc[4] + w11 * tc[6]
-					t_ = w00 * tc[1] + w01 * tc[3] + w10 * tc[5] + w11 * tc[7]
-					nx = (h(i - 1, j) - h(i + 1, j)) / (2.0 * b19.TERRAIN_CELL)
-					ny = (h(i, j - 1) - h(i, j + 1)) / (2.0 * b19.TERRAIN_CELL)
-					nrm = _unit((nx, ny, 1.0))
-					pos = tuple((v * scale) - c for v, c in zip(
-						(x0 + i * b19.TERRAIN_CELL, y0 + j * b19.TERRAIN_CELL, tp.heights[j * n + i]), centre))
-					verts.append((*pos, *nrm, s_, t_))
-			for j in range(n - 1):
-				for i in range(n - 1):
-					a = base + j * n + i
-					# the collision's diagonal (bsp19_to_map._terrain_triangles), counter-clockwise from above
-					tris += [(a, a + 1, a + n), (a + n + 1, a + n, a + 1)]
+			_terrain_patch(tp, scale, centre, tol, verts, tris)
 		out.append((f"{WORLD_PREFIX}terrain_{key[0]}_{key[1]}", centre,
 			[(sh, v, t) for sh, (v, t) in sorted(by_shader.items())]))
 	return out
