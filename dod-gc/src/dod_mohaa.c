@@ -605,6 +605,23 @@ static int c_rotateto(ms_call *c)
 	return 0;
 }
 
+/* rotateYup 90 / rotateXdown 45 ...: turn the pending angles by that much (on the next move / waitmove) */
+static int c_rotate_rel(ms_call *c)
+{
+	const char *n = ms_call_name(c);   /* rotate[xyz](up|down) */
+	DodMover *m = mover(target_id(c), 1);
+	const int axis = n[6] == 'x' ? 0 : n[6] == 'y' ? 1 : 2;
+	const float d = ms_arg_float(c, 0);
+	if (!m)
+		return ms_call_error(c, "too many moving objects");
+	if (!m->has_angles) {
+		get_vec(m->id, DOD_MOHAA_ANGLES, m->angles);
+		m->has_angles = 1;
+	}
+	m->angles[axis] += n[7] == 'u' ? d : -d;
+	return 0;
+}
+
 static void apply_spin(DodMover *m)
 {
 	static const float zero[3] = {0, 0, 0};
@@ -719,6 +736,27 @@ static int c_drive(ms_call *c)
 		return ms_call_error(c, "drive: no such path");
 	m->drive_node = v->u.id;
 	m->drive_speed = (speed > 0.0f ? speed : 200.0f) * DOD_MOHAA_SCALE;
+	m->driving = 1;
+	drive_leg(m);
+	return 0;
+}
+
+/* "followpath $path": glide along a spline path's target chain (a looped chain goes round for good) */
+static int c_followpath(ms_call *c)
+{
+	const ms_value *v = ms_arg(c, 0);
+	DodMover *m = mover(target_id(c), 1);
+	float speed = 100.0f;
+	int i;
+	if (!m)
+		return ms_call_error(c, "too many moving objects");
+	if (v->type != MS_ENTITY || !valid(v->u.id))
+		return ms_call_error(c, "followpath: no such path");
+	for (i = 1; i < ms_argc(c); i++)
+		if (ms_arg(c, i)->type == MS_FLOAT || ms_arg(c, i)->type == MS_INT)
+			speed = ms_arg_float(c, i);   /* the rest are flags ("loop" ...): the chain decides */
+	m->drive_node = v->u.id;
+	m->drive_speed = (speed > 0.0f ? speed : 100.0f) * DOD_MOHAA_SCALE;
 	m->driving = 1;
 	drive_leg(m);
 	return 0;
@@ -1254,6 +1292,16 @@ static int c_gettag(ms_call *c)
 }
 
 /* "$e velocity (x y z)": a push in MOHAA units per second */
+/* "$e damage $attacker 50 ...": the amount comes off its health */
+static int c_damage(ms_call *c)
+{
+	const uint32_t id = target_id(c);
+	const float amount = ms_arg_float(c, 1);
+	if (valid(id) && !is_node(id) && amount > 0.0f)
+		S.be.set_health(id, S.be.get_health(id) - amount);
+	return 0;
+}
+
 static int c_velocity(ms_call *c)
 {
 	float v[3], g[3];
@@ -1472,6 +1520,19 @@ static void register_commands(ms_vm *vm)
 		{"gettagposition", MS_ON_ENTITY, c_gettag},
 		{"gettagangles", MS_ON_ENTITY, c_gettag},
 		{"velocity", MS_ON_ENTITY, c_velocity},
+		{"physics_velocity", MS_ON_ENTITY, c_velocity},
+		{"damage", MS_ON_ENTITY, c_damage},
+		{"say", MS_ON_ENTITY, c_playsound},	/* an actor's line: its sound alias, from the actor */
+		{"rotatexup", MS_ON_ENTITY, c_rotate_rel},
+		{"rotatexdown", MS_ON_ENTITY, c_rotate_rel},
+		{"rotateyup", MS_ON_ENTITY, c_rotate_rel},
+		{"rotateydown", MS_ON_ENTITY, c_rotate_rel},
+		{"rotatezup", MS_ON_ENTITY, c_rotate_rel},
+		{"rotatezdown", MS_ON_ENTITY, c_rotate_rel},
+		{"followpath", MS_ON_ENTITY, c_followpath},
+		{"endpath", MS_ON_ENTITY, c_stopdrive},
+		{"anim_scripted", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"forceactivate", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"setcvar", MS_ON_THREAD, c_setcvar},
 		{"addobjective", MS_ON_THREAD, c_addobjective},
 		{"setcurrentobjective", MS_ON_THREAD, c_setcurrentobjective},

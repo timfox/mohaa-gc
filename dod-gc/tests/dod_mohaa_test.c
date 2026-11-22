@@ -903,13 +903,25 @@ static void test_vehicle_drive(void)
 		"\t$truck drive $p1 400\n"
 		"\t$truck stop\n"
 		"\tprintln \"stopped\"\n"
+		"\t$truck followpath $p1 \"loop\"\n"
+		"\twait 2\n"
+		"\t$truck endpath\n"
+		"\t$truck angles (0 10 0)\n"
+		"\t$truck time 0\n"
+		"\t$truck rotateyup 30\n"
+		"\t$truck rotatexdown 5\n"
+		"\t$truck waitmove\n"
+		"\t$truck health 100\n"
+		"\t$truck damage $truck 40 $truck (0 0 0) (0 0 0) (0 0 0) 0 0 0\n"
+		"\t$truck say dfr_nothere\n"
+		"\t$truck physics_velocity (0 0 0)\n"
+		"\tprintln (\"turned \" + $truck.angles + \" health \" + $truck.health)\n"
 		"end\n";
 	assert(Dod_MohaaLevelInit(&b, "v", 0, 0));
-	run(0.05f, 3.0f);
+	run(0.05f, 6.0f);
 	assert(strstr(log_buf, "arrived ") && strstr(log_buf, "stopped"));
-	/* the whole chain, in order: it ends on p3 */
-	assert(ents[truck].origin[0] == ents[p3].origin[0] && ents[truck].origin[1] == ents[p3].origin[1]);
-	(void)p2;
+	assert(strstr(log_buf, "turned (-5.000 40.000 0.000) health 60.000"));
+	(void)p2; (void)p3; (void)truck;
 	Dod_MohaaShutdown();
 }
 
