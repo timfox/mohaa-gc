@@ -407,7 +407,7 @@ def main(argv=None) -> int:
 	(a.out or a.bsp30).write_bytes(data)
 	pct = 100.0 * st["matched"] / max(1, st["luxels"])
 	print(f"bsp19_lightmaps: {st['lit']} of {st['faces']} faces lit, {st['luxels']} luxels "
-		f"({pct:.1f}% from MOHAA), {st['fallback']} faces with no MOHAA match, "
+		f"({pct:.1f}% from MOHAA), {st['wide']} lit from a nearby MOHAA surface, {st['fallback']} faces with no MOHAA match, "
 		f"lighting {st['lighting_bytes']} bytes, {len(mohaa.tris)} MOHAA triangles")
 	return 0
 
