@@ -35,6 +35,15 @@ import zipfile
 
 SOUND_LIMIT = 96  # samples one map may precache; DoD's own sounds need the rest of the engine's 512
 
+# The map still calls this alias, and its commented legacy definition supplies the
+# original source and sound parms. Keep this scoped to that map and use it only if
+# no live global alias resolves.
+MAP_ALIAS_FALLBACKS = {
+    "m6l3a": {
+        "gate_large_open": ("sound/mechanics/GateWoodOpen_01.wav", 0.8, 160.0, "item"),
+    },
+}
+
 
 def collect(inputs, exts):
     """Return {game path: bytes} for files with the given extensions, later inputs overriding earlier."""
@@ -371,10 +380,14 @@ def main(argv=None):
         if "maps/%s.scr" % m not in scripts:
             print("%s: no script" % m)
             continue
+        effective_aliases = dict(aliases)
+        for name, row in MAP_ALIAS_FALLBACKS.get(m.lower(), {}).items():
+            if name in names and not resolve(effective_aliases, name) and not intentionally_silent(effective_aliases, name):
+                effective_aliases.setdefault(name, []).append(row)
         rows, missing, samples = [], [], set()
         for name in sorted(names):
-            r = resolve(aliases, name)
-            if not r and not intentionally_silent(aliases, name):
+            r = resolve(effective_aliases, name)
+            if not r and not intentionally_silent(effective_aliases, name):
                 missing.append(name)
             for path, vol, mindist, channel in r:
                 rows.append("%s %s %.2f %d %s" % (name, sample_name(path), vol, mindist, channel))
