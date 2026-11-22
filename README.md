@@ -22,6 +22,25 @@ pass that directory with `--music-source`; it is read only by the music stage:
 python3 tools/mohaa_sd.py --mohaa ~/MOHAA --music-source /path/to/extracted/main --sd /media/SDCARD --stages music
 ```
 
+## Intro movie
+
+The movie stage converts MOHAA's silent `main/video/intro.RoQ` and its adjacent
+`intro.mp3` soundtrack into GameCube streams:
+
+```bash
+python3 tools/intro_movie.py ~/MOHAA/main/video/intro.RoQ --sd /media/SDCARD
+```
+
+It writes `xash3d/mohaa/media/mohaa_intro.gcvid` (GCV2, 320x240 RGB565 frames at 15 fps) and
+`mohaa_intro.gcpcm` (GCPA, 48 kHz stereo signed 16-bit big-endian PCM). The stock retail intro is
+letterboxed to preserve its 2:1 picture. On the local retail extraction, all 2,503 output frames
+were validated against ffmpeg after the converter's documented one-bit RGB565 delta threshold;
+the PCM payload matched ffmpeg byte for byte. The stream is 137.9 MB of video at 0.83 MB/s plus
+30.9 MB of audio. Existing Dolphin evidence in
+[`media/2026-11-22-intro-movie/README.md`](media/2026-11-22-intro-movie/README.md) confirms picture
+and sound playback on a test disc; SD-card streaming on physical hardware remains to be checked.
+The generated streams contain retail game data and must stay outside the repository.
+
 ## Map pipeline (planned)
 
 ```

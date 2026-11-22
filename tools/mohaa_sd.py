@@ -7,7 +7,7 @@
     python3 tools/mohaa_sd.py --mohaa ~/MOHAA --sd ./sdcard --maps m1l1 --xash3d-gc ~/xash3d-gc
 
 The release disc holds no game data. Everything MOHAA brings (the main menu room, loading screens, music, sounds, scripts, maps, collision,
-props and terrain; the intro movie is still to come) is converted here from files you own and written under
+props, terrain and intro movie) is converted here from files you own and written under
 
     <sd>/xash3d/<gamedir>/          (gamedir: mohaa)
 
