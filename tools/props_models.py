@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import io
+import math
 import os
 import struct
 import sys
@@ -183,32 +184,45 @@ def _facing(verts, tris):
 	return tot
 
 
-def patch_mesh(ctrl, w, h, steps=4):
+PATCH_TOL = 4.0	# map units a tessellated patch may stray from its curve
+PATCH_MAX_STEPS = 8
+
+
+def _quad_steps(p0, p1, p2, tol, cap):
+	"""Segments that keep a quadratic curve within tol of its polyline (error ~ dev / n^2)."""
+	dev = math.sqrt(sum((p1[k] - 0.5 * (p0[k] + p2[k])) ** 2 for k in range(3))) * 0.5
+	return max(1, min(cap, math.ceil(math.sqrt(dev / tol)))) if tol > 0 else cap
+
+
+def patch_mesh(ctrl, w, h, tol=PATCH_TOL, max_steps=PATCH_MAX_STEPS):
 	"""A Quake 3 biquadratic patch (w x h control vertices, row-major, both odd, each a tuple of
-	floats: position, normal, st) as (verts, tris), every 3x3 piece cut steps x steps."""
+	floats: position, normal, st) as (verts, tris). Each column and row of 3x3 pieces gets the fewest
+	cuts that keep the surface within about tol of the curve (a flat piece is one quad); pieces in a
+	row share their counts, so neighbours meet without cracks."""
 	if w < 3 or h < 3 or not (w & 1) or not (h & 1) or len(ctrl) < w * h:
 		return [], []
 	cp = lambda i, j: ctrl[j * w + i]  # noqa: E731
-	nu, nv = (w - 1) // 2 * steps, (h - 1) // 2 * steps
+	su = [max(_quad_steps(cp(2 * i, j)[:3], cp(2 * i + 1, j)[:3], cp(2 * i + 2, j)[:3], tol, max_steps)
+	          for j in range(h)) for i in range((w - 1) // 2)]
+	sv = [max(_quad_steps(cp(i, 2 * j)[:3], cp(i, 2 * j + 1)[:3], cp(i, 2 * j + 2)[:3], tol, max_steps)
+	          for i in range(w)) for j in range((h - 1) // 2)]
+	us = [(i, k / n) for i, n in enumerate(su) for k in range(n)] + [(len(su) - 1, 1.0)]
+	vs = [(j, k / n) for j, n in enumerate(sv) for k in range(n)] + [(len(sv) - 1, 1.0)]
 	verts = []
-	for y in range(nv + 1):
-		j = min(y // steps, (h - 1) // 2 - 1)
-		tv = (y - j * steps) / steps
-		for x in range(nu + 1):
-			i = min(x // steps, (w - 1) // 2 - 1)
-			tu = (x - i * steps) / steps
+	for j, tv in vs:
+		for i, tu in us:
 			cols = [_bez(cp(2 * i, 2 * j + r), cp(2 * i + 1, 2 * j + r), cp(2 * i + 2, 2 * j + r), tu) for r in range(3)]
 			verts.append(_bez(cols[0], cols[1], cols[2], tv))
 	tris = []
-	row = nu + 1
-	for y in range(nv):
-		for x in range(nu):
+	row = len(us)
+	for y in range(len(vs) - 1):
+		for x in range(row - 1):
 			a = y * row + x
 			tris += [(a, a + row, a + 1), (a + 1, a + row, a + row + 1)]
 	return verts, tris
 
 
-def surface_meshes(bsp, scale: float, max_models: int = WORLD_MAX_MODELS // 2, steps: int = 4):
+def surface_meshes(bsp, scale: float, max_models: int = WORLD_MAX_MODELS // 2, tol: float = PATCH_TOL):
 	"""The world's curved patches and triangle soups (MOHAA's mesh ground, rocks and rubble), which
 	the converter keeps only as collision, as world meshes like terrain_meshes(): grouped by a grid
 	whose cell grows until the meshes fit max_models. Sky and nodraw surfaces are left out."""
@@ -230,7 +244,7 @@ def surface_meshes(bsp, scale: float, max_models: int = WORLD_MAX_MODELS // 2, s
 			continue
 		dv = [(*bsp.drawverts[k], *bsp.drawvert_normals[k], *bsp.drawvert_st[k]) for k in range(lo, hi)]
 		if sf.surface_type == b19.MST_PATCH:
-			verts, tris = patch_mesh(dv, sf.patch_width, sf.patch_height, steps)
+			verts, tris = patch_mesh(dv, sf.patch_width, sf.patch_height, tol)
 		else:
 			idx = bsp.drawindexes[sf.first_index:sf.first_index + sf.num_indexes]
 			verts = dv

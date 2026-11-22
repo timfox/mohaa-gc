@@ -120,18 +120,29 @@ class PackTest(unittest.TestCase):
 			b19.Surface(0, b19.MST_TRIANGLE_SOUP, 4, 6, 0, 0, 0.0, 9, 0),
 			b19.Surface(1, b19.MST_TRIANGLE_SOUP, 4, 6, 0, 0, 0.0, 9, 0)]	# sky: left out
 		bsp.models = [b19.Model((0, 0, 0), (0, 0, 0), 0, 3, 0, 0)]
-		meshes = pm.surface_meshes(bsp, 0.5, steps=2)
+		meshes = pm.surface_meshes(bsp, 0.5)
 		self.assertEqual(len(meshes), 1)
 		name, centre, surfaces = meshes[0]
 		self.assertTrue(name.startswith(pm.WORLD_PREFIX))
 		shader, verts, tris = surfaces[0]
-		self.assertEqual((shader, len(verts), len(tris)), ("textures/ground/mud", 9 + 4, 8 + 2))
+		self.assertEqual((shader, len(verts), len(tris)), ("textures/ground/mud", 4 + 4, 2 + 2))	# a flat patch is one quad
 		for a, b, c in tris:	# all counter-clockwise seen from above, like the props
 			e1 = [verts[b][k] - verts[a][k] for k in range(2)]
 			e2 = [verts[c][k] - verts[a][k] for k in range(2)]
 			self.assertGreater(e1[0] * e2[1] - e1[1] * e2[0], 0)
-		self.assertEqual(verts[8][6:8], (1.0, 1.0))	# the patch's far corner keeps its st
-		self.assertEqual(round(verts[4][0] + centre[0], 4), 16.0)	# patch middle at map x 32 * 0.5
+		self.assertEqual(verts[3][6:8], (1.0, 1.0))	# the patch's far corner keeps its st
+		self.assertEqual(round(verts[3][0] + centre[0], 4), 32.0)	# far corner at map x 64 * 0.5
+
+	def test_curved_patches_get_more_cuts_than_flat_ones(self):
+		def patch(bulge):
+			pts = [(x * 64.0, y * 64.0, bulge if (x, y) == (1, 1) else 0.0, 0.0, 0.0, 1.0, x / 2, y / 2)
+			       for y in range(3) for x in range(3)]
+			return pm.patch_mesh(pts, 3, 3)
+		self.assertEqual(len(patch(0.0)[1]), 2)
+		v, t = patch(256.0)	# a strong dome: cut finer, crack-free grid
+		self.assertGreater(len(t), 2)
+		self.assertLessEqual(len(t), 2 * pm.PATCH_MAX_STEPS ** 2)
+		self.assertGreater(max(p[2] for p in v), 32.0)	# the dome is there
 
 	def test_filter_and_add_shaders_cut_out(self):
 		text = ("netting\n{\n {\n  map textures/m/net.tga\n  blendFunc GL_DST_COLOR GL_ZERO\n }\n}\n"
