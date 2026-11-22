@@ -55,7 +55,7 @@ class PackTest(unittest.TestCase):
 		self.assertEqual((stats["models"], stats["instances"], stats["textures"]), (1, 2, 1))
 		self.assertEqual((stats["models_unloaded"], stats["instances_unloaded"]), (1, 1))
 		magic, ver, ntex, nmod, ninst = struct.unpack_from("<4s4i", data, 0)
-		self.assertEqual((magic, ver, ntex, nmod, ninst), (b"MPRP", 2, 1, 1, 2))
+		self.assertEqual((magic, ver, ntex, nmod, ninst), (b"MPRP", 3, 1, 1, 2))
 		at = 20
 		name = data[at:at + 32].rstrip(b"\0")
 		w, h, flags = struct.unpack_from("<2HI", data, at + 32)
@@ -66,11 +66,12 @@ class PackTest(unittest.TestCase):
 		self.assertEqual(pal[255 * 4 + 3], 0)  # and its palette entry
 		at += 1064 + w * h
 		mname = data[at:at + 64].rstrip(b"\0")
-		mins_maxs = struct.unpack_from("<6fi", data, at + 64)
+		mins_maxs = struct.unpack_from("<6f2i", data, at + 64)
+		self.assertEqual(mins_maxs[7], 0)	# a prop: lit by the engine, no vertex light
 		self.assertEqual(mname, b"static/pine.tik")
 		# posed (heights on z) and scaled by the .tik's 2: the quad spans 20 in x, 40 in z
 		self.assertEqual([round(v, 4) for v in mins_maxs[:6]], [0, 0, 0, 0, 20, 40][:3] + [8.0, 20.0, 40.0])
-		at += 64 + 28
+		at += 64 + 32
 		ti, nv, nt = struct.unpack_from("<3i", data, at)
 		self.assertEqual((ti, nv, nt), (0, 4, 2))
 		v0 = struct.unpack_from("<8f", data, at + 12)
@@ -157,6 +158,41 @@ class PackTest(unittest.TestCase):
 			self.assertGreater(e1[0] * e2[1] - e1[1] * e2[0], 0)
 		self.assertEqual(verts[3][6:8], (1.0, 1.0))	# the patch's far corner keeps its st
 		self.assertEqual(round(verts[3][0] + centre[0], 4), 32.0)	# far corner at map x 64 * 0.5
+
+	def test_world_meshes_carry_mohaa_light(self):
+		import mohaa_bsp19 as b19
+		page = bytearray(b19.LIGHTMAP_BYTES)
+		for y in range(128):
+			for x in range(128):
+				page[(y * 128 + x) * 3:(y * 128 + x) * 3 + 3] = bytes((x, y, 7))
+		bsp = b19.Bsp("t", 19, 0, 0, {})
+		bsp.lightmaps = bytes(page)
+		bsp.shaders = [b19.Shader("textures/terrain/grass", 0, 1, 0)]
+		# terrain: 2 texels a cell from texel (10, 20); every sample kept (tol < 0)
+		bsp.terrain = [b19.TerrainPatch(0, 0, 0, 0, [0] * 81, (), 0, 10, 20, 2)]
+		(_n, _c, [(_sh, verts, _t)]), = pm.terrain_meshes(bsp, 1.0, tol=-1.0)
+		self.assertEqual(tuple(round(c) for c in verts[0][8:11]), (10, 20, 7))	# sample (0, 0)
+		self.assertEqual(tuple(round(c) for c in verts[3 * 9 + 5][8:11]), (20, 26, 7))	# sample (5, 3)
+		# a lightmapped flat patch and a vertex-lit soup
+		bsp.terrain = []
+		pts = [(x * 32.0, y * 32.0, 0.0) for y in range(3) for x in range(3)]
+		soup = [(100.0, 0.0, 8.0), (100.0, 32.0, 8.0), (132.0, 32.0, 8.0)]
+		bsp.drawverts = pts + soup
+		bsp.drawvert_normals = [(0.0, 0.0, 1.0)] * len(bsp.drawverts)
+		bsp.drawvert_st = [(0.0, 0.0)] * len(bsp.drawverts)
+		bsp.drawvert_lmst = [((40 + x) / 128, (50 + y) / 128) for y in range(3) for x in range(3)] + [(0, 0)] * 3
+		bsp.drawvert_color = [(0, 0, 0, 255)] * 9 + [(90, 60, 30, 255)] * 3
+		bsp.drawindexes = [0, 1, 2]
+		bsp.surfaces = [b19.Surface(0, b19.MST_PATCH, 9, 0, 3, 3, 0.0, 0, 0, lightmap=0),
+			b19.Surface(0, b19.MST_TRIANGLE_SOUP, 3, 3, 0, 0, 0.0, 9, 0)]
+		bsp.models = [b19.Model((0, 0, 0), (0, 0, 0), 0, 2, 0, 0)]
+		(_n, _c, [(_sh, verts, _t)]), = pm.surface_meshes(bsp, 1.0)
+		lights = sorted(tuple(round(c) for c in v[8:11]) for v in verts)
+		self.assertIn((40, 50, 7), lights)	# the patch corner, from its lightmap texel minus half
+		self.assertIn((90, 60, 30), lights)	# the soup, from its vertex colour
+		data, stats = pm.build(dict(self.files(), **{"textures/terrain/grass.jpg": tga(8, 8)}),
+			lambda e: e, [], world=pm.surface_meshes(bsp, 1.0))
+		self.assertEqual(stats["world_models_lit"], 1)
 
 	def test_curved_patches_get_more_cuts_than_flat_ones(self):
 		def patch(bulge):
