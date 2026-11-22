@@ -913,6 +913,17 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 		ws_keys["wad"] = wad_name
 	if "message" in world:
 		ws_keys["message"] = world["message"]
+	# MOHAA's far plane: fog to farplane_color and nothing drawn past it. Retail's dense
+	# forests (m6l1a: 1500) rely on it, and the GameCube engine honours it the same way.
+	try:
+		farplane = float(world.get("farplane", "0").split()[0])
+	except (ValueError, IndexError):
+		farplane = 0.0
+	if farplane > 0.0:
+		ws_keys["farplane"] = f"{farplane * scale:.0f}"
+		if "farplane_color" in world:
+			ws_keys["farplane_color"] = world["farplane_color"]
+		stats["farplane"] = int(round(farplane * scale))
 	ws_keys["mohaa_source"] = bsp.name.replace('"', "'")
 
 	world_brushes = []
