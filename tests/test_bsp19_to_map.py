@@ -93,6 +93,18 @@ class CompileSafetyTest(unittest.TestCase):
 		self.assertEqual(len(kept), 6)
 		self.assertEqual(stats["sides_coplanar_dropped"], 1)
 
+	def test_farplane_is_kept_in_map_units(self):
+		bsp = tiny_bsp([((0, 0, 0), (64, 64, 64), 0)], [])
+		bsp.entities[0].update({"farplane": "1500", "farplane_color": ".2 .2 .3"})
+		text, _, stats, _ = conv.convert(bsp, scale=0.766)
+		world = text.split("{", 2)[1]
+		self.assertIn('"farplane" "1149"', world)
+		self.assertIn('"farplane_color" ".2 .2 .3"', world)
+		self.assertEqual(stats["farplane"], 1149)
+		bsp.entities[0].pop("farplane")
+		text, _, _, _ = conv.convert(bsp, scale=0.766)
+		self.assertNotIn("farplane", text)
+
 	def test_runaway_brush_dropped(self):
 		bsp = tiny_bsp([((-80000, 0, 0), (80000, 1, 1), 0), ((0, 0, 0), (64, 64, 64), 0)], [])
 		_, _, stats, _ = conv.convert(bsp, scale=1.0)
