@@ -3,6 +3,7 @@ import io
 import os
 import shutil
 import stat
+import struct
 import sys
 import tempfile
 import unittest
@@ -143,6 +144,7 @@ class MohaaSdTest(unittest.TestCase):
                 calls.append(("convert", argv))
                 self.assertEqual(open(argv[0], "rb").read(), b"IBSP-t1")
                 self.assertIn("--scripts", argv)
+                self.assertIn("--textures", argv)   # real textures from the same sources
                 out = argv[argv.index("-o") + 1][:-4]
                 for ext, text in ((".map", "{}"), (".mcol", "MCOL"), (".nodes", "n"), (".props", "p")):
                     open(out + ext, "w").write(text)
@@ -151,7 +153,12 @@ class MohaaSdTest(unittest.TestCase):
             def light(argv):
                 calls.append(("light", argv))
                 self.assertEqual(open(argv[1]).read(), "BSP30\n")
-                shutil.copy(argv[1], argv[argv.index("-o") + 1])
+                # a BSP30 header whose lighting lump is 1 MB; at 128-texel textures the map is 3.5 MB without it
+                size = int(calls[-2][1][calls[-2][1].index("--texture-size") + 1])
+                unlit = 3584 * 1024 if size == 128 else 2048 * 1024
+                head = struct.pack("<i", 30) + b"".join(struct.pack("<ii", 0, 1048576 if i == 8 else 0) for i in range(15))
+                with open(argv[argv.index("-o") + 1], "wb") as f:
+                    f.write(head.ljust(unlit + 1048576, b"\0"))
                 return 0
 
             def pack(argv):
@@ -175,10 +182,13 @@ class MohaaSdTest(unittest.TestCase):
                 self.assertTrue(os.path.isfile(os.path.join(root, rel)), rel)
             self.assertFalse(os.path.exists(os.path.join(root, "maps", "t2.bsp")))   # only the map asked for
             sdhlt = open(os.path.join(tmp, "calls")).read().splitlines()
-            self.assertEqual([c.split()[0] for c in sdhlt], ["sdHLCSG", "sdHLBSP", "sdHLVIS"])
+            self.assertEqual([c.split()[0] for c in sdhlt], ["sdHLCSG", "sdHLBSP", "sdHLVIS"] * 2)   # twice: see below
             self.assertIn("-wadinclude t1.wad", sdhlt[0])
             self.assertIn("-hull2alias", sdhlt[1])
-            self.assertEqual([c[0] for c in calls], ["convert", "light", "pack"])
+            # over the 3 MB budget at 128-texel textures: built again at 64
+            self.assertEqual([c[0] for c in calls], ["convert", "light", "convert", "light", "pack"])
+            self.assertEqual([c[1][c[1].index("--texture-size") + 1] for c in calls if c[0] == "convert"], ["128", "64"])
+            self.assertIn("t1: 513 KB over the GameCube's 3072 KB map budget with 128-texel textures; again at 64", log)
 
     def test_stages_without_their_tools_are_skipped(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -181,6 +181,12 @@ def _f(v):
 	return "0" if s in ("-0", "") else s
 
 
+def _g(v):
+	"""Texture axes and scales: more digits than coordinates need (a small scale error drifts far)."""
+	s = f"{v:.6f}".rstrip("0").rstrip(".")
+	return "0" if s in ("-0", "") else s
+
+
 # ---------------------------------------------------------------- textures
 
 
@@ -189,7 +195,8 @@ class TextureNamer:
 
 	SPECIAL = {"NULL", "CLIP", "sky", "!water", "AAATRIGGER", "ORIGIN"}
 
-	def __init__(self):
+	def __init__(self, fit=None):
+		self.fit = fit  # world_textures.TextureFit: real texture axes, or None for box projection
 		self.by_shader = {}
 		self.used = set()
 		self.special_used = set()  # sky / !water / AAATRIGGER need WAD entries too
@@ -388,7 +395,14 @@ def brush_text(bsp, brush, scale, offset, namer, stats, cls, entity=False, geom=
 		if entity and tex == "sky":
 			tex = "NULL"  # SDHLT: "SKY brushes not allowed in entity"
 		u, v = texture_axes(n)
-		rest = f"{tex} [ {_f(u[0])} {_f(u[1])} {_f(u[2])} 0 ] [ {_f(v[0])} {_f(v[1])} {_f(v[2])} 0 ] 0 1 1"
+		fit = namer.fit
+		got = fit.axes(sh.name, n, d, w, offset, (u, v)) if fit and tex not in TextureNamer.SPECIAL else None
+		if got:
+			su, ss, tv, ts, sk, tk = got
+			rest = (f"{tex} [ {_g(su[0])} {_g(su[1])} {_g(su[2])} {_f(ss)} ] "
+			        f"[ {_g(tv[0])} {_g(tv[1])} {_g(tv[2])} {_f(ts)} ] 0 {_g(sk)} {_g(tk)}")
+		else:
+			rest = f"{tex} [ {_f(u[0])} {_f(u[1])} {_f(u[2])} 0 ] [ {_f(v[0])} {_f(v[1])} {_f(v[2])} 0 ] 0 1 1"
 		sides.append((three_points(n, w), rest))
 	sides = csg_safe_sides(sides, stats)
 	if sides is None:
@@ -895,7 +909,7 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
             detail_walls: bool = False, wall_cell: float = THIN_WALL_CELL,
             collision_aabb: float = 0.0, collision_reach: float = 0.0, collision_exact: float = 0.0,
             mesh=None, mesh_terrain: bool = False, mesh_patch_tol: float = 0.0, mesh_angled: bool = True,
-            merge_static_models: bool = False, script_words: set | None = None):
+            merge_static_models: bool = False, script_words: set | None = None, texture_fit=None):
 	"""mesh: a mesh_collision.Collision that angled detail (mesh_angled, under
 	simplify_collision), terrain heightfields (mesh_terrain) and solid world patches
 	(mesh_patch_tol > 0) are added to.
@@ -905,7 +919,7 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 	script word and no entity target names is dropped, so that entity can merge too; None
 	keeps every targetname."""
 	angled_mesh = mesh if mesh_angled else None
-	namer = TextureNamer()
+	namer = TextureNamer(texture_fit)
 	stats = Counter()
 	world = bsp.entities[0] if bsp.entities else {"classname": "worldspawn"}
 	ws_keys = {"classname": "worldspawn", "mapversion": "220"}
@@ -1234,20 +1248,20 @@ def _placeholder_mips(name: str, size: int = 64):
 	return mips, bytes(palette)
 
 
+def placeholder_lump(name: str, size: int = 64) -> bytes:
+	mips, palette = _placeholder_mips(name, size)
+	header_len = 16 + 4 + 4 + 16
+	offsets = []
+	pos = header_len
+	for m in mips:
+		offsets.append(pos)
+		pos += len(m)
+	body = struct.pack("<16sII4I", name.encode()[:15], size, size, *offsets)
+	return body + b"".join(mips) + struct.pack("<H", 256) + palette + b"\x00\x00"
+
+
 def write_wad(path: Path, names):
-	size = 64
-	lumps = []
-	for name in sorted(set(names)):
-		mips, palette = _placeholder_mips(name, size)
-		header_len = 16 + 4 + 4 + 16
-		offsets = []
-		pos = header_len
-		for m in mips:
-			offsets.append(pos)
-			pos += len(m)
-		body = struct.pack("<16sII4I", name.encode()[:15], size, size, *offsets)
-		body += b"".join(mips) + struct.pack("<H", 256) + palette + b"\x00\x00"
-		lumps.append((name, body))
+	lumps = [(name, placeholder_lump(name)) for name in sorted(set(names))]
 	out = bytearray(b"WAD3" + struct.pack("<ii", len(lumps), 0))
 	entries = []
 	for name, body in lumps:
@@ -1340,7 +1354,11 @@ def main(argv=None) -> int:
 	ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
 	ap.add_argument("source")
 	ap.add_argument("-o", "--out", type=Path, required=True, help="output .map")
-	ap.add_argument("--wad", type=Path, help="also write a placeholder WAD3 with every used texture")
+	ap.add_argument("--wad", type=Path, help="also write a WAD3 with every used texture (placeholders without --textures)")
+	ap.add_argument("--textures", action="append", metavar="PATH",
+	                help="MOHAA main directory or pk3 (repeatable): the WAD gets MOHAA's own images and brush sides "
+	                     "get texture axes fitted to MOHAA's surfaces (world_textures.py)")
+	ap.add_argument("--texture-size", type=int, default=None, help="largest WAD texture side (default 128)")
 	ap.add_argument("--scale", type=float, default=DEFAULT_SCALE)
 	ap.add_argument("--terrain-brushes", action="store_true",
 	                help="also write LOD terrain as wedge brushes (GoldSrc-native terrain collision)")
@@ -1407,6 +1425,11 @@ def main(argv=None) -> int:
 		if words is None:
 			print(f"{name}: no maps/{mapname}.scr, keeping every targetname")
 	wad_key = str(args.wad.resolve()) if args.wad else None
+	images = fit = None
+	if args.textures:
+		import world_textures
+		images = world_textures.Images(args.textures, args.texture_size or world_textures.TEXTURE_SIZE)
+		fit = world_textures.TextureFit(bsp, images, args.scale)
 	text, namer, stats, skipped = convert(bsp, args.scale, wad_key, args.terrain_brushes, args.terrain_tol, args.terrain_tex,
 	                                         not args.no_terrain_seal, args.detail_world, args.seal_box,
 	                                         args.simplify_collision,
@@ -1414,7 +1437,7 @@ def main(argv=None) -> int:
 	                                         not args.thin_detail_in_world, args.detail_walls, args.wall_cell,
 	                                         args.collision_aabb, args.collision_reach, args.collision_exact,
 	                                         mesh, not args.no_mesh_terrain, args.mesh_patch_tol, args.mesh_collision,
-	                                         not args.keep_brush_models, words)
+	                                         not args.keep_brush_models, words, texture_fit=fit)
 	args.out.write_text(text)
 	ntext, nnodes = path_nodes(bsp, args.scale)
 	if nnodes:
@@ -1432,7 +1455,19 @@ def main(argv=None) -> int:
 		npl, nbr, nsd, nnd = mesh.write(mpath)
 		print(f"{name}: wrote {mpath} ({nbr} brushes, {npl} planes, {nnd} nodes, {mpath.stat().st_size} bytes)")
 	if args.wad:
-		write_wad(args.wad, list(namer.by_shader.values()) + sorted(namer.special_used))
+		if images:
+			import world_textures
+			lumps, real = [], 0
+			for shader, wname in sorted(namer.by_shader.items(), key=lambda kv: kv[1]):
+				body = images.miptex(shader, wname)
+				real += body is not None
+				lumps.append((wname, body or placeholder_lump(wname)))
+			lumps += [(n, placeholder_lump(n)) for n in sorted(namer.special_used)]
+			world_textures.write_wad(args.wad, lumps)
+			print(f"{name}: {real} of {len(namer.by_shader)} textures from MOHAA's images; "
+			      f"{fit.stats['sides_fitted']} sides on MOHAA's texture axes, {fit.stats['sides_projected']} projected")
+		else:
+			write_wad(args.wad, list(namer.by_shader.values()) + sorted(namer.special_used))
 	print(f"{name}: wrote {args.out}")
 	for k in sorted(stats):
 		print(f"  {k:<28} {stats[k]}")

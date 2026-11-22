@@ -29,7 +29,8 @@ Stages run in this order (--stages picks some; by default every one whose tools 
   music     soundtracks and tracks                         needs ffmpeg
   sounds    per-map sound tables and samples
   scripts   level scripts and the global/ libraries
-  maps      maps/<map>.bsp (+ .mcol collision, .nodes)     needs the patched SDHLT: built once (git, cmake, C++)
+  maps      maps/<map>.bsp with MOHAA's textures (+ .mcol collision, .nodes)
+                                                           needs the patched SDHLT: built once (git, cmake, C++)
   worlddl   media/wd_<map>.gcd GameCube world bake         needs --xash3d-gc DIR (a checkout of xash3d-gc)
   props     media/gp_<map>.gcp static props and terrain    needs --xash3d-gc DIR
 The maps stage builds SDHLT with the bsp30ext patch (third_party/sdhlt-bsp30ext, pinned to v1.3.1) the first time
@@ -39,7 +40,7 @@ points at one you built. worlddl and props bake the maps the maps stage compiled
 where sources are MOHAA main folders or pk3 files, game_root is <sd>/xash3d/<gamedir>, maps the map names
 ("" = every map the stage knows), and work a scratch folder kept between runs.
 
-Needs Python 3.8+, Pillow and numpy (menu, loading), ffmpeg (audio), and for the map stages SDHLT and an xash3d-gc checkout.
+Needs Python 3.8+, Pillow and numpy (menu, loading, map textures), ffmpeg (audio), and for the map stages SDHLT and an xash3d-gc checkout.
 Nothing it writes may be shared: it is your game's data.
 """
 import argparse
@@ -218,7 +219,8 @@ def stage_scripts(sources, game_root, maps, work):
 
 
 # Tools the map stages run that are not Python in this repo. main() fills these from the command line.
-CONFIG = {"sdhlt": None, "xash3d_gc": None, "fast_vis": False, "tools_dir": None, "build_sdhlt": True}
+CONFIG = {"sdhlt": None, "xash3d_gc": None, "fast_vis": False, "tools_dir": None, "build_sdhlt": True,
+          "texture_size": None}
 SDHLT = ("sdHLCSG", "sdHLBSP", "sdHLVIS")
 SDHLT_BUILD = os.path.join(os.path.dirname(HERE), "third_party", "sdhlt-bsp30ext", "build.sh")
 _found = {}
@@ -353,6 +355,21 @@ def _quiet(fn, argv, log):
         raise SystemExit("%s failed, see %s" % (fn.__module__, log))
 
 
+TEXTURE_SIZE = 128            # map textures' largest side by default
+TEXTURE_FALLBACK = 64         # a map over its budget at TEXTURE_SIZE is built again at this
+BSP_UNLIT_MAX = 3 * 1048576   # xash3d-gc's compact load: the BSP without its lighting lump (README, map_flags.txt)
+LUMP_LIGHTING = 8
+
+
+def bsp_unlit_size(path):
+    """The BSP30's size without its lighting lump (the part the GameCube's map budget counts)."""
+    import struct
+    with open(path, "rb") as fh:
+        head = fh.read(4 + 15 * 8)
+    _, ln = struct.unpack_from("<ii", head, 4 + LUMP_LIGHTING * 8)
+    return os.path.getsize(path) - ln
+
+
 def stage_maps(sources, game_root, maps, work):
     """Each map compiled for the GameCube: maps/<map>.bsp lit with MOHAA's own light, plus its .mcol collision
     and .nodes path nodes. Needs SDHLT (third_party/sdhlt-bsp30ext/build.sh builds the patched one)."""
@@ -374,17 +391,30 @@ def stage_maps(sources, game_root, maps, work):
         src = os.path.join(d, m + "_mohaa.bsp")   # the retail map, kept for the props stage
         with open(src, "wb") as fh:
             fh.write(read(known[m]))
-        print("   %s: converting" % m)
-        _quiet(bsp19_to_map.main, [src, "-o", os.path.join(d, m + ".map"), "--wad", os.path.join(d, m + ".wad")]
-               + flags.get(m, []) + [a for s in sources for a in ("--scripts", s)], log)
-        print("   %s: compiling (SDHLT)" % m)
-        # the textures go inside the BSP, so nothing on the card points back at this work folder
-        _run([csg, "-wadinclude", m + ".wad", m], d, log)
-        _run([bsp, "-hull2alias", m], d, log)
-        _run([vis] + (["-fast"] if CONFIG["fast_vis"] else []) + [m], d, log)
-        print("   %s: lighting" % m)
         dest = os.path.join(out_maps, m + ".bsp")
-        _quiet(bsp19_lightmaps.main, [src, os.path.join(d, m + ".bsp"), "-o", dest], log)
+        size = CONFIG["texture_size"]
+        sizes = [size] if size is not None else [TEXTURE_SIZE, TEXTURE_FALLBACK]
+        for k, size in enumerate(sizes):
+            textures = [] if size == 0 else [a for s in sources for a in ("--textures", s)] + ["--texture-size", str(size)]
+            print("   %s: converting" % m)
+            _quiet(bsp19_to_map.main, [src, "-o", os.path.join(d, m + ".map"), "--wad", os.path.join(d, m + ".wad")]
+                   + flags.get(m, []) + [a for s in sources for a in ("--scripts", s)] + textures, log)
+            print("   %s: compiling (SDHLT)" % m)
+            # the textures go inside the BSP, so nothing on the card points back at this work folder
+            _run([csg, "-wadinclude", m + ".wad", m], d, log)
+            _run([bsp, "-hull2alias", m], d, log)
+            _run([vis] + (["-fast"] if CONFIG["fast_vis"] else []) + [m], d, log)
+            print("   %s: lighting" % m)
+            _quiet(bsp19_lightmaps.main, [src, os.path.join(d, m + ".bsp"), "-o", dest], log)
+            over = bsp_unlit_size(dest) - BSP_UNLIT_MAX
+            if over <= 0:
+                break
+            if k + 1 < len(sizes):
+                print("   %s: %d KB over the GameCube's %d KB map budget with %d-texel textures; again at %d"
+                      % (m, over // 1024 + 1, BSP_UNLIT_MAX // 1024, size, sizes[k + 1]))
+            else:
+                print("   %s: warning: %d KB over the GameCube's %d KB map budget (without its light)"
+                      % (m, over // 1024 + 1, BSP_UNLIT_MAX // 1024))
         written.append(dest)
         for ext in (".mcol", ".nodes"):
             side = os.path.join(d, m + ext)
@@ -471,6 +501,11 @@ def missing_tools(stage):
             import PIL  # noqa: F401
         except ImportError:
             return "needs Pillow and numpy (pip install pillow numpy)"
+    if stage in ("maps", "props"):
+        try:
+            import PIL  # noqa: F401
+        except ImportError:
+            return "needs Pillow (pip install pillow)"
     if stage in ("music", "movie") and not shutil.which("ffmpeg"):
         return "needs ffmpeg"
     if stage == "maps" and not sdhlt_dir():
@@ -525,13 +560,16 @@ def main(argv=None):
                     help="never build SDHLT (the maps stage is skipped without one)")
     ap.add_argument("--xash3d-gc", dest="xash3d_gc", help="xash3d-gc checkout, for the GameCube bakes (worlddl, props)")
     ap.add_argument("--fast-vis", action="store_true", help="sdHLVIS -fast (quicker compiles, more overdraw)")
+    ap.add_argument("--texture-size", type=int, default=None,
+                    help="largest map texture side (default: 128, or 64 for a map that would go over the "
+                         "GameCube's 3 MB map budget; 0 = placeholder checkers)")
     ap.add_argument("--work", help="scratch folder kept between runs (default <sd>/.mohaa-work)")
     ap.add_argument("--list", action="store_true", help="list every file written")
     a = ap.parse_args(argv)
     if not a.mohaa and not a.cd:
         ap.error("give --mohaa or --cd (or both)")
     CONFIG.update(sdhlt=a.sdhlt, xash3d_gc=a.xash3d_gc, fast_vis=a.fast_vis, tools_dir=a.tools_dir,
-                  build_sdhlt=a.build_sdhlt)
+                  build_sdhlt=a.build_sdhlt, texture_size=a.texture_size)
     _found.clear()
     if a.stages:
         stages = [s.strip() for s in a.stages.split(",") if s.strip()]
