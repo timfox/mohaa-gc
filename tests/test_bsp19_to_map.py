@@ -176,6 +176,15 @@ class CompileSafetyTest(unittest.TestCase):
 		bsp.entities[1]["classname"] = "trigger_once"
 		self.assertIn('"classname" "trigger_once"', conv.convert(bsp, scale=1.0)[0])
 
+	def test_damage_trigger_does_not_fire_on_touch(self):
+		bsp = tiny_bsp([((-256, -256, -16), (256, 256, 0), 0)], [((0, 0, 0), (64, 64, 64), 0)], door_class="trigger_multiple")
+		bsp.entities[1].update({"targetname": "intro_target", "setthread": "intro_exploder", "spawnflags": "16"})
+		text, _, stats, _ = conv.convert(bsp, scale=1.0)
+		block = text[text.index('"classname" "trigger_multiple"'):]
+		block = block[:block.index("\n}\n")]
+		self.assertIn('"spawnflags" "2"', block)  # GoldSrc: no clients touch it; scripted shots fire it
+		self.assertEqual(stats["damage_triggers"], 1)
+
 	def test_rain_volume_is_nonsolid(self):
 		bsp = tiny_bsp([((0, 0, 0), (64, 64, 64), 0)], [((0, 0, 100), (64, 64, 164), 0)], door_class="func_rain")
 		text, _, _, _ = conv.convert(bsp, scale=1.0)

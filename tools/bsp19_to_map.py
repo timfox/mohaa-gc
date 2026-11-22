@@ -286,6 +286,7 @@ TRIGGER_CLASS_MAP = {
 # target, 259 of them on m5l2b. They merge per set (and fly as one piece, at the first one's target)
 # so the map fits GoldSrc's 512 models.
 TARGET_FREE_NAMES = {"exploderchunk"}
+MOHAA_TRIGGER_DAMAGE = 16  # a trigger set off by damage (a shot or blast), not by touch
 TRIGGER_KEYS = ("targetname", "target", "wait", "delay", "dmg", "speed", "angle", "angles")
 # MOHAA brush entities that are volumes, not walls: no player/bullet collision.
 NONSOLID_BRUSH = {"func_rain": "func_illusionary"}
@@ -1098,6 +1099,15 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 				keys.update(hash_keys(e))
 				if e.get("setthread"):
 					keys["netname"] = e["setthread"].strip()
+				try:
+					mflags = int(e.get("spawnflags", "0"))
+				except ValueError:
+					mflags = 0
+				if mflags & MOHAA_TRIGGER_DAMAGE and keys["classname"] in ("trigger_multiple", "trigger_once"):
+					# shot, not walked into (m1l1's bazooka target ends the opening ride): GoldSrc's "no clients"
+					# flag keeps touch from firing it, and dod-gc fires it from scripted shots and blasts
+					keys["spawnflags"] = "2"
+					stats["damage_triggers"] += 1
 				if keys["classname"] == "trigger_multiple" and "wait" not in keys:
 					keys["wait"] = "0.2"  # MOHAA re-arms a multiple trigger quickly; GoldSrc's default is 0.2 too
 				if merge_static_models and "targetname" not in keys and keys["classname"] != "trigger_once":

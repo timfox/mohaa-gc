@@ -218,6 +218,19 @@ def stage_scripts(sources, game_root, maps, work):
     return _written(game_root, before)
 
 
+def stage_tags(sources, game_root, maps, work):
+    """Cutscene model tags and animation lengths (maps/<map>.tags) for the level scripts' "gettagposition" and
+    "waittill animdone": m1l1's opening ride follows its truck path model frame by frame."""
+    import mohaa_tags
+    maps = maps or sorted(map_sources(sources))
+    if not maps:
+        return []
+    before = _snapshot(game_root)
+    if mohaa_tags.main(list(sources) + ["--out", game_root, "--maps", ",".join(maps)]):
+        raise SystemExit("tags stage failed")
+    return _written(game_root, before)
+
+
 # Tools the map stages run that are not Python in this repo. main() fills these from the command line.
 CONFIG = {"sdhlt": None, "xash3d_gc": None, "fast_vis": False, "tools_dir": None, "build_sdhlt": True,
           "texture_size": None}
@@ -486,6 +499,7 @@ STAGES = {
     "music": stage_music,
     "sounds": stage_sounds,
     "scripts": stage_scripts,
+    "tags": stage_tags,
     "maps": stage_maps,
     "worlddl": stage_worlddl,
     "props": stage_props,

@@ -21,6 +21,7 @@ typedef struct Ent {
 #define NENTS 16
 static Ent ents[NENTS];
 static const char *files[8][2];
+static size_t file_len[8];	/* nonzero: a binary file of this many bytes (it may hold NULs) */
 static char log_buf[4096];
 
 static void logf_(const char *s)
@@ -42,6 +43,12 @@ static char *m_load(const char *path, size_t *len)
 {
 	int i;
 	for (i = 0; i < 8 && files[i][0]; i++) {
+		if (!strcmp(files[i][0], path) && file_len[i]) {
+			char *s = malloc(file_len[i]);
+			memcpy(s, files[i][1], file_len[i]);
+			*len = file_len[i];
+			return s;
+		}
 		if (!strcmp(files[i][0], path)) {
 			char *s = strdup(files[i][1]);
 			*len = strlen(s);
@@ -184,6 +191,29 @@ static void m_music(const char *intro, const char *loop)
 	logf_(buf);
 }
 
+/* cutscene backend: the held player, where they were put, their view and HUD, shots */
+static int locked, places, place_eye;
+static float place_pos[3], view_abs[3], view_add;
+static int hud_bits = -1;
+static void m_lock(uint32_t id, int on) { (void)id; locked = on; }
+static void m_place(uint32_t id, const float p[3], int eye) { (void)id; places++; place_eye = eye; memcpy(place_pos, p, 12); }
+static void m_view(uint32_t id, const float a[3], int add)
+{
+	(void)id;
+	if (add)
+		view_add += a[1];
+	else
+		memcpy(view_abs, a, 12);
+}
+static void m_hud(int bits) { hud_bits = bits; }
+static void m_damage_at(uint32_t attacker, const float p[3], float radius, float dmg)
+{
+	char line[128];
+	snprintf(line, sizeof(line), "<damage %s %.1f %.1f %.1f r%.1f d%.0f>\n", attacker ? ent(attacker)->targetname : "world",
+		p[0], p[1], p[2], radius, dmg);
+	logf_(line);
+}
+
 static DodMohaaBackend backend(void)
 {
 	DodMohaaBackend b;
@@ -212,6 +242,11 @@ static DodMohaaBackend backend(void)
 	b.set_cvar = m_set_cvar;
 	b.precache_sound = m_precache;
 	b.music = m_music;
+	b.player_lock = m_lock;
+	b.place_player = m_place;
+	b.view = m_view;
+	b.hud = m_hud;
+	b.damage_at = m_damage_at;
 	return b;
 }
 
@@ -220,6 +255,7 @@ static void reset(void)
 	Dod_MohaaShutdown();
 	memset(ents, 0, sizeof(ents));
 	memset(files, 0, sizeof(files));
+	memset(file_len, 0, sizeof(file_len));
 	log_buf[0] = 0;
 	precached[0] = 0;
 }
@@ -925,6 +961,150 @@ static void test_vehicle_drive(void)
 	Dod_MohaaShutdown();
 }
 
+/* maps/<map>.tags in the layout mohaa-gc tools/mohaa_tags.py writes */
+static size_t put_name(unsigned char *o, const char *s)
+{
+	o[0] = (unsigned char)strlen(s);
+	memcpy(o + 1, s, strlen(s));
+	return 1 + strlen(s);
+}
+static size_t put_u32(unsigned char *o, uint32_t v) { o[0] = v; o[1] = v >> 8; o[2] = v >> 16; o[3] = v >> 24; return 4; }
+static size_t put_f32(unsigned char *o, float f) { uint32_t u; memcpy(&u, &f, 4); return put_u32(o, u); }
+static size_t put_i16(unsigned char *o, int v) { o[0] = (unsigned char)(v & 0xff); o[1] = (unsigned char)((v >> 8) & 0xff); return 2; }
+
+static size_t make_tags(unsigned char *o)
+{
+	/* one model, one tag, "idle" of 2 frames 2 s apart: (100 0 0) facing +x, then (100 200 0) turned 90 left */
+	static const int frames[2][7] = {{100, 0, 0, 0, 0, 0, 32767}, {100, 200, 0, 0, 0, 23170, 23170}};
+	size_t n = 0;
+	int f, k;
+	memcpy(o, "MTAG", 4);
+	n = 4;
+	n += put_u32(o + n, 1);
+	n += put_u32(o + n, 1);
+	n += put_name(o + n, "driver_getvisa");
+	n += put_f32(o + n, 5.0f);
+	n += put_u32(o + n, 1);
+	n += put_name(o + n, "vehicles/path.tik");
+	o[n++] = 1;
+	n += put_name(o + n, "tag_camera");
+	o[n++] = 1;
+	n += put_name(o + n, "idle");
+	n += put_f32(o + n, 2.0f);
+	o[n++] = 2; o[n++] = 0;
+	n += put_f32(o + n, 1.0f);
+	for (f = 0; f < 2; f++)
+		for (k = 0; k < 7; k++)
+			n += put_i16(o + n, frames[f][k]);
+	return n;
+}
+
+static int read_vec(const char *key, float v[3])
+{
+	const char *p = strstr(log_buf, key);
+	return p && sscanf(p + strlen(key), " (%f %f %f)", &v[0], &v[1], &v[2]) == 3;
+}
+
+static void test_cutscene(void)
+{
+	static unsigned char tags[256];
+	DodMohaaBackend b = backend();
+	float v[3];
+	int player, turret, org;
+	reset();
+	locked = places = 0;
+	view_add = 0;
+	hud_bits = -1;
+	add("path", "info_target", 0, 0, 0);
+	add("guard", "actor", 0, 0, 0);
+	add("extra", "actor", 0, 0, 0);
+	add("bazooka", "actor", 0, 0, 0);
+	add("target", "info_target", 94, 0, 0);
+	player = add("player", "player", 0, 0, 0);
+	turret = add("turret", "info_target", 0, 0, 0);
+	org = add("truckorg", "info_target", 0, 0, 0);
+	files[0][0] = "maps/c.tags";
+	files[0][1] = (const char *)tags;
+	file_len[0] = make_tags(tags);
+	files[1][0] = "maps/c.scr";
+	files[1][1] =
+		"main:\n"
+		"\tlevel waittill spawn\n"
+		"\t$path model \"models/vehicles/path.tik\"\n"
+		"\t$path.angles = (0 90 0)\n"
+		"\t$path anim idle\n"
+		"\t$guard thread watch\n"
+		"\t$guard anim_scripted driver_getvisa\n"
+		"\t$extra thread watch\n"
+		"\t$extra anim nobody_baked_this\n"
+		"\t$turret doUse $player\n"
+		"\t$turret glue $truckorg\n"
+		"\t$player physics_off\n"
+		"\t$turret.viewangles = (10 180 0)\n"
+		"\tthread follow\n"
+		"\twait 1\n"
+		"\tprintln (\"half \" + ($path gettagposition \"tag_camera\") + \" \" + ($path gettagangles \"TAG_CAMERA\"))\n"
+		"\tdrawhud 0\n"
+		"\twait 1.5\n"
+		"\tprintln (\"end \" + ($path gettagposition \"tag_camera\") + \" \" + ($path gettagangles \"tag_camera\"))\n"
+		"\tprintln (\"plain \" + ($path gettagposition \"no_such_tag\"))\n"
+		"\tlevel.ride = 0\n"
+		"\t$turret doUse $player\n"
+		"\t$player physics_on\n"
+		"\tdrawhud 1\n"
+		"\t$bazooka aimat $target\n"
+		"\t$bazooka animscript anim/shoot.scr\n"
+		"\tradiusdamage (94 0 0) 100 94\n"
+		"end\n"
+		"follow:\n"
+		"\tlevel.ride = 1\n"
+		"\twhile (level.ride) {\n"
+		"\t\t$truckorg.origin = $path gettagposition \"tag_camera\"\n"
+		"\t\t$turret.viewangles = (10 (180 + level.time * 10) 0)\n"
+		"\t\twaitframe\n"
+		"\t}\n"
+		"end\n"
+		"watch:\n"
+		"\tself waittill animdone\n"
+		"\tprintln (\"animdone \" + self.targetname + \" \" + level.time)\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "c", 0, 0));
+	assert(strstr(log_buf, "1 models with tags, 1 animation lengths"));
+	run(0.05f, 0.5f);
+	/* on the turret: locked, weapon HUD gone, eyes at the turret, which is glued onto the camera tag */
+	assert(locked && hud_bits == DOD_MOHAA_HUD_WEAPON);
+	assert(places > 0 && place_eye == 1);
+	assert(near(view_abs[0], 10.0f) && view_abs[1] >= 180.0f && view_abs[1] < 182.0f);
+	assert(fabsf(ents[turret].origin[0] - ents[org].origin[0]) < 0.01f);
+	run(0.55f, 1.3f);
+	/* halfway: (100 100 0) turned 45 left in the path, then the path's own 90: (-100 100 0) facing 135 */
+	assert(read_vec("half ", v));
+	assert(fabsf(v[0] + 100.0f) < 6.0f && fabsf(v[1] - 100.0f) < 6.0f && fabsf(v[2]) < 0.01f);
+	assert(strstr(log_buf, "animdone extra 1.1"));	/* no baked length: a second */
+	assert(!strstr(log_buf, "animdone guard"));
+	assert(hud_bits == (DOD_MOHAA_HUD_ALL | DOD_MOHAA_HUD_WEAPON));
+	run(1.35f, 6.0f);
+	{
+		const char *h = strstr(log_buf, "half ");
+		float a[3];
+		assert(h && sscanf(strchr(h + 6, ')') + 1, " (%f %f %f)", &a[0], &a[1], &a[2]) == 3);
+		assert(fabsf(a[1] - 135.0f) < 3.0f && fabsf(a[0]) < 0.01f && fabsf(a[2]) < 0.01f);
+	}
+	/* past the last frame the tag holds there: (100 200 0) -> (-200 100 0), facing 180 */
+	assert(read_vec("end ", v));
+	assert(fabsf(v[0] + 200.0f) < 0.1f && fabsf(v[1] - 100.0f) < 0.1f);
+	assert(strstr(log_buf, "plain (0.000 0.000 0.000)"));
+	assert(strstr(log_buf, "animdone guard 5.1"));	/* driver_getvisa's baked 5 s */
+	/* the view followed the turret's turns (10 degrees a second for ~2.4 s) */
+	assert(view_add > 20.0f && view_add < 26.0f);
+	/* off the turret: free again, HUD back */
+	assert(!locked && hud_bits == 0);
+	assert(strstr(log_buf, "<damage bazooka 94.0 0.0 0.0 r48.0 d200>"));
+	assert(strstr(log_buf, "<damage world 72.0 0.0 0.0 r72.0 d100>"));
+	(void)player;
+	Dod_MohaaShutdown();
+}
+
 /* one line per test, so a run reads as a list (tools/capture_run.py records it) */
 #define RUN(t) do { t(); printf("  %-40s ok\n", #t); fflush(stdout); } while (0)
 
@@ -943,6 +1123,7 @@ int main(void)
 	RUN(test_pool_allocator);
 	RUN(test_pool_backend);
 	RUN(test_vehicle_drive);
+	RUN(test_cutscene);
 	Dod_MohaaShutdown();
 	assert(Dod_MohaaPathNodes(NULL) == 0);
 	printf("dod_mohaa_test: ok\n");

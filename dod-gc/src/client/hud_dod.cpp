@@ -431,6 +431,12 @@ int CHudDod::DrawRetail( float flTime )
 	}
 	if( !m_hSheets[DOD_SHEET_LAYOUT] )
 		return 0;	/* no retail sheets on this disc: let the caller draw */
+	if( gHUD.m_iHideHUDDisplay & HIDEHUD_ALL )
+	{
+		/* a MOHAA cutscene's "drawhud 0": nothing, and nothing else may draw health or ammo either */
+		gEngfuncs.Cvar_SetValue( "gc_hud_retail", 1.0f );
+		return 1;
+	}
 
 	/* Retail lays the 640-res art out 1:1 on a 640x480 screen. The GameCube
 	 * HUD space is 320x240 (shown at 2x), so lay out at 640x480 and scale
@@ -456,7 +462,10 @@ int CHudDod::DrawRetail( float flTime )
 	in.spectating = g_iUser1 != 0;
 	in.dead = in.health <= 0;
 	in.show_reinforcements = 0;
-	in.crosshair = 1;
+	/* a MOHAA scripted ride (player locked): no crosshair or ammo, as retail shows none there */
+	in.crosshair = ( gHUD.m_iHideHUDDisplay & HIDEHUD_WEAPONS ) ? 0 : 1;
+	if( gHUD.m_iHideHUDDisplay & HIDEHUD_WEAPONS )
+		in.hide_bottom = 1;
 	in.crosshair_gap = 4;
 	/* The server sends the clock a couple of times a second; count down
 	 * between messages, and hide it when the messages stop. */

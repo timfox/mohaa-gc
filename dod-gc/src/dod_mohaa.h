@@ -38,6 +38,9 @@ enum {
 	DOD_MOHAA_AI_ON = 0, DOD_MOHAA_AI_OFF, DOD_MOHAA_ATTACK,	/* attackplayer */
 	DOD_MOHAA_WALKTO, DOD_MOHAA_RUNTO, DOD_MOHAA_TURNTO, DOD_MOHAA_STOP
 };
+/* HUD parts a cutscene hides: ALL is MOHAA's "drawhud 0"; WEAPON (crosshair, ammo, view model) goes while the
+   player is locked into a scripted ride. */
+enum { DOD_MOHAA_HUD_ALL = 1, DOD_MOHAA_HUD_WEAPON = 2 };
 enum { DOD_MOHAA_PRINT_CONSOLE = 0, DOD_MOHAA_PRINT_HUD = 1, DOD_MOHAA_PRINT_CENTER = 2, DOD_MOHAA_PRINT_ERROR = 3 };
 
 /* Entity ids are opaque to this file: the backend packs edict index and serial so a
@@ -83,6 +86,19 @@ typedef struct DodMohaaBackend {
 	   intro once and stops; intro NULL stops the music. Paths are game-relative ("sound/mohaa/music/x.wav"),
 	   PCM wavs written by mohaa-gc tools/music.py. NULL: no music. */
 	void (*music)(const char *intro, const char *loop);
+	/* In-game cutscenes (see "Cutscenes" in dod_mohaa.c). All NULL-safe: a backend without them plays the script
+	   with the player free. */
+	/* physics_off / freezeplayer: the player stops moving under their own control (they can still look) */
+	void (*player_lock)(uint32_t id, int locked);
+	/* Put the player at pos (GoldSrc units): pos is where their eyes go when eye is 1, their feet when 0. */
+	void (*place_player)(uint32_t id, const float pos[3], int eye);
+	/* Turn the player's view: to angles when add is 0, by angles[1] degrees of yaw when 1 (their own look stays). */
+	void (*view)(uint32_t id, const float angles[3], int add);
+	/* What of every player's HUD to hide: DOD_MOHAA_HUD_* bits, 0 shows it all. */
+	void (*hud)(int hide);
+	/* A shot or blast at point (GoldSrc units): damage what is within radius and fire MOHAA damage triggers
+	   (converted with spawnflags 2, no touch) whose box holds the point. attacker 0: the world. */
+	void (*damage_at)(uint32_t attacker, const float point[3], float radius, float damage);
 	void *(*alloc)(void *ptr, size_t old_size, size_t new_size); /* NULL: pool below, else malloc */
 	/* A region the VM allocates from when alloc is NULL (dod_mohaa_pool.h), instead of the engine heap. It must
 	   stay valid until the next Dod_MohaaLevelInit or Dod_MohaaShutdown, or until Dod_MohaaDropPool says it is
