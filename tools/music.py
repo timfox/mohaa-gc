@@ -43,7 +43,7 @@ from ubersound import collect, read  # noqa: E402
 
 MOODS = ("normal", "aux1", "aux2", "aux3", "aux4", "aux5", "aux6")
 CUE = re.compile(r'\b(tmstart|tmstartloop)\s+([^\s";]+)', re.I)
-NO_STREAM_SENTINELS = {"sound/music/null.wav"}
+NO_STREAM_SENTINELS = {"sound/music/null.wav", "sound/amb_stereo/null.wav"}
 
 
 def parse_mus(text):
@@ -174,7 +174,8 @@ def main(argv=None):
             print("  missing %s" % src)
         if any(src.startswith("sound/amb_stereo/") for src in missing):
             print("  note: MOHAA stores these in the separate Sound AmbStereo Files CD group; "
-                  "supply both install CDs with mohaa_sd.py --cd, or include main/sound/amb_stereo")
+                  "supply both install CDs with mohaa_sd.py --cd or add an extracted loose-audio folder "
+                  "with --music-source (mohaa_sd.py) / as an input directory (music.py)")
         for src, why in failed[:20]:
             print("  failed %s: %s" % (src, why.splitlines()[0]))
     return 0

@@ -19,14 +19,16 @@ An alias with no exact definition resolves to its numbered variants (door_open1,
 the way MOHAA does. Samples move under sound/mohaa/ so they cannot clash with DoD's own.
 
 --wav also writes the referenced samples to <out>/sound/mohaa/..., as GoldSrc-friendly 16-bit
-mono PCM at 22050 Hz or less, from 8/16-bit PCM or IMA ADPCM sources (mp3 music is listed, not
-converted). Samples a script plays with loopsound get a cue point, which makes GoldSrc loop them.
+mono PCM at 22050 Hz or less, from 8/16-bit PCM or IMA ADPCM WAVs and MP3s decoded by ffmpeg.
+Samples a script plays with loopsound get a cue point, which makes GoldSrc loop them.
 
 The output is retail data: write it outside the repository and never commit it.
 """
 import argparse
 import os
 import re
+import shutil
+import subprocess
 import sys
 import zipfile
 
@@ -116,6 +118,7 @@ def map_aliases(scripts, mapname):
             continue
         seen.add(path)
         text = read(scripts[path]).decode("latin-1")
+        text = "\n".join(line.split("//", 1)[0] for line in text.splitlines())
         for cmd, n in PLAY.findall(text):
             n = n.lower()
             if "." in n or n in NOT_ALIAS:
@@ -129,11 +132,7 @@ def map_aliases(scripts, mapname):
 
 def resolve(aliases, name):
     """The alias's samples (or its numbered variants'), each path once, silent placeholders dropped."""
-    if name in aliases:
-        rows = aliases[name]
-    else:
-        variants = sorted(k for k in aliases if k.startswith(name) and k[len(name):].isdigit())
-        rows = [v for k in variants for v in aliases[k]]
+    rows = _alias_rows(aliases, name)
     out, seen = [], set()
     for row in rows:
         key = row[0].lower()
@@ -144,11 +143,27 @@ def resolve(aliases, name):
     return out
 
 
+def _alias_rows(aliases, name):
+    if name in aliases:
+        return aliases[name]
+    variants = sorted(k for k in aliases if k.startswith(name) and k[len(name):].isdigit())
+    return [row for key in variants for row in aliases[key]]
+
+
+def intentionally_silent(aliases, name):
+    """True when the alias is explicitly defined only with MOHAA's null.wav sentinel."""
+    rows = _alias_rows(aliases, name)
+    return bool(rows) and all(row[0].lower().replace("\\", "/").endswith("/null.wav") or
+                              row[0].lower().replace("\\", "/") == "null.wav" for row in rows)
+
+
 def sample_name(path):
     """sound/mechanics/door_01.wav -> mohaa/mechanics/door_01.wav (relative to GoldSrc's sound/)."""
     p = path.lower()
     if p.startswith("sound/"):
         p = p[6:]
+    if p.endswith(".mp3"):
+        p = p[:-4] + ".wav"
     return "mohaa/" + p
 
 
@@ -233,6 +248,11 @@ def read_wav(data):
 def write_wav(dest, rate, samples, loop):
     """16-bit mono PCM; loop adds a cue point at 0, which makes GoldSrc repeat the sample."""
     pcm = b"".join(int(v).to_bytes(2, "little", signed=True) for v in samples)
+    write_pcm_wav(dest, rate, pcm, loop)
+
+
+def write_pcm_wav(dest, rate, pcm, loop):
+    """Write little-endian 16-bit mono PCM, adding a cue point for looping samples."""
     fmt = (1).to_bytes(2, "little") + (1).to_bytes(2, "little") + rate.to_bytes(4, "little") + \
         (rate * 2).to_bytes(4, "little") + (2).to_bytes(2, "little") + (16).to_bytes(2, "little")
     chunks = b"fmt " + len(fmt).to_bytes(4, "little") + fmt + b"data" + len(pcm).to_bytes(4, "little") + pcm
@@ -258,6 +278,22 @@ def convert_wav(data, dest, loop=False):
     frames = len(samples) // ch
     mono = [sum(samples[f * ch:f * ch + ch]) // ch for f in range(0, frames, step)]
     write_wav(dest, rate // step, mono, loop)
+    return None
+
+
+def convert_mp3(data, dest, loop=False):
+    """Decode an MP3 alias to GameCube-friendly 22.05 kHz mono PCM WAV."""
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:
+        return "ffmpeg needed to convert MP3 sound samples"
+    run = subprocess.run(
+        [ffmpeg, "-v", "error", "-i", "pipe:0", "-map", "0:a:0", "-ar", "22050", "-ac", "1",
+         "-f", "s16le", "-acodec", "pcm_s16le", "pipe:1"],
+        input=data, capture_output=True)
+    if run.returncode or not run.stdout:
+        return "ffmpeg could not decode MP3 sound sample"
+    pcm = run.stdout[:len(run.stdout) - len(run.stdout) % 2]
+    write_pcm_wav(dest, 22050, pcm, loop)
     return None
 
 
@@ -291,7 +327,7 @@ def main(argv=None):
         rows, missing, samples = [], [], set()
         for name in sorted(names):
             r = resolve(aliases, name)
-            if not r:
+            if not r and not intentionally_silent(aliases, name):
                 missing.append(name)
             for path, vol, mindist, channel in r:
                 rows.append("%s %s %.2f %d %s" % (name, sample_name(path), vol, mindist, channel))
@@ -314,7 +350,11 @@ def main(argv=None):
             if src not in sounds:
                 skipped.append((src, "missing"))
                 continue
-            why = convert_wav(read(sounds[src]), os.path.join(args.out, "sound", rel), src in looped)
+            data = read(sounds[src])
+            if src.endswith(".mp3"):
+                why = convert_mp3(data, os.path.join(args.out, "sound", rel), src in looped)
+            else:
+                why = convert_wav(data, os.path.join(args.out, "sound", rel), src in looped)
             if why:
                 skipped.append((src, why))
             else:

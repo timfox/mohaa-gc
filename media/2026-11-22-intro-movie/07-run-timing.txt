@@ -1,0 +1,4 @@
+window=0xe0000a
+geom=640x480+684,399
+rec_start_offset=3.547501426
+press_A_at_rec=20.262991531

@@ -7,7 +7,7 @@
     python3 tools/mohaa_sd.py --mohaa ~/MOHAA --sd ./sdcard --maps m1l1 --xash3d-gc ~/xash3d-gc
 
 The release disc holds no game data. Everything MOHAA brings (the main menu room, loading screens, music, sounds, scripts, maps, collision,
-props and terrain; the intro movie is still to come) is converted here from files you own and written under
+props, terrain and intro movie) is converted here from files you own and written under
 
     <sd>/xash3d/<gamedir>/          (gamedir: mohaa)
 
@@ -20,6 +20,8 @@ Sources (give one or both):
   --cd DIR...   the install CDs, mounted or copied (the folders holding DATA1.HDR and the DATAn.CAB files;
                 list both CDs). Needs the `unshield` program; the cabinets are unpacked to a work folder once
                 and reused.
+  --music-source DIR  an extra folder containing loose sound/ music files; repeat for split extractions.
+                      Used by the music stage only. Normally the installed game folder already includes these.
 
 Stages run in this order (--stages picks some; by default every one whose tools are found):
   menu      the retail main menu: the war room, its lit      needs Pillow and numpy
@@ -57,6 +59,11 @@ sys.path.insert(0, HERE)
 CD_GROUPS = {
     "Music Files": "sound/music",
     "Sound AmbStereo Files": "sound/amb_stereo",
+    "Sound Amb Files": "sound/amb",
+    "Sound Mechanics Files": "sound/mechanics",
+    "Sound Vehicle Files": "sound/vehicle",
+    "Sound Weapons Files": "sound/weapons",
+    "Sound Dialogue Files": "sound/dialogue",
     "Video Files": "video",          # intro.RoQ + intro.mp3 for the movie stage
 }
 
@@ -89,13 +96,13 @@ def find_cab_set(dirs):
 
 
 def unpack_cds(dirs, work, log=print):
-    """Unpack the music groups and every pk3 from the CDs' cabinets into <work>/cd/main; returns that folder."""
+    """Unpack the media groups and every pk3 from the CDs' cabinets into <work>/cd/main; returns that folder."""
     out = os.path.join(work, "cd", "main")
     done = os.path.join(work, "cd", ".done")
-    # unshield -L replaces spaces in group-directory names with underscores
+    # unshield -L lowercases group-directory names and replaces spaces with underscores
     # ("Sound AmbStereo Files" -> "sound_ambstereo_files"). Version the cache
-    # so a previous extract that only copied the PK3s is unpacked again.
-    groups_key = "unshield-lowercase-groups-v2\n" + "\n".join(sorted(CD_GROUPS)) + "\n"
+    # so prior extracts without the complete sound groups are unpacked again.
+    groups_key = "unshield-lowercase-groups-v3\n" + "\n".join(sorted(CD_GROUPS)) + "\n"
     if os.path.exists(done):
         with open(done) as fh:
             if fh.read() == groups_key:
@@ -136,7 +143,8 @@ def unpack_cds(dirs, work, log=print):
                 if f.lower().endswith(".pk3"):
                     dest = os.path.join(out, f.lower())
                 elif sub:
-                    dest = os.path.join(out, sub, f.lower())
+                    rel = os.path.relpath(src, gdir).lower()
+                    dest = os.path.join(out, sub, rel)
                 else:
                     continue
                 os.makedirs(os.path.dirname(dest), exist_ok=True)
@@ -563,8 +571,8 @@ def missing_tools(stage):
             import PIL  # noqa: F401
         except ImportError:
             return "needs Pillow (pip install pillow)"
-    if stage in ("music", "movie") and not shutil.which("ffmpeg"):
-        return "needs ffmpeg"
+    if stage in ("music", "movie", "sounds") and not shutil.which("ffmpeg"):
+        return "needs ffmpeg (MP3/audio conversion)"
     if stage == "maps" and not sdhlt_dir():
         why = "--sdhlt %s is not the patched SDHLT" % CONFIG["sdhlt"] if CONFIG["sdhlt"] else sdhlt_buildable()
         if why:
@@ -605,6 +613,8 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--mohaa", help="installed MOHAA folder (holding main/)")
     ap.add_argument("--cd", nargs="+", help="install CD folders (holding DATA1.HDR / DATAn.CAB)")
+    ap.add_argument("--music-source", action="append", default=[], metavar="DIR",
+                    help="extra folder containing loose sound/ music files; repeat for split extractions")
     ap.add_argument("--sd", required=True, help="SD card root (or a folder to copy onto one later)")
     ap.add_argument("--gamedir", default="mohaa", help="game folder under xash3d/ (default mohaa)")
     ap.add_argument("--maps", default="", help="comma-separated maps (default: all the stage knows)")
@@ -635,6 +645,10 @@ def main(argv=None):
         a.mohaa = os.path.abspath(a.mohaa)
     if a.cd:
         a.cd = [os.path.abspath(path) for path in a.cd]
+    a.music_source = [os.path.abspath(path) for path in a.music_source]
+    for path in a.music_source:
+        if not os.path.isdir(path):
+            ap.error("music source folder does not exist: %s" % path)
     for name in ("sdhlt", "tools_dir", "xash3d_gc", "work"):
         value = getattr(a, name)
         if value:
@@ -679,7 +693,10 @@ def main(argv=None):
     for s in stages:
         print("== %s" % s)
         try:
-            files = STAGES[s](sources, game_root, maps, work)
+            stage_sources = sources + (a.music_source if s == "music" else [])
+            if s == "music" and a.music_source:
+                print("music sources: %s" % ", ".join(a.music_source))
+            files = STAGES[s](stage_sources, game_root, maps, work)
         except SystemExit as e:   # one stage's failure does not stop the others
             print("== %s: FAILED (%s)" % (s, e))
             failed.append(s)

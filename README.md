@@ -7,13 +7,44 @@ missions are converted into formats the existing dod-gc runtime already plays.
 No retail game data lives in this repository. Point the tools at your own
 copy of the game's `.pk3` files.
 
-The `music` stage also needs MOHAA's loose tracks. If it reports missing
-`sound/amb_stereo/` files, include the install CDs with the installed folder so
-the separate **Sound AmbStereo Files** group is unpacked:
+The CDs hold loose music, ambience, vehicle, mechanics, weapons and dialogue
+samples outside the PK3 files. Pass the CDs with your installed folder so the
+stager can unpack those InstallShield groups, then run both sound stages:
 
 ```bash
-python3 tools/mohaa_sd.py --cd /path/to/cd1 /path/to/cd2 --mohaa ~/MOHAA --sd /media/SDCARD --stages music
+python3 tools/mohaa_sd.py --cd /path/to/cd1 /path/to/cd2 --mohaa ~/MOHAA --sd /media/SDCARD --stages sounds,music
 ```
+
+The SFX stage writes map-specific `maps/<map>.snd` tables and native 22.05 kHz-or-lower mono
+PCM samples under `sound/mohaa/`. It keeps nested retail dialogue paths intact. The music stage
+still needs separate loose tracks when the install's `main/` folder does not contain them; see
+`--music-source` below.
+
+If the loose music files were extracted separately from the `main/` folder,
+pass that directory with `--music-source`; it is read only by the music stage:
+
+```bash
+python3 tools/mohaa_sd.py --mohaa ~/MOHAA --music-source /path/to/extracted/main --sd /media/SDCARD --stages music
+```
+
+## Intro movie
+
+The movie stage converts MOHAA's silent `main/video/intro.RoQ` and its adjacent
+`intro.mp3` soundtrack into GameCube streams:
+
+```bash
+python3 tools/intro_movie.py ~/MOHAA/main/video/intro.RoQ --sd /media/SDCARD
+```
+
+It writes `xash3d/mohaa/media/mohaa_intro.gcvid` (GCV2, 320x240 RGB565 frames at 15 fps) and
+`mohaa_intro.gcpcm` (GCPA, 48 kHz stereo signed 16-bit big-endian PCM). The stock retail intro is
+letterboxed to preserve its 2:1 picture. On the local retail extraction, all 2,503 output frames
+were validated against ffmpeg after the converter's documented one-bit RGB565 delta threshold;
+the PCM payload matched ffmpeg byte for byte. The stream is 137.9 MB of video at 0.83 MB/s plus
+30.9 MB of audio. Existing Dolphin evidence in
+[`media/2026-11-22-intro-movie/README.md`](media/2026-11-22-intro-movie/README.md) confirms picture
+and sound playback on a test disc; SD-card streaming on physical hardware remains to be checked.
+The generated streams contain retail game data and must stay outside the repository.
 
 ## Map pipeline (planned)
 

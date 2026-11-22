@@ -1,0 +1,492 @@
+37:13:610 Core/Core.cpp:237 I[BOOT]: Starting core = GameCube mode
+37:13:610 Core/Core.cpp:238 I[BOOT]: CPU Thread separate = Yes
+37:13:814 Core/Boot/Boot.cpp:524 N[BOOT]: Booting from disc: /run/media/tim/Stream/mohaa-intro-20261122/discs/discA240-testmovie.iso
+37:13:836 Core/Boot/Boot_BS2Emu.cpp:292 I[BOOT]: Faking GC BS2...
+37:13:838 Core/Boot/Boot_BS2Emu.cpp:209 I[BOOT]: DVDRead: offset: 10bda100   memOffset: 80003100   length: 6330816
+37:13:841 Core/Boot/Boot_BS2Emu.cpp:209 I[BOOT]: DVDRead: offset: 111e3ac0   memOffset: 8060cac0   length: 1113472
+37:13:841 Core/Boot/Boot_BS2Emu.cpp:209 I[BOOT]: DVDRead: offset: 112f3840   memOffset: 81700000   length: 4503
+37:13:902 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: bootstrap
+37:13:902 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: OGC stack=libogc fat=libfat
+37:13:903 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: boot phase=early last=none
+37:13:905 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: XFB[0] ok ptr=0xc16082a0 k1=1 need=614400
+37:13:907 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: FAT init failed (disc-only or no media)
+37:13:907 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: DVD mount begin
+37:15:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: DVD mount ready
+37:15:039 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: disc boot override video prog
+37:15:042 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: disc boot override menu (retail Flipper)
+37:15:053 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Warning: GameCube: no writable storage, disabling file log (engine.log)
+37:15:056 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: mem stage=pre-Con_Init total=2.51 Kb delta=2.51 Kb hwm=2.51 Kb map=(none) heap_used=656.70 Kb heap_free=39.36 Kb unclaimed=1.30 Mb
+37:15:058 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Console initialized.
+37:15:058 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: mem stage=post-Con_Init total=83.75 Kb delta=81.24 Kb hwm=83.75 Kb map=(none) heap_used=738.42 Kb heap_free=9.64 Kb unclaimed=1.25 Mb
+37:15:058 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: mem stage=post-XRcon_Init total=84.02 Kb delta=277 bytes hwm=84.02 Kb map=(none) heap_used=738.75 Kb heap_free=9.31 Kb unclaimed=1.25 Mb
+37:15:059 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: FAT init failed (disc-only or no media)
+37:15:060 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Warning: SD card init failed
+37:15:065 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] GameCube DVD filesystem mounted ()
+37:15:065 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: no writable storage detected (SD card not available), proceeding in read-only mode
+37:15:068 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: linked gamedir=dod detected=valve,dod
+37:15:068 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: linked gamedir=dod detected=valve,dod
+37:15:068 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: read-only fallback gcdisc:/xash3d (no SD)
+37:15:069 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] GameCube data directory: gcdisc:/xash3d
+37:15:069 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: FAT init failed (disc-only or no media)
+37:15:069 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: disc boot override video prog
+37:15:071 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: performance profiling initialized
+37:15:071 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: performance profiling commands registered
+37:15:071 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: mem stage=post-Platform_Init total=84.42 Kb delta=412 bytes hwm=84.42 Kb map=(none) heap_used=739.23 Kb heap_free=44.84 Kb unclaimed=1.22 Mb
+37:15:082 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: loader probe name=filesystem_stdio dlls=12 menu_regs=3 head=80c0c7b4
+37:15:083 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: COM_LoadLibrary filesystem_stdio (registered)
+37:15:083 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] filesystem_stdio: custom pool allocation functions found
+37:15:083 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] filesystem_stdio: custom memory allocation functions found
+37:15:083 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] filesystem_stdio: custom platform-specific functions found
+37:15:083 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] FS_LoadProgs: filesystem_stdio successfully loaded
+37:15:083 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] gcdisc:/xash3d is working directory now
+37:15:084 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: filesystem arena ready size=192 Kb
+37:15:099 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Adding directory: gcdisc:/xash3d/
+37:15:099 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: skipping missing searchpath ./
+37:15:134 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] FS_InitStdio: done
+37:15:134 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] FS_LoadVFSConfig: no writable storage, loading vfs.cfg from disc
+37:15:136 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] FS_LoadVFSConfig: vfs.cfg lookup done exists=0
+37:15:136 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] FS_LoadVFSConfig: vfs.cfg not found on disc, mounting addon fallback
+37:15:136 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: vfs fallback using existing addon paths
+37:15:136 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: filesystem gameinfo load begin
+37:15:136 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] GCFS_LoadGameInfo( dod, 0x4000000, english )
+37:15:137 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] FS_Rescan( Day of Defeat, 0x4000000, english )
+37:15:137 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] FS_AddGameHierarchy( dod )
+37:15:483 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: zip index gcdisc:/xash3d/dod/gamecube-bootstrap.pk3 files=231 names=5618 bytes table=10250 bytes
+37:15:483 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Adding ZIP: gcdisc:/xash3d/dod/gamecube-bootstrap.pk3 (231 files)
+37:15:487 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: ARAM manager pool 15.98 Mb at 0x00004000 (cache ceiling 4 Mb)
+37:15:488 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: ARAM stream waddir 256 bytes at 0x00ffff00 free=15.98 Mb
+37:15:491 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Adding WAD: gcdisc:/xash3d/dod/gfx.wad (7 files) stored=gcdisc:/xash3d/dod/gfx.wad sp=0x816bccd8
+37:15:499 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Adding directory: gcdisc:/xash3d/dod/
+37:15:499 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: skipping missing searchpath dod_downloads/
+37:15:499 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: skipping missing searchpath dod/
+37:15:499 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: skipping missing searchpath dod_addon/
+37:15:499 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: skipping missing searchpath dod/custom/
+37:15:499 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: filesystem gameinfo load ready info=0x816ed618
+37:15:500 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: smoke boot mode=1 (gcmap=0, storage=1)
+37:15:500 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: mem stage=searchpaths total=105.10 Kb delta=20.68 Kb hwm=105.10 Kb map=(none) heap_used=938.36 Kb heap_free=41.70 Kb unclaimed=1.03 Mb
+37:15:500 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Program args: xash xash -dev 2 -log -game dod -gcvideo prog -width 320 -height 240 
+37:15:500 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Developer level: 2
+37:15:501 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] host_writeconfig: disabled (no writable storage, using read-only disc)
+37:15:501 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] FS_LoadVFSConfig: no writable storage, loading vfs.cfg from disc
+37:15:503 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] FS_LoadVFSConfig: vfs.cfg lookup done exists=0
+37:15:503 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] FS_LoadVFSConfig: vfs.cfg not found on disc, mounting addon fallback
+37:15:503 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: vfs fallback using existing addon paths
+37:15:503 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: filesystem gameinfo reuse (disc-only) info=0x816ed618
+37:15:505 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: build-info: build-info 1
+37:15:505 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: build-info: built 2026-11-22T08:33:41Z on ceres
+37:15:505 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: build-info: dod-gc 94b04a3451ac0d88ea5329b392651552cf6d81cc claude/project-thread-fv0ead dirty=0
+37:15:505 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: build-info: xash3d-gc 0f8fd6ac6c478d4a158894d8065fac48a9bf3918 claude/project-thread-fv0ead dirty=0 user-supplied (not checked)
+37:15:505 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: build-info: hlsdk 0e324dac6ec23a721bcaf2788dbd7368add3b2a8 claude/dod-hlsdk-integration modified-by-integration=43 pin=OK (pinned 0e324dac6ec23a721bcaf2788dbd7368add3b2a8) branch-user-supplied (not checked)
+37:15:505 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: build-info: mainui 5d37ca0b10a910a8b294cc4a5ac01a0968efb4be
+37:15:505 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: build-info: tools /run/media/tim/Stream/mohaa-intro-20261122/mohaa-gc/dod-gc/tools split_studio_mdl.py sha256=5fbf1c52c987e9a6
+37:15:505 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: build-info: dolphin not checked (set DODGC_DOLPHIN_SRC to the tree the emulator was built from)
+37:15:505 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: conchars FindFile enter miss=0 paths=0x816ed358
+37:15:505 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: conchars try type=0 file=gcdisc:/xash3d/dod/ flags=0x32
+37:15:505 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: conchars try type=2 file=gcdisc:/xash3d/dod/gfx.wad flags=0x12
+37:15:506 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: conchars WAD probe file=gcdisc:/xash3d/dod/gfx.wad short=gfx.wad type=-1 lumps=7 any=1
+37:15:506 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: find found 'gfx/conchars' as '' in gcdisc:/xash3d/dod/gfx.wad index=4
+37:15:510 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Host_InitDecals: 0 decals
+37:15:513 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Joystick: GameCube mapping (A confirm, B cancel/back, Start pause)
+37:15:513 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Joystick: GC A -> confirm / jump
+37:15:513 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Joystick: GC B -> back / use
+37:15:513 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Joystick: GC X -> reload
+37:15:513 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Joystick: GC Y -> flashlight
+37:15:513 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Joystick: GC Start -> pause/menu
+37:15:513 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Joystick: GC Z -> duck
+37:15:513 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Joystick: GC L -> alt fire
+37:15:514 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Joystick: GC R -> fire
+37:15:514 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Joystick: GC D-Up -> previous weapon
+37:15:514 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Joystick: GC D-Down -> next weapon
+37:15:514 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Joystick: GC D-Left -> previous weapon
+37:15:514 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Joystick: GC D-Right -> scoreboard (dod_score)
+37:15:514 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Joystick: GameCube controller preferred port 1; deadzone stick=8 trigger=15
+37:15:514 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Joystick: fallback scans ports 1-4 for reconnect
+37:15:514 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Joystick: Dolphin probe using synthetic neutral GameCube pad on port 1
+37:15:514 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: G45 controller ready port=1 type=probe-synthetic
+37:15:514 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: input polling active
+37:15:517 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: world reserve submodels ready 16 Kb
+37:15:517 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: world reserve nodes ready 256 Kb
+37:15:517 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: world reserve entities ready 128 Kb
+37:15:518 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: released unused nodes reserve 256 Kb
+37:15:518 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: released unused submodels reserve 16 Kb
+37:15:518 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: mem stage=pre-SV_Init boot reserve release total=118.09 Kb delta=12.99 Kb hwm=118.09 Kb map=(none) heap_used=1.06 Mb heap_free=289.82 Kb unclaimed=660 Kb
+37:15:519 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Base networking initialized.
+37:15:526 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: server game info before filter=0x816ed618
+37:15:526 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: server game info after filter=0x816ed618
+37:15:526 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: server game state clear begin info=0x816ed618
+37:15:527 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: server game state clear done info=0x816ed618
+37:15:527 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: server game init begin
+37:15:527 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: server game init argument begin
+37:15:527 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: server game info pointer=0x816ed618
+37:15:527 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: server game init argument ready silent=1
+37:15:527 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: server game init deferred until map load
+37:15:528 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: mem stage=server init total=131.72 Kb delta=13.63 Kb hwm=131.72 Kb map=(none) heap_used=1.07 Mb heap_free=273.27 Kb unclaimed=660 Kb
+37:15:528 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: server init ready
+37:15:528 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: boot phase=engine last=early
+37:15:533 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: client local init ready
+37:15:533 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: heap mark stage=client_local_init_ready used=1140384 free=264608 unclaimed=675840 avail=940448
+37:15:543 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] execing video.cfg
+37:15:544 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] couldn't exec video.cfg
+37:15:545 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Loading renderer: gx -> ref_gx
+37:15:545 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: COM_LoadLibrary ref_gx (registered)
+37:15:545 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: renderer library loaded
+37:15:546 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: renderer GetRefAPI ready
+37:15:546 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: REF_GX static GetRefAPI retail Flipper policy=on soft=0 capture=0
+37:15:546 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: renderer init quality=1 (sample_size=0, low_memory=0)
+37:15:547 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: renderer video init begin
+37:15:547 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] execing gx.cfg
+37:15:548 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] couldn't exec gx.cfg
+37:15:549 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] gc_quality change description from GameCube quality profile: 0=smoke, 1=release, 2=high telemetry-only to GameCube quality profile: 0=playable/low-mem, 1=standard (default), 2=high telemetry-only
+37:15:549 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: quality profile stage=video-init gc_quality=1 name=release low_memory=1 hud=real audio=asnd lightmaps=enabled overlay=available purpose=real-hardware-default
+37:15:550 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: mem stage=video_init total=0.00
+37:15:550 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: video mode fb=640x480 efb=640x480 vi=640x480 tv=0x00000002 progressive=1 policy=preferred-4:3-480i
+37:15:550 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: VIDEO-022 mode=ntsc480p progressive=1 xfb=640x480
+37:15:550 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: video safe_area percent=10 rect=64,48,512,384 min_readable=320x240
+37:15:550 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: XFB dual unavailable 窶 single-buffer present (BBA/MEM1)
+37:15:554 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: retail Flipper policy capture=0 softworld=0 xfb_dual=0 copy_clear=1 safe_area=10% soft_fb_max=320x240 efb_native=1
+37:15:555 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: boot phase=renderer last=engine
+37:15:555 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: boot phase=sw_fb last=renderer
+37:15:555 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: GX video: software buffer 320x240 allocated (stride 320, bpp 2)
+37:15:556 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: mem stage=video_alloc total=0.15
+37:15:556 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: software buffer pixel[0]=0x0000 (RGB565)
+37:15:559 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: watchdog thread started
+37:15:561 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: GX present path active 320x240
+37:15:561 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: present f=1 nb=0 blank=0 t=0.00ms
+37:15:562 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: renderer video init ready
+37:15:563 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: heap mark stage=renderer_video_init_ready used=1150824 free=254168 unclaimed=675840 avail=930008
+37:15:563 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: renderer blit init begin
+37:15:604 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: renderer blend maps ready
+37:15:604 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: renderer screen alloc begin
+37:15:604 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] 256 Kb surface cache
+37:15:605 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: low-res surface cache 128 Kb (static)
+37:15:605 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: boot phase=sw_fb last=sw_fb
+37:15:605 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Blit table: 32 64 32 31 63 31
+37:15:614 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: renderer screen map ready
+37:15:615 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: hardware Flipper screen soft=320x240 logical=320x240 (static BSS)
+37:15:615 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: renderer screen alloc ready
+37:15:615 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: heap mark stage=renderer_screen_alloc_ready used=1150824 free=254168 unclaimed=675840 avail=930008
+37:15:615 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: renderer blit init ready
+37:15:615 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: renderer entering image init (quality=1)
+37:15:615 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: renderer images init begin
+37:15:616 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: renderer images tables clear
+37:15:616 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: renderer images unused ready
+37:15:616 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: renderer images command begin
+37:15:616 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: renderer images command ready
+37:15:616 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: renderer images ready
+37:15:616 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: heap mark stage=renderer_images_ready used=1150960 free=254032 unclaimed=675840 avail=929872
+37:15:617 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: renderer studio ready (quality=1)
+37:15:618 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: renderer init ready (quality=1)
+37:15:618 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: heap mark stage=renderer_init_ready used=1151040 free=253952 unclaimed=675840 avail=929792
+37:15:618 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: renderer module init returned
+37:15:623 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: renderer builtins ready
+37:15:623 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: renderer triapi ready
+37:15:623 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Renderer ref_gx initialized
+37:15:624 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: loading startup vid playlist (exists=1)
+37:15:625 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: startup playlist load ptr=0x816fe7a0 bytes=22 first=6d
+37:15:625 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: startup playlist token 'media/mohaa_intro.avi' ext 'avi'
+37:15:625 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: startup vid candidate media/mohaa_intro.avi
+37:15:627 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: startup vid playlist ready count=1
+37:15:627 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: startup vid preflight ready (count=1)
+37:15:627 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: loader probe name=menu dlls=12 menu_regs=3 head=80c0c7b4
+37:15:627 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: COM_LoadLibrary menu (registered)
+37:15:627 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: gameui library handle ready
+37:15:627 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: heap mark stage=gameui_library_handle_ready used=1154792 free=250200 unclaimed=675840 avail=926040
+37:15:627 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: gameui GetMenuAPI begin
+37:15:627 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: gameui GetMenuAPI ready
+37:15:628 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] UI_LoadProgs: extended Menu API found
+37:15:628 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] UI_LoadProgs: extended Menu API initialized
+37:15:628 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: gameui pfnInit begin
+37:15:630 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: mainui retail picbuttons enabled (lowmem=1)
+37:15:630 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Warning: Xash3D GameCube: gfx/shell/colors.lst (0 bytes) did not fit the heap or the surface-cache store (store busy)
+37:15:630 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: gameui pfnInit ready
+37:15:631 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: heap mark stage=gameui_pfninit_ready used=1161592 free=243400 unclaimed=675840 avail=919240
+37:15:631 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: boot phase=menu last=sw_fb
+37:15:631 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: screen gameui init ready (fallback=0)
+37:15:631 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: screen vidinit begin
+37:15:668 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: gameui vidinit deferred until menu activation
+37:15:683 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: G296 lean HUD font tex=7 256x64 row=19
+37:15:683 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: G301 lean console font (shared HUD)
+37:15:684 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: screen vidinit returned
+37:15:700 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: screen credits font ready
+37:15:717 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: screen textures ready
+37:15:718 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: screen particle palette ready
+37:15:718 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] AVI: GameCube Cinepak AVI
+37:15:718 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: screen cinematic init ready
+37:15:719 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: screen netgraph init ready
+37:15:719 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: deferring menu activation until startup cinematic ends
+37:15:719 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: client video init ready
+37:15:719 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: heap mark stage=client_video_init_ready used=1359064 free=152424 unclaimed=569344 avail=721768
+37:15:719 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: client datagram init ready
+37:15:719 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: client library path client
+37:15:720 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: sound cvar init begin
+37:15:720 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: sound cvar init ready
+37:15:721 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: sound dma init begin
+37:15:722 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: audio backend ready (8192 samples, 48000 Hz, voice deferred)
+37:15:722 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: sound dma init ready
+37:15:722 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: ARAM reserve sfx 1,024 Kb at 0x00004000 free=14.98 Mb
+37:15:723 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: ARAM sound store 1024 KiB
+37:15:723 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: sound effects init begin
+37:15:723 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: sound dsp init ready
+37:15:724 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: sound channels cleared
+37:15:724 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: tiny default sound fallback samples=512 bytes=1024
+37:15:724 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: sound defaults ready
+37:15:724 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: vox init deferred until active client
+37:15:724 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: sound effects init ready
+37:15:725 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: client sound init ready
+37:15:725 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: client identity skipped
+37:15:725 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: client init deferred until needed
+37:15:725 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: boot phase=client last=menu
+37:15:725 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: engine subsystems ready
+37:15:725 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: heap mark stage=engine_subsystems_ready used=1363952 free=147536 unclaimed=569344 avail=716880
+37:15:732 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Warning: TLS: CA bundle 'cacert.pem' not found; HTTPS verification will fail
+37:15:732 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: HTTP pool ready (sockets deferred)
+37:15:734 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] BouncePlayerShell	Range player/pl_shell%d.wav [1; 3]
+37:15:734 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] BounceWeaponShell	Range weapons/sshell%d.wav [1; 3]
+37:15:734 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] BounceConcrete  	Range debris/concrete%d.wav [1; 3]
+37:15:734 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] BounceGlass     	Range debris/glass%d.wav [1; 4]
+37:15:734 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] BounceMetal     	Range debris/metal%d.wav [1; 6]
+37:15:734 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] BounceFlesh     	Range debris/flesh%d.wav [1; 7]
+37:15:734 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] BounceWood      	Range debris/wood%d.wav [1; 4]
+37:15:734 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Ricochet        	Range weapons/ric%d.wav [1; 5]
+37:15:734 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Explode         	Range weapons/explode%d.wav [3; 5]
+37:15:734 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] PlayerWaterEnter	List [player/pl_wade1.wav]
+37:15:734 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] PlayerWaterExit 	List [player/pl_wade2.wav]
+37:15:734 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] EntityWaterEnter	Range player/pl_wade%d.wav [1; 4]
+37:15:735 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] EntityWaterExit 	Range player/pl_wade%d.wav [1; 4]
+37:15:735 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: startup config replay skipped for read-only retail menu boot
+37:15:735 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: stuffcmds begin
+37:15:735 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: stuffcmds ready
+37:15:735 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: gcmap lookup begin
+37:15:735 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: no gcmap argument
+37:15:735 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: startup vid check begin
+37:15:736 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: startup vid list count=1 found=1 disabled=0
+37:15:736 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: startup intro playlist (1)
+37:15:736 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: intro AVI play media/mohaa_intro.avi
+37:15:736 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: heap mark stage=intro_avi_play used=1368232 free=143256 unclaimed=569344 avail=712600
+37:15:737 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: boot arena ready capacity=1.19 Mb
+37:15:740 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Warning: Xash3D GameCube: ARAM video refused stream need=194.82 Mb free=14.98 Mb largest=14.98 Mb segs=3/128
+37:15:740 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: ARAM map 0x00004000 1,024 Kb sfx (session)
+37:15:740 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: ARAM map 0x00104000 14.98 Mb FREE
+37:15:740 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: ARAM map 0x00ffff00 256 bytes waddir (stream)
+37:15:740 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: intro GCVID opened media/mohaa_intro.gcvid (320x240, 2503 frames, rgb565)
+37:15:742 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: native intro audio opened media/mohaa_intro.gcpcm rate=48000 width=2 channels=2 bytes=30945700
+37:15:785 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: HPAK integrity check begin
+37:15:786 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: HPAK integrity check ready
+37:15:786 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: host main loop begin status=1
+37:15:787 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: heap mark stage=host_main_loop_begin_status used=1380728 free=130760 unclaimed=569344 avail=700104
+37:15:788 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: default controller binds ready port=1 applied=14
+37:15:790 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Time to first frame: 0.758 seconds
+37:15:790 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: GHOST frame=0 after input
+37:15:791 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] execing gamecube_pad.cfg
+37:15:792 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] couldn't exec gamecube_pad.cfg
+37:15:792 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: GHOST frame=0 after client begin
+37:15:792 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: GHOST frame=0 after commands
+37:15:794 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: G161 synthetic activity for Dolphin probe
+37:15:801 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: D_FlushCaches sc_base=0x8115a9a0 size=131072 heap=0 static=1 map_unload=0
+37:15:805 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: GX HUD state fb=640x480 efb=480 vid=320x240
+37:15:810 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: intro AVI think call=1 started=0 current=0 target=0 start=0.000 now=0.766
+37:15:810 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: cinematic GX alloc ptr=0x8143b8e0 bytes=153600 align=0
+37:15:811 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: cinematic gx stages frame=1 tiles=0 full=1 update=0.546ms flush=0.069ms invalidate=0.000ms
+37:15:812 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: cinematic GX upload=1 tex=9 full=1 dirty=0 ptr=0x8143b8e0
+37:15:812 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: intro AVI audio playback synced sound=0 painted=5760 rate=48000
+37:15:812 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: intro AVI audio start synced to first uploaded frame
+37:15:812 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: intro AVI decoded first frame
+37:15:812 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: boot phase=intro last=client
+37:15:812 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: intro AVI uploaded frame=0 upload=320x240
+37:15:812 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: intro AVI rect x=0 y=0 w=320 h=240 ref=320x240 upload=320x240
+37:15:813 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: cinematic GX bind tex=9 fmt=4 ptr=0x8143b8e0
+37:15:813 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: G197 CopyDisp ok fb=640 efb=480 xfb=480 stride=640 xfb_k1=1 crt_vf=0
+37:15:824 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: DoD music stream open=1 keydest=1 volume=1.00
+37:15:824 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: DoD main-menu music start requested
+37:15:825 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: audio voice started state=5 painted=5760 sound=0
+37:15:825 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: GHOST frame=0 after simulation
+37:15:826 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: GHOST frame=1 after input
+37:15:826 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: GHOST frame=1 after client begin
+37:15:826 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: GHOST frame=1 after commands
+37:15:832 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: D_FlushCaches sc_base=0x8115a9a0 size=131072 heap=0 static=1 map_unload=0
+37:15:833 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: reserved raw stream ent=-1 samples=8192 bytes=65636
+37:15:833 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: intro AVI reset soundtrack raw channel sound=1024 painted=6784 base=1024 max=8192
+37:15:833 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: native intro audio queued bytes=2048 rate=48000 raw=6272/8192 dma=48000
+37:15:834 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: intro AVI think call=2 started=1 current=0 target=0 start=0.767 now=0.790
+37:15:834 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: cinematic GX bind tex=9 fmt=4 ptr=0x8143b8e0
+37:15:834 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: GHOST frame=1 after simulation
+37:15:835 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: GHOST frame=2 after input
+37:15:835 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: GHOST frame=2 after client begin
+37:15:835 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: GHOST frame=2 after commands
+37:15:842 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: D_FlushCaches sc_base=0x8115a9a0 size=131072 heap=0 static=1 map_unload=0
+37:15:842 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: intro AVI think call=3 started=1 current=0 target=0 start=0.767 now=0.801
+37:15:842 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: cinematic GX bind tex=9 fmt=4 ptr=0x8143b8e0
+37:15:848 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: GHOST frame=2 after simulation
+37:15:855 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: D_FlushCaches sc_base=0x8115a9a0 size=131072 heap=0 static=1 map_unload=0
+37:15:855 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: intro AVI think call=4 started=1 current=0 target=0 start=0.767 now=0.818
+37:15:855 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: cinematic GX bind tex=9 fmt=4 ptr=0x8143b8e0
+37:15:872 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: D_FlushCaches sc_base=0x8115a9a0 size=131072 heap=0 static=1 map_unload=0
+37:15:872 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:14] Xash3D GameCube: intro AVI think call=5 started=1 current=0 target=1 start=0.767 now=0.837
+37:15:968 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:15] Xash3D GameCube: cinematic GX upload=2 tex=9 full=0 dirty=1091 ptr=0x8143b8e0
+37:15:968 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:15] Xash3D GameCube: intro AVI uploaded frame=1 upload=320x240
+37:15:968 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:15] Xash3D GameCube: cinematic GX bind tex=9 fmt=4 ptr=0x8143b8e0
+37:15:975 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:15] Xash3D GameCube: D_FlushCaches sc_base=0x8115a9a0 size=131072 heap=0 static=1 map_unload=0
+37:15:982 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:15] Xash3D GameCube: intro AVI think call=6 started=1 current=1 target=2 start=0.767 now=0.948
+37:16:068 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:15] Xash3D GameCube: intro AVI uploaded frame=2 upload=320x240
+37:16:069 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:15] Xash3D GameCube: audio submitted nonzero PCM chunks=2 peak=220
+37:16:083 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:15] Xash3D GameCube: D_FlushCaches sc_base=0x8115a9a0 size=131072 heap=0 static=1 map_unload=0
+37:16:084 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:15] Xash3D GameCube: intro AVI think call=7 started=1 current=2 target=4 start=0.767 now=1.054
+37:16:283 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:15] Xash3D GameCube: D_FlushCaches sc_base=0x8115a9a0 size=131072 heap=0 static=1 map_unload=0
+37:16:284 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:15] Xash3D GameCube: intro AVI think call=8 started=1 current=4 target=7 start=0.767 now=1.253
+37:16:959 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:16] Xash3D GameCube: intro AVI progress frame=17/2503 elapsed=1.16
+37:18:280 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:17] Xash3D GameCube: intro AVI progress frame=37/2503 elapsed=2.48
+37:18:636 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:17] Xash3D GameCube: intro GCVID decode begin frame=30 offset=4108318 current=25
+37:18:719 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:17] Xash3D GameCube: intro GCVID decode done frame=30
+37:18:719 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:17] Xash3D GameCube: intro GCVID decode begin frame=31 offset=4221551 current=25
+37:18:802 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:17] Xash3D GameCube: intro GCVID decode done frame=31
+37:18:802 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:17] Xash3D GameCube: intro GCVID decode begin frame=32 offset=4341674 current=25
+37:18:886 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:18] Xash3D GameCube: intro GCVID decode done frame=32
+37:18:886 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:18] Xash3D GameCube: intro GCVID decode begin frame=33 offset=4467257 current=25
+37:18:969 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:18] Xash3D GameCube: intro GCVID decode done frame=33
+37:18:969 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:18] Xash3D GameCube: intro GCVID decode begin frame=34 offset=4591540 current=25
+37:19:036 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:18] Xash3D GameCube: intro GCVID decode done frame=34
+37:19:037 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:18] Xash3D GameCube: intro GCVID decode begin frame=35 offset=4701913 current=25
+37:19:120 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:18] Xash3D GameCube: intro GCVID decode done frame=35
+37:19:120 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:18] Xash3D GameCube: intro GCVID decode begin frame=36 offset=4823076 current=25
+37:19:219 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:18] Xash3D GameCube: intro GCVID decode done frame=36
+37:19:220 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:18] Xash3D GameCube: intro GCVID decode begin frame=37 offset=4959579 current=25
+37:19:319 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:18] Xash3D GameCube: intro GCVID decode done frame=37
+37:19:803 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:18] Xash3D GameCube: intro GCVID decode begin frame=45 offset=5807593 current=37
+37:19:870 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:19] Xash3D GameCube: intro GCVID decode done frame=45
+37:20:329 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:19] Xash3D GameCube: intro AVI progress frame=67/2503 elapsed=4.53
+37:20:771 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:19] Xash3D GameCube: intro GCVID decode begin frame=60 offset=7208908 current=52
+37:20:838 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:19] Xash3D GameCube: intro GCVID decode done frame=60
+37:24:064 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:23] Xash3D GameCube: intro AVI progress frame=123/2503 elapsed=8.26
+37:24:542 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:23] Xash3D GameCube: cinematic gx stages frame=15 tiles=720 full=0 update=0.425ms flush=0.292ms invalidate=0.000ms
+37:25:061 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:24] Xash3D GameCube: present Flipper CopyDisp begin presents=20
+37:25:061 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:24] Xash3D GameCube: present Flipper DrawDone begin presents=20
+37:25:062 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:24] Xash3D GameCube: present Flipper DrawDone end presents=20
+37:25:062 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:24] Xash3D GameCube: present Flipper vsync done presents=20
+37:28:203 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:27] Xash3D GameCube: native intro audio progress second=1 bytes=193536 sound=94208 painted=99968 samplepos=10240 raw=6784/8192 chunks=582 nonzero=337 callbacks=581 addfail=1 peak=750 maxpeak=1025 asnd=594944
+37:28:213 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:27] Xash3D GameCube: present Flipper CopyDisp begin presents=28
+37:28:213 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:27] Xash3D GameCube: present Flipper DrawDone begin presents=28
+37:28:213 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:27] Xash3D GameCube: present Flipper DrawDone end presents=28
+37:28:213 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:27] Xash3D GameCube: present Flipper vsync done presents=28
+37:28:336 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:27] Xash3D GameCube: present Flipper CopyDisp begin presents=36
+37:28:336 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:27] Xash3D GameCube: present Flipper DrawDone begin presents=36
+37:28:336 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:27] Xash3D GameCube: present Flipper DrawDone end presents=36
+37:28:344 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:27] Xash3D GameCube: present Flipper vsync done presents=36
+37:28:664 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:27] Xash3D GameCube: cinematic gx stages frame=30 tiles=720 full=0 update=0.432ms flush=0.343ms invalidate=0.000ms
+37:29:836 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:28] Xash3D GameCube: native intro audio progress second=2 bytes=385024 sound=173056 painted=178816 samplepos=2048 raw=7296/8192 chunks=658 nonzero=385 callbacks=657 addfail=1 peak=0 maxpeak=3788 asnd=672768
+37:30:379 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:29] Xash3D GameCube: cinematic gx stages frame=45 tiles=716 full=0 update=0.416ms flush=0.290ms invalidate=0.000ms
+37:32:719 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:31] Xash3D GameCube: cinematic gx stages frame=60 tiles=708 full=0 update=0.411ms flush=0.287ms invalidate=0.000ms
+37:33:435 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:32] Xash3D GameCube: native intro audio progress second=3 bytes=577536 sound=280576 painted=286336 samplepos=4096 raw=6272/8192 chunks=827 nonzero=472 callbacks=826 addfail=1 peak=28193 maxpeak=32759 asnd=845824
+37:34:736 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: real controller input on port 1, leaving synthetic pad
+37:34:737 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Joystick: GameCube controller ready on port 1 (standard)
+37:34:737 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: G45 controller ready port=1 port_index=0 type=standard
+37:34:738 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: cinematic skipped by A_BUTTON
+37:34:739 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: stop cinematic movienum=1 state=5
+37:34:739 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: intro video buffers released
+37:34:739 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: activating menu after cinematic
+37:34:740 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: heap mark stage=menu_handoff used=1466872 free=118344 unclaimed=495616 avail=613960
+37:34:740 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: gameui deferred vidinit begin
+37:34:740 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: gc_menu_ready set 0
+37:34:740 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: mainui vidinit begin calledOnce=0 textInput=0
+37:34:742 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Warning: FS_LoadImage: couldn't load "gfx/shell/larrowdefault"
+37:34:744 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Warning: FS_LoadImage: couldn't load "gfx/shell/larrowflyover"
+37:34:745 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Warning: FS_LoadImage: couldn't load "gfx/shell/rarrowdefault"
+37:34:747 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Warning: FS_LoadImage: couldn't load "gfx/shell/rarrowflyover"
+37:34:748 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Warning: FS_LoadImage: couldn't load "gfx/shell/uparrowd"
+37:34:750 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Warning: FS_LoadImage: couldn't load "gfx/shell/uparrowf"
+37:34:752 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Warning: FS_LoadImage: couldn't load "gfx/shell/dnarrowd"
+37:34:754 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Warning: FS_LoadImage: couldn't load "gfx/shell/dnarrowf"
+37:34:754 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: skip full btns_main atlas (use gc_menu btn strips)
+37:34:754 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: mainui precache core assets ready
+37:34:755 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: mainui vidinit backgrounds listed
+37:34:756 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: mainui font vidinit scale=0.312 lowmemory=1
+37:34:756 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: mainui create font name=Trebuchet MS tall=18 weight=500 blur=0 outline=0 flags=0
+37:34:757 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Rendering Bitmap Font(18, 500) took 0.000065 seconds
+37:34:757 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: mainui font default handle=1 tall=18
+37:34:757 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: mainui create font name=Tahoma tall=6 weight=500 blur=0 outline=1 flags=0
+37:34:757 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Rendering Bitmap Font(6, 500) took 0.000062 seconds
+37:34:757 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: mainui font console handle=2 tall=6
+37:34:757 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: mainui vidinit fonts ready
+37:34:757 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: mainui vidinit sounds ready
+37:34:758 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: mainui vidinit background ready
+37:34:758 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: mainui vidinit menu ready
+37:34:758 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: gc_menu_ready set 1
+37:34:758 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: gameui deferred vidinit ready
+37:34:758 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: heap mark stage=gameui_deferred_vidinit_ready used=1468272 free=116944 unclaimed=495616 avail=612560
+37:34:759 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Warning: Unknown command "-jump"
+37:34:759 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: ARAM reserve audio 1,024 Kb at 0x00104000 free=13.98 Mb
+37:34:761 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: ARAM reserve prefetch 12.16 Kb at 0x00204000 free=13.97 Mb
+37:34:770 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: gameui first redraw time=19.04 visible=0 keydest=2
+37:34:786 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: ImageLib TGA resource/gc_menu/bg_0_0.tga src=160x120 decode=160x120 bpp=24 alloc=56.25 Kb
+37:34:802 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: ImageLib TGA resource/gc_menu/bg_0_1.tga src=160x120 decode=160x120 bpp=24 alloc=56.25 Kb
+37:34:835 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: ImageLib TGA resource/gc_menu/bg_1_0.tga src=160x120 decode=160x120 bpp=24 alloc=56.25 Kb
+37:34:852 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: ImageLib TGA resource/gc_menu/bg_1_1.tga src=160x120 decode=160x120 bpp=24 alloc=56.25 Kb
+37:34:870 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] LoadBackground: found steam background in game directory
+37:34:870 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: retail menu steam background ready tiles=4
+37:34:871 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Warning: Xash3D GameCube: gfx/shell/strings.lst (0 bytes) did not fit the heap or the surface-cache store (store busy)
+37:34:871 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] execing mainui.cfg
+37:34:872 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: localization builtins begin
+37:34:874 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: localization builtins ready
+37:34:875 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: localization GameUI seeds ready count=39
+37:34:875 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: localization skip resource/gameui_english.txt (MEM1; builtins cover menu)
+37:34:875 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: localization begin resource/valve_english.txt
+37:34:876 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Warning: Xash3D GameCube: resource/valve_english.txt (0 bytes) did not fit the heap or the surface-cache store (store busy)
+37:34:876 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Localize_AddToDict( resource/valve_english.txt ): couldn't open file. Some strings will not be localized!.
+37:34:876 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: localization begin resource/mainui_english.txt
+37:34:877 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Warning: Xash3D GameCube: resource/mainui_english.txt (0 bytes) did not fit the heap or the surface-cache store (store busy)
+37:34:877 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Localize_AddToDict( resource/mainui_english.txt ): couldn't open file. Some strings will not be localized!.
+37:34:877 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:33] Xash3D GameCube: localization begin resource/dod_english.txt
+37:34:877 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Warning: Xash3D GameCube: resource/dod_english.txt (0 bytes) did not fit the heap or the surface-cache store (store busy)
+37:34:877 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Localize_AddToDict( resource/dod_english.txt ): couldn't open file. Some strings will not be localized!.
+37:34:879 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Xash3D GameCube: localization aliases ready
+37:34:881 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Warning: FS_LoadImage: couldn't load "gfx/shell/larrowdefault"
+37:34:883 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Warning: FS_LoadImage: couldn't load "gfx/shell/larrowflyover"
+37:34:885 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Warning: FS_LoadImage: couldn't load "gfx/shell/rarrowdefault"
+37:34:887 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Warning: FS_LoadImage: couldn't load "gfx/shell/rarrowflyover"
+37:34:889 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Warning: FS_LoadImage: couldn't load "gfx/shell/larrowdefault"
+37:34:890 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Warning: FS_LoadImage: couldn't load "gfx/shell/larrowflyover"
+37:34:892 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Warning: FS_LoadImage: couldn't load "gfx/shell/rarrowdefault"
+37:34:893 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Warning: FS_LoadImage: couldn't load "gfx/shell/rarrowflyover"
+37:34:894 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Warning: Xash3D GameCube: settings.scr (0 bytes) did not fit the heap or the surface-cache store (store busy)
+37:34:895 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Warning: Xash3D GameCube: user.scr (0 bytes) did not fit the heap or the surface-cache store (store busy)
+37:34:895 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Xash3D GameCube: menu script configuration ready
+37:34:896 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Xash3D GameCube: opening main menu
+37:34:902 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Xash3D GameCube: ImageLib TGA resource/gc_menu/btn_resume_game.tga src=156x78 decode=156x78 bpp=24 alloc=35.65 Kb
+37:34:904 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Xash3D GameCube: retail menu btn strip ready resource/gc_menu/btn_resume_game.tga
+37:34:919 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Xash3D GameCube: ImageLib TGA resource/gc_menu/btn_disconnect.tga src=156x78 decode=156x78 bpp=24 alloc=35.65 Kb
+37:34:922 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Xash3D GameCube: retail menu btn strip ready resource/gc_menu/btn_disconnect.tga
+37:34:935 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Xash3D GameCube: ImageLib TGA resource/gc_menu/btn_new_game.tga src=156x78 decode=156x78 bpp=24 alloc=35.65 Kb
+37:34:937 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Xash3D GameCube: retail menu btn strip ready resource/gc_menu/btn_new_game.tga
+37:34:952 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Xash3D GameCube: ImageLib TGA resource/gc_menu/btn_hazard_course.tga src=156x78 decode=156x78 bpp=24 alloc=35.65 Kb
+37:34:956 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Xash3D GameCube: retail menu btn strip ready resource/gc_menu/btn_hazard_course.tga
+37:34:969 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Xash3D GameCube: ImageLib TGA resource/gc_menu/btn_config.tga src=156x78 decode=156x78 bpp=24 alloc=35.65 Kb
+37:34:971 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Xash3D GameCube: retail menu btn strip ready resource/gc_menu/btn_config.tga
+37:34:985 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Xash3D GameCube: ImageLib TGA resource/gc_menu/btn_quit.tga src=156x78 decode=156x78 bpp=24 alloc=35.65 Kb
+37:34:989 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Xash3D GameCube: retail menu btn strip ready resource/gc_menu/btn_quit.tga
+37:34:992 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Warning: FS_LoadImage: couldn't load "gfx/shell/cls_n"
+37:35:001 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Warning: FS_LoadImage: couldn't load "gfx/shell/cls_f"
+37:35:003 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Warning: FS_LoadImage: couldn't load "gfx/shell/cls_d"
+37:35:004 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Warning: FS_LoadImage: couldn't load "gfx/shell/min_n"
+37:35:006 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Warning: FS_LoadImage: couldn't load "gfx/shell/min_f"
+37:35:008 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Warning: FS_LoadImage: couldn't load "gfx/shell/min_d"
+37:35:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Xash3D GameCube: ImageLib TGA resource/gc_menu/logo.tga src=512x32 decode=512x32 bpp=32 alloc=64 Kb
+37:35:038 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Error: pfnPIC_Load: refusing to load image with empty name
+37:35:038 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Xash3D GameCube: retail menu btn strip miss (null)
+37:35:038 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Error: pfnPIC_Load: refusing to load image with empty name
+37:35:038 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Xash3D GameCube: retail menu btn strip miss (null)
+37:35:039 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Error: pfnPIC_Load: refusing to load image with empty name
+37:35:039 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Xash3D GameCube: retail menu btn strip miss (null)
+37:35:039 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Error: pfnPIC_Load: refusing to load image with empty name
+37:35:039 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Xash3D GameCube: retail menu btn strip miss (null)
+37:35:040 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Xash3D GameCube: main menu opened
+37:35:041 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Xash3D GameCube: DoD music stream open=1 keydest=2 volume=1.00
+37:35:053 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Xash3D GameCube: menu tile resource/gc_menu/bg_0_0.cmp CMPR 320x240
+37:35:068 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Xash3D GameCube: menu tile resource/gc_menu/bg_0_1.cmp CMPR 320x240
+37:35:070 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Xash3D GameCube: menu tile resource/gc_menu/bg_1_0.cmp CMPR 320x240
+37:35:085 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Xash3D GameCube: menu tile resource/gc_menu/bg_1_1.cmp CMPR 320x240
+37:35:089 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Xash3D GameCube: retail menu button text ready ch=18 color=0xFFFFB900 name=New game
+37:35:089 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Xash3D GameCube: menu console font ready
+37:35:120 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Xash3D GameCube: hitext atlas alloc 65536 bytes failed, soft text
+37:35:123 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Xash3D GameCube: reserved raw stream ent=-2 samples=8192 bytes=65636
+37:35:125 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Xash3D GameCube: DoD music mixed bytes=8192 rate=22050 vol=255
+37:35:125 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:34] Xash3D GameCube: key_event menu key=A_BUTTON down=0 repeats=0 binding=+jump
+37:43:643 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [00:37:42] Xash3D GameCube: late flip waits=0 avg=0.00ms late presents=74 over 600 presents
