@@ -4,10 +4,10 @@
 Example:
   python3 tools/mohaa_weapon.py retail/main --weapon m1_garand --out /tmp/v_m1_garand.mdl
 
-This first pass preserves the retail mesh, UVs, primary diffuse texture and idle pose. For the M1
-Garand it omits `material8`, which the retail TIKI marks nodraw at rest. GoldSrc animation and
-weapon behavior are intentionally separate follow-up work; this writer currently requires one
-diffuse texture per model.
+This first pass preserves the retail mesh, UVs, diffuse textures and idle pose. Multiple diffuse
+textures are packed into a small power-of-two atlas. For the M1 Garand it omits `material8`, which
+the retail TIKI marks nodraw at rest. GoldSrc animation and weapon behavior are separate follow-up
+work.
 """
 from __future__ import annotations
 
@@ -47,6 +47,60 @@ def _texture(data: bytes, max_size: int):
 	palette = (image.getpalette() or [])[:768]
 	palette += [0] * (768 - len(palette))
 	return image.tobytes(), bytes(palette), width, height
+
+
+def _texture_atlas(sources: list[bytes], max_size: int) -> tuple[bytes, list[tuple[int, int, int, int] | None]]:
+	"""Pack diffuse images into a power-of-two atlas and return each image's inner pixel rectangle."""
+	from io import BytesIO
+	from PIL import Image
+
+	if not sources:
+		raise ValueError("weapon has no diffuse textures")
+	if len(sources) == 1:
+		return sources[0], [None]
+	if max_size < 16:
+		raise ValueError("multi-material texture atlas needs at least 16 pixels")
+
+	cap = 1 << int(math.log2(min(max_size, GC_CMPR_MAX_EDGE)))
+	cols = math.ceil(math.sqrt(len(sources)))
+	rows = math.ceil(len(sources) / cols)
+	cell = 1 << int(math.log2(max(8, cap // max(cols, rows))))
+	while (1 << math.ceil(math.log2(cols * cell))) > cap or (1 << math.ceil(math.log2(rows * cell))) > cap:
+		cell //= 2
+		if cell < 8:
+			raise ValueError(f"{len(sources)} materials do not fit a {cap}px GameCube atlas")
+	width = 1 << math.ceil(math.log2(cols * cell))
+	height = 1 << math.ceil(math.log2(rows * cell))
+	atlas = Image.new("RGB", (width, height), (0, 0, 0))
+	rectangles = []
+	pad = 2
+	for i, source in enumerate(sources):
+		image = Image.open(BytesIO(source)).convert("RGB")
+		inner = cell - 2 * pad
+		if inner < 1:
+			raise ValueError("atlas cell is too small for padded texture data")
+		scale = min(inner / image.width, inner / image.height)
+		iw = max(1, min(inner, int(round(image.width * scale))))
+		ih = max(1, min(inner, int(round(image.height * scale))))
+		if image.size != (iw, ih):
+			image = image.resize((iw, ih), Image.Resampling.LANCZOS)
+		cx, cy = (i % cols) * cell, (i // cols) * cell
+		x, y = cx + (cell - iw) // 2, cy + (cell - ih) // 2
+		atlas.paste(image, (x, y))
+		# Replicate edge texels into the gutter so filtering cannot pull the next material in.
+		atlas.paste(image.crop((0, 0, iw, 1)).resize((iw, pad)), (x, y - pad))
+		atlas.paste(image.crop((0, ih - 1, iw, ih)).resize((iw, pad)), (x, y + ih))
+		atlas.paste(image.crop((0, 0, 1, ih)).resize((pad, ih)), (x - pad, y))
+		atlas.paste(image.crop((iw - 1, 0, iw, ih)).resize((pad, ih)), (x + iw, y))
+		atlas.paste(atlas.crop((x, y, x + 1, y + 1)).resize((pad, pad)), (x - pad, y - pad))
+		atlas.paste(atlas.crop((x + iw - 1, y, x + iw, y + 1)).resize((pad, pad)), (x + iw, y - pad))
+		atlas.paste(atlas.crop((x, y + ih - 1, x + 1, y + ih)).resize((pad, pad)), (x - pad, y + ih))
+		atlas.paste(atlas.crop((x + iw - 1, y + ih - 1, x + iw, y + ih)).resize((pad, pad)),
+		            (x + iw, y + ih))
+		rectangles.append((x, y, iw, ih))
+	buffer = BytesIO()
+	atlas.save(buffer, format="PNG")
+	return buffer.getvalue(), rectangles
 
 
 def _gc_cmpr_edge(size: int, cap: int) -> int:
@@ -166,7 +220,7 @@ def _static_mdl(name: str, positions, normals, triangles, texture_data: bytes,
 
 def convert(main_paths, weapon: str, output: Path, skin_size: int = 256, scale: float | None = None,
 			native_cmpr: bool = False):
-	files = collect(main_paths, (".tik", ".skd", ".skc", ".shader", ".tga"))
+	files = collect(main_paths, (".tik", ".skd", ".skc", ".shader", ".tga", ".jpg", ".bmp"))
 	model = f"models/weapons/{weapon}.tik"
 	if model not in files:
 		raise ValueError(f"retail model not found: {model}")
@@ -180,7 +234,8 @@ def convert(main_paths, weapon: str, output: Path, skin_size: int = 256, scale: 
 	for path, entry in files.items():
 		if path.endswith(".shader"):
 			shaders.update(mohaa_skd.parse_shaders(read(entry).decode("latin-1", "replace")))
-	texture_path = None
+	texture_paths = []
+	surface_texture_index = {}
 	kept = []
 	for surface in skd.surfaces:
 		material = tik.shaders.get(surface.name.lower(), "").lower()
@@ -196,14 +251,14 @@ def convert(main_paths, weapon: str, output: Path, skin_size: int = 256, scale: 
 			candidate = candidate[:-4] + ".jpg"
 		if candidate not in files:
 			raise ValueError(f"diffuse texture not found for {surface.name}: {tex}")
-		if texture_path is None:
-			texture_path = candidate
-		if candidate != texture_path:
-			raise ValueError("this first-pass writer supports one diffuse texture; weapon surfaces use multiple textures")
+		if candidate not in texture_paths:
+			texture_paths.append(candidate)
+		surface_texture_index[surface.name] = texture_paths.index(candidate)
 		kept.append(surface)
-	if not kept or not texture_path:
+	if not kept or not texture_paths:
 		raise ValueError("no textured surfaces remain after filtering")
-	texture_source = read(files[texture_path])
+	texture_source, texture_rects = _texture_atlas([read(files[path]) for path in texture_paths], skin_size)
+	texture_label = ", ".join(texture_paths)
 	if native_cmpr:
 		texture_data, texture_width, texture_height = _texture_cmpr(texture_source, skin_size)
 		texture_flags = STUDIO_NF_GC_CMPR
@@ -229,8 +284,14 @@ def convert(main_paths, weapon: str, output: Path, skin_size: int = 256, scale: 
 					normal_ids[nkey] = len(normals)
 					normals.append(n)
 				u, v = surface.uvs[index]
-				s = min(texture_width - 1, max(0, int(round(u * (texture_width - 1)))))
-				t = min(texture_height - 1, max(0, int(round((1.0 - v) * (texture_height - 1)))))
+				rect = texture_rects[surface_texture_index[surface.name]]
+				if rect is None:
+					s = min(texture_width - 1, max(0, int(round(u * (texture_width - 1)))))
+					t = min(texture_height - 1, max(0, int(round((1.0 - v) * (texture_height - 1)))))
+				else:
+					x, y, tw, th = rect
+					s = min(texture_width - 1, max(0, x + int(round(u * (tw - 1)))))
+					t = min(texture_height - 1, max(0, y + int(round((1.0 - v) * (th - 1)))))
 				corners.append((position_ids[pkey], normal_ids[nkey], s, t))
 			triangles.append(corners)
 	if len(positions) > 2048 or len(normals) > 2048 or len(triangles) > 4096:
@@ -239,7 +300,7 @@ def convert(main_paths, weapon: str, output: Path, skin_size: int = 256, scale: 
 					texture_width, texture_height)
 	output.parent.mkdir(parents=True, exist_ok=True)
 	output.write_bytes(data)
-	return len(positions), len(normals), len(triangles), texture_path, unit_scale
+	return len(positions), len(normals), len(triangles), texture_label, unit_scale
 
 
 def main(argv=None):
