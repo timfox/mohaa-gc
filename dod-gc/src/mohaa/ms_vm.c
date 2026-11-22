@@ -76,6 +76,7 @@ ms_vm *ms_create(const ms_host *host, const ms_config *cfg)
     vm->rng = 0x12345678u;
     vm->n_size = ms_intern(vm, "size", 4);
     vm->n_removed = ms_intern(vm, "removed", 7);
+    vm->n_self = ms_intern(vm, "self", 4);
     ms_register_builtins(vm);
     return vm;
 }
@@ -972,6 +973,10 @@ static void interpret(ms_vm *vm, ms_thread *t)
                 ms_value *v = ms_table_get(scope_table(vm, t, sc), name);
                 if (v) {
                     out = *v;
+                    ms_retain(out);
+                } else if (sc == SC_LOCAL && name == vm->n_self) {
+                    /* MOHAA threads expose their bound entity as local.self. */
+                    out = t->self;
                     ms_retain(out);
                 }
             }
