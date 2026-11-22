@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read MOHAA static model meshes: .tik model scripts and the SKMD (.skd) meshes they name.
+"""Read MOHAA static model meshes: .tik model scripts and their SKMD (.skd) or SKL (.skb) meshes.
 
     python3 tools/mohaa_skd.py "/path/to/MOHAA/main" --props out/m6l1a.props
 
@@ -24,7 +24,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 SKD_IDENT = b"SKMD"
 SURF_IDENTS = (b"SKL ", b"SKSF")  # MOHAA's v5 files start each surface with "SKL "
-# ident, version, name[64], numSurfaces, numBones, ofsBones, ofsSurfaces, ofsEnd
+# Both SKMD (.skd) and retail SKL (.skb) headers share these leading fields;
+# SKL appends LOD and hitbox fields after ofsEnd.
 HEADER = struct.Struct("<4si64s5i")
 # ident, name[64], numTriangles, numVerts, staticSurfProcessed, ofsTriangles, ofsVerts,
 # ofsCollapse, ofsEnd, ofsCollapseIndex
@@ -115,8 +116,8 @@ def parse_skd(data: bytes, name: str = "") -> Skd:
 	if len(data) < HEADER.size:
 		raise SkdError(f"{name}: too short for an SKMD header")
 	ident, version, mname, nsurf, nbones, _ofs_bones, ofs_surf, ofs_end = HEADER.unpack_from(data, 0)
-	if ident != SKD_IDENT:
-		raise SkdError(f"{name}: not an SKMD file")
+	if ident not in (SKD_IDENT, b"SKL "):
+		raise SkdError(f"{name}: not an SKMD or SKL file")
 	if not 0 <= nsurf <= 256 or not 0 < ofs_surf < len(data):
 		raise SkdError(f"{name}: bad surface table ({nsurf} at {ofs_surf})")
 	skd = Skd(_cstr(mname) or name, version, nbones)
@@ -367,7 +368,7 @@ def main(argv=None) -> int:
 	ap.add_argument("main", nargs="+", help="MOHAA main folder or pk3 files")
 	ap.add_argument("--props", action="append", required=True, help="a <map>.props sidecar (repeatable)")
 	args = ap.parse_args(argv)
-	files = collect(args.main, (".tik", ".skd", ".skc", ".shader"))
+	files = collect(args.main, (".tik", ".skd", ".skb", ".skc", ".shader"))
 	shaders = {}
 	for p, e in sorted(files.items()):
 		if p.endswith(".shader"):
