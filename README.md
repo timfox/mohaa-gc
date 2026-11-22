@@ -15,6 +15,13 @@ the separate **Sound AmbStereo Files** group is unpacked:
 python3 tools/mohaa_sd.py --cd /path/to/cd1 /path/to/cd2 --mohaa ~/MOHAA --sd /media/SDCARD --stages music
 ```
 
+If the loose music files were extracted separately from the `main/` folder,
+pass that directory with `--music-source`; it is read only by the music stage:
+
+```bash
+python3 tools/mohaa_sd.py --mohaa ~/MOHAA --music-source /path/to/extracted/main --sd /media/SDCARD --stages music
+```
+
 ## Map pipeline (planned)
 
 ```

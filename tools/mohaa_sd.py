@@ -20,6 +20,8 @@ Sources (give one or both):
   --cd DIR...   the install CDs, mounted or copied (the folders holding DATA1.HDR and the DATAn.CAB files;
                 list both CDs). Needs the `unshield` program; the cabinets are unpacked to a work folder once
                 and reused.
+  --music-source DIR  an extra folder containing loose sound/ music files; repeat for split extractions.
+                      Used by the music stage only. Normally the installed game folder already includes these.
 
 Stages run in this order (--stages picks some; by default every one whose tools are found):
   menu      the retail main menu: the war room, its lit      needs Pillow and numpy
@@ -605,6 +607,8 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--mohaa", help="installed MOHAA folder (holding main/)")
     ap.add_argument("--cd", nargs="+", help="install CD folders (holding DATA1.HDR / DATAn.CAB)")
+    ap.add_argument("--music-source", action="append", default=[], metavar="DIR",
+                    help="extra folder containing loose sound/ music files; repeat for split extractions")
     ap.add_argument("--sd", required=True, help="SD card root (or a folder to copy onto one later)")
     ap.add_argument("--gamedir", default="mohaa", help="game folder under xash3d/ (default mohaa)")
     ap.add_argument("--maps", default="", help="comma-separated maps (default: all the stage knows)")
@@ -635,6 +639,10 @@ def main(argv=None):
         a.mohaa = os.path.abspath(a.mohaa)
     if a.cd:
         a.cd = [os.path.abspath(path) for path in a.cd]
+    a.music_source = [os.path.abspath(path) for path in a.music_source]
+    for path in a.music_source:
+        if not os.path.isdir(path):
+            ap.error("music source folder does not exist: %s" % path)
     for name in ("sdhlt", "tools_dir", "xash3d_gc", "work"):
         value = getattr(a, name)
         if value:
@@ -679,7 +687,10 @@ def main(argv=None):
     for s in stages:
         print("== %s" % s)
         try:
-            files = STAGES[s](sources, game_root, maps, work)
+            stage_sources = sources + (a.music_source if s == "music" else [])
+            if s == "music" and a.music_source:
+                print("music sources: %s" % ", ".join(a.music_source))
+            files = STAGES[s](stage_sources, game_root, maps, work)
         except SystemExit as e:   # one stage's failure does not stop the others
             print("== %s: FAILED (%s)" % (s, e))
             failed.append(s)
