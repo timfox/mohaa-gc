@@ -9,7 +9,7 @@ import bsp19_lightmaps as bl  # noqa: E402
 import mohaa_bsp19 as b19  # noqa: E402
 
 
-def mohaa_floor(size=128.0, clockwise=False):
+def mohaa_floor(size=128.0, clockwise=False, entity_origin=None):
 	"""A MOHAA map with one lit floor quad, z=0, 0..size; its lightmap has
 	red = 2 * x and green = y (in luxels), over a 64x64 rect of page 0."""
 	page = bytearray(b19.LIGHTMAP_BYTES)
@@ -25,6 +25,11 @@ def mohaa_floor(size=128.0, clockwise=False):
 	lumps = {i: b"" for i in range(b19.HEADER_LUMPS)}
 	lumps[b19.LUMP_SHADERS] = struct.pack("<64s3i64s", b"textures/floor", 0, 1, 0, b"")
 	lumps[b19.LUMP_LIGHTMAPS] = bytes(page)
+	if entity_origin:  # the floor belongs to brush model *1, placed at entity_origin
+		lumps[b19.LUMP_MODELS] = (struct.pack("<6f4i", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+			+ struct.pack("<6f4i", 0, 0, 0, size, size, 1, 0, 1, 0, 0))
+		lumps[b19.LUMP_ENTITIES] = ('{\n"classname" "worldspawn"\n}\n{\n"classname" "func_wall"\n'
+			'"model" "*1"\n"origin" "%g %g %g"\n}\n' % tuple(entity_origin)).encode() + b"\0"
 	lumps[b19.LUMP_SURFACES] = surf
 	lumps[b19.LUMP_DRAWVERTS] = dverts
 	lumps[b19.LUMP_DRAWINDEXES] = struct.pack("<6i", *((0, 2, 1, 0, 3, 2) if clockwise else (0, 1, 2, 0, 2, 3)))
@@ -78,6 +83,16 @@ class Bsp19LightmapsTest(unittest.TestCase):
 	def test_clockwise_mohaa_winding_still_faces_up(self):
 		out, st = bl.relight(bl.Mohaa(mohaa_floor(clockwise=True), 1.0), goldsrc_floor())
 		self.assertEqual(st["matched"], 81)
+
+	def test_brush_entity_surfaces_move_out_by_the_entity_origin(self):
+		mohaa = bl.Mohaa(mohaa_floor(entity_origin=(0, 0, 64)), 1.0)
+		data = bytearray(goldsrc_floor())
+		struct.pack_into("<4f", data, struct.unpack_from("<i", data, 4 + 8)[0], 0, 0, 1, 64)
+		lit_verts = struct.unpack_from("<i", data, 4 + 3 * 8)[0]
+		for i in range(4):
+			struct.pack_into("<f", data, lit_verts + i * 12 + 8, 64.0)
+		out, st = bl.relight(mohaa, bytes(data))
+		self.assertEqual((st["matched"], st["fallback"]), (81, 0))
 
 	def test_world_scale_maps_goldsrc_luxels_back_onto_mohaa(self):
 		mohaa = bl.Mohaa(mohaa_floor(128.0), 0.5)  # GoldSrc floor is 64 wide
