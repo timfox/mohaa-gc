@@ -33,7 +33,7 @@ DEFAULT_SCALE = 72.0 / 94.0  # bsp19_to_map.py's
 LM = 128  # MOHAA lightmap page side
 # MOHAA stores lightmaps one overbright bit down (the renderer shifts them up),
 # so the bytes are doubled to get the light the game shows.
-DEFAULT_GAIN = 2.0
+DEFAULT_GAIN = 2.5  # 2.0 undoes the overbright bit; Dolphin showed m1l1 night towns too dark at 2.0
 TEX_SPECIAL = 1
 PLANE_DOT = 0.995  # normals this close are one plane
 PLANE_DIST = 2.0  # GoldSrc units
