@@ -1,6 +1,19 @@
 # MOHAA M1 Garand runtime capture
 
-Latest Dolphin capture, recorded Nov. 22 at 3:05 PM PT:
+Latest Dolphin capture, recorded Nov. 22 at 3:20 PM PT:
+
+![MOHAA m1l2a running with the GameCube-native CMPR Garand](/home/tim/Desktop/mohaa-gc/media/2026-11-22-m1-garand-runtime/screenshots/20261122-152046-mohaa-garand-native-cmpr/final.png)
+
+- [Latest Dolphin log](screenshots/20261122-152046-mohaa-garand-native-cmpr/dolphin.log)
+- [Latest probe note](notes/20261122-152046-mohaa-garand-native-cmpr.md)
+
+The converter now has an optional `--gc-cmpr` mode. It encodes the 256x128 retail atlas to 16 KiB
+of GameCube CMPR blocks, down from the indexed model's 86,968-byte skin model to a 69,816-byte MDL.
+The host decoder reproduces the atlas, and the current Xash build reaches m1l2a at 45.79 FPS with
+the rifle visible. Its in-game surface is still blue/black, so this native encoding does not resolve
+the material problem. The issue is narrowed to the runtime skin binding/draw path and remains open.
+
+The previous indexed-skin capture, recorded at 3:05 PM PT:
 
 ![MOHAA m1l2a with the converted Garand viewmodel](/home/tim/Desktop/mohaa-gc/media/2026-11-22-m1-garand-runtime/screenshots/20261122-150547-mohaa-garand-aspect-ratio/final.png)
 

@@ -22,6 +22,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import mohaa_skd
 from ubersound import collect, read
 
+STUDIO_NF_GC_CMPR = 1 << 28
+GC_CMPR_MAX_EDGE = 256
+
 
 def _name(value: str, size: int) -> bytes:
 	b = value.encode("latin-1", "replace")[: size - 1]
@@ -46,8 +49,42 @@ def _texture(data: bytes, max_size: int):
 	return image.tobytes(), bytes(palette), width, height
 
 
-def _static_mdl(name: str, positions, normals, triangles, pixels: bytes, palette: bytes,
-				texture_width: int, texture_height: int) -> bytes:
+def _gc_cmpr_edge(size: int, cap: int) -> int:
+	edge = 8
+	while edge < cap and 2 * edge * edge < size * size:
+		edge <<= 1
+	return edge
+
+
+def _texture_cmpr(data: bytes, max_size: int):
+	from io import BytesIO
+	from PIL import Image
+	import numpy as np
+	from mohaa_menu import cmpr_encode
+
+	if max_size < 8:
+		raise ValueError("native CMPR skin size must be at least 8 pixels")
+	max_size = min(max_size, GC_CMPR_MAX_EDGE)
+	image = Image.open(BytesIO(data)).convert("RGB")
+	width, height = image.size
+	if width > max_size or height > max_size:
+		scale = max_size / max(width, height)
+		width = max(1, int(round(width * scale)))
+		height = max(1, int(round(height * scale)))
+	if image.size != (width, height):
+		image = image.resize((width, height), Image.Resampling.LANCZOS)
+	cmpr_width = _gc_cmpr_edge(width, max_size)
+	cmpr_height = _gc_cmpr_edge(height, max_size)
+	if image.size != (cmpr_width, cmpr_height):
+		image = image.resize((cmpr_width, cmpr_height), Image.Resampling.LANCZOS)
+	pixels = cmpr_encode(np.asarray(image, dtype=np.uint8))
+	if len(pixels) != cmpr_width * cmpr_height // 2:
+		raise ValueError(f"CMPR encoder returned {len(pixels)} bytes for {cmpr_width}x{cmpr_height}")
+	return pixels, cmpr_width, cmpr_height
+
+
+def _static_mdl(name: str, positions, normals, triangles, texture_data: bytes,
+				texture_flags: int, texture_width: int, texture_height: int) -> bytes:
 	"""Write a one-bone, one-sequence, one-texture GoldSrc studio v10 model."""
 	lo = tuple(min(p[i] for p in positions) for i in range(3))
 	hi = tuple(max(p[i] for p in positions) for i in range(3))
@@ -108,13 +145,13 @@ def _static_mdl(name: str, positions, normals, triangles, pixels: bytes, palette
 	                 len(positions), vinfo, vertindex, len(normals), ninfo, normindex, 0, 0)
 	struct.pack_into("<i", out, bpindex + 72, modelindex)
 	texindex = len(out)
-	out += _name(name + ".bmp", 64) + struct.pack("<iiii", 0, texture_width, texture_height, 0)
+	out += _name(name + ".bmp", 64) + struct.pack("<iiii", texture_flags, texture_width, texture_height, 0)
 	skinindex = len(out)
 	out += struct.pack("<h", 0)
 	align()
 	texdata = len(out)
 	struct.pack_into("<i", out, texindex + 76, texdata)
-	out += pixels + palette
+	out += texture_data
 	align()
 	hdr = struct.pack("<4si64si", b"IDST", 10, _name(name + ".mdl", 64), len(out))
 	hdr += struct.pack("<3f", 0, 0, 0) + struct.pack("<3f", *lo) + struct.pack("<3f", *hi)
@@ -127,7 +164,8 @@ def _static_mdl(name: str, positions, normals, triangles, pixels: bytes, palette
 	return bytes(out)
 
 
-def convert(main_paths, weapon: str, output: Path, skin_size: int = 256, scale: float | None = None):
+def convert(main_paths, weapon: str, output: Path, skin_size: int = 256, scale: float | None = None,
+			native_cmpr: bool = False):
 	files = collect(main_paths, (".tik", ".skd", ".skc", ".shader", ".tga"))
 	model = f"models/weapons/{weapon}.tik"
 	if model not in files:
@@ -165,7 +203,14 @@ def convert(main_paths, weapon: str, output: Path, skin_size: int = 256, scale: 
 		kept.append(surface)
 	if not kept or not texture_path:
 		raise ValueError("no textured surfaces remain after filtering")
-	pixels, palette, texture_width, texture_height = _texture(read(files[texture_path]), skin_size)
+	texture_source = read(files[texture_path])
+	if native_cmpr:
+		texture_data, texture_width, texture_height = _texture_cmpr(texture_source, skin_size)
+		texture_flags = STUDIO_NF_GC_CMPR
+	else:
+		pixels, palette, texture_width, texture_height = _texture(texture_source, skin_size)
+		texture_data = pixels + palette
+		texture_flags = 0
 	unit_scale = (tik.scale if scale is None else scale) * (72.0 / 94.0)
 	positions, normals, triangles = [], [], []
 	position_ids, normal_ids = {}, {}
@@ -190,7 +235,7 @@ def convert(main_paths, weapon: str, output: Path, skin_size: int = 256, scale: 
 			triangles.append(corners)
 	if len(positions) > 2048 or len(normals) > 2048 or len(triangles) > 4096:
 		raise ValueError(f"mesh exceeds GoldSrc v10 limits: {len(positions)} verts, {len(normals)} normals, {len(triangles)} tris")
-	data = _static_mdl(output.stem, positions, normals, triangles, pixels, palette,
+	data = _static_mdl(output.stem, positions, normals, triangles, texture_data, texture_flags,
 					texture_width, texture_height)
 	output.parent.mkdir(parents=True, exist_ok=True)
 	output.write_bytes(data)
@@ -203,12 +248,14 @@ def main(argv=None):
 	ap.add_argument("--weapon", default="m1_garand", help="weapon TIKI basename")
 	ap.add_argument("--out", required=True, type=Path)
 	ap.add_argument("--skin-size", type=int, default=256)
+	ap.add_argument("--gc-cmpr", action="store_true",
+				 help="bake the skin as native GameCube CMPR (requires the matching Xash3D-GC loader)")
 	ap.add_argument("--scale", type=float, default=None, help="override TIKI scale; map scale 72/94 is applied")
 	a = ap.parse_args(argv)
-	nv, nn, nt, tex, scale = convert(a.main, a.weapon, a.out, a.skin_size, a.scale)
+	nv, nn, nt, tex, scale = convert(a.main, a.weapon, a.out, a.skin_size, a.scale, a.gc_cmpr)
 	print(f"MOHAA weapon: {a.weapon}, {nt} triangles, {nv} verts, {nn} normals, scale {scale:.5f}")
 	print(f"MOHAA texture: {tex}")
-	print(f"GoldSrc studio v10: {a.out} ({a.out.stat().st_size} bytes)")
+	print(f"Studio v10{' + GameCube CMPR' if a.gc_cmpr else ''}: {a.out} ({a.out.stat().st_size} bytes)")
 	return 0
 
 
