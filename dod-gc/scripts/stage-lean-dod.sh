@@ -657,6 +657,21 @@ done
 # the line, and staging fails if the string is still anywhere in the staged trees (checked as ASCII and UTF-16).
 python3 "$SCRIPT_DIR/strip_steam_strings.py" "$VMIN" "$LEAN" || exit 1
 
+# Extra content laid over the lean tree, as build-dodgc.sh does (colon-separated dirs, later ones win), such as the
+# MOHAA music built by mohaa-gc tools/music.py (music/*.mood, sound/mohaa/music/*.wav).
+if [[ -n "${DODGC_CONTENT_EXTRA:-}" ]]; then
+	IFS=':' read -r -a _extra <<< "$DODGC_CONTENT_EXTRA"
+	for _dir in "${_extra[@]}"; do
+		[[ -z "$_dir" ]] && continue
+		if [[ ! -d "$_dir" ]]; then
+			echo "error: DODGC_CONTENT_EXTRA dir missing: $_dir" >&2
+			exit 1
+		fi
+		cp -a "$_dir/." "$LEAN/"
+		echo "overlaid $_dir ($(du -sh "$_dir" | awk '{print $1}'))"
+	done
+fi
+
 echo "staged lean DoD: $(du -sh "$LEAN" | awk '{print $1}') → $LEAN"
 echo "staged lean valve: $(du -sh "$VMIN" | awk '{print $1}') → $VMIN"
 echo "LEAN=$LEAN"
