@@ -1,0 +1,11 @@
+DOL build (from a temporary Xash source mirror; MultiEmulator resolves to the local Lost Coast dependency):
+  DEVKITPRO=/opt/devkitpro XASH_GC_PM_MAX_PHYSENTS=256 XASH_GC_PM_MAX_MOVEENTS=32 bash scripts/build-gamecube.sh --game-profile=mohaa
+
+ISO route:
+  bash scripts/build-lean-iso.sh --skip-stage --intro-only --skip-startup-vids --listen m1l2a --full-map --world-render --dumpeye '5349 -3867 95 0 180'
+
+Dolphin probe:
+  bash scripts/probe-playtest.sh --route mohaa-m1l2a-local-self2 --duration 20 --skip-video --ready-regex 'MAP_READY m1l2a|newgame world render ready|WorldDL dumpeye aim'
+
+DOL SHA-256: 6a8314f37f4d1f27049514a7411799898bac1c22cd1d383517cc30f101d0281e
+ISO SHA-256: 672bec6e379e9ab3b3b7945c8b5148c8fa09c976185ee60aa612601e519cb40f
