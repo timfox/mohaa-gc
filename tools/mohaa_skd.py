@@ -202,31 +202,66 @@ SKC_HEADER = struct.Struct("<4s3if3ff3i")
 SKC_FRAME = struct.Struct("<3f3ff3ffi")
 
 
-def parse_skc(data: bytes, name: str = "") -> dict:
-	"""Frame 0 of an SKAN animation as a pose: {bone name: (position, quaternion)}, names lowercased.
-	Channels are "<bone> pos" and "<bone> rot", 4 floats each (pos: x y z and a spare; rot: x y z w)."""
+def parse_skc_animation(data: bytes, name: str = "") -> dict:
+	"""Read all SKAN frames as per-bone (position, quaternion) poses.
+
+	Channels are "<bone> pos" and "<bone> rot", four floats each (pos uses
+	xyz plus a spare; rot uses xyzw). Frame channel offsets are absolute file
+	offsets, as in the retail SKCs used by the TIKI converter.
+	"""
 	if len(data) < SKC_HEADER.size + SKC_FRAME.size:
 		raise SkdError(f"{name}: too short for an SKAN header")
-	ident, _ver, _flags, _used, _ft, _dx, _dy, _dz, _da, nchan, ofs_names, nframes = SKC_HEADER.unpack_from(data, 0)
-	if ident != SKC_IDENT or nframes < 1 or not 0 < nchan <= 512 or ofs_names + 32 * nchan > len(data):
+	(ident, _ver, _flags, used, frame_time, dx, dy, dz, angle_delta,
+	 nchan, ofs_names, nframes) = SKC_HEADER.unpack_from(data, 0)
+	limit = used if used else len(data)
+	frame_table_end = SKC_HEADER.size + nframes * SKC_FRAME.size
+	if (ident != SKC_IDENT or nframes < 1 or not 0 < nchan <= 512 or
+			limit > len(data) or limit < SKC_HEADER.size or
+			frame_table_end > limit or ofs_names < frame_table_end or
+			ofs_names + 32 * nchan > limit):
 		raise SkdError(f"{name}: not a readable SKAN file")
-	ofs_chan = SKC_FRAME.unpack_from(data, SKC_HEADER.size)[-1]
-	if not 0 < ofs_chan or ofs_chan + 16 * nchan > len(data):
-		raise SkdError(f"{name}: frame 0 channels run past the file")
-	pose = {}
+
+	channels = []
 	for i in range(nchan):
 		cname = _cstr(data[ofs_names + 32 * i:ofs_names + 32 * (i + 1)]).lower()
-		vals = struct.unpack_from("<4f", data, ofs_chan + 16 * i)
 		bone, _, kind = cname.rpartition(" ")
-		pos, q = pose.get(bone, ((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0)))
-		if kind == "pos":
-			pos = vals[:3]
-		elif kind == "rot":
-			q = vals
-		else:
-			continue
-		pose[bone] = (pos, q)
-	return pose
+		channels.append((bone, kind) if bone and kind in ("pos", "rot") else ("", ""))
+
+	poses = []
+	for frame in range(nframes):
+		ofs_frame = SKC_HEADER.size + frame * SKC_FRAME.size
+		ofs_chan = SKC_FRAME.unpack_from(data, ofs_frame)[-1]
+		if ofs_chan < frame_table_end or ofs_chan + 16 * nchan > limit:
+			raise SkdError(f"{name}: frame {frame} channels run past the file")
+		pose = {}
+		for i, (bone, kind) in enumerate(channels):
+			if not bone:
+				continue
+			vals = struct.unpack_from("<4f", data, ofs_chan + 16 * i)
+			pos, q = pose.get(bone, (None, None))
+			if kind == "pos":
+				pos = vals[:3]
+			else:
+				q = vals
+			pose[bone] = (pos, q)
+		poses.append(pose)
+
+	return {
+		"frame_time": frame_time,
+		"delta": (dx, dy, dz),
+		"angle_delta": angle_delta,
+		"poses": poses,
+	}
+
+
+def parse_skc(data: bytes, name: str = "") -> dict:
+	"""Frame 0 as a complete pose, retained for existing static-pose callers."""
+	pose = parse_skc_animation(data, name)["poses"][0]
+	return {
+		bone: (pos if pos is not None else (0.0, 0.0, 0.0),
+		       q if q is not None else (0.0, 0.0, 0.0, 1.0))
+		for bone, (pos, q) in pose.items()
+	}
 
 
 # ---------------------------------------------------------------- .tik and shaders

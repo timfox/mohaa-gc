@@ -80,39 +80,10 @@ def skeleton(data: bytes, name: str = ""):
 
 
 def anim_frames(data: bytes, name: str = ""):
-	"""(frame time, [{bone (lowercase): (pos or None, quat or None)} per frame]) from an SKAN file."""
-	if len(data) < skd.SKC_HEADER.size:
-		raise skd.SkdError(f"{name}: too short for an SKAN header")
-	h = skd.SKC_HEADER.unpack_from(data, 0)
-	ident, frametime, nchan, ofs_names, nframes = h[0], h[4], h[9], h[10], h[11]
-	if ident != skd.SKC_IDENT or nframes < 1 or not 0 < nchan <= 512 or ofs_names + 32 * nchan > len(data):
-		raise skd.SkdError(f"{name}: not a readable SKAN file")
-	chans = []
-	for i in range(nchan):
-		cname = skd._cstr(data[ofs_names + 32 * i:ofs_names + 32 * (i + 1)]).lower()
-		bone, _, kind = cname.rpartition(" ")
-		chans.append((bone, kind))
-	frames = []
-	for f in range(nframes):
-		at = skd.SKC_HEADER.size + skd.SKC_FRAME.size * f
-		if at + skd.SKC_FRAME.size > len(data):
-			raise skd.SkdError(f"{name}: frame {f} runs past the file")
-		oc = skd.SKC_FRAME.unpack_from(data, at)[-1]
-		if oc <= 0 or oc + 16 * nchan > len(data):
-			raise skd.SkdError(f"{name}: frame {f} channels run past the file")
-		pose = {}
-		for i, (bone, kind) in enumerate(chans):
-			if kind not in ("pos", "rot"):
-				continue
-			vals = struct.unpack_from("<4f", data, oc + 16 * i)
-			pos, q = pose.get(bone, (None, None))
-			if kind == "pos":
-				pos = vals[:3]
-			else:
-				q = vals
-			pose[bone] = (pos, q)
-		frames.append(pose)
-	return frametime if frametime > 0 else 0.05, frames
+	"""(frame time, per-frame bone poses) from an SKAN file."""
+	animation = skd.parse_skc_animation(data, name)
+	frame_time = animation["frame_time"]
+	return frame_time if frame_time > 0 else 0.05, animation["poses"]
 
 
 def anim_length(data: bytes) -> float | None:

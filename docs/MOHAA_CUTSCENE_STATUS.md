@@ -17,6 +17,8 @@ The isolated build produced `/tmp/mohaagc-20261123.dol` (7,454,848 bytes; SHA-25
 
 `tools/mohaa_tiki_model.py` bakes `vehicles/gmctruck_opening.tik` as a 269,724-byte Studio v10 model (13 surface bodygroups, 5,171 triangles) and `vehicles/opeltruck.tik` as a 214,624-byte model (11 bodygroups, 4,659 triangles). The `scriptmodels` stage in `tools/mohaa_sd.py` writes both to the user's SD game directory and creates `maps/m1l1.models`. A staging run produced the two MDLs plus that manifest; `dod-gc/tools/split_studio_mdl.py info` parsed both outputs. Retail-derived outputs stay on the SD card and are not committed.
 
+The SKC reader now decodes every per-bone frame, and the tag baker uses that shared decoder. Retail data has `opel_opening.skc` at 6 frames / 10 fps for the opening GMC truck and `opel.skc` at 1 frame / 25 fps for the Opel. The MDL converter still applies only frame zero and writes a static sequence; animated Studio sequence export is the next implementation step.
+
 This conversion is a static idle-pose mesh only. It does not preserve the truck's animated wheels/lights, the scripted driver poses, or other SKC sequences. The new source binding still needs a GameCube runtime capture to prove it loads and displays these MDLs.
 
 ## Next implementation
