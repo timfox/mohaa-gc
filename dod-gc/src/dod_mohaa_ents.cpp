@@ -10,6 +10,7 @@
 #include "dod_mohaa.h"
 #include "dod_mohaa_ents.h"
 #include "shake.h"
+#include "studio.h"
 
 #include <stdio.h>
 #include <math.h>
@@ -146,6 +147,8 @@ static int M_PrecacheModel( const char *path )
 	return 1;
 }
 
+static int M_SetAnimation( uint32_t id, const char *alias );
+
 static int M_SetModel( uint32_t id, const char *tiki )
 {
 	edict_t *e = EdictFor( id );
@@ -168,14 +171,13 @@ static int M_SetModel( uint32_t id, const char *tiki )
 			SET_MODEL( e, path );
 			e->v.sequence = 0;
 			e->v.frame = 0;
-			e->v.framerate = 0.0f; /* the baked idle pose remains static */
+			e->v.framerate = 0.0f; /* M_SetAnimation starts the TIKI's idle sequence below */
 			e->v.animtime = gpGlobals->time;
+			M_SetAnimation( id, "idle" ); /* applies the TIKI init surface state too */
 			return 1;
 		}
 	return 0; /* tag-carrier TIKIs have no drawable MDL in the manifest */
 }
-
-static int M_SetAnimation( uint32_t id, const char *alias );
 
 class CMohaaScriptModel : public CBaseAnimating
 {
@@ -188,6 +190,16 @@ public:
 		pev->sequence = sequence;
 		pev->frame = 0;
 		pev->framerate = 1.0f;
+		studiohdr_t *header = (studiohdr_t *)GET_MODEL_PTR( ENT( pev ) );
+		if( header && sequence < header->numseq )
+		{
+			mstudioseqdesc_t *sequences = (mstudioseqdesc_t *)( (byte *)header + header->seqindex );
+			/* Script TIKI MDLs store their per-alias visible-surface mask in activity. */
+			const unsigned int visible = (unsigned int)sequences[sequence].activity;
+			const int groups = header->numbodyparts < 31 ? header->numbodyparts : 31;
+			for( int group = 0; group < groups; group++ )
+				SetBodygroup( group, ( visible >> group ) & 1 );
+		}
 		ResetSequenceInfo();
 		return 1;
 	}

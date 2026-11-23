@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import math
 import os
+import re
 import struct
 import sys
 from pathlib import Path
@@ -45,7 +46,7 @@ def _angles(q):
 	return (roll, pitch, yaw)
 
 
-def _animation_data(aliases, files, skd, unit_scale):
+def _animation_data(aliases, files, skd, unit_scale, visible_by_alias, default_visible):
 	"""Return parent-first bones, bind values/scales and encoded sequence records."""
 	import mohaa_tags
 
@@ -83,10 +84,22 @@ def _animation_data(aliases, files, skd, unit_scale):
 		pos = pos or (0.0, 0.0, 0.0)
 		q = q or (0.0, 0.0, 0.0, 1.0)
 		base.append(tuple(float(v) * unit_scale for v in pos) + _angles(q))
-	seqs, maxima = [], [[0.0] * 6 for _ in skd.bones]
+	seqs, maxima, bounds_points = [], [[0.0] * 6 for _ in skd.bones], []
+	bones_with_parents = list(zip(skd.bones, skd.bone_parents))
 	for alias, anim in loaded:
 		frames = []
 		for pose in anim["poses"]:
+			world = mohaa_tags.pose_tags(bones_with_parents, pose, set(index), unit_scale)
+			for surface in skd.surfaces:
+				for weights in surface.weights:
+					point = [0.0, 0.0, 0.0]
+					for bone, weight, offset in weights:
+						bone_name = skd.bones[bone].lower()
+						world_pos, matrix = world[bone_name]
+						rotated = mohaa_tags._apply(matrix, tuple(float(v) * unit_scale for v in offset))
+						for axis in range(3):
+							point[axis] += weight * (world_pos[axis] + rotated[axis])
+					bounds_points.append(tuple(point))
 			row = []
 			for i, name in enumerate(skd.bones):
 				pos, q = pose.get(name.lower(), (None, None))
@@ -101,9 +114,74 @@ def _animation_data(aliases, files, skd, unit_scale):
 				for k, v in enumerate(value):
 					maxima[i][k] = max(maxima[i][k], abs(v))
 			frames.append(row)
-		seqs.append((alias, anim["frame_time"] if anim["frame_time"] > 0 else 0.05, frames))
+		visible = visible_by_alias.get(alias, default_visible)
+		seqs.append((alias, anim["frame_time"] if anim["frame_time"] > 0 else 0.05, frames, visible))
 	scales = [[(v / 32767.0) if v > 1e-8 else (1.0 / 32767.0) for v in row] for row in maxima]
-	return ([(n, -1 if not parents[n.lower()] or parents[n.lower()] == "worldbone" else index[parents[n.lower()]]) for n in skd.bones], base, scales, seqs)
+	lo = tuple(min(p[i] for p in bounds_points) for i in range(3))
+	hi = tuple(max(p[i] for p in bounds_points) for i in range(3))
+	return ([(n, -1 if not parents[n.lower()] or parents[n.lower()] == "worldbone" else index[parents[n.lower()]]) for n in skd.bones], base, scales, seqs, (lo, hi))
+
+
+def _tiki_visibility(text):
+	"""Return the init hidden-surface set and each animation's absolute hidden set."""
+	text = re.sub(r"/\*.*?\*/|//[^\n]*", " ", text, flags=re.S)
+	tokens = [q if q else w for q, w in re.findall(r'"([^\"]*)"|([^\s{}]+|[{}])', text)]
+	lower = [t.lower() for t in tokens]
+
+	def block_after(i, source=tokens):
+		if i + 1 >= len(source) or source[i + 1] != "{":
+			return None, i
+		depth, j = 1, i + 2
+		start = j
+		while j < len(source) and depth:
+			if source[j] == "{":
+				depth += 1
+			elif source[j] == "}":
+				depth -= 1
+			j += 1
+		return source[start:j - 1], j
+
+	def apply(actions, hidden):
+		for j, token in enumerate(actions[:-2]):
+			if token.lower() != "surface":
+				continue
+			name, state = actions[j + 1].lower(), actions[j + 2].lower()
+			if state == "+nodraw":
+				hidden.add(name)
+			elif state == "-nodraw":
+				hidden.discard(name)
+
+	hidden = set()
+	for i, word in enumerate(lower[:-1]):
+		if word == "init":
+			contents, _ = block_after(i)
+			if contents is not None:
+				apply(contents, hidden)
+			break
+	states = {}
+	for i, word in enumerate(lower[:-1]):
+		if word != "animations":
+			continue
+		contents, _ = block_after(i)
+		if contents is None:
+			break
+		j = 0
+		while j < len(contents):
+			alias = contents[j].lower()
+			if j + 1 >= len(contents) or not contents[j + 1].lower().endswith((".skc", ".ska", ".tan")):
+				j += 1
+				continue
+			j += 2
+			entry, j2 = block_after(j - 1, contents)
+			state = set(hidden)
+			if entry is not None:
+				apply(entry, state)
+				states[alias] = state
+				j = j2
+			else:
+				states[alias] = state
+		break
+	return hidden, states
 
 
 def _rle(values):
@@ -198,16 +276,24 @@ def _static_mdl(name: str, parts, skin: bytes, width: int, height: int, texture_
 	if not parts:
 		raise ValueError("model has no drawable surfaces")
 	all_positions = [p for part in parts for p in part["positions"]]
-	lo = tuple(min(p[i] for p in all_positions) for i in range(3))
-	hi = tuple(max(p[i] for p in all_positions) for i in range(3))
-	radius = max(math.sqrt(sum(x * x for x in p)) for p in all_positions)
+	if animation:
+		lo, hi = animation[4]
+		radius = max(math.sqrt(sum(max(abs(lo[i]), abs(hi[i])) ** 2 for i in range(3))), 1.0)
+	else:
+		lo = tuple(min(p[i] for p in all_positions) for i in range(3))
+		hi = tuple(max(p[i] for p in all_positions) for i in range(3))
+		radius = max(math.sqrt(sum(x * x for x in p)) for p in all_positions)
 	out = bytearray(244)
 
 	def align(n=4):
 		while len(out) % n:
 			out.append(0)
 
-	bones, bind, scales, sequences = animation or ([('root', -1)], [(0.0,) * 6], [(1.0,) * 6], [('idle', 0.1, [[(0.0,) * 6]])])
+	bones, bind, scales, sequences, _bounds = animation or (
+		[('root', -1)], [(0.0,) * 6], [(1.0,) * 6],
+		[('idle', 0.1, [[(0.0,) * 6]], (1 << min(len(parts), 31)) - 1)], None)
+	if len(parts) > 31:
+		raise ValueError("scripted TIKI bodygroup visibility supports at most 31 surfaces")
 	boneindex = len(out)
 	for i, (bname, parent) in enumerate(bones):
 		ctl = [-1] * 6
@@ -220,7 +306,7 @@ def _static_mdl(name: str, parts, skin: bytes, width: int, height: int, texture_
 	out += _name("default", 32) + _name("", 64) + struct.pack("<ii", 0, 0)
 	seqindex = len(out)
 	out += b"\0" * (176 * len(sequences))
-	for seq_no, (seqname, frame_time, frames) in enumerate(sequences):
+	for seq_no, (seqname, frame_time, frames, visible_mask) in enumerate(sequences):
 		if not frames:
 			frames = [[(0.0,) * 6 for _ in bones]]
 		seq_anim = len(out)
@@ -239,23 +325,27 @@ def _static_mdl(name: str, parts, skin: bytes, width: int, height: int, texture_
 					raise ValueError(f"animation {seqname} channel offset exceeds Studio's 16-bit limit")
 				struct.pack_into("<H", out, desc_start + bi * 12 + channel * 2, rel)
 		seq_at = seqindex + seq_no * 176
+		# Scripted models use the otherwise-unused Studio activity field as a
+		# 31-bit visible-surface mask; the game applies it through bodygroups.
 		seq = _name(seqname, 32) + struct.pack("<fiiiiiiiiii", 1.0 / max(frame_time, 0.001),
-			STUDIO_LOOPING if seqname.lower().startswith("idle") else 0, 0, 0, 0, 0, len(frames), 0, 0, 0, 0)
+			STUDIO_LOOPING if seqname.lower().startswith("idle") else 0, visible_mask, 0, 0, 0, len(frames), 0, 0, 0, 0)
 		seq += struct.pack("<3f", 0, 0, 0) + struct.pack("<ii", 0, 0) + struct.pack("<6f", *lo, *hi)
 		seq += struct.pack("<ii", 1, seq_anim) + struct.pack("<2i", 0, 0) + struct.pack("<2f", 0, 0) + struct.pack("<2f", 1, 1)
 		seq += struct.pack("<iiiiii", 0, 0, 0, 0, 0, 0)
 		if len(seq) != 176:
 			raise ValueError(f"internal sequence layout is {len(seq)} bytes, expected 176")
 		out[seq_at:seq_at + 176] = seq
+	align()
 	bodypartsindex = len(out)
 	bodypart_headers = []
 	for part in parts:
 		bodypart_headers.append(len(out))
 		out += b"\0" * 76
 
-	for part, bpindex in zip(parts, bodypart_headers):
+	for group, (part, bpindex) in enumerate(zip(parts, bodypart_headers)):
 		modelindex = len(out)
-		out += b"\0" * 112
+		out += b"\0" * 224  # body 0 hides this surface; body 1 contains the mesh
+		visible_modelindex = modelindex + 112
 		meshindex = len(out)
 		out += b"\0" * 20
 		align()
@@ -280,10 +370,10 @@ def _static_mdl(name: str, parts, skin: bytes, width: int, height: int, texture_
 			out += struct.pack("<3f", *n)
 		struct.pack_into("<5i", out, meshindex, len(part["triangles"]), triindex, 0,
 		                 len(part["normals"]), normindex)
-		struct.pack_into("<64sif10i", out, modelindex, _name(part["name"], 64), 0, part["radius"],
+		struct.pack_into("<64sif10i", out, visible_modelindex, _name(part["name"], 64), 0, part["radius"],
 		                 1, meshindex, len(part["positions"]), vertinfo, vertindex,
 		                 len(part["normals"]), norminfo, normindex, 0, 0)
-		struct.pack_into("<64siii", out, bpindex, _name(part["name"], 64), 1, 1, modelindex)
+		struct.pack_into("<64siii", out, bpindex, _name(part["name"], 64), 2, 1 << group, modelindex)
 
 	textureindex = len(out)
 	out += _name(name + ".bmp", 64) + struct.pack("<iiii", texture_flags, width, height, 0)
@@ -321,18 +411,21 @@ def convert(main_paths, model: str, output: Path, skin_size: int = 256, scale: f
 		raise ValueError(f"retail mesh not found: {tik.mesh}")
 	skd = mohaa_skd.parse_skd(read(files[tik.mesh]), tik.mesh)
 	import mohaa_tags
-	_, animation_aliases = mohaa_tags.tik_info(read(files[model]).decode("latin-1", "replace"), model)
+	tik_text = read(files[model]).decode("latin-1", "replace")
+	_, animation_aliases = mohaa_tags.tik_info(tik_text, model)
 	if tik.idle_anim and tik.idle_anim in files and not any(a.lower() == "idle" for a, _ in animation_aliases):
 		animation_aliases.insert(0, ("idle", tik.idle_anim))
 	else:
 		animation_aliases.sort(key=lambda item: (item[0].lower() != "idle",))
 	unit_scale = (tik.scale if scale is None else scale) * (72.0 / 94.0)
-	animation = _animation_data(animation_aliases, files, skd, unit_scale)
-	if animation is not None and any(len(ws) != 1 or ws[0][1] < 0.999 or ws[0][0] >= len(animation[0])
-	                                 for surface in skd.surfaces for ws in surface.weights):
-		animation = None
-	if animation is None and tik.idle_anim and tik.idle_anim in files:
-		mohaa_skd.apply_pose(skd, mohaa_skd.parse_skc(read(files[tik.idle_anim]), tik.idle_anim))
+	init_hidden, alias_hidden = _tiki_visibility(tik_text)
+	idle_path = next((path for alias, path in animation_aliases if alias.lower() == "idle"), tik.idle_anim)
+	# The shipped m1l1 script asks the opening GMC TIKI for an alias the retail TIKI
+	# does not declare. Its intended no-lights idle state is exactly the TIKI init state.
+	if model == "models/vehicles/gmctruck_opening.tik" and idle_path and not any(
+			a.lower() == "idlenolights" for a, _ in animation_aliases):
+		animation_aliases.append(("idlenolights", idle_path))
+		alias_hidden["idlenolights"] = set(init_hidden)
 	shaders = {}
 	for path, entry in files.items():
 		if path.endswith(".shader"):
@@ -358,6 +451,18 @@ def convert(main_paths, model: str, output: Path, skin_size: int = 256, scale: f
 		kept.append(surface)
 	if not kept or not texture_paths:
 		raise ValueError("no textured surfaces remain after filtering")
+	if len(kept) > 31:
+		raise ValueError("scripted TIKI surface visibility supports at most 31 surfaces")
+	def visibility_mask(hidden):
+		return sum(1 << i for i, surface in enumerate(kept) if surface.name.lower() not in hidden)
+	default_visible = visibility_mask(init_hidden)
+	visible_by_alias = {alias: visibility_mask(hidden) for alias, hidden in alias_hidden.items()}
+	animation = _animation_data(animation_aliases, files, skd, unit_scale, visible_by_alias, default_visible)
+	if animation is not None and any(len(ws) != 1 or ws[0][1] < 0.999 or ws[0][0] >= len(animation[0])
+	                                 for surface in skd.surfaces for ws in surface.weights):
+		animation = None
+	if animation is None and tik.idle_anim and tik.idle_anim in files:
+		mohaa_skd.apply_pose(skd, mohaa_skd.parse_skc(read(files[tik.idle_anim]), tik.idle_anim))
 	atlas, rects = _atlas([read(files[p]) for p in texture_paths], skin_size)
 	skin, texw, texh, texture_flags = _skin(atlas)
 	parts = []
