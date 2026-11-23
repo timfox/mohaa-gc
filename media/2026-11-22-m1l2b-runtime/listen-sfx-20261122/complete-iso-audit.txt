@@ -1,0 +1,32 @@
+7z l -slt: /tmp/mohaa-m1l2b-listen-20261122/out/m1l2b-listen-complete.iso
+m1l2b.snd unique samples: 29
+OK xash3d/mohaa/sound/mohaa/dialogue/m5l3/a/dfr_m5l2_526h.wav
+OK xash3d/mohaa/sound/mohaa/dialogue/m5l3/a/dfr_m5l2_527h.wav
+OK xash3d/mohaa/sound/mohaa/dialogue/m5l3/a/dfr_m5l2_529h.wav
+OK xash3d/mohaa/sound/mohaa/dialogue/m5l3/a/dfr_m5l2_530h.wav
+OK xash3d/mohaa/sound/mohaa/dialogue/m5l3/a/dfr_m5l2_531h.wav
+OK xash3d/mohaa/sound/mohaa/dialogue/m5l3/a/dfr_m5l2_532h.wav
+OK xash3d/mohaa/sound/mohaa/dialogue/m5l3/a/dfr_m5l2_533h.wav
+OK xash3d/mohaa/sound/mohaa/dialogue/m5l3/a/dfr_m5l2_540h.wav
+OK xash3d/mohaa/sound/mohaa/dialogue/m5l3/a/dfr_m5l2_541h.wav
+OK xash3d/mohaa/sound/mohaa/items/item_timer_01.wav
+OK xash3d/mohaa/sound/mohaa/items/radiobomb.wav
+OK xash3d/mohaa/sound/mohaa/mechanics/damage_vehicle_2.wav
+OK xash3d/mohaa/sound/mohaa/mechanics/doormetallocked_02.wav
+OK xash3d/mohaa/sound/mohaa/mechanics/doorwoodlocked_02.wav
+OK xash3d/mohaa/sound/mohaa/mechanics/gate_metal_locked.wav
+OK xash3d/mohaa/sound/mohaa/mechanics/m1l2b_disabletruck01.wav
+OK xash3d/mohaa/sound/mohaa/mechanics/shortwave1.wav
+OK xash3d/mohaa/sound/mohaa/mechanics/shortwave2.wav
+OK xash3d/mohaa/sound/mohaa/mechanics/static1.wav
+OK xash3d/mohaa/sound/mohaa/mechanics/wood_fence_locked.wav
+OK xash3d/mohaa/sound/mohaa/weapons/explo/explo_metalmed1.wav
+OK xash3d/mohaa/sound/mohaa/weapons/explo/explo_metalmed2.wav
+OK xash3d/mohaa/sound/mohaa/weapons/explo/explo_metalmed3.wav
+OK xash3d/mohaa/sound/mohaa/weapons/explo/explo_metalmed4.wav
+OK xash3d/mohaa/sound/mohaa/weapons/explo/explo_metalmed5.wav
+OK xash3d/mohaa/sound/mohaa/weapons/explo/explo_searchlight1.wav
+OK xash3d/mohaa/sound/mohaa/weapons/explo/explo_searchlight2.wav
+OK xash3d/mohaa/sound/mohaa/weapons/explo/explo_stonelarge1.wav
+OK xash3d/mohaa/sound/mohaa/weapons/explo/explo_stonelarge2.wav
+present: 29 missing: 0

@@ -26,7 +26,7 @@ A second scratch ISO mounted an `extras.pk3` containing the MOHAA prop, terrain,
 - `gp_m1l2b.gcp`: 795,680 bytes, SHA-256 `0adb34f1105a330ff0c0a68de42f3300fbf6b510ffced4369813cae9129aeb81`.
 - `pt_m1l2b.gct`: 704,704 bytes, SHA-256 `db0f929856643d5fa89b6c25a4dda53661ee00179f35d98a2fa6885ebbb6c059`.
 - The prop bake found 80 source models and 60 textures, with no missing model textures; it emitted 254 instances, 101 models, and 20,089 triangles. See [prop-bake.log](prop-bake.log).
-- `maps/m1l2b.snd` was generated from 31 scripts: 20 aliases, 29 referenced samples, zero unresolved aliases, 17 conversions. Six previously missing samples were added to the staged SD tree; 11 existing sound files were preserved. The runtime log does not confirm that it reads the `.snd` table.
+- `maps/m1l2b.snd` was generated from 31 scripts: 20 aliases, 29 referenced samples, zero unresolved aliases, 17 conversions. Six previously missing samples were added to the staged SD tree; 11 existing sound files were preserved. The older map-render log did not confirm a `.snd` read; a later listenserver capture now confirms that `maps/m1l2b.snd` is opened by the game route.
 - The scratch ISO SHA-256 is `9987a5c970821b39ca5cbd34d5920ef8af368bbdc857b7d1c77e04efa2330cf0`; the 45-second Dolphin log is [props-dolphin.log](props-dolphin.log).
 
 
@@ -46,7 +46,7 @@ The builder default is preserved. Xash3D-GC commit `0f16e2dc7` adds the low-fide
 
 - The 128 KiB WorldDL cache candidate now has an isolated Dolphin capture. It reaches render-ready and retains 16 near texture slots (15 small + 1 large) versus 11 small slots with the 192 KiB control. No frame-time profiler was enabled, so this validates allocation and rendering but does not prove a speedup; hardware behavior remains open.
 - Validate the optimized WorldDL route on physical GameCube hardware or within a measured hardware budget. Current numbers are Dolphin observations from a smoke route.
-- The new m1l2b prop pack is staged and verified at runtime. `media/ss_m1l2b.gcs` remains absent; the generated `maps/m1l2b.snd` table has no runtime read marker yet. The first-person object remains a fallback melee model.
+- The new m1l2b prop pack is staged and verified at runtime. the complete listenserver test disc contains all 29 WAVs named by `maps/m1l2b.snd`; the VM opens the table and shows a Garand viewmodel, but scripted MOHAA alias playback remains unverified. The optional `ss_*.gcs` pack belongs to the separate Lost Coast soundscape path.
 - A filesystem pool allocation failed once during map load (225.04 KiB request); the map still reached the render-ready marker.
 
 Full Dolphin/OSReport log: [dolphin.log](/home/tim/Desktop/mohaa-gc/media/2026-11-22-m1l2b-runtime/dolphin.log).
@@ -96,3 +96,8 @@ The baseline log reports 17 near CMPR texture slots (11 from the WorldDL cache t
 Ran 60-second captures with the same m1l2b content, engine base commit (`62a3a6a3a912e1d45db4e1516f8d722c3256944a`), Dolphin build, and probe configuration. The only DOL change was lowering the WorldDL cache-retention cap from 192 KiB to 128 KiB. Both builds reached `gcmap smoke frames ready` and `newgame world render ready`, and drew the same props (`prop horizon tris=1890 inst=27`; `prop draw tris=988 near=44`). The 128 KiB build reported 15 small plus one large resident texture slot, compared with 11 small plus no large slot for 192 KiB.
 
 This confirms the lower cache cap gives the tested map more texture slots without breaking map or prop rendering. The capture did not enable frame-time profiling, so it does not establish a performance gain. Full logs, build records, screenshots, hashes, and the one-line patch are in [isolated-cache-ab](texture-slot-experiment-20261122/isolated-cache-ab/README.md). These are Dolphin results, not physical GameCube validation.
+
+
+## Listenserver gameplay route — 2026-11-22 6:59–7:00 PM PT
+
+A fresh Dolphin test disc booted m1l2b as a solo listenserver, ran the MOHAA script VM, opened `maps/m1l2b.snd`, reached `MAP_READY m1l2b` and `newgame world render ready`, and displayed the Garand/HUD. This resolves the earlier uncertainty about whether the `.snd` table is requested on a gameplay route. The first test disc revealed 12 missing referenced WAVs. A second disc includes all 29 table samples and again reaches the VM and render-ready markers. Scripted alias playback still needs an exercised gameplay event. See [listen-sfx-20261122](listen-sfx-20261122/README.md) for the screenshot, logs, and hashes.
