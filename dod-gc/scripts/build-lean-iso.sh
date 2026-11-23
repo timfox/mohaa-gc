@@ -19,6 +19,7 @@ usage: scripts/build-lean-iso.sh [options]
   --map NAME       stage one BSP into lean maps/ (DoD or valve)
   --smoke MAP      disc --smoke-map MAP (auto map load; implies staging MAP)
   --skip-worlddl   skip WorldDL only for a diagnostic smoke ISO (live BSP; static props absent)
+  --probe-gcvst    enable GX frame-stage timing for a world-render smoke ISO
   --listen MAP     playable listen host (local player plus one peer)
   --headless       server only; requires --listen (optional third Cube)
   --connect ADDR   peer client (gamecube.cfg connect ADDR); use with --net
@@ -54,6 +55,7 @@ FULL_MAP=0
 WORLD_RENDER=1
 WORLD_RENDER_EXPLICIT=0
 SKIP_WORLDDL=0
+PROBE_GCVST=0
 DUMPFRAMES=0
 DUMPEYE=""
 TAS=""
@@ -83,6 +85,7 @@ while [[ $# -gt 0 ]]; do
 		--world-render) WORLD_RENDER=1; WORLD_RENDER_EXPLICIT=1 ;;
 		--no-world-render) WORLD_RENDER=0; WORLD_RENDER_EXPLICIT=1 ;;
 		--skip-worlddl) SKIP_WORLDDL=1 ;;
+		--probe-gcvst) PROBE_GCVST=1 ;;
 		--dumpframes) DUMPFRAMES=1 ;;
 		--dumpeye)
 			DUMPEYE="${2:-}"
@@ -146,6 +149,10 @@ if (( DUMPFRAMES )) && [[ -z "$SMOKE" && -z "$LISTEN" && -z "$CONNECT" ]]; then
 fi
 if (( SKIP_WORLDDL )) && [[ -z "$SMOKE" ]]; then
 	echo "error: --skip-worlddl requires --smoke MAP" >&2
+	exit 2
+fi
+if (( PROBE_GCVST )) && [[ -z "$SMOKE" || $WORLD_RENDER -eq 0 ]]; then
+	echo "error: --probe-gcvst requires --smoke MAP with --world-render" >&2
 	exit 2
 fi
 if (( WORLD_RENDER )) && [[ -z "$MAP" ]]; then
@@ -338,6 +345,7 @@ pack() {
 	if [[ -n "$SMOKE" ]]; then
 		args+=(--smoke-map "$SMOKE")
 		(( SKIP_WORLDDL )) && args+=(--skip-smoke-worlddl)
+		(( PROBE_GCVST )) && args+=(--probe-gcvst)
 		(( DUMPFRAMES )) && args+=(--probe-dumpframes)
 	fi
 	(( WORLD_RENDER )) && args+=(--world-render)
