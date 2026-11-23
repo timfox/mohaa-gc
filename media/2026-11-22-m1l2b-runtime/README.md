@@ -44,7 +44,7 @@ The builder default is preserved. Xash3D-GC commit `0f16e2dc7` adds the low-fide
 
 ## Open issues
 
-- Measure prop draw counts after the pack finishes loading and run a same-DOL A/B of the forced-chunk ring; then profile texture binding (38–42 ms/frame) while keeping WorldDL enabled.
+- Validate the 128 KiB WorldDL cache-budget candidate in Dolphin; the attempted candidate run has not produced a guest frame yet. Keep texture-slot counts and cache capacity in the measurement, since they vary by DOL and map arena layout.
 - Validate the optimized WorldDL route on physical GameCube hardware or within a measured hardware budget. Current numbers are Dolphin observations from a smoke route.
 - The new m1l2b prop pack is staged and verified at runtime. `media/ss_m1l2b.gcs` remains absent; the generated `maps/m1l2b.snd` table has no runtime read marker yet. The first-person object remains a fallback melee model.
 - A filesystem pool allocation failed once during map load (225.04 KiB request); the map still reached the render-ready marker.
@@ -70,7 +70,7 @@ Run artifacts: [screenshot](gcvst-20261122-164734/m1l2b-worlddl-gcvst.png), [Dol
 
 ## Forced-chunk fence ring — 2026-11-22 5:17 PM PT
 
-Xash3D-GC commit `62a3a6a3a912e1d45db4e1516f8d722c3256944a` added three bounded forced-chunk buffers. The renderer now waits before reusing a buffer after it cycles through the ring, instead of fencing after every forced chunk. The 60-second Dolphin map-render probe reached `MAP_READY m1l2b` and `newgame world render ready`; it loaded the converted prop pack (`254` instances, `101` models, `20,089` triangles). A startup line reports zero static props drawn, so this capture confirms the pack load but does not prove those instances were drawn in the measured frames.
+Xash3D-GC commit `62a3a6a3a912e1d45db4e1516f8d722c3256944a` added three bounded forced-chunk buffers. The renderer now waits before reusing a buffer after it cycles through the ring, instead of fencing after every forced chunk. The 60-second Dolphin map-render probe reached `MAP_READY m1l2b` and `newgame world render ready`; it loaded the converted prop pack (`254` instances, `101` models, `20,089` triangles). The startup counter reports zero before the pack finishes loading. Later in the same log, the prop renderer reports `prop horizon tris=1890 inst=27` and `prop draw tris=988 near=44`, confirming both horizon and near props were drawn.
 
 ![Latest m1l2b forced-chunk ring capture](/home/tim/Desktop/mohaa-gc/media/2026-11-22-m1l2b-runtime/force-ring-20261122-171744/m1l2b-force-ring.png)
 
@@ -80,4 +80,12 @@ Xash3D-GC commit `62a3a6a3a912e1d45db4e1516f8d722c3256944a` added three bounded 
 | Forced chunk work | 42.9–47.5 ms/frame | 12.8–14.6 ms/frame |
 | Whole frame | 170.8–192.8 ms (5.2–5.9 fps) | 75.6–77.1 ms (13.0–13.2 fps) |
 
-The new profile reports three ring slots of 7 KiB each and about 382–432 fences/frame, down from 1,307–1,435 force calls/frame in the prior profile. Texture binding remains the largest measured WorldDL substage at 38.3–41.8 ms/frame. These are directional Dolphin observations from captures using different engine DOLs, not a matched A/B run or physical GameCube result. The complete run note, screenshot, Dolphin log, and build logs are in [force-ring-20261122-171744](force-ring-20261122-171744/). The DOL SHA-256 is `bd1c185cbbad4591765715577e1ef7ace812b295fbecf707594a011e47185803`; smoke ISO SHA-256 is `af34b60635f5f2a3239b88a8f0dfa3e19f661c5ee5aa5205bfddfec8e06de56b`.
+The new profile reports three ring slots of 7 KiB each and about 382–432 fences/frame, down from 1,307–1,435 force calls/frame in the prior profile. Texture binding remains the largest measured WorldDL substage at 38.3–41.8 ms/frame. The same profile reports only one 24 KiB CMPR bounce slot, with 125 resident-slot hits and 442 misses per frame; the map-arena allocation found no room for the planned slots. This points to texture streaming pressure as the next optimization target. These are directional Dolphin observations from captures using different engine DOLs, not a matched A/B run or physical GameCube result. The complete run note, screenshot, Dolphin log, and build logs are in [force-ring-20261122-171744](force-ring-20261122-171744/). The DOL SHA-256 is `bd1c185cbbad4591765715577e1ef7ace812b295fbecf707594a011e47185803`; smoke ISO SHA-256 is `af34b60635f5f2a3239b88a8f0dfa3e19f661c5ee5aa5205bfddfec8e06de56b`.
+
+## Fresh m1l2b gameplay capture and texture-slot candidate — 2026-11-22 6:03 PM PT
+
+A new 60-second Dolphin capture reached the m1l2b smoke map and rendered the first-person view. This baseline uses the same MOHAA content, boot grafts, extras archive, and probe settings as the isolated candidate, but it was built from Xash3D-GC `8b508c2d90e6a6e49fb081c183ff6955dbe919ec`; the candidate uses `62a3a6a3a912e1d45db4e1516f8d722c3256944a` plus an uncommitted scratch-only WorldDL cache cap change. The different DOLs make this directional evidence, not a same-DOL A/B.
+
+![Fresh m1l2b gameplay capture at 6:03 PM PT](/home/tim/Desktop/mohaa-gc/media/2026-11-22-m1l2b-runtime/texture-slot-experiment-20261122/baseline/m1l2b-baseline.png)
+
+The baseline log reports 17 near CMPR texture slots (11 from the WorldDL cache tail and 6 from heap), `prop horizon tris=1890 inst=27`, and `prop draw tris=988 near=44`. WorldDL measured 184.4 ms/frame: forced work 47.5 ms, texture binding 101.2 ms; the complete frame measured 192.7 ms (5.2 fps). This shows the earlier one-slot/442-miss result belongs to the forced-ring DOL and is not a general count for every build. The 128 KiB candidate ISO built successfully, but its runtime has not yet been captured. Full records and hashes are in [texture-slot-experiment-20261122](texture-slot-experiment-20261122/).

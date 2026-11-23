@@ -14,7 +14,7 @@
 
 - Reached `MAP_READY m1l2b` and `newgame world render ready`.
 - Loaded the prop pack: 254 instances, 101 models, 20,089 triangles, 777 KiB ARAM.
-- The startup counter reports zero static props drawn at that point. Pack loading is verified; drawing of those instances during the measured frames is not.
+- The startup counter reports zero before the pack finishes loading. Later in the same run, `prop horizon tris=1890 inst=27` and `prop draw tris=988 near=44` confirm props were drawn.
 - Renderer reports a three-slot forced-chunk ring, 7 KiB per slot.
 
 ## Timings
@@ -23,8 +23,8 @@ The previous profiler capture measured WorldDL at 149.9–184.7 ms/frame, forced
 
 - WorldDL: 61.6–67.4 ms/frame.
 - Forced work: 12.8–14.6 ms/frame; 1,146–1,298 force calls per profile window.
-- Texture binding: 38.3–41.8 ms/frame.
+- Texture binding: 38.3–41.8 ms/frame. The profiler reports one 24 KiB CMPR bounce slot and 125 slot hits / 442 misses per frame; WorldDL did not obtain its planned map-arena texture slots.
 - Total frame: 75.6–77.1 ms (13.0–13.2 fps).
 - Forced-chunk fences: 381.6–432 per profile window.
 
-The captures use different DOL builds, so this is directional evidence rather than a controlled A/B. Next, build both revisions with the same assets/configuration, compare the exact capture route, and verify static-prop draw counts. Then profile texture binding. Physical GameCube budget validation remains open.
+The captures use different DOL builds, so this is directional evidence rather than a controlled A/B. Next, finish the matched same-assets A/B, then test a bounded memory rebalance that trades some WorldDL cache capacity for resident CMPR texture slots. Preserve the 96 KiB chunk-cache floor and compare total frame time, forced reads, slot hits/misses, and prop draw markers. Physical GameCube budget validation remains open.
