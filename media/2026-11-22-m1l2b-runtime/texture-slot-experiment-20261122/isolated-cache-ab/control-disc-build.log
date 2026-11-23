@@ -1,0 +1,258 @@
+
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣠⣤⣴⣶⣾⣿⣿⣿⣿⣿⣿⣷⣶⣦⣤⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⣀⣴⣾⣿⣿⣿⣿⣿⣿⣿⠿⠿⠿⠿⢿⣿⣿⣿⣿⣿⣿⣷⣦⣀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⣠⣾⣿⣿⣿⡿⠟⠋⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠙⠻⢿⣿⣿⣿⣷⣄⡀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⣠⣾⣿⣿⣿⠟⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠻⣿⣿⣿⣷⣄⠀⠀⠀⠀
+⠀⠀⢀⣼⣿⣿⣿⠟⠁⠀⠀⠀⠀⠀⠀⣶⣶⣶⣶⣶⣶⣦⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣿⣧⡀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+
+Xash3D GameCube: content build begins
+GameCube menu buttons: baked 12 retail strips from btns_main.bmp
+GameCube menu banner: baked head_newgame.tga 460x80
+GameCube menu assets: baked resource/gc_menu/background.tga 320x240 from synthetic fallback (retail tiles missing or pure black)
+  smoke sky: mohnight1 (6/6 prebuilt CMPR faces)
+  world textures: media/wt_m1l2b.gct entries=99 blob=311456 bytes
+  world textures: 1 map packs, CMPR with mipmaps, 0 MiB
+  props: 0 map prop pack(s)
+  CapFaces pack m1l2b: faces=768 eyes=1 132672 bytes
+  CapFaces spatial m1l2b: cells=60 faces≈1900 → pk3
+  CapFaces spatial m1l2b: media/cf_m1l2b_spatial.pk3 (2227749 bytes)
+  CapFaces packs: 2 files
+world DL bake m1l2b (GoldSrc BSP30):
+  faces=10762 skip=343 orphans=56 tris=29188
+  static brush entities=11 (solid 11) faces=1090
+  static func_water baked=0
+  clusters=6862 chunks=3355 batches=5764 mats=96
+  tree nodes=10358 planes=4172
+  MEM1 resident=205 KB  ARAM chunks=1231 KB (max 7 KB)
+  lightmap pages=578 (289 KB, CMPR), 64 chunks with more than one
+  lightmap cells: 0 faces below retail size, 0 flat grey (no room)
+  wrote /tmp/mohaa-ring-ab-20261122/engine-ring/build/gc-wd-cache/wd_m1l2b.gcd (1889 KB)
+  light faces: 11852 faces, lighting 592 KB, wrote /tmp/mohaa-ring-ab-20261122/engine-ring/build/gc-wd-cache/wd_m1l2b_lf.gcd (1084 KB)
+  world DL: staged wd_m1l2b.gcd (1935232 bytes)
+  light faces: staged wd_m1l2b_lf.gcd (1110496 bytes)
+  static brushes: staged wd_m1l2b_sb.gcd (34 bytes)
+  loading plaque: retail LAMBDA 88x8 at 2x, 208x44, 644 spans, 2620 bytes
+GameCube ISO: extra gamedir graft /xash3d/valve=/home/tim/Desktop/mohaa-gc/cutscene-20261122/iso-cache/sd-valve-m1l1
+GameCube ISO: extra gamedir graft /xash3d/dod=/home/tim/Desktop/mohaa-gc/cutscene-20261122/iso-cache/sd-dod-m1l1
+  lean studio player.mdl: 281324 → 281324 bytes
+  lean studio v_garand.mdl: 548076 → 116140 bytes
+  lean studio tex v_garandt.mdl: 548076 → 333874 bytes
+  lean studio v_mp40.mdl: 394240 → 85184 bytes
+  lean studio tex v_mp40t.mdl: 394240 → 309298 bytes
+  lean studio v_98k.mdl: 604952 → 100836 bytes
+  lean studio tex v_98kt.mdl: 604952 → 406056 bytes
+  lean studio v_tommy.mdl: 411168 → 77536 bytes
+  lean studio tex v_tommyt.mdl: 411168 → 333874 bytes
+  lean studio v_colt.mdl: 306624 → 73848 bytes
+  lean studio tex v_coltt.mdl: 306624 → 233020 bytes
+  lean studio v_luger.mdl: 307352 → 74576 bytes
+  lean studio tex v_lugert.mdl: 307352 → 233020 bytes
+  lean studio v_amerk.mdl: 196500 → 30108 bytes
+  lean studio tex v_amerkt.mdl: 196500 → 166634 bytes
+  lean studio v_spade.mdl: 232372 → 32364 bytes
+  lean studio tex v_spadet.mdl: 232372 → 200252 bytes
+  lean studio v_grenade.mdl: 267712 → 67704 bytes
+  lean studio tex v_grenadet.mdl: 267712 → 200252 bytes
+  lean studio v_stick.mdl: 225164 → 58772 bytes
+  lean studio tex v_stickt.mdl: 225164 → 166634 bytes
+  lean studio w_grenade.mdl: 20012 → 2776 bytes
+  lean studio w_stick.mdl: 19012 → 1776 bytes
+  lean studio v_bren.mdl: 525840 → 125824 bytes
+  lean studio tex v_brent.mdl: 525840 → 400260 bytes
+  lean studio v_mp44.mdl: 391628 → 91616 bytes
+  lean studio tex v_mp44t.mdl: 391628 → 300256 bytes
+  lean studio v_spring.mdl: 391032 → 91020 bytes
+  lean studio tex v_springt.mdl: 391032 → 300256 bytes
+  lean studio v_scoped98k.mdl: 642312 → 104576 bytes
+  lean studio tex v_scoped98kt.mdl: 642312 → 37242 bytes
+  viewmodel v_30cal: core 75800 bytes, animation anim_ac7305cfc81f.gca (116448 bytes)
+  lean studio v_30cal.mdl: 466080 → 75800 bytes
+  lean studio tex v_30calt.mdl: 466080 → 275680 bytes
+  viewmodel v_mg42: core 80984 bytes, animation anim_03357e2f8349.gca (195040 bytes)
+  lean studio v_mg42.mdl: 608028 → 80984 bytes
+  lean studio tex v_mg42t.mdl: 608028 → 333874 bytes
+  lean studio v_bazooka.mdl: 444552 → 94536 bytes
+  lean studio tex v_bazookat.mdl: 444552 → 350258 bytes
+  lean studio v_panzerschreck.mdl: 571268 → 104864 bytes
+  lean studio tex v_panzerschreckt.mdl: 571268 → 36566 bytes
+  lean studio w_bazooka_rocket.mdl: 36264 → 2644 bytes
+  lean studio w_crowbar.mdl: 2472 → 2472 bytes
+  lean studio v_bar.mdl: 413000 → 95752 bytes
+  lean studio tex v_bart.mdl: 413000 → 317490 bytes
+  lean studio v_enfield.mdl: 502252 → 125960 bytes
+  lean studio tex v_enfieldt.mdl: 502252 → 376534 bytes
+  lean studio v_enfield_scoped.mdl: 555380 → 121744 bytes
+  lean studio tex v_enfield_scopedt.mdl: 555380 → 40662 bytes
+  lean studio v_sten.mdl: 413324 → 80544 bytes
+  lean studio tex v_stent.mdl: 413324 → 333024 bytes
+  lean studio v_piat.mdl: 444588 → 94572 bytes
+  lean studio tex v_piatt.mdl: 444588 → 350258 bytes
+  lean studio v_webley.mdl: 345972 → 79576 bytes
+  lean studio tex v_webleyt.mdl: 345972 → 266638 bytes
+  lean studio v_fairbairn.mdl: 159564 → 25940 bytes
+  lean studio tex v_fairbairnt.mdl: 159564 → 133866 bytes
+  lean studio v_mills.mdl: 339484 → 73088 bytes
+  lean studio tex v_millst.mdl: 339484 → 266638 bytes
+  lean studio v_m1carbine.mdl: 406128 → 73348 bytes
+  lean studio tex v_m1carbinet.mdl: 406128 → 333024 bytes
+  lean studio v_greasegun.mdl: 422796 → 89164 bytes
+  lean studio tex v_greasegunt.mdl: 422796 → 333874 bytes
+  lean studio v_fg42.mdl: 526092 → 126076 bytes
+  lean studio tex v_fg42t.mdl: 526092 → 400260 bytes
+  lean studio v_paraknife.mdl: 199032 → 32640 bytes
+  lean studio tex v_paraknifet.mdl: 199032 → 166634 bytes
+  lean studio w_mills.mdl: 38492 → 4872 bytes
+  lean studio p_garand.mdl: 74088 → 7700 bytes
+  lean studio tex p_garandt.mdl: 74088 → 5190 bytes
+  lean studio p_k98.mdl: 73628 → 7240 bytes
+  lean studio tex p_k98t.mdl: 73628 → 5190 bytes
+  lean studio p_mp40.mdl: 75872 → 9484 bytes
+  lean studio tex p_mp40t.mdl: 75872 → 5190 bytes
+  lean studio p_tommy.mdl: 73204 → 6816 bytes
+  lean studio tex p_tommyt.mdl: 73204 → 5190 bytes
+  lean studio p_colt.mdl: 21612 → 4376 bytes
+  lean studio tex p_coltt.mdl: 21612 → 5190 bytes
+  lean studio p_luger.mdl: 22540 → 5304 bytes
+  lean studio tex p_lugert.mdl: 22540 → 5190 bytes
+  lean studio p_amerk.mdl: 37836 → 4216 bytes
+  lean studio tex p_amerkt.mdl: 37836 → 3142 bytes
+  lean studio p_spade.mdl: 20560 → 3324 bytes
+  lean studio tex p_spadet.mdl: 20560 → 5190 bytes
+  lean studio p_grenade.mdl: 19244 → 5256 bytes
+  lean studio tex p_grenadet.mdl: 19244 → 4632 bytes
+  lean studio p_stick.mdl: 20376 → 3140 bytes
+  lean studio tex p_stickt.mdl: 20376 → 5190 bytes
+  lean studio p_bren.mdl: 73100 → 6712 bytes
+  lean studio tex p_brent.mdl: 73100 → 5190 bytes
+  lean studio p_stg44.mdl: 75244 → 8856 bytes
+  lean studio tex p_stg44t.mdl: 75244 → 5190 bytes
+  lean studio p_spring.mdl: 25632 → 8396 bytes
+  lean studio tex p_springt.mdl: 25632 → 5190 bytes
+  lean studio p_30cal.mdl: 23964 → 6728 bytes
+  lean studio tex p_30calt.mdl: 23964 → 5190 bytes
+  lean studio p_mg42pr.mdl: 41832 → 7364 bytes
+  lean studio tex p_mg42prt.mdl: 41832 → 10136 bytes
+  lean studio p_bazooka.mdl: 41932 → 8312 bytes
+  lean studio tex p_bazookat.mdl: 41932 → 3142 bytes
+  lean studio p_pschreck.mdl: 45908 → 12288 bytes
+  lean studio tex p_pschreckt.mdl: 45908 → 3142 bytes
+  lean studio p_barbu.mdl: 73916 → 7528 bytes
+  lean studio tex p_barbut.mdl: 73916 → 5190 bytes
+  lean studio p_enfield.mdl: 49348 → 12832 bytes
+  lean studio tex p_enfieldt.mdl: 49348 → 6040 bytes
+  lean studio p_enfields.mdl: 56288 → 13628 bytes
+  lean studio tex p_enfieldst.mdl: 56288 → 6040 bytes
+  lean studio p_sten.mdl: 43632 → 10012 bytes
+  lean studio tex p_stent.mdl: 43632 → 3142 bytes
+  lean studio p_piat.mdl: 42504 → 8884 bytes
+  lean studio tex p_piatt.mdl: 42504 → 3142 bytes
+  lean studio p_webley.mdl: 41968 → 8348 bytes
+  lean studio tex p_webleyt.mdl: 41968 → 3142 bytes
+  lean studio p_fairbairn.mdl: 14544 → 5500 bytes
+  lean studio tex p_fairbairnt.mdl: 14544 → 3142 bytes
+  lean studio p_mills.mdl: 39856 → 6236 bytes
+  lean studio tex p_millst.mdl: 39856 → 3142 bytes
+  lean studio p_m1carb.mdl: 24660 → 7424 bytes
+  lean studio tex p_m1carbt.mdl: 24660 → 5190 bytes
+  lean studio p_grease.mdl: 41700 → 8080 bytes
+  lean studio tex p_greaset.mdl: 41700 → 3142 bytes
+  lean studio p_fg42.mdl: 73100 → 6712 bytes
+  lean studio tex p_fg42t.mdl: 73100 → 5190 bytes
+  lean studio p_paraknife.mdl: 22476 → 5240 bytes
+  lean studio tex p_paraknifet.mdl: 22476 → 5190 bytes
+  lean studio p_barbd.mdl: 75980 → 9592 bytes
+  lean studio tex p_barbdt.mdl: 75980 → 5190 bytes
+  lean studio p_brenbd.mdl: 47184 → 13564 bytes
+  lean studio tex p_brenbdt.mdl: 47184 → 3142 bytes
+  lean studio p_brenbu.mdl: 47132 → 13512 bytes
+  lean studio tex p_brenbut.mdl: 47132 → 3142 bytes
+  lean studio p_fg42bd.mdl: 45080 → 11460 bytes
+  lean studio tex p_fg42bdt.mdl: 45080 → 3142 bytes
+  lean studio p_fg42bu.mdl: 44988 → 11368 bytes
+  lean studio tex p_fg42but.mdl: 44988 → 3142 bytes
+  lean studio p_scopedfg42bu.mdl: 44304 → 10684 bytes
+  lean studio tex p_scopedfg42but.mdl: 44304 → 3142 bytes
+  lean studio p_mg34bd.mdl: 45264 → 10796 bytes
+  lean studio tex p_mg34bdt.mdl: 45264 → 10136 bytes
+  lean studio p_mg34bu.mdl: 45240 → 10772 bytes
+  lean studio tex p_mg34but.mdl: 45240 → 10136 bytes
+  lean studio p_mg42bd.mdl: 25940 → 8704 bytes
+  lean studio tex p_mg42bdt.mdl: 25940 → 5190 bytes
+  lean studio p_mg42bu.mdl: 26044 → 8808 bytes
+  lean studio tex p_mg42but.mdl: 26044 → 5190 bytes
+  lean studio hk_satchel.mdl: 37984 → 4364 bytes
+  lean studio tex hk_satchelt.mdl: 37984 → 9286 bytes
+  lean studio horse_statue.mdl: 83500 → 17112 bytes
+  lean studio tex horse_statuet.mdl: 83500 → 17478 bytes
+  lean studio by_rubble_set.mdl: 76816 → 9580 bytes
+  lean studio tex by_rubble_sett.mdl: 76816 → 18328 bytes
+  lean studio sandbags.mdl: 74316 → 40696 bytes
+  lean studio tex sandbagst.mdl: 74316 → 3142 bytes
+  lean studio by_canopy.mdl: 135924 → 3152 bytes
+  lean studio tex by_canopyt.mdl: 135924 → 34712 bytes
+  lean studio arc_xer_tree2.mdl: 111808 → 3612 bytes
+  lean studio tex arc_xer_tree2t.mdl: 111808 → 16280 bytes
+  lean studio furniture.mdl: 73592 → 7204 bytes
+  lean studio tex furnituret.mdl: 73592 → 17478 bytes
+  lean studio bulb.mdl: 43484 → 14484 bytes
+  lean studio tex bulbt.mdl: 43484 → 29244 bytes
+  lean studio sherman.mdl: 294496 → 94488 bytes
+  lean studio tex shermant.mdl: 294496 → 15932 bytes
+  lean studio jagd.mdl: 159424 → 42184 bytes
+  lean studio tex jagdt.mdl: 159424 → 13034 bytes
+  lean studio by_banister.mdl: 117056 → 50668 bytes
+  lean studio tex by_banistert.mdl: 117056 → 5190 bytes
+  lean studio flags.mdl: 96260 → 27324 bytes
+  lean studio tex flagst.mdl: 96260 → 20028 bytes
+GameCube studio mirror: injected 169 MDL(s) into bootstrap pk3
+  animation pack: 3724000 -> 2355616 bytes (LZ4, 1368799 saved)
+  player model axis-inf: 3981216 → core 79192 bytes, animation anim_d47c788d71e4.gca, meshes 186192 bytes to mesh_00cc06dc5470.gcm
+  player skins axis-inft.mdl: 982852 → 33856 bytes (GX CMPR up to 128 px)
+  animation pack: 3665920 -> 2326432 bytes (LZ4, 1340344 saved)
+  player model axis-para: 3854728 → core 78876 bytes, animation anim_a4f97e0d6796.gca, meshes 118140 bytes to mesh_74040f5cae74.gcm
+  player skins axis-parat.mdl: 757592 → 25568 bytes (GX CMPR up to 128 px)
+  animation pack: 3723904 -> 2355296 bytes (LZ4, 1369084 saved)
+  player model brit-inf: 3880980 → core 79048 bytes, animation anim_95068896ddbf.gca, meshes 86020 bytes to mesh_56944538eba9.gcm
+  player skins brit-inft.mdl: 621188 → 29600 bytes (GX CMPR up to 128 px)
+  animation pack: 3724192 -> 2354272 bytes (LZ4, 1370623 saved)
+  player model us-inf: 3960160 → core 79144 bytes, animation anim_cb5bc431a18a.gca, meshes 165028 bytes to mesh_db85a7ed515b.gcm
+  player skins us-inft.mdl: 951600 → 33856 bytes (GX CMPR up to 128 px)
+  animation pack: 3741120 -> 2350240 bytes (LZ4, 1391291 saved)
+  player model us-para: 3922396 → core 79116 bytes, animation anim_c09d941452cf.gca, meshes 110556 bytes to mesh_d8ee3a6014c1.gcm
+  player skins us-parat.mdl: 491000 → 74720 bytes (GX CMPR up to 128 px)
+  player animation and mesh packs: 10, 12749408 bytes, in /dev/shm/xash3d-gc-smoke-data-c0zp8y9c/mohaa/models/player
+GameCube player models: injected 10 file(s) into bootstrap pk3
+  lean font CREDITSFONT: → gfx/gc_creditsfont.fnt (5908 bytes, 128x32)
+  full font CREDITSFONT: → gfx/gc_creditsfont256.fnt (18196 bytes, 256x64)
+  hi-res text atlas: → gfx/gc_hitext.bin (67008 bytes)
+GameCube font mirror: injected 1 lean font(s) into bootstrap pk3
+GameCube sky mirror: injected 3 lean BMP(s) into bootstrap pk3
+GameCube bootstrap: baking what mohaa lacks from /home/tim/Desktop/mohaa-gc/cutscene-20261122/iso-cache/sd-dod-m1l1
+  animation pack: 3724000 -> 2355616 bytes (LZ4, 1368799 saved)
+  animation pack: 3665920 -> 2326432 bytes (LZ4, 1340344 saved)
+  animation pack: 3723904 -> 2355296 bytes (LZ4, 1369084 saved)
+  animation pack: 3724192 -> 2354272 bytes (LZ4, 1370623 saved)
+  animation pack: 3741120 -> 2350240 bytes (LZ4, 1391291 saved)
+  player animation and mesh packs: 10, 12749408 bytes, in /home/tim/Desktop/mohaa-gc/cutscene-20261122/iso-cache/sd-dod-m1l1/models/player
+GameCube sky mirror: injected 3 lean BMP(s) into bootstrap pk3
+GameCube ISO: assembling 6 grafts into /tmp/mohaa-ring-ab-20261122/m1l2b-ring.iso (primary=mohaa, xorriso progress follows)
+xorriso 1.5.6 : RockRidge filesystem manipulator, libburnia project.
+
+Drive current: -outdev 'stdio:/tmp/mohaa-ring-ab-20261122/m1l2b-ring.iso'
+Media current: stdio file, overwriteable
+Media status : is blank
+Media summary: 0 sessions, 0 data blocks, 0 data,  119g free
+Added to ISO image: directory '/xash3d/mohaa'='/dev/shm/xash3d-gc-smoke-data-c0zp8y9c/mohaa'
+xorriso : UPDATE :      81 files added in 1 seconds
+Added to ISO image: directory '/xash3d/valve'='/home/tim/Desktop/mohaa-gc/cutscene-20261122/iso-cache/sd-valve-m1l1'
+Added to ISO image: directory '/xash3d/dod'='/home/tim/Desktop/mohaa-gc/cutscene-20261122/iso-cache/sd-dod-m1l1'
+Added to ISO image: file '/xash3d/mohaa/extras.pk3'='/tmp/mohaa-ring-ab-20261122/m1l2b-extras.pk3'
+Added to ISO image: file '/xash3d/mohaa/gamecube-bootstrap.pk3'='/dev/shm/xash3d-gc-bootstrap-uycdxa5a/gamecube-bootstrap.pk3'
+xorriso : UPDATE :     511 files added in 1 seconds
+ISO image produced: 52814 sectors
+Written to medium : 52814 sectors at LBA 0
+Writing to 'stdio:/tmp/mohaa-ring-ab-20261122/m1l2b-ring.iso' completed successfully.
+
+Built /tmp/mohaa-ring-ab-20261122/m1l2b-ring.iso (115660800 bytes, hybrid GameCube/ISO9660)
+Handoff metadata: /tmp/mohaa-ring-ab-20261122/m1l2b-ring-handoff.txt

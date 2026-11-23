@@ -44,7 +44,7 @@ The builder default is preserved. Xash3D-GC commit `0f16e2dc7` adds the low-fide
 
 ## Open issues
 
-- Validate the 128 KiB WorldDL cache-budget candidate in Dolphin; the attempted candidate run has not produced a guest frame yet. Keep texture-slot counts and cache capacity in the measurement, since they vary by DOL and map arena layout.
+- The 128 KiB WorldDL cache candidate now has an isolated Dolphin capture. It reaches render-ready and retains 16 near texture slots (15 small + 1 large) versus 11 small slots with the 192 KiB control. No frame-time profiler was enabled, so this validates allocation and rendering but does not prove a speedup; hardware behavior remains open.
 - Validate the optimized WorldDL route on physical GameCube hardware or within a measured hardware budget. Current numbers are Dolphin observations from a smoke route.
 - The new m1l2b prop pack is staged and verified at runtime. `media/ss_m1l2b.gcs` remains absent; the generated `maps/m1l2b.snd` table has no runtime read marker yet. The first-person object remains a fallback melee model.
 - A filesystem pool allocation failed once during map load (225.04 KiB request); the map still reached the render-ready marker.
@@ -88,4 +88,11 @@ A new 60-second Dolphin capture reached the m1l2b smoke map and rendered the fir
 
 ![Fresh m1l2b gameplay capture at 6:03 PM PT](/home/tim/Desktop/mohaa-gc/media/2026-11-22-m1l2b-runtime/texture-slot-experiment-20261122/baseline/m1l2b-baseline.png)
 
-The baseline log reports 17 near CMPR texture slots (11 from the WorldDL cache tail and 6 from heap), `prop horizon tris=1890 inst=27`, and `prop draw tris=988 near=44`. The raw log reported WorldDL at 184.4 ms/frame (forced work 47.5 ms, texture binding 101.2 ms) and 192.7 ms total (5.2 fps), but the concurrent Dolphin makes these performance figures unsuitable as a standalone baseline. This shows the earlier one-slot/442-miss result belongs to the forced-ring DOL and is not a general count for every build. The 128 KiB candidate ISO built successfully, but its runtime has not yet been captured. Full records and hashes are in [texture-slot-experiment-20261122](texture-slot-experiment-20261122/).
+The baseline log reports 17 near CMPR texture slots (11 from the WorldDL cache tail and 6 from heap), `prop horizon tris=1890 inst=27`, and `prop draw tris=988 near=44`. The raw log reported WorldDL at 184.4 ms/frame (forced work 47.5 ms, texture binding 101.2 ms) and 192.7 ms total (5.2 fps), but the concurrent Dolphin makes these performance figures unsuitable as a standalone baseline. This shows the earlier one-slot/442-miss result belongs to the forced-ring DOL and is not a general count for every build. The 128 KiB candidate has since been captured in an isolated Dolphin run; see the paired [192/128 KiB cache comparison](texture-slot-experiment-20261122/isolated-cache-ab/README.md).
+
+
+## Isolated WorldDL cache comparison — 2026-11-22 6:39–6:42 PM PT
+
+Ran 60-second captures with the same m1l2b content, engine base commit (`62a3a6a3a912e1d45db4e1516f8d722c3256944a`), Dolphin build, and probe configuration. The only DOL change was lowering the WorldDL cache-retention cap from 192 KiB to 128 KiB. Both builds reached `gcmap smoke frames ready` and `newgame world render ready`, and drew the same props (`prop horizon tris=1890 inst=27`; `prop draw tris=988 near=44`). The 128 KiB build reported 15 small plus one large resident texture slot, compared with 11 small plus no large slot for 192 KiB.
+
+This confirms the lower cache cap gives the tested map more texture slots without breaking map or prop rendering. The capture did not enable frame-time profiling, so it does not establish a performance gain. Full logs, build records, screenshots, hashes, and the one-line patch are in [isolated-cache-ab](texture-slot-experiment-20261122/isolated-cache-ab/README.md). These are Dolphin results, not physical GameCube validation.
