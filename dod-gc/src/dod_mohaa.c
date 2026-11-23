@@ -2237,10 +2237,13 @@ void Dod_MohaaThink(float now)
 	level.type = MS_LEVEL;
 	start_main();
 	/* MOHAA level scripts wait for these before touching the world */
-	if (S.ticks == 0)
+	if (S.ticks == 0) {
+		S.be.print(DOD_MOHAA_PRINT_CONSOLE, "mohaa: signal prespawn\n");
 		ms_notify(S.vm, &level, "prespawn");
-	else if (S.ticks == 1)
+	} else if (S.ticks == 1) {
+		S.be.print(DOD_MOHAA_PRINT_CONSOLE, "mohaa: signal spawn\n");
 		ms_notify(S.vm, &level, "spawn");
+	}
 	S.ticks++;
 	for (i = 0; i < DOD_MOHAA_MAX_MOVERS && S.vm; i++) {
 		DodMover *m = &S.movers[i];

@@ -56,6 +56,26 @@ def integrate_static_edict_gate(sv_game: Path) -> None:
 	sv_game.write_text(text[:start] + canonical + text[end:])
 
 
+def integrate_mohaa_listen_frame(sv_main: Path) -> None:
+	"""Keep MOHAA mission scripts ticking on the lean WorldDL listen route."""
+	old = ('\t\t/* A film shot still needs the game\'s frame: its rules Think moves the\n'
+		'\t\t * scripted actors and fires the shot\'s effects (StartFrame only, not\n'
+		'\t\t * the entity walk). */\n'
+		'\t\tif( CL_CineActive() || Sys_CheckParm( "-gccapture" ))')
+	new = ('\t\t/* Film shots and MOHAA mission scripts need the game\'s frame.\n'
+		'\t\t * StartFrame runs their rules Think without the entity walk. */\n'
+		'\t\tif( CL_CineActive() || Sys_CheckParm( "-gccapture" )\n'
+		'\t\t\t|| !Q_stricmp( GI->gamefolder, "mohaa" ))')
+	text = sv_main.read_text()
+	if new not in text:
+		if text.count(old) != 1:
+			raise SystemExit(f"WorldDL listen StartFrame gate not found exactly once in {sv_main}")
+		text = text.replace(old, new, 1)
+	text = text.replace('WorldDL listen StartFrame for film time=',
+		'WorldDL listen StartFrame for mission/film time=')
+	sv_main.write_text(text)
+
+
 def integrate_heap_tip_gate(sv_game: Path) -> None:
 	"""Lower the entity heap-tip threshold to 2 KiB on dod_ maps.
 
@@ -998,6 +1018,7 @@ def main() -> int:
 			'\t\tbytes = 8u * 1024u;\n',
 		)
 		integrate_static_edict_gate(sv_game)
+		integrate_mohaa_listen_frame(args.engine_dir / "engine/server/sv_main.c")
 		model = args.engine_dir / "engine/common/model.c"
 		# Already deferred (empty promote) — nothing to patch.
 		model_text = model.read_text()

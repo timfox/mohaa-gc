@@ -92,9 +92,26 @@ class UbersoundTest(unittest.TestCase):
                 self.assertNotIn(b"cue ", fh.read())
             with wave.open(os.path.join(out, "sound", "mohaa", "mechanics", "door_01.wav")) as w:
                 self.assertEqual((w.getnchannels(), w.getsampwidth(), w.getframerate()), (1, 2, 22050))
-                self.assertEqual(w.getnframes(), 221)
+                self.assertIn(w.getnframes(), (220, 221))  # FFmpeg resampler versions round this edge differently
                 self.assertEqual(int.from_bytes(w.readframes(1), "little", signed=True), 2000)
 
+
+    def test_long_loop_fits_gamecube_sound_ring(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source = os.path.join(tmp, "source.wav")
+            dest = os.path.join(tmp, "out.wav")
+            with wave.open(source, "wb") as w:
+                w.setnchannels(1)
+                w.setsampwidth(2)
+                w.setframerate(22050)
+                w.writeframes(b"\0\0" * (22050 * 12))
+            with open(source, "rb") as fh:
+                self.assertIsNone(ubersound.convert_wav(fh.read(), dest, loop=True))
+            self.assertLessEqual(os.path.getsize(dest) - 44, ubersound.GC_SOUND_PCM_LIMIT)
+            with wave.open(dest) as w:
+                self.assertEqual(w.getframerate(), 11025)
+            with open(dest, "rb") as fh:
+                self.assertIn(b"cue ", fh.read())
 
     def test_ima_adpcm(self):
         # one mono block: header (predictor 0, index 0), then 4 bytes = 8 samples, low nibble first

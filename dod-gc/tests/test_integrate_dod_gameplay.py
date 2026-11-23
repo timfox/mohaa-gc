@@ -83,6 +83,25 @@ class StaticEdictGateTest(unittest.TestCase):
 			self.assertEqual(path.read_text(), first)
 
 
+class MohaaListenFrameTest(unittest.TestCase):
+	def test_mission_script_frame_is_added_once(self):
+		with tempfile.TemporaryDirectory() as directory:
+			path = Path(directory) / "sv_main.c"
+			path.write_text(
+				'\t\t/* A film shot still needs the game\'s frame: its rules Think moves the\n'
+				'\t\t * scripted actors and fires the shot\'s effects (StartFrame only, not\n'
+				'\t\t * the entity walk). */\n'
+				'\t\tif( CL_CineActive() || Sys_CheckParm( "-gccapture" ))\n'
+				'WorldDL listen StartFrame for film time=\n'
+			)
+			INTEGRATOR.integrate_mohaa_listen_frame(path)
+			first = path.read_text()
+			self.assertIn('|| !Q_stricmp( GI->gamefolder, "mohaa" )', first)
+			self.assertIn('WorldDL listen StartFrame for mission/film time=', first)
+			INTEGRATOR.integrate_mohaa_listen_frame(path)
+			self.assertEqual(path.read_text(), first)
+
+
 class HeapTipGateTest(unittest.TestCase):
 	DOD = ('GC_MemHeapFreeBytes() <\n'
 		'\t\t\t\t( !Q_strnicmp( sv.name, "dod_", 4 ) ? 2u * 1024u : 8u * 1024u ))\n')

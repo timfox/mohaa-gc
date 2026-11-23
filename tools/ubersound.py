@@ -36,6 +36,9 @@ import sys
 import zipfile
 
 SOUND_LIMIT = 96  # samples one map may precache; DoD's own sounds need the rest of the engine's 512
+# The network GameCube profile reserves a 1 MiB ARAM sound ring. Its streaming
+# path refuses any one sample larger than half the ring (including its header).
+GC_SOUND_PCM_LIMIT = 512 * 1024 - 128
 
 # The map still calls this alias, and its commented legacy definition supplies the
 # original source and sound parms. Keep this scoped to that map and use it only if
@@ -325,13 +328,25 @@ def write_pcm_wav(dest, rate, pcm, loop):
 
 
 def convert_wav(data, dest, loop=False):
-    """16-bit mono PCM at <= 22050 Hz. Returns None on success, or why it was skipped."""
+    """Mono PCM at 22.05 or 11.025 kHz, small enough for the GameCube ARAM ring."""
     ffmpeg = shutil.which("ffmpeg")
     if ffmpeg:
         rate = wav_rate(data)
         if isinstance(rate, str):
             return rate
-        return convert_ffmpeg(data, dest, min(rate, 22050), loop, ffmpeg)
+        rate = min(rate, 22050)
+        why = convert_ffmpeg(data, dest, rate, loop, ffmpeg)
+        if why:
+            return why
+        if os.path.getsize(dest) - 44 > GC_SOUND_PCM_LIMIT and rate > 11025:
+            why = convert_ffmpeg(data, dest, 11025, loop, ffmpeg)
+            if why:
+                os.unlink(dest)
+                return why
+        if os.path.getsize(dest) - 44 > GC_SOUND_PCM_LIMIT:
+            os.unlink(dest)
+            return "exceeds the GameCube 1 MiB ARAM sound ring"
+        return None
 
     got = read_wav(data)
     if isinstance(got, str):
@@ -341,6 +356,11 @@ def convert_wav(data, dest, loop=False):
     while rate // step > 22050:
         step += 1
     frames = len(samples) // ch
+    if frames // step * 2 > GC_SOUND_PCM_LIMIT:
+        while rate // step > 11025:
+            step += 1
+    if frames // step * 2 > GC_SOUND_PCM_LIMIT:
+        return "exceeds the GameCube 1 MiB ARAM sound ring"
     mono = [sum(samples[f * ch:f * ch + ch]) // ch for f in range(0, frames, step)]
     write_wav(dest, rate // step, mono, loop)
     return None

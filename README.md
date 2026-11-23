@@ -16,7 +16,9 @@ python3 tools/mohaa_sd.py --cd /path/to/cd1 /path/to/cd2 --mohaa ~/MOHAA --sd /m
 ```
 
 The SFX stage writes map-specific `maps/<map>.snd` tables and native 22.05 kHz-or-lower mono
-PCM samples under `sound/mohaa/`. It keeps nested retail dialogue paths intact. The music stage
+PCM samples under `sound/mohaa/`. Samples too large for the GameCube's 1 MiB ARAM sound ring
+are converted at 11.025 kHz when that fits; looping samples retain a WAV cue point. It keeps
+nested retail dialogue paths intact. The music stage
 still needs separate loose tracks when the install's `main/` folder does not contain them; see
 `--music-source` below.
 
