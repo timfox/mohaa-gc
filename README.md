@@ -164,9 +164,9 @@ python3 tools/bsp30_check.py m1l2a.bsp --point 0 0 40 1
 
 ## In-game cutscenes
 
-MOHAA scripts and baked model tags can advance the m1l1 opening truck path in Dolphin. Static truck MDLs, a map-local precache manifest, and `CBaseAnimating` script entities are implemented and compiled into an isolated GameCube DOL; the model rendering still needs an in-game capture, and retail SKC animation playback remains open. See [the cutscene status and next implementation](docs/MOHAA_CUTSCENE_STATUS.md) and [the tag-motion runtime evidence](media/2026-11-22-m1l1-tag-arena/README.md).
+MOHAA scripts and baked model tags can advance the m1l1 opening truck path in Dolphin. The scripted GMC and Opel truck models now export their SKC sequences and TIKI surface states, and `anim` commands select the matching Studio sequence/bodygroups. Those latest source changes have not yet been built into a fresh DOL or verified in-game. See [the cutscene status and next implementation](docs/MOHAA_CUTSCENE_STATUS.md) and [the tag-motion runtime evidence](media/2026-11-22-m1l1-tag-arena/README.md).
 
-`tools/mohaa_tiki_model.py` can bake a TIKI mesh's static idle pose to a GoldSrc Studio v10 MDL. For example, write the output into a temporary game tree; generated models contain retail data and must stay out of Git:
+`tools/mohaa_tiki_model.py` can bake a TIKI mesh, skeleton, named SKC sequences and per-sequence surface visibility into a GoldSrc Studio v10 MDL. For example, write the output into a temporary game tree; generated models contain retail data and must stay out of Git:
 
 ```bash
 python3 tools/mohaa_tiki_model.py retail/main \
@@ -174,7 +174,7 @@ python3 tools/mohaa_tiki_model.py retail/main \
   --out /tmp/mohaa-script-models/models/vehicles/gmctruck_opening.mdl
 ```
 
-This prototype does not bake SKC animation playback; the script-entity model binding is implemented but still needs a GameCube build and runtime capture.
+The exporter currently supports single-bone vertex weights and up to 31 surface bodygroups. Other meshes fall back to a posed static model. The script-entity sequence binding still needs a GameCube build and runtime capture.
 
 To stage the two visible m1l1 truck models and `maps/m1l1.models` on an SD card, use:
 
@@ -183,7 +183,7 @@ python3 tools/mohaa_sd.py --mohaa ~/MOHAA --sd /media/SDCARD \
   --maps m1l1 --stages scriptmodels --list
 ```
 
-The GameCube game code now precaches the manifest at `ServerActivate`; only TIKIs baked into that manifest are assigned to script entities. The binding compiled in an isolated DOL build; runtime rendering still needs confirmation.
+The GameCube game code precaches the manifest at `ServerActivate`; only TIKIs baked into that manifest are assigned to script entities. Scripted actor models and a runtime capture of the truck sequences remain open.
 
 ## Mission scripts
 
