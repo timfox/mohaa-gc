@@ -29,6 +29,10 @@ File layout (little-endian):
                                          (i16 position[3] in steps, i16 quaternion x y z w * 32767)
 The quaternion turns tag axes into model axes (textbook q v q*); the tag's forward is its x axis.
 
+Files over 16 KiB use a 20-byte MTGC manifest at maps/<map>.tags and 4 KiB pieces named
+maps/<map>.tags.000, .001, ... . The GameCube runtime reassembles these original MTAG bytes
+in its reserved map arena, loading only one small piece from the fragmented engine heap at a time.
+
 The output is retail data: write it outside the repository and never commit it.
 """
 from __future__ import annotations
@@ -46,6 +50,9 @@ from ubersound import collect, read  # noqa: E402
 
 MAGIC = b"MTAG"
 VERSION = 1
+CHUNK_MAGIC = b"MTGC"
+CHUNK_SIZE = 4096
+CHUNK_THRESHOLD = 16 * 1024
 MAX_TAG_FRAMES = 4096
 SKIP_TREES = ("models/human/", "models/animal/")
 TOKEN = re.compile(r'"([^"]*)"|([^\s(){}\[\]=+\-*/,;"]+)')
@@ -327,6 +334,21 @@ def pack(durations, models) -> bytes:
 	return bytes(out)
 
 
+def write_tags(dst: str, data: bytes) -> int:
+	"""Write one MTAG or an MTGC manifest plus 4 KiB pieces; return the piece count."""
+	if len(data) <= CHUNK_THRESHOLD:
+		with open(dst, "wb") as fh:
+			fh.write(data)
+		return 0
+	count = (len(data) + CHUNK_SIZE - 1) // CHUNK_SIZE
+	with open(dst, "wb") as fh:
+		fh.write(CHUNK_MAGIC + struct.pack("<IIII", 1, len(data), CHUNK_SIZE, count))
+	for i in range(count):
+		with open(f"{dst}.{i:03d}", "wb") as fh:
+			fh.write(data[i * CHUNK_SIZE:(i + 1) * CHUNK_SIZE])
+	return count
+
+
 def unpack(data: bytes):
 	"""(durations, {model: (tags, {anim: (frame time, step, [[(pos, quat) per tag] per frame])})}), for tests."""
 	if data[:4] != MAGIC:
@@ -396,10 +418,10 @@ def main(argv=None):
 		data = build(files, [read(scripts[p]).decode("latin-1") for p in need])
 		dst = os.path.join(args.out, "maps", m + ".tags")
 		os.makedirs(os.path.dirname(dst), exist_ok=True)
-		with open(dst, "wb") as fh:
-			fh.write(data)
+		pieces = write_tags(dst, data)
 		durations, models = unpack(data)
-		print(f"  wrote maps/{m}.tags: {len(data)} bytes, {len(durations)} animation lengths, {len(models)} models")
+		storage = f"{pieces} x {CHUNK_SIZE}-byte chunks" if pieces else "single file"
+		print(f"  wrote maps/{m}.tags: {len(data)} bytes, {len(durations)} animation lengths, {len(models)} models ({storage})")
 	return 1 if bad else 0
 
 

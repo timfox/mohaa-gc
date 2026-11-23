@@ -2099,17 +2099,62 @@ static void tags_load(const char *mapname)
 	char path[128], msg[320];
 	size_t len = 0;
 	char *data;
+	int arena_data = 0;
 	snprintf(path, sizeof(path), "maps/%s.tags", mapname);
 	data = S.be.load_file(path, &len);
 	if (!data)
 		return;
+	/* A large MTAG cannot fit in the fragmented engine heap on maps like m1l1. The baker
+	 * writes MTGC plus small numbered pieces; assemble them in the reserved script arena. */
+	if (len >= 20 && !memcmp(data, "MTGC", 4)) {
+		const unsigned char *h = (const unsigned char *)data;
+		uint32_t version = (uint32_t)h[4] | ((uint32_t)h[5] << 8) | ((uint32_t)h[6] << 16) | ((uint32_t)h[7] << 24);
+		uint32_t total = (uint32_t)h[8] | ((uint32_t)h[9] << 8) | ((uint32_t)h[10] << 16) | ((uint32_t)h[11] << 24);
+		uint32_t chunk = (uint32_t)h[12] | ((uint32_t)h[13] << 8) | ((uint32_t)h[14] << 16) | ((uint32_t)h[15] << 24);
+		uint32_t count = (uint32_t)h[16] | ((uint32_t)h[17] << 8) | ((uint32_t)h[18] << 16) | ((uint32_t)h[19] << 24);
+		char *manifest = data, *assembled = NULL;
+		int ok = version == 1 && total > 0 && total <= 4u * 1024u * 1024u && chunk >= 512 && chunk <= 16384 &&
+			count == (total + chunk - 1) / chunk;
+		if (ok)
+			assembled = (char *)S.be.alloc(NULL, 0, total);
+		if (!assembled)
+			ok = 0;
+		if (ok) {
+			for (uint32_t i = 0, offset = 0; i < count; i++) {
+				char part_path[160];
+				size_t part_len = 0;
+				char *part;
+				snprintf(part_path, sizeof(part_path), "maps/%s.tags.%03u", mapname, (unsigned)i);
+				part = S.be.load_file(part_path, &part_len);
+				if (!part || part_len != (size_t)((total - offset) < chunk ? total - offset : chunk)) {
+					ok = 0;
+					if (part && S.be.free_file) S.be.free_file(part);
+					break;
+				}
+				memcpy(assembled + offset, part, part_len);
+				offset += (uint32_t)part_len;
+				if (S.be.free_file) S.be.free_file(part);
+			}
+		}
+		if (S.be.free_file) S.be.free_file(manifest);
+		if (!ok) {
+			if (assembled) S.be.alloc(assembled, total, 0);
+			S.be.print(DOD_MOHAA_PRINT_CONSOLE, "mohaa: tag chunks are incomplete or out of memory\n");
+			return;
+		}
+		data = assembled;
+		len = total;
+		arena_data = 1;
+	}
 	if (MohaaTags_Load(&S.tags, data, len, S.be.alloc))
 		snprintf(msg, sizeof(msg), "mohaa: %s: %d models with tags, %d animation lengths, %u KB\n", path,
 			S.tags.nmodels, S.tags.ndur, (unsigned)(S.tags.size / 1024u));
 	else
 		snprintf(msg, sizeof(msg), "mohaa: %s is unreadable or did not fit, cutscene tags sit at entity origins\n", path);
 	S.be.print(DOD_MOHAA_PRINT_CONSOLE, msg);
-	if (S.be.free_file)
+	if (arena_data)
+		S.be.alloc(data, len, 0);
+	else if (S.be.free_file)
 		S.be.free_file(data);
 }
 
