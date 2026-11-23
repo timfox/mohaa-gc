@@ -29,7 +29,27 @@ from ubersound import collect, read
 STUDIO_NF_MASKED = 1
 MAX_MODEL_VERTS = 2048
 MAX_MESH_TRIS = 4096
+MAX_STUDIO_BONE_WEIGHTS = 4
+STUDIO_HAS_BONEWEIGHTS = -(1 << 31)
 STUDIO_LOOPING = 1
+
+
+def _pack_bone_weights(weights, bone_count):
+    """Encode MOHAA influences as Xash's four-slot Studio v10 blend record."""
+    valid = [(int(bone), max(0.0, float(weight))) for bone, weight, _offset in weights
+             if 0 <= int(bone) < bone_count and float(weight) > 0.0]
+    valid.sort(key=lambda item: item[1], reverse=True)
+    valid = valid[:MAX_STUDIO_BONE_WEIGHTS]
+    if not valid:
+        raise ValueError("animated vertex has no usable bone weights")
+    total = sum(weight for _bone, weight in valid)
+    quantized = [int(round(weight * 255.0 / total)) for _bone, weight in valid]
+    quantized[0] += 255 - sum(quantized)
+    bones = [bone for bone, _weight in valid]
+    while len(bones) < MAX_STUDIO_BONE_WEIGHTS:
+        bones.append(-1)
+        quantized.append(0)
+    return struct.pack("<4B4b", *quantized, *bones)
 
 
 def _angles(q):
@@ -182,6 +202,42 @@ def _tiki_visibility(text):
 				states[alias] = state
 		break
 	return hidden, states
+
+
+def _tiki_animation_aliases(files, root_path: str):
+    """Collect animation aliases from a TIKI and its recursively included TIKIs."""
+    import mohaa_tags
+
+    ordered, seen = [], set()
+
+    def visit(path):
+        path = mohaa_skd.norm(path)
+        if not path.startswith("models/"):
+            path = mohaa_skd.norm("models/" + path)
+        if not path.endswith(".tik"):
+            path += ".tik"
+        if path in seen or path not in files:
+            return
+        seen.add(path)
+        text = read(files[path]).decode("latin-1", "replace")
+        _, aliases = mohaa_tags.tik_info(text, path)
+        ordered.extend(aliases)
+        clean = re.sub(r"/\*.*?\*/|//[^\n]*", " ", text, flags=re.S)
+        tokens = [a if a else b for a, b in re.findall(r'"([^"]*)"|([^\s{}]+|[{}])', clean)]
+        base = os.path.dirname(path)
+        for index, token in enumerate(tokens[:-1]):
+            if token.lower() != "$include":
+                continue
+            include = mohaa_skd.norm(tokens[index + 1])
+            if not include.startswith("models/"):
+                include = mohaa_skd.norm(f"{base}/{include}")
+            visit(include)
+
+    visit(root_path)
+    by_name = {}
+    for alias, path in ordered:
+        by_name[alias.lower()] = (alias, path)
+    return list(by_name.values())
 
 
 def _rle(values):
@@ -368,11 +424,20 @@ def _static_mdl(name: str, parts, skin: bytes, width: int, height: int, texture_
 		normindex = len(out)
 		for n in part["normals"]:
 			out += struct.pack("<3f", *n)
+		blendvertinfo = blendnorminfo = 0
+		if animation and part.get("vertex_weights") and part.get("normal_weights"):
+			align()
+			blendvertinfo = len(out)
+			for weights in part["vertex_weights"]:
+				out += weights
+			blendnorminfo = len(out)
+			for weights in part["normal_weights"]:
+				out += weights
 		struct.pack_into("<5i", out, meshindex, len(part["triangles"]), triindex, 0,
 		                 len(part["normals"]), normindex)
 		struct.pack_into("<64sif10i", out, visible_modelindex, _name(part["name"], 64), 0, part["radius"],
 		                 1, meshindex, len(part["positions"]), vertinfo, vertindex,
-		                 len(part["normals"]), norminfo, normindex, 0, 0)
+		                 len(part["normals"]), norminfo, normindex, blendvertinfo, blendnorminfo)
 		struct.pack_into("<64siii", out, bpindex, _name(part["name"], 64), 2, 1 << group, modelindex)
 
 	textureindex = len(out)
@@ -386,7 +451,9 @@ def _static_mdl(name: str, parts, skin: bytes, width: int, height: int, texture_
 	align()
 	hdr = struct.pack("<4si64si", b"IDST", 10, _name(name + ".mdl", 64), len(out))
 	hdr += struct.pack("<3f", 0, 0, 0) + struct.pack("<3f", *lo) + struct.pack("<3f", *hi)
-	hdr += struct.pack("<3f", *lo) + struct.pack("<3f", *hi) + struct.pack("<i", 0)
+	hdr += struct.pack("<3f", *lo) + struct.pack("<3f", *hi)
+	weighted = bool(animation and any(p.get("vertex_weights") for p in parts))
+	hdr += struct.pack("<i", STUDIO_HAS_BONEWEIGHTS if weighted else 0)
 	fields = [len(bones), boneindex, 0, ctlindex, 1, hbindex, len(sequences), seqindex, 1, sgindex,
 	          1, textureindex, texturedata, 1, 1, skinindex, len(parts), bodypartsindex]
 	fields += [0] * 8
@@ -397,7 +464,8 @@ def _static_mdl(name: str, parts, skin: bytes, width: int, height: int, texture_
 	return bytes(out)
 
 
-def convert(main_paths, model: str, output: Path, skin_size: int = 256, scale: float | None = None):
+def convert(main_paths, model: str, output: Path, skin_size: int = 256, scale: float | None = None,
+            animation_names=None):
 	files = collect(main_paths, (".tik", ".skd", ".skb", ".skc", ".shader", ".tga", ".jpg", ".png", ".bmp"))
 	model = mohaa_skd.norm(model)
 	if not model.startswith("models/"):
@@ -410,9 +478,11 @@ def convert(main_paths, model: str, output: Path, skin_size: int = 256, scale: f
 	if tik.mesh not in files:
 		raise ValueError(f"retail mesh not found: {tik.mesh}")
 	skd = mohaa_skd.parse_skd(read(files[tik.mesh]), tik.mesh)
-	import mohaa_tags
 	tik_text = read(files[model]).decode("latin-1", "replace")
-	_, animation_aliases = mohaa_tags.tik_info(tik_text, model)
+	animation_aliases = _tiki_animation_aliases(files, model)
+	if animation_names:
+		wanted = {name.lower() for name in animation_names}
+		animation_aliases = [item for item in animation_aliases if item[0].lower() in wanted]
 	if tik.idle_anim and tik.idle_anim in files and not any(a.lower() == "idle" for a, _ in animation_aliases):
 		animation_aliases.insert(0, ("idle", tik.idle_anim))
 	else:
@@ -458,9 +528,14 @@ def convert(main_paths, model: str, output: Path, skin_size: int = 256, scale: f
 	default_visible = visibility_mask(init_hidden)
 	visible_by_alias = {alias: visibility_mask(hidden) for alias, hidden in alias_hidden.items()}
 	animation = _animation_data(animation_aliases, files, skd, unit_scale, visible_by_alias, default_visible)
-	if animation is not None and any(len(ws) != 1 or ws[0][1] < 0.999 or ws[0][0] >= len(animation[0])
-	                                 for surface in skd.surfaces for ws in surface.weights):
+	if animation is not None and (len(animation[0]) > 128 or any(
+			any(bone < 0 or bone >= len(animation[0]) or bone >= 128
+			    for bone, _weight, _offset in ws)
+			for surface in skd.surfaces for ws in surface.weights)):
 		animation = None
+	use_blend_weights = animation is not None and any(
+		sum(float(weight) > 0.0 for _bone, weight, _offset in weights) > 1
+		for surface in skd.surfaces for weights in surface.weights)
 	if animation is None and tik.idle_anim and tik.idle_anim in files:
 		mohaa_skd.apply_pose(skd, mohaa_skd.parse_skc(read(files[tik.idle_anim]), tik.idle_anim))
 	atlas, rects = _atlas([read(files[p]) for p in texture_paths], skin_size)
@@ -468,6 +543,7 @@ def convert(main_paths, model: str, output: Path, skin_size: int = 256, scale: f
 	parts = []
 	for surface in kept:
 		positions, normals, triangles = [], [], []
+		position_weights, normal_weights = [], []
 		position_ids, normal_ids = {}, {}
 		rect = rects[surface_textures[surface.name]]
 		for tri in surface.triangles:
@@ -477,14 +553,19 @@ def convert(main_paths, model: str, output: Path, skin_size: int = 256, scale: f
 				p = tuple(float(v) * unit_scale for v in (weights[0][2] if animation is not None else surface.positions[index]))
 				n = tuple(float(v) for v in surface.normals[index])
 				bone = weights[0][0] if animation is not None else 0
-				pk = (bone,) + tuple(round(v, 5) for v in p)
+				blend = _pack_bone_weights(weights, len(animation[0])) if use_blend_weights else None
+				pk = (bone, blend) + tuple(round(v, 5) for v in p)
 				if pk not in position_ids:
 					position_ids[pk] = len(positions)
 					positions.append(p)
-				nk = (bone,) + tuple(round(v, 5) for v in n)
+					if blend is not None:
+						position_weights.append(blend)
+				nk = (bone, blend) + tuple(round(v, 5) for v in n)
 				if nk not in normal_ids:
 					normal_ids[nk] = len(normals)
 					normals.append(n)
+					if blend is not None:
+						normal_weights.append(blend)
 				u, v = surface.uvs[index]
 				if rect is None:
 					s = min(texw - 1, max(0, int(round(u * (texw - 1)))))
@@ -503,7 +584,8 @@ def convert(main_paths, model: str, output: Path, skin_size: int = 256, scale: f
 		normal_bones = [key[0] for key, _ in sorted(normal_ids.items(), key=lambda item: item[1])]
 		parts.append({"name": surface.name, "positions": positions, "normals": normals,
 		              "triangles": triangles, "radius": radius,
-		              "vertex_bones": vertex_bones, "normal_bones": normal_bones})
+		              "vertex_bones": vertex_bones, "normal_bones": normal_bones,
+		              "vertex_weights": position_weights, "normal_weights": normal_weights})
 	data = _static_mdl(output.stem, parts, skin, texw, texh, texture_flags, animation)
 	output.parent.mkdir(parents=True, exist_ok=True)
 	output.write_bytes(data)
@@ -517,8 +599,10 @@ def main(argv=None):
 	ap.add_argument("--out", required=True, type=Path, help="output GoldSrc studio v10 .mdl")
 	ap.add_argument("--skin-size", type=int, default=256, help="maximum power-of-two atlas edge")
 	ap.add_argument("--scale", type=float, default=None, help="override TIKI scale; map scale 72/94 is still applied")
+	ap.add_argument("--animation", action="append", default=None, help="keep only this animation alias (repeatable)")
 	a = ap.parse_args(argv)
-	parts, verts, tris, textures, scale, idle = convert(a.main, a.model, a.out, a.skin_size, a.scale)
+	parts, verts, tris, textures, scale, idle = convert(a.main, a.model, a.out, a.skin_size, a.scale,
+	                                                    a.animation)
 	print(f"MOHAA TIKI: {a.model}, idle={idle or '-'}, {parts} bodygroups, {tris} triangles, "
 	      f"{verts} bodygroup vertices, scale {scale:.5f}")
 	print(f"Textures ({len(textures)}): " + ", ".join(textures))

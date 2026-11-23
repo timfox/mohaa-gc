@@ -176,7 +176,9 @@ python3 tools/mohaa_tiki_model.py retail/main \
   --out /tmp/mohaa-script-models/models/vehicles/gmctruck_opening.mdl
 ```
 
-The exporter currently supports single-bone vertex weights and up to 31 surface bodygroups. Other meshes fall back to a posed static model. The script-entity sequence binding still needs a GameCube build and runtime capture.
+The exporter supports Xash's four-influence Studio v10 skinning format and up to 31 surface bodygroups. It reads animation aliases through included TIKIs; repeat `--animation <alias>` to keep a small mission-specific sequence set. When a vertex has more than four influences, it keeps the four strongest and renormalizes them. Models with an unsupported skeleton fall back to a posed static model. The script-entity sequence binding still needs a GameCube build and runtime capture.
+
+The m1l1 German Afrika private TIKI now converts its 42-bone body mesh with the three scripted visa-idle sequences (`driver_idlevisa`, `passenger_idlevisa`, `guard_idlevisa`). The current export is a body-only staging artifact; the TIKI's head, hands, weapon/equipment components and in-game actor binding remain to be integrated.
 
 To stage the two visible m1l1 truck models and `maps/m1l1.models` on an SD card, use:
 
@@ -185,7 +187,7 @@ python3 tools/mohaa_sd.py --mohaa ~/MOHAA --sd /media/SDCARD \
   --maps m1l1 --stages scriptmodels --list
 ```
 
-The GameCube game code precaches the manifest at `ServerActivate`; only TIKIs baked into that manifest are assigned to script entities. Scripted actor models and a runtime capture of the truck sequences remain open.
+The GameCube game code precaches the manifest at `ServerActivate`; only TIKIs baked into that manifest are assigned to script entities. The actor body export is not yet in the manifest, and no runtime capture has confirmed the truck or actor models animating in-game.
 
 ## Mission scripts
 

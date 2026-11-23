@@ -25,7 +25,9 @@ With the matching layout, Dolphin completed server/client game initialization, l
 
 The SKC reader decodes every per-bone frame, and both the tag baker and MDL exporter use that shared decoder. Retail data has `opel_opening.skc` at 6 frames / 10 fps and `opel.skc` at 1 frame / 25 fps. The converted TIKI visibility states now match the retail init and sequence entries: GMC `open_gate` reveals the scripted panels, Opel `idle`/`idlelights`/`idlenolights` switch the light surface, and wheel aliases switch between moving and still wheel meshes.
 
-The conversion supports the truck meshes' single-bone vertex weights; multi-weight models still use the static pose fallback. It does not yet convert the scripted driver actors. The new source binding still needs a GameCube runtime capture to prove it loads, animates, and switches bodygroups correctly.
+The vehicle meshes use single-bone weights. The exporter now also writes Xash's four-influence Studio v10 skin records, follows recursive TIKI animation includes, and can restrict an export to mission-used aliases. From the retail `human/german_afrika_private.tik`, it produced a 42-bone, 1,402-triangle body model with the `driver_idlevisa`, `passenger_idlevisa`, and `guard_idlevisa` sequences (188,028 bytes; `/tmp/mohaa-m1l1-actors/models/human/german_afrika_private.mdl`). Its header carries `STUDIO_HAS_BONEWEIGHTS`, and the existing Studio model inspector reads the three sequences and bodygroups. This is conversion evidence only: the composite TIKI's head/hands/equipment, actor model assignment, and in-game animation remain open.
+
+The truck sequence binding still needs a GameCube runtime capture to prove it loads, animates, and switches bodygroups correctly. The new weighted actor body has not been included in the map manifest or run in the game.
 
 ## Next implementation
 
