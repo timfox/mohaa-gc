@@ -18,6 +18,7 @@ usage: scripts/build-lean-iso.sh [options]
   --net            stage gamecube.cfg "net" for early BBA/eth2sp1 DHCP (-net)
   --map NAME       stage one BSP into lean maps/ (DoD or valve)
   --smoke MAP      disc --smoke-map MAP (auto map load; implies staging MAP)
+  --bake-worlddl   include full WorldDL in smoke ISO (MOHAA otherwise uses live BSP)
   --listen MAP     playable listen host (local player plus one peer)
   --headless       server only; requires --listen (optional third Cube)
   --connect ADDR   peer client (gamecube.cfg connect ADDR); use with --net
@@ -52,6 +53,7 @@ WANT_NET=0
 FULL_MAP=0
 WORLD_RENDER=1
 WORLD_RENDER_EXPLICIT=0
+BAKE_WORLDDL=0
 DUMPFRAMES=0
 DUMPEYE=""
 TAS=""
@@ -80,6 +82,7 @@ while [[ $# -gt 0 ]]; do
 		--core-sfx) STAGE_ARGS+=(--core-sfx) ;;
 		--world-render) WORLD_RENDER=1; WORLD_RENDER_EXPLICIT=1 ;;
 		--no-world-render) WORLD_RENDER=0; WORLD_RENDER_EXPLICIT=1 ;;
+		--bake-worlddl) BAKE_WORLDDL=1 ;;
 		--dumpframes) DUMPFRAMES=1 ;;
 		--dumpeye)
 			DUMPEYE="${2:-}"
@@ -139,6 +142,10 @@ if [[ -z "$MAP" && "$WORLD_RENDER_EXPLICIT" -eq 0 ]]; then
 fi
 if (( DUMPFRAMES )) && [[ -z "$SMOKE" && -z "$LISTEN" && -z "$CONNECT" ]]; then
 	echo "error: --dumpframes requires --smoke, --listen, or --connect" >&2
+	exit 2
+fi
+if (( BAKE_WORLDDL )) && [[ -z "$SMOKE" ]]; then
+	echo "error: --bake-worlddl requires --smoke MAP" >&2
 	exit 2
 fi
 if (( WORLD_RENDER )) && [[ -z "$MAP" ]]; then
@@ -330,6 +337,7 @@ pack() {
 	(( SKIP_STARTUP_VIDS )) && args+=(--skip-startup-vids)
 	if [[ -n "$SMOKE" ]]; then
 		args+=(--smoke-map "$SMOKE")
+		(( BAKE_WORLDDL )) && args+=(--smoke-worlddl)
 		(( DUMPFRAMES )) && args+=(--probe-dumpframes)
 	fi
 	(( WORLD_RENDER )) && args+=(--world-render)
