@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Bake one posed MOHAA TIKI mesh to a static GoldSrc studio model.
+"""Bake MOHAA TIKI meshes and SKC sequences to a GoldSrc studio model.
 
-This is the first asset step for scripted MOHAA models: it preserves the retail
-TIKI's idle pose, surface mesh boundaries, UVs and diffuse maps. It does not
-convert SKC animation sequences; runtime animation support is separate.
+The exporter keeps the TIKI skeleton and writes named Studio v10 sequences so
+MOHAA script ``anim`` commands can select them at runtime. Multi-weight meshes
+still use the static posed fallback until their skinning layout is supported.
 
 Example:
   python3 tools/mohaa_tiki_model.py retail/main \
@@ -28,6 +28,92 @@ from ubersound import collect, read
 STUDIO_NF_MASKED = 1
 MAX_MODEL_VERTS = 2048
 MAX_MESH_TRIS = 4096
+STUDIO_LOOPING = 1
+
+
+def _angles(q):
+	"""GoldSrc Euler radians for MOHAA's inverse-quaternion rotation matrix."""
+	import mohaa_tags
+	m = mohaa_tags._mat(q)
+	pitch = math.asin(max(-1.0, min(1.0, -m[2][0])))
+	if abs(math.cos(pitch)) > 1e-6:
+		roll = math.atan2(m[2][1], m[2][2])
+		yaw = math.atan2(m[1][0], m[0][0])
+	else:
+		roll = 0.0
+		yaw = math.atan2(-m[0][1], m[1][1])
+	return (roll, pitch, yaw)
+
+
+def _animation_data(aliases, files, skd, unit_scale):
+	"""Return parent-first bones, bind values/scales and encoded sequence records."""
+	import mohaa_tags
+
+	aliases = list(aliases)
+	if not aliases:
+		return None
+	parents = {n.lower(): p.lower() for n, p in zip(skd.bones, skd.bone_parents)}
+	if len(parents) != len(skd.bones) or not skd.bones or len(skd.bones) > 128:
+		return None
+	index = {n.lower(): i for i, n in enumerate(skd.bones)}
+	for i, name in enumerate(skd.bones):
+		p = parents[name.lower()]
+		if p and p != "worldbone" and (p not in index or index[p] >= i):
+			return None  # Studio requires parents to precede children.
+	loaded = []
+	seen = set()
+	for alias, path in aliases:
+		low = alias.lower()
+		if low in seen or path not in files:
+			continue
+		try:
+			anim = mohaa_skd.parse_skc_animation(read(files[path]), path)
+		except mohaa_skd.SkdError:
+			continue
+		if not anim["poses"] or len(anim["poses"]) > 4096:
+			continue
+		seen.add(low)
+		loaded.append((low, anim))
+	if not loaded:
+		return None
+	base_pose = loaded[0][1]["poses"][0]
+	base = []
+	for i, name in enumerate(skd.bones):
+		pos, q = base_pose.get(name.lower(), (None, None))
+		pos = pos or (0.0, 0.0, 0.0)
+		q = q or (0.0, 0.0, 0.0, 1.0)
+		base.append(tuple(float(v) * unit_scale for v in pos) + _angles(q))
+	seqs, maxima = [], [[0.0] * 6 for _ in skd.bones]
+	for alias, anim in loaded:
+		frames = []
+		for pose in anim["poses"]:
+			row = []
+			for i, name in enumerate(skd.bones):
+				pos, q = pose.get(name.lower(), (None, None))
+				if pos is None and q is None:
+					value = base[i]
+				else:
+					pos = pos or tuple(v / unit_scale for v in base[i][:3])
+					q = q or (0.0, 0.0, 0.0, 1.0)
+					value = tuple(float(v) * unit_scale for v in pos) + _angles(q)
+				value = tuple(base[i][k] + ((value[k] - base[i][k] + math.pi) % (2 * math.pi) - math.pi if k >= 3 else value[k] - base[i][k]) for k in range(6))
+				row.append(value)
+				for k, v in enumerate(value):
+					maxima[i][k] = max(maxima[i][k], abs(v))
+			frames.append(row)
+		seqs.append((alias, anim["frame_time"] if anim["frame_time"] > 0 else 0.05, frames))
+	scales = [[(v / 32767.0) if v > 1e-8 else (1.0 / 32767.0) for v in row] for row in maxima]
+	return ([(n, -1 if not parents[n.lower()] or parents[n.lower()] == "worldbone" else index[parents[n.lower()]]) for n in skd.bones], base, scales, seqs)
+
+
+def _rle(values):
+	"""Encode one Studio animation channel as one or more bounded RLE runs."""
+	out = bytearray()
+	for start in range(0, len(values), 255):
+		chunk = values[start:start + 255]
+		out += struct.pack("<BB", len(chunk), len(chunk))
+		out += struct.pack("<" + "h" * len(chunk), *chunk)
+	return bytes(out)
 
 
 def _name(value: str, size: int) -> bytes:
@@ -107,8 +193,8 @@ def _skin(atlas):
 	return bytes(indices) + bytes(palette), width, height, STUDIO_NF_MASKED if masked else 0
 
 
-def _static_mdl(name: str, parts, skin: bytes, width: int, height: int, texture_flags: int) -> bytes:
-	"""Write a static one-bone model with one default-visible bodygroup per TIKI surface."""
+def _static_mdl(name: str, parts, skin: bytes, width: int, height: int, texture_flags: int, animation=None) -> bytes:
+	"""Write one default-visible bodygroup per surface, with optional skeletal sequences."""
 	if not parts:
 		raise ValueError("model has no drawable surfaces")
 	all_positions = [p for part in parts for p in part["positions"]]
@@ -121,25 +207,46 @@ def _static_mdl(name: str, parts, skin: bytes, width: int, height: int, texture_
 		while len(out) % n:
 			out.append(0)
 
+	bones, bind, scales, sequences = animation or ([('root', -1)], [(0.0,) * 6], [(1.0,) * 6], [('idle', 0.1, [[(0.0,) * 6]])])
 	boneindex = len(out)
-	ctl = [-1] * 6
-	out += _name("root", 32) + struct.pack("<ii", -1, 0) + struct.pack("<6i", *ctl)
-	out += struct.pack("<6f", 0, 0, 0, 0, 0, 0) + struct.pack("<6f", 1, 1, 1, 1, 1, 1)
+	for i, (bname, parent) in enumerate(bones):
+		ctl = [-1] * 6
+		out += _name(bname, 32) + struct.pack("<ii", parent, 0) + struct.pack("<6i", *ctl)
+		out += struct.pack("<6f", *bind[i]) + struct.pack("<6f", *scales[i])
 	ctlindex = len(out)
 	hbindex = len(out)
 	out += struct.pack("<ii6f", 0, 0, *lo, *hi)
 	sgindex = len(out)
 	out += _name("default", 32) + _name("", 64) + struct.pack("<ii", 0, 0)
-	animindex = len(out)
-	out += b"\0" * 12
 	seqindex = len(out)
-	seq = _name("idle", 32) + struct.pack("<fiiiiiiiiii", 10.0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0)
-	seq += struct.pack("<3f", 0, 0, 0) + struct.pack("<ii", 0, 0) + struct.pack("<6f", *lo, *hi)
-	seq += struct.pack("<ii", 1, animindex) + struct.pack("<2i", 0, 0) + struct.pack("<2f", 0, 0) + struct.pack("<2f", 1, 1)
-	seq += struct.pack("<iiiiii", 0, 0, 0, 0, 0, 0)
-	if len(seq) != 176:
-		raise ValueError(f"internal sequence layout is {len(seq)} bytes, expected 176")
-	out += seq
+	out += b"\0" * (176 * len(sequences))
+	for seq_no, (seqname, frame_time, frames) in enumerate(sequences):
+		if not frames:
+			frames = [[(0.0,) * 6 for _ in bones]]
+		seq_anim = len(out)
+		desc_start = len(out)
+		out += b"\0" * (12 * len(bones))
+		for bi in range(len(bones)):
+			for channel in range(6):
+				vals = [max(-32768, min(32767, int(round(fr[bi][channel] / scales[bi][channel])))) for fr in frames]
+				if not any(vals):
+					continue
+				align(2)
+				channel_at = len(out)
+				out += _rle(vals + [vals[0] if seqname.lower().startswith("idle") else vals[-1]])
+				rel = channel_at - (desc_start + bi * 12)
+				if rel > 65535:
+					raise ValueError(f"animation {seqname} channel offset exceeds Studio's 16-bit limit")
+				struct.pack_into("<H", out, desc_start + bi * 12 + channel * 2, rel)
+		seq_at = seqindex + seq_no * 176
+		seq = _name(seqname, 32) + struct.pack("<fiiiiiiiiii", 1.0 / max(frame_time, 0.001),
+			STUDIO_LOOPING if seqname.lower().startswith("idle") else 0, 0, 0, 0, 0, len(frames), 0, 0, 0, 0)
+		seq += struct.pack("<3f", 0, 0, 0) + struct.pack("<ii", 0, 0) + struct.pack("<6f", *lo, *hi)
+		seq += struct.pack("<ii", 1, seq_anim) + struct.pack("<2i", 0, 0) + struct.pack("<2f", 0, 0) + struct.pack("<2f", 1, 1)
+		seq += struct.pack("<iiiiii", 0, 0, 0, 0, 0, 0)
+		if len(seq) != 176:
+			raise ValueError(f"internal sequence layout is {len(seq)} bytes, expected 176")
+		out[seq_at:seq_at + 176] = seq
 	bodypartsindex = len(out)
 	bodypart_headers = []
 	for part in parts:
@@ -160,10 +267,10 @@ def _static_mdl(name: str, parts, skin: bytes, width: int, height: int, texture_
 		out += struct.pack("<h", 0)
 		align()
 		vertinfo = len(out)
-		out += bytes(len(part["positions"]))
+		out += bytes(part.get("vertex_bones", [0] * len(part["positions"])))
 		align()
 		norminfo = len(out)
-		out += bytes(len(part["normals"]))
+		out += bytes(part.get("normal_bones", [0] * len(part["normals"])))
 		align()
 		vertindex = len(out)
 		for p in part["positions"]:
@@ -190,7 +297,7 @@ def _static_mdl(name: str, parts, skin: bytes, width: int, height: int, texture_
 	hdr = struct.pack("<4si64si", b"IDST", 10, _name(name + ".mdl", 64), len(out))
 	hdr += struct.pack("<3f", 0, 0, 0) + struct.pack("<3f", *lo) + struct.pack("<3f", *hi)
 	hdr += struct.pack("<3f", *lo) + struct.pack("<3f", *hi) + struct.pack("<i", 0)
-	fields = [1, boneindex, 0, ctlindex, 1, hbindex, 1, seqindex, 1, sgindex,
+	fields = [len(bones), boneindex, 0, ctlindex, 1, hbindex, len(sequences), seqindex, 1, sgindex,
 	          1, textureindex, texturedata, 1, 1, skinindex, len(parts), bodypartsindex]
 	fields += [0] * 8
 	hdr += struct.pack("<26i", *fields)
@@ -213,7 +320,18 @@ def convert(main_paths, model: str, output: Path, skin_size: int = 256, scale: f
 	if tik.mesh not in files:
 		raise ValueError(f"retail mesh not found: {tik.mesh}")
 	skd = mohaa_skd.parse_skd(read(files[tik.mesh]), tik.mesh)
-	if tik.idle_anim and tik.idle_anim in files:
+	import mohaa_tags
+	_, animation_aliases = mohaa_tags.tik_info(read(files[model]).decode("latin-1", "replace"), model)
+	if tik.idle_anim and tik.idle_anim in files and not any(a.lower() == "idle" for a, _ in animation_aliases):
+		animation_aliases.insert(0, ("idle", tik.idle_anim))
+	else:
+		animation_aliases.sort(key=lambda item: (item[0].lower() != "idle",))
+	unit_scale = (tik.scale if scale is None else scale) * (72.0 / 94.0)
+	animation = _animation_data(animation_aliases, files, skd, unit_scale)
+	if animation is not None and any(len(ws) != 1 or ws[0][1] < 0.999 or ws[0][0] >= len(animation[0])
+	                                 for surface in skd.surfaces for ws in surface.weights):
+		animation = None
+	if animation is None and tik.idle_anim and tik.idle_anim in files:
 		mohaa_skd.apply_pose(skd, mohaa_skd.parse_skc(read(files[tik.idle_anim]), tik.idle_anim))
 	shaders = {}
 	for path, entry in files.items():
@@ -242,7 +360,6 @@ def convert(main_paths, model: str, output: Path, skin_size: int = 256, scale: f
 		raise ValueError("no textured surfaces remain after filtering")
 	atlas, rects = _atlas([read(files[p]) for p in texture_paths], skin_size)
 	skin, texw, texh, texture_flags = _skin(atlas)
-	unit_scale = (tik.scale if scale is None else scale) * (72.0 / 94.0)
 	parts = []
 	for surface in kept:
 		positions, normals, triangles = [], [], []
@@ -251,13 +368,15 @@ def convert(main_paths, model: str, output: Path, skin_size: int = 256, scale: f
 		for tri in surface.triangles:
 			corners = []
 			for index in tri:
-				p = tuple(float(v) * unit_scale for v in surface.positions[index])
+				weights = surface.weights[index]
+				p = tuple(float(v) * unit_scale for v in (weights[0][2] if animation is not None else surface.positions[index]))
 				n = tuple(float(v) for v in surface.normals[index])
-				pk = tuple(round(v, 5) for v in p)
+				bone = weights[0][0] if animation is not None else 0
+				pk = (bone,) + tuple(round(v, 5) for v in p)
 				if pk not in position_ids:
 					position_ids[pk] = len(positions)
 					positions.append(p)
-				nk = tuple(round(v, 5) for v in n)
+				nk = (bone,) + tuple(round(v, 5) for v in n)
 				if nk not in normal_ids:
 					normal_ids[nk] = len(normals)
 					normals.append(n)
@@ -275,9 +394,12 @@ def convert(main_paths, model: str, output: Path, skin_size: int = 256, scale: f
 			raise ValueError(f"surface {surface.name} exceeds GameCube studio limits: "
 			                 f"{len(positions)} verts, {len(normals)} normals, {len(triangles)} tris")
 		radius = max(math.sqrt(sum(v * v for v in p)) for p in positions)
+		vertex_bones = [key[0] for key, _ in sorted(position_ids.items(), key=lambda item: item[1])]
+		normal_bones = [key[0] for key, _ in sorted(normal_ids.items(), key=lambda item: item[1])]
 		parts.append({"name": surface.name, "positions": positions, "normals": normals,
-		              "triangles": triangles, "radius": radius})
-	data = _static_mdl(output.stem, parts, skin, texw, texh, texture_flags)
+		              "triangles": triangles, "radius": radius,
+		              "vertex_bones": vertex_bones, "normal_bones": normal_bones})
+	data = _static_mdl(output.stem, parts, skin, texw, texh, texture_flags, animation)
 	output.parent.mkdir(parents=True, exist_ok=True)
 	output.write_bytes(data)
 	return len(parts), sum(len(p["positions"]) for p in parts), sum(len(p["triangles"]) for p in parts), texture_paths, unit_scale, tik.idle_anim

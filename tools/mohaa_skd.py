@@ -56,6 +56,7 @@ class Skd:
 	version: int
 	num_bones: int
 	bones: list = field(default_factory=list)  # bone names, in index order
+	bone_parents: list = field(default_factory=list)  # parent names, parallel to bones
 	surfaces: list = field(default_factory=list)
 
 	@property
@@ -127,8 +128,9 @@ def parse_skd(data: bytes, name: str = "") -> Skd:
 	for _ in range(nbones if 0 < _ofs_bones < len(data) else 0):
 		if at + BONE.size > len(data):
 			break
-		bname, _parent, _jtype, _ov, _oc, _orf, oend = BONE.unpack_from(data, at)
+		bname, parent, _jtype, _ov, _oc, _orf, oend = BONE.unpack_from(data, at)
 		skd.bones.append(_cstr(bname))
+		skd.bone_parents.append(_cstr(parent))
 		if oend < BONE.size:
 			break
 		at += oend

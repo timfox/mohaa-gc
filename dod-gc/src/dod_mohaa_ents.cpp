@@ -175,9 +175,23 @@ static int M_SetModel( uint32_t id, const char *tiki )
 	return 0; /* tag-carrier TIKIs have no drawable MDL in the manifest */
 }
 
+static int M_SetAnimation( uint32_t id, const char *alias );
+
 class CMohaaScriptModel : public CBaseAnimating
 {
 public:
+	int SetScriptAnimation( const char *alias )
+	{
+		const int sequence = LookupSequence( alias );
+		if( sequence < 0 )
+			return 0;
+		pev->sequence = sequence;
+		pev->frame = 0;
+		pev->framerate = 1.0f;
+		ResetSequenceInfo();
+		return 1;
+	}
+
 	void Spawn( void )
 	{
 		pev->movetype = MOVETYPE_NONE;
@@ -189,6 +203,15 @@ public:
 	}
 };
 LINK_ENTITY_TO_CLASS( mohaa_script_model, CMohaaScriptModel )
+
+static int M_SetAnimation( uint32_t id, const char *alias )
+{
+	edict_t *e = EdictFor( id );
+	if( !e || !alias || strcmp( STRING( e->v.classname ), "mohaa_script_model" ) )
+		return 0;
+	CMohaaScriptModel *model = (CMohaaScriptModel *)e->pvPrivateData;
+	return model ? model->SetScriptAnimation( alias ) : 0;
+}
 
 static float M_GetHealth( uint32_t id )
 {
@@ -875,6 +898,7 @@ void DodGC_MohaaLevelInit( void )
 	b.precache_sound = M_Precache;
 	b.precache_model = M_PrecacheModel;
 	b.set_model = M_SetModel;
+	b.set_animation = M_SetAnimation;
 	b.actor = M_Actor;
 	b.music = M_Music;
 	if( g_music_intro[0] )

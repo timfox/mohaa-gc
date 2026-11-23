@@ -1411,11 +1411,16 @@ static int c_model(ms_call *c)
 static int c_anim(ms_call *c)
 {
 	char buf[96];
-	DodCine *k = cine(target_id(c), 1);
+	const uint32_t id = target_id(c);
+	DodCine *k = cine(id, 1);
 	float len;
+	const char *alias = anim_name(c, 0, buf, sizeof(buf));
+	if (S.be.set_animation && valid(id) && S.be.get_str &&
+	    !strcmp(S.be.get_str(id, DOD_MOHAA_CLASSNAME), "mohaa_script_model"))
+		S.be.set_animation(id, alias);
 	if (!k)
 		return 0;
-	k->anim = MohaaTags_Hash(anim_name(c, 0, buf, sizeof(buf)));
+	k->anim = MohaaTags_Hash(alias);
 	len = MohaaTags_Length(&S.tags, k->model, k->anim);
 	k->anim_start = S.now;
 	k->anim_end = S.now + (len >= 0.0f ? len : DOD_MOHAA_ANIM_DEFAULT);

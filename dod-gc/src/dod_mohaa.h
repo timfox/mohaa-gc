@@ -75,6 +75,8 @@ typedef struct DodMohaaBackend {
 	/* Set a script_model/script_object to its already-preloaded GoldSrc model. 0 when this TIKI was
 	   not baked/staged for the map; tag sampling still works without a drawable mesh. */
 	int (*set_model)(uint32_t id, const char *tiki);
+	/* Select a named exported sequence on an already-bound script model. */
+	int (*set_animation)(uint32_t id, const char *alias);
 	/* An order to an actor; returns 0 when id is not one. The game sends "movedone" when a walk/run
 	   order arrives and "death" when the actor dies, through Dod_MohaaNotify. NULL: no actors. */
 	int (*actor)(uint32_t id, int order, const float pos[3]);
