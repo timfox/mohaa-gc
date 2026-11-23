@@ -11,7 +11,7 @@ The control log reports `MAP_READY m1l2b`, `newgame world render ready`, and a l
 
 The current persistent MOHAA SD stage does not contain `wd_m1l2b.gcd`. The generic builder created it for the earlier scratch ISO. For a falsifiable follow-up, compare WorldDL and live-BSP with identical renderer content/camera and collect renderer timing/batch breakdowns, then run the chosen route on physical hardware or within a measured GameCube budget.
 
-Control DOL SHA-256: `00058c7af6468840062e39d0ef5536af6ce2d5537f188e7051b1cdda29bcd17e`  
-Dolphin revision: `7c9d49d63d`  
-Control screenshot: [m1l2b-live-bsp-dolphin.png](m1l2b-live-bsp-dolphin.png)  
+Control DOL SHA-256: `00058c7af6468840062e39d0ef5536af6ce2d5537f188e7051b1cdda29bcd17e`
+Dolphin revision: `7c9d49d63d`
+Control screenshot: [m1l2b-live-bsp-dolphin.png](m1l2b-live-bsp-dolphin.png)
 Control log: [live-bsp-dolphin.log](live-bsp-dolphin.log)
