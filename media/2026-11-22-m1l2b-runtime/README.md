@@ -50,3 +50,20 @@ The builder default is preserved. Xash3D-GC commit `0f16e2dc7` adds the low-fide
 - A filesystem pool allocation failed once during map load (225.04 KiB request); the map still reached the render-ready marker.
 
 Full Dolphin/OSReport log: [dolphin.log](/home/tim/Desktop/mohaa-gc/media/2026-11-22-m1l2b-runtime/dolphin.log).
+
+## WorldDL stage timing — 2026-11-22 4:47 PM PT
+
+A fresh 60-second Dolphin run enabled the renderer's bounded `gcvst` stage profiler while keeping the default WorldDL path and the full m1l2b prop pack enabled. It reached `MAP_READY m1l2b` and `newgame world render ready`; WorldDL reported 2,799 batches and the prop pack reported 254 instances, 101 models, and 20,089 triangles.
+
+![Latest m1l2b WorldDL gameplay capture](/home/tim/Desktop/mohaa-gc/media/2026-11-22-m1l2b-runtime/gcvst-20261122-164734/m1l2b-worlddl-gcvst.png)
+
+| Timed stage | Sample 1 | Sample 2 |
+|---|---:|---:|
+| WorldDL | 149.9 ms | 184.7 ms |
+| Static props | 11.7 ms | 5.7 ms |
+| Water | 0.3 ms | 0.0 ms |
+| Whole frame | 170.8 ms (5.9 fps) | 192.8 ms (5.2 fps) |
+
+The WorldDL traversal/draw stage dominates the measured frame. The 2,799-batch count is a useful workload marker, but is not proof that GX draw submission alone is the cost. The next optimization should separately measure candidate chunk traversal versus emitted batches and texture/lightmap binds, preserving the current prop-rendering path. Dolphin is not physical GameCube evidence.
+
+Run artifacts: [screenshot](gcvst-20261122-164734/m1l2b-worlddl-gcvst.png), [Dolphin log](gcvst-20261122-164734/dolphin.log), [build log](gcvst-20261122-164734/build.log), and [probe note](gcvst-20261122-164734/probe-note.md). Instrumented ISO SHA-256: `eda27e94947e8ce1a6bcfa6807ca01bc65f9c57ff078cbda2e4e56efac7def72`.

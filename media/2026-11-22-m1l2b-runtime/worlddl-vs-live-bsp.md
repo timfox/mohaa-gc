@@ -19,3 +19,11 @@ Control DOL SHA-256: `00058c7af6468840062e39d0ef5536af6ce2d5537f188e7051b1cdda29
 Dolphin revision: `7c9d49d63d`
 Control screenshot: [m1l2b-live-bsp-dolphin.png](m1l2b-live-bsp-dolphin.png)
 Control log: [live-bsp-dolphin.log](live-bsp-dolphin.log)
+
+## WorldDL stage profile — 2026-11-22 4:47 PM PT
+
+With the default WorldDL path and converted m1l2b props enabled, the `gcvst` capture reported 2,799 batches in frame 1. At the two bounded profiler summaries, WorldDL consumed 149.9 ms and 184.7 ms per frame, while props consumed 11.7 ms and 5.7 ms; water was at or below 0.3 ms. Whole-frame measurements were 170.8 ms (5.9 fps) and 192.8 ms (5.2 fps). The renderer reached both map/world-render readiness markers and loaded the 254-instance / 101-model prop pack.
+
+This confirms WorldDL is the dominant measured stage in this smoke view. It does not yet isolate time spent selecting chunks, preparing batches, binding textures/lightmaps, or submitting GX commands. Keep the props and WorldDL enabled while instrumenting those subcosts; do not use the fast live-BSP diagnostic as a fidelity replacement (that path omits props). The capture is under [gcvst-20261122-164734](gcvst-20261122-164734/), including the latest [screenshot](gcvst-20261122-164734/m1l2b-worlddl-gcvst.png), [full log](gcvst-20261122-164734/dolphin.log), and [build log](gcvst-20261122-164734/build.log).
+
+Instrumented ISO SHA-256: `eda27e94947e8ce1a6bcfa6807ca01bc65f9c57ff078cbda2e4e56efac7def72`.
