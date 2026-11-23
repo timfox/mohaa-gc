@@ -8,7 +8,7 @@
 - Smoke ISO SHA-256: `af34b60635f5f2a3239b88a8f0dfa3e19f661c5ee5aa5205bfddfec8e06de56b`.
 - ISO built from the staged MOHAA `m1l2b` map, shared local DoD/Valve boot assets, WorldDL assets, and a 41-entry `extras.pk3` with the large converted prop entries stored without compression.
 - Dolphin revision `7c9d49d63d`; 60-second run at 640x480. MMU and Accurate CPU Cache were enabled. The log shows the OpenGL shader cache. This is a Dolphin smoke route, not a retail gameplay session or physical GameCube run.
-- Reproducible artifacts copied here: `dolphin.log`, `engine-build.log`, `disc-build.log`, `m1l2b-force-ring.png`.
+- Reproducible artifacts copied here: `dolphin.log`, `engine-build.log`, `disc-build.log`, `m1l2b-force-ring.png`. Copied logs were normalized from CRLF to LF and trailing line padding was stripped; log content and order were preserved.
 
 ## Runtime evidence
 

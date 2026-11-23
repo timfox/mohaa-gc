@@ -80,7 +80,7 @@
 17:47:474 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:46] Xash3D GameCube: filesystem gameinfo load ready info=0x817ce9d8
 17:47:475 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:46] Xash3D GameCube: smoke boot mode=1 (gcmap=8, storage=1)
 17:47:475 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:46] Xash3D GameCube: mem stage=searchpaths total=119.30 Kb delta=34.88 Kb hwm=119.30 Kb map=(none) heap_used=777.94 Kb heap_free=41.81 Kb unclaimed=124 Kb
-17:47:475 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:46] Program args: xash xash -dev 2 -log -game mohaa -gcworldrender -gcmap m1l2b -gcvst -width 320 -height 240 
+17:47:475 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:46] Program args: xash xash -dev 2 -log -game mohaa -gcworldrender -gcmap m1l2b -gcvst -width 320 -height 240
 17:47:475 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:46] Developer level: 2
 17:47:476 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:46] host_writeconfig: disabled (no writable storage, using read-only disc)
 17:47:476 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:46] FS_LoadVFSConfig: no writable storage, loading vfs.cfg from disc
@@ -527,284 +527,284 @@
 17:49:022 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] Xash3D GameCube: entity spawn progress=0
 17:49:025 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] Xash3D GameCube: G330 ent private slab size=112 edict=0 hits=1 used=112 overflow=0
 17:49:026 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] Xash3D GameCube: entity parsed=0 classname=worldspawn
-17:49:028 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
+17:49:028 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
 17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: GAME SKILL LEVEL:1
-17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_agrunt_health1 **
-17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_agrunt_dmg_punch1 **
-17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_apache_health1 **
-17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_barney_health1 **
-17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_bullsquid_health1 **
-17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_bullsquid_dmg_bite1 **
-17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_bullsquid_dmg_whip1 **
-17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_bullsquid_dmg_spit1 **
-17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_gargantua_health1 **
-17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:029 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_gargantua_dmg_slash1 **
-17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_gargantua_dmg_fire1 **
-17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_gargantua_dmg_stomp1 **
-17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_hassassin_health1 **
-17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_headcrab_health1 **
-17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_headcrab_dmg_bite1 **
-17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_hgrunt_health1 **
-17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_hgrunt_kick1 **
-17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_hgrunt_pellets1 **
-17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_hgrunt_gspeed1 **
-17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:030 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_houndeye_health1 **
-17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_houndeye_dmg_blast1 **
-17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_islave_health1 **
-17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_islave_dmg_claw1 **
-17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_islave_dmg_clawrake1 **
-17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_islave_dmg_zap1 **
-17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_ichthyosaur_health1 **
-17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_ichthyosaur_shake1 **
-17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_leech_health1 **
-17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_leech_dmg_bite1 **
-17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:031 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_controller_health1 **
-17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_controller_dmgzap1 **
-17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_controller_speedball1 **
-17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_controller_dmgball1 **
-17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_nihilanth_health1 **
-17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_nihilanth_zap1 **
-17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_scientist_health1 **
-17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_snark_health1 **
-17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_snark_dmg_bite1 **
-17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:032 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_snark_dmg_pop1 **
-17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_zombie_health1 **
-17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_zombie_dmg_one_slash1 **
-17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_zombie_dmg_both_slash1 **
-17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_turret_health1 **
-17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_miniturret_health1 **
-17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_sentry_health1 **
-17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_plr_crowbar1 **
-17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_plr_9mm_bullet1 **
-17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_plr_357_bullet1 **
-17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:033 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_plr_9mmAR_bullet1 **
-17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_plr_9mmAR_grenade1 **
-17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_plr_buckshot1 **
-17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_plr_xbow_bolt_client1 **
-17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_plr_xbow_bolt_monster1 **
-17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_plr_rpg1 **
-17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_plr_gauss1 **
-17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_plr_egon_narrow1 **
-17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_plr_egon_wide1 **
-17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_plr_hand_grenade1 **
-17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_plr_satchel1 **
-17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:034 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_plr_tripmine1 **
-17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_12mm_bullet1 **
-17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_9mmAR_bullet1 **
-17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_9mm_bullet1 **
-17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_hornet_dmg1 **
-17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_suitcharger1 **
-17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_battery1 **
-17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_healthcharger1 **
-17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_healthkit1 **
-17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
-17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
-17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
+17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
+17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: ** GetSkillCVar Got a zero for sk_scientist_heal1 **
-17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 
+17:49:035 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]:
 17:49:036 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] *GameCube: world Precache full-actors=0 menuplaystart=0 fullactors=0
 17:49:036 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] *GameCube: world Precache post-soundent
 17:49:037 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] Xash3D GameCube: G330 ent private slab size=112 edict=2 hits=2 used=224 overflow=0
@@ -1215,7 +1215,7 @@
 17:49:376 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] Xash3D GameCube: entity parsed=320 classname=trigger_multiple
 17:49:380 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] Xash3D GameCube: DoD parity entity func_wall kept (kept=241 skipped=0 slab=48000 heap=11.19 Kb edicts=333)
 17:49:382 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] Xash3D GameCube: G330 ent private slab size=112 edict=334 hits=384 used=48224 overflow=0
-17:49:387 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
+17:49:387 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
 17:49:387 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: 0 entities inhibited
 17:49:387 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] Xash3D GameCube: entity spawn complete; game-rejected=0
 17:49:387 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] Xash3D GameCube: static props 0 drawn from 0 models, 0 without a model, 0 in the prop pack; edicts in use 336
@@ -1382,7 +1382,7 @@
 17:49:486 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] Xash3D GameCube: heap mark stage=client_module_ready used=952160 free=10144 unclaimed=4096 avail=14240
 17:49:486 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] Xash3D GameCube: deferred client init ready
 17:49:486 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] Xash3D GameCube: heap mark stage=deferred_client_init_ready used=952160 free=10144 unclaimed=4096 avail=14240
-17:49:489 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] Connected devices: joy 
+17:49:489 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] Connected devices: joy
 17:49:492 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] Trying to connect with modern protocol
 17:49:492 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] Xash3D GameCube: G161 synthetic activity for Dolphin probe
 17:49:493 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] Xash3D GameCube: skipping connect-time screen update for newgame
@@ -1399,7 +1399,7 @@
 17:49:512 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] Xash3D GameCube: emergency fragbuf slot 0 size=2479
 17:49:512 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] ucmd->new()
 17:49:514 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] Xash3D GameCube: emergency fragbuf slot 0 size=32768
-17:49:515 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] 
+17:49:515 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48]
 17:49:515 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: BUILD 4253 SERVER (0 CRC)
 17:49:515 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Server #1
 17:49:517 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [17:17:48] Serverdata packet received.
