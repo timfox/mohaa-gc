@@ -2,14 +2,14 @@
 
 ## Fresh baseline capture
 
-- Local capture time: 2026-11-22 18:03–18:04 PT; Dolphin timeout: 60 seconds.
+- Local capture time: 2026-11-22 18:03–18:04 PT; Dolphin timeout: 60 seconds. Another Dolphin process was active throughout this guest run, so frame timing and FPS are not isolated.
 - Route: `mohaa-ring-ab-baseline`; map reached `m1l2b`, then `gcmap smoke frames ready`.
 - Visual: [baseline screenshot](baseline/m1l2b-baseline.png), 640×480. Dolphin FPS overlay reads about 5.23.
 - Engine source used to build this DOL: `8b508c2d90e6a6e49fb081c183ff6955dbe919ec` (`engine-base`).
 - DOL SHA-256: `e8410377f45714023d0af7b66e841f2babefbda9d5fe69bcf15ef463adae306b`.
 - Smoke ISO SHA-256: `ddb4d0186b9cc6dec447f1fb5595afc6a70870bfdabb940757e426529ec82ca2`.
 - Runtime reported `world DL widest PVS 1139 Kb`, cache 192 KiB, 11 cache-tail texture slots plus 6 heap slots (17 near slots total). The later prop counters report horizon props and `prop draw tris=988 near=44`.
-- Timed WorldDL was 184.4 ms/frame; forced work 47.5 ms, texture binding 101.2 ms, props 5.7 ms, whole frame 192.7 ms (5.2 fps).
+- The raw log reported WorldDL at 184.4 ms/frame; forced work 47.5 ms, texture binding 101.2 ms, props 5.7 ms, whole frame 192.7 ms (5.2 fps). These are contaminated by the concurrent Dolphin and are not a valid standalone performance baseline.
 
 ## Candidate build
 
