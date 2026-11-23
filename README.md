@@ -166,6 +166,16 @@ python3 tools/bsp30_check.py m1l2a.bsp --point 0 0 40 1
 
 MOHAA scripts and baked model tags can advance the m1l1 opening truck path in Dolphin. The retail trucks and their scripted mesh animations are not rendered yet: scripted model entities still use invisible `info_target` placeholders. See [the cutscene status and next implementation](docs/MOHAA_CUTSCENE_STATUS.md) and [the tag-motion runtime evidence](media/2026-11-22-m1l1-tag-arena/README.md).
 
+`tools/mohaa_tiki_model.py` can bake a TIKI mesh's static idle pose to a GoldSrc Studio v10 MDL. For example, write the output into a temporary game tree; generated models contain retail data and must stay out of Git:
+
+```bash
+python3 tools/mohaa_tiki_model.py retail/main \
+  --model vehicles/gmctruck_opening.tik \
+  --out /tmp/mohaa-script-models/models/vehicles/gmctruck_opening.mdl
+```
+
+This prototype does not bake SKC animation playback or bind the MDL to script entities yet.
+
 ## Mission scripts
 
 `script/` holds a clean-room, MIT-licensed VM for MOHAA's `.scr` (Morpheus)
