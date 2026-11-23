@@ -638,6 +638,8 @@ def main(argv=None):
     ap.add_argument("--cd", nargs="+", help="install CD folders (holding DATA1.HDR / DATAn.CAB)")
     ap.add_argument("--music-source", action="append", default=[], metavar="DIR",
                     help="extra folder containing loose sound/ music files; repeat for split extractions")
+    ap.add_argument("--movie-source", action="append", default=[], metavar="DIR",
+                    help="extra folder containing the loose intro movie and soundtrack; repeat for split extractions")
     ap.add_argument("--sd", required=True, help="SD card root (or a folder to copy onto one later)")
     ap.add_argument("--gamedir", default="mohaa", help="game folder under xash3d/ (default mohaa)")
     ap.add_argument("--maps", default="", help="comma-separated maps (default: all the stage knows)")
@@ -672,6 +674,10 @@ def main(argv=None):
     for path in a.music_source:
         if not os.path.isdir(path):
             ap.error("music source folder does not exist: %s" % path)
+    a.movie_source = [os.path.abspath(path) for path in a.movie_source]
+    for path in a.movie_source:
+        if not os.path.isdir(path):
+            ap.error("movie source folder does not exist: %s" % path)
     for name in ("sdhlt", "tools_dir", "xash3d_gc", "work"):
         value = getattr(a, name)
         if value:
@@ -716,9 +722,14 @@ def main(argv=None):
     for s in stages:
         print("== %s" % s)
         try:
-            stage_sources = sources + (a.music_source if s == "music" else [])
-            if s == "music" and a.music_source:
-                print("music sources: %s" % ", ".join(a.music_source))
+            extra_sources = []
+            if s == "music":
+                extra_sources = a.music_source
+            elif s == "movie":
+                extra_sources = a.movie_source
+            stage_sources = sources + extra_sources
+            if extra_sources:
+                print("%s sources: %s" % (s, ", ".join(extra_sources)))
             files = STAGES[s](stage_sources, game_root, maps, work)
         except SystemExit as e:   # one stage's failure does not stop the others
             print("== %s: FAILED (%s)" % (s, e))

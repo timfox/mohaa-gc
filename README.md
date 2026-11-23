@@ -36,6 +36,17 @@ The movie stage converts MOHAA's silent `main/video/intro.RoQ` and its adjacent
 python3 tools/intro_movie.py ~/MOHAA/main/video/intro.RoQ --sd /media/SDCARD
 ```
 
+When the loose `Video Files` cabinet was extracted separately from the installed `main/` folder,
+pass that directory to the regular stager so it can find both the intro and its soundtrack:
+
+```bash
+python3 tools/mohaa_sd.py --mohaa ~/MOHAA --movie-source /path/to/Video_Files \
+  --sd /media/SDCARD --stages movie
+```
+
+Repeat `--movie-source` for additional extraction folders. The movie stage also searches the
+installed folder and CD groups supplied with `--cd`.
+
 It writes `xash3d/mohaa/media/mohaa_intro.gcvid` (GCV2, 320x240 RGB565 frames at 15 fps) and
 `mohaa_intro.gcpcm` (GCPA, 48 kHz stereo signed 16-bit big-endian PCM). The stock retail intro is
 letterboxed to preserve its 2:1 picture. On the local retail extraction, all 2,503 output frames
