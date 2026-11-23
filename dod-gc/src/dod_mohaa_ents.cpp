@@ -148,13 +148,19 @@ static int M_PrecacheModel( const char *path )
 }
 
 static int M_SetAnimation( uint32_t id, const char *alias );
+static const char *ActorTik( uint32_t id );
 
 static int M_SetModel( uint32_t id, const char *tiki )
 {
 	edict_t *e = EdictFor( id );
+	const char *classname;
+	const int actor = ActorTik( id ) != NULL;
 	char path[128];
 	size_t n;
-	if( !e || !tiki || strcmp( STRING( e->v.classname ), "mohaa_script_model" ) )
+	if( !e || !tiki )
+		return 0;
+	classname = STRING( e->v.classname );
+	if( strcmp( classname, "mohaa_script_model" ) && !actor )
 		return 0;
 	if( !strncmp( tiki, "models/", 7 ) )
 		snprintf( path, sizeof( path ), "%s", tiki );
@@ -173,7 +179,14 @@ static int M_SetModel( uint32_t id, const char *tiki )
 			e->v.frame = 0;
 			e->v.framerate = 0.0f; /* M_SetAnimation starts the TIKI's idle sequence below */
 			e->v.animtime = gpGlobals->time;
-			M_SetAnimation( id, "idle" ); /* applies the TIKI init surface state too */
+			if( actor ) {
+				studiohdr_t *header = (studiohdr_t *)GET_MODEL_PTR( e );
+				if( header )
+					for( int group = 0; group < header->numbodyparts && group < 31; group++ )
+						((CBaseAnimating *)e->pvPrivateData)->SetBodygroup( group, 1 );
+			} else {
+				M_SetAnimation( id, "idle" ); /* applies the TIKI init surface state too */
+			}
 			return 1;
 		}
 	return 0; /* tag-carrier TIKIs have no drawable MDL in the manifest */
@@ -219,10 +232,32 @@ LINK_ENTITY_TO_CLASS( mohaa_script_model, CMohaaScriptModel )
 static int M_SetAnimation( uint32_t id, const char *alias )
 {
 	edict_t *e = EdictFor( id );
-	if( !e || !alias || strcmp( STRING( e->v.classname ), "mohaa_script_model" ) )
+	if( !e || !alias )
 		return 0;
-	CMohaaScriptModel *model = (CMohaaScriptModel *)e->pvPrivateData;
-	return model ? model->SetScriptAnimation( alias ) : 0;
+	if( !strcmp( STRING( e->v.classname ), "mohaa_script_model" ) ) {
+		CMohaaScriptModel *model = (CMohaaScriptModel *)e->pvPrivateData;
+		return model ? model->SetScriptAnimation( alias ) : 0;
+	}
+	if( ActorTik( id ) ) {
+		CBaseAnimating *model = (CBaseAnimating *)e->pvPrivateData;
+		const int sequence = model ? model->LookupSequence( alias ) : -1;
+		if( sequence < 0 )
+			return 0;
+		e->v.sequence = sequence;
+		e->v.frame = 0;
+		e->v.framerate = 1.0f;
+		e->v.animtime = gpGlobals->time;
+		studiohdr_t *header = (studiohdr_t *)GET_MODEL_PTR( e );
+		if( header && sequence < header->numseq ) {
+			mstudioseqdesc_t *sequences = (mstudioseqdesc_t *)( (byte *)header + header->seqindex );
+			const unsigned int visible = (unsigned int)sequences[sequence].activity;
+			for( int group = 0; group < header->numbodyparts && group < 31; group++ )
+				model->SetBodygroup( group, ( visible >> group ) & 1 );
+		}
+		model->ResetSequenceInfo();
+		return 1;
+	}
+	return 0;
 }
 
 static float M_GetHealth( uint32_t id )
@@ -237,8 +272,6 @@ static void M_SetHealth( uint32_t id, float health )
 	if( e )
 		e->v.health = health;
 }
-
-static const char *ActorTik( uint32_t id );
 
 static const char *M_GetStr( uint32_t id, int what )
 {
@@ -392,6 +425,8 @@ static edict_t *SpawnActorAt( int team, const Vector &origin, float yaw, const c
 	if( targetname && targetname[0] )
 		e->v.targetname = ALLOC_STRING( targetname );
 	ActorTrack( e, team, tik );
+	if( tik )
+		M_SetModel( IdFor( e ), STRING( tik ) );
 	return e;
 }
 

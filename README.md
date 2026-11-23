@@ -178,16 +178,16 @@ python3 tools/mohaa_tiki_model.py retail/main \
 
 The exporter supports Xash's four-influence Studio v10 skinning format and up to 31 surface bodygroups. It reads animation aliases through included TIKIs; repeat `--animation <alias>` to keep a small mission-specific sequence set. When a vertex has more than four influences, it keeps the four strongest and renormalizes them. Models with an unsupported skeleton fall back to a posed static model. The script-entity sequence binding still needs a GameCube build and runtime capture.
 
-The m1l1 German Afrika private TIKI now converts its 42-bone body mesh with the three scripted visa-idle sequences (`driver_idlevisa`, `passenger_idlevisa`, `guard_idlevisa`). The current export is a body-only staging artifact; the TIKI's head, hands, weapon/equipment components and in-game actor binding remain to be integrated.
+The m1l1 German Afrika private TIKI now exports as a composite Studio model: body, covered head, hands, helmet, loadout, and KAR clip share a 72-bone rig, with the three scripted visa-idle sequences (`driver_idlevisa`, `passenger_idlevisa`, `guard_idlevisa`). The map staging manifest includes it, and the MOHAA binding assigns the baked model and sequences to tracked script actors. This is conversion and source-integration evidence; a visible in-game actor animation still needs runtime capture.
 
-To stage the two visible m1l1 truck models and `maps/m1l1.models` on an SD card, use:
+To stage the visible m1l1 trucks, configured scripted actors, and `maps/m1l1.models` on an SD card, use:
 
 ```bash
 python3 tools/mohaa_sd.py --mohaa ~/MOHAA --sd /media/SDCARD \
   --maps m1l1 --stages scriptmodels --list
 ```
 
-The GameCube game code precaches the manifest at `ServerActivate`; only TIKIs baked into that manifest are assigned to script entities. The actor body export is not yet in the manifest, and no runtime capture has confirmed the truck or actor models animating in-game.
+The GameCube game code precaches the manifest at `ServerActivate`; matching TIKIs are assigned to script entities and tracked mission actors. No runtime capture has confirmed the truck or actor models animating in-game.
 
 ## Mission scripts
 

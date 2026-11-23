@@ -2,8 +2,9 @@
 """Bake MOHAA TIKI meshes and SKC sequences to a GoldSrc studio model.
 
 The exporter keeps the TIKI skeleton and writes named Studio v10 sequences so
-MOHAA script ``anim`` commands can select them at runtime. Multi-weight meshes
-still use the static posed fallback until their skinning layout is supported.
+MOHAA script ``anim`` commands can select them at runtime. Composite TIKIs can
+merge configured SKD parts by bone name. Xash's four-influence skin format keeps
+the strongest four MOHAA weights and renormalizes them.
 
 Example:
   python3 tools/mohaa_tiki_model.py retail/main \
@@ -465,7 +466,7 @@ def _static_mdl(name: str, parts, skin: bytes, width: int, height: int, texture_
 
 
 def convert(main_paths, model: str, output: Path, skin_size: int = 256, scale: float | None = None,
-            animation_names=None):
+            animation_names=None, components=None):
 	files = collect(main_paths, (".tik", ".skd", ".skb", ".skc", ".shader", ".tga", ".jpg", ".png", ".bmp"))
 	model = mohaa_skd.norm(model)
 	if not model.startswith("models/"):
@@ -477,8 +478,62 @@ def convert(main_paths, model: str, output: Path, skin_size: int = 256, scale: f
 	tik = mohaa_skd.parse_tik(read(files[model]).decode("latin-1", "replace"))
 	if tik.mesh not in files:
 		raise ValueError(f"retail mesh not found: {tik.mesh}")
-	skd = mohaa_skd.parse_skd(read(files[tik.mesh]), tik.mesh)
 	tik_text = read(files[model]).decode("latin-1", "replace")
+	shaders = {}
+	for path, entry in files.items():
+		if path.endswith(".shader"):
+			shaders.update(mohaa_skd.parse_shaders(read(entry).decode("latin-1", "replace")))
+	component_sources = [(tik, tik.mesh)]
+	for component in components or ():
+		if isinstance(component, str):
+			component_path = mohaa_skd.norm(component)
+			if not component_path.startswith("models/"):
+				component_path = "models/" + component_path
+			if not component_path.endswith(".tik"):
+				component_path += ".tik"
+			if component_path not in files:
+				raise ValueError(f"retail component TIKI not found: {component_path}")
+			component_tik = mohaa_skd.parse_tik(read(files[component_path]).decode("latin-1", "replace"))
+			component_tik_path = component_tik.mesh
+		else:
+			component_tik = mohaa_skd.Tik(path=os.path.dirname(mohaa_skd.norm(component["mesh"])),
+			                              skelmodel=os.path.basename(mohaa_skd.norm(component["mesh"])),
+			                              scale=tik.scale, shaders={k.lower(): v for k, v in component["surfaces"].items()})
+			component_tik_path = component_tik.mesh
+		if component_tik_path not in files:
+			raise ValueError(f"retail component mesh not found: {component_tik_path}")
+		component_sources.append((component_tik, component_tik_path))
+	component_skds = [(component_tik, mesh_path,
+	                   mohaa_skd.parse_skd(read(files[mesh_path]), mesh_path))
+	                  for component_tik, mesh_path in component_sources]
+	# Meshes authored as separate TIKI parts share a named rig. Union that rig by
+	# bone name, then remap each component's influences before animation baking.
+	merged_bones, merged_parents, merged_index = [], [], {}
+	for _component_tik, mesh_path, source_skd in component_skds:
+		for bone_name, parent_name in zip(source_skd.bones, source_skd.bone_parents):
+			key = bone_name.lower()
+			parent = (parent_name or "").lower()
+			if key in merged_index:
+				if merged_parents[merged_index[key]].lower() != parent:
+					raise ValueError(f"composite rig parent mismatch for {bone_name} in {mesh_path}")
+				continue
+			merged_index[key] = len(merged_bones)
+			merged_bones.append(bone_name)
+			merged_parents.append(parent_name)
+			if parent and parent != "worldbone" and parent not in merged_index:
+				# This component's skeleton is parent-first, so an absent parent here
+				# means the source rig itself is incomplete for an animated export.
+				raise ValueError(f"composite rig parent {parent_name} precedes no bone in {mesh_path}")
+	composite = mohaa_skd.Skd(model, 5, len(merged_bones), merged_bones, merged_parents, [])
+	surface_owners = []
+	for component_tik, mesh_path, source_skd in component_skds:
+		for surface in source_skd.surfaces:
+			surface.weights = [[(merged_index[source_skd.bones[bone].lower()], weight, offset)
+			                    for bone, weight, offset in weights]
+			                   for weights in surface.weights]
+			composite.surfaces.append(surface)
+			surface_owners.append(component_tik)
+	skd = composite
 	animation_aliases = _tiki_animation_aliases(files, model)
 	if animation_names:
 		wanted = {name.lower() for name in animation_names}
@@ -496,16 +551,12 @@ def convert(main_paths, model: str, output: Path, skin_size: int = 256, scale: f
 			a.lower() == "idlenolights" for a, _ in animation_aliases):
 		animation_aliases.append(("idlenolights", idle_path))
 		alias_hidden["idlenolights"] = set(init_hidden)
-	shaders = {}
-	for path, entry in files.items():
-		if path.endswith(".shader"):
-			shaders.update(mohaa_skd.parse_shaders(read(entry).decode("latin-1", "replace")))
-	texture_paths, surface_textures, kept = [], {}, []
-	for surface in skd.surfaces:
-		shader = tik.shaders.get(surface.name.lower(), "")
+	texture_paths, kept, kept_texture_ids = [], [], []
+	for surface, owner_tik in zip(skd.surfaces, surface_owners):
+		shader = owner_tik.shaders.get(surface.name.lower(), "")
 		if "nodraw" in shader.lower():
 			continue
-		texture = mohaa_skd.surface_texture(tik, surface.name, shaders)
+		texture = mohaa_skd.surface_texture(owner_tik, surface.name, shaders)
 		if not texture:
 			continue
 		candidate = texture.lower().lstrip("/")
@@ -517,8 +568,8 @@ def convert(main_paths, model: str, output: Path, skin_size: int = 256, scale: f
 			raise ValueError(f"diffuse texture not found for {surface.name}: {texture}")
 		if candidate not in texture_paths:
 			texture_paths.append(candidate)
-		surface_textures[surface.name] = texture_paths.index(candidate)
 		kept.append(surface)
+		kept_texture_ids.append(texture_paths.index(candidate))
 	if not kept or not texture_paths:
 		raise ValueError("no textured surfaces remain after filtering")
 	if len(kept) > 31:
@@ -541,11 +592,11 @@ def convert(main_paths, model: str, output: Path, skin_size: int = 256, scale: f
 	atlas, rects = _atlas([read(files[p]) for p in texture_paths], skin_size)
 	skin, texw, texh, texture_flags = _skin(atlas)
 	parts = []
-	for surface in kept:
+	for surface, texture_id in zip(kept, kept_texture_ids):
 		positions, normals, triangles = [], [], []
 		position_weights, normal_weights = [], []
 		position_ids, normal_ids = {}, {}
-		rect = rects[surface_textures[surface.name]]
+		rect = rects[texture_id]
 		for tri in surface.triangles:
 			corners = []
 			for index in tri:

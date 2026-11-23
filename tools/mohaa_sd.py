@@ -262,7 +262,25 @@ def stage_tags(sources, game_root, maps, work):
 
 SCRIPT_TIKI_MODELS = {
     # The visible m1l1 trucks. The gmctruckpath/truck2path TIKIs are tag carriers with helper triangles.
-    "m1l1": ("vehicles/gmctruck_opening.tik", "vehicles/opeltruck.tik"),
+    "m1l1": ("vehicles/gmctruck_opening.tik", "vehicles/opeltruck.tik",
+             "human/german_afrika_private.tik"),
+}
+
+# The retail German private is a composite TIKI: its body, head and equipment use
+# separate SKDs. The mission's default KAR 98K loadout is baked into one Studio rig.
+SCRIPT_TIKI_COMPONENTS = {
+    "human/german_afrika_private.tik": (
+        {"mesh": "models/human/heads/dakhead.skd", "surfaces": {"head": "facewrap"}},
+        {"mesh": "models/human/hands/hand.skd", "surfaces": {"hand": "handsnew"}},
+        {"mesh": "models/gear/g_headgear/germanhelmet.skd",
+         "surfaces": {"outside": "dak_helmet", "inside": "german-helmet_inside"}},
+        {"mesh": "models/gear/dak/dakloadout.skd", "surfaces": {"dakloadout": "german_gear"}},
+        {"mesh": "models/gear/dak/dakkarclip.skd", "surfaces": {"dakkarclip": "german_riflebelt"}},
+    ),
+}
+
+SCRIPT_TIKI_ANIMATIONS = {
+    "human/german_afrika_private.tik": ("driver_idlevisa", "passenger_idlevisa", "guard_idlevisa"),
 }
 
 
@@ -282,7 +300,9 @@ def stage_script_models(sources, game_root, maps, work):
             rel = "models/" + tiki[:-4] + ".mdl"
             output = os.path.join(game_root, rel)
             parts, verts, tris, textures, scale, idle = mohaa_tiki_model.convert(
-                sources, tiki, Path(output))
+                sources, tiki, Path(output),
+                animation_names=SCRIPT_TIKI_ANIMATIONS.get(tiki, None),
+                components=SCRIPT_TIKI_COMPONENTS.get(tiki, ()))
             print("MOHAA script model %s: %d bodygroups, %d triangles, %d bodygroup verts, scale %.5f, idle %s" %
                   (tiki, parts, tris, verts, scale, idle or "-"))
             model_paths.append(rel)

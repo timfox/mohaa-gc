@@ -1395,14 +1395,16 @@ static int c_model(ms_call *c)
 	const uint32_t id = target_id(c);
 	DodCine *k = cine(id, 1);
 	const char *name = anim_name(c, 0, buf, sizeof(buf));
+	const char *classname = valid(id) && S.be.get_str ? S.be.get_str(id, DOD_MOHAA_CLASSNAME) : "";
+	const char *model = valid(id) && S.be.get_str ? S.be.get_str(id, DOD_MOHAA_MODEL) : "";
 	if (k) {
 		k->model = MohaaTags_Model(&S.tags, MohaaTags_Hash(name));
 		k->anim = 0;
 	}
 	/* The tag-carrier path TIKIs have no drawable mesh. The backend accepts only
-	   script models listed in this map's .models precache manifest. */
-	if (S.be.set_model && valid(id) && S.be.get_str &&
-	    !strcmp(S.be.get_str(id, DOD_MOHAA_CLASSNAME), "mohaa_script_model"))
+	   script models and actors listed in this map's .models precache manifest. */
+	if (S.be.set_model && valid(id) &&
+	    (!strcmp(classname, "mohaa_script_model") || strstr(model, ".tik")))
 		S.be.set_model(id, name);
 	return 0;
 }
@@ -1415,8 +1417,10 @@ static int c_anim(ms_call *c)
 	DodCine *k = cine(id, 1);
 	float len;
 	const char *alias = anim_name(c, 0, buf, sizeof(buf));
-	if (S.be.set_animation && valid(id) && S.be.get_str &&
-	    !strcmp(S.be.get_str(id, DOD_MOHAA_CLASSNAME), "mohaa_script_model"))
+	const char *classname = valid(id) && S.be.get_str ? S.be.get_str(id, DOD_MOHAA_CLASSNAME) : "";
+	const char *model = valid(id) && S.be.get_str ? S.be.get_str(id, DOD_MOHAA_MODEL) : "";
+	if (S.be.set_animation && valid(id) &&
+	    (!strcmp(classname, "mohaa_script_model") || strstr(model, ".tik")))
 		S.be.set_animation(id, alias);
 	if (!k)
 		return 0;
