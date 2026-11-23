@@ -6,21 +6,21 @@
 
 The runtime log shows the retail m1l1 script loading 5 tagged models and 65 animation lengths, joining as Allies Rifleman, and reading a moving `truck2` tag path through to its endpoint. See [the tag-motion report and capture](../media/2026-11-22-m1l1-tag-arena/README.md).
 
-The current game-side bindings do not render the scene's script models:
+The first render-binding pass is now in the source, but has not been built or run on GameCube yet:
 
-- `M_Spawn` in `dod-gc/src/dod_mohaa_ents.cpp` maps `script_model`, `script_origin`, and `script_object` to `info_target`.
-- `M_Spawn` skips their `model` key because MOHAA `.tik` models are not converted/precached as GoldSrc models.
-- `c_model` in `dod-gc/src/dod_mohaa.c` selects a baked tag model for tag lookup; it does not assign a drawable model.
-- `anim` currently supplies animation timing and tag sampling; it does not deform or sequence a rendered mesh.
+- `script_model` and `script_object` now spawn as `CBaseAnimating` entities; `script_origin` remains an invisible `info_target`.
+- `c_model` still selects the baked tag data and now assigns an MDL to renderable script models when its TIKI appears in `maps/<map>.models`.
+- The backend reads that manifest and precaches the MDLs in the GameCube `ServerActivate` hook before the first mission frame.
+- `anim` still supplies only tag sampling and `animdone` timing; the static MDL does not play the retail SKC sequence.
 
-Consequently the verified moving path is script/runtime behavior only. The opening trucks and scripted driver meshes are still missing from the visual scene. The existing screenshot is after the ride, not a mid-cutscene visual proof.
+The last verified Dolphin build proved tag/path progression only; its capture is after the ride and does not show a mid-cutscene view. The new render binding has not yet been built, so visible truck rendering remains unverified.
 
-An offline static-mesh prototype now exists at `tools/mohaa_tiki_model.py`. Using the retail `main/` data, it baked `vehicles/gmctruck_opening.tik` as a 269,724-byte Studio v10 model (13 surface bodygroups, 5,171 triangles) and `vehicles/opeltruck.tik` as a 214,624-byte model (11 bodygroups, 4,659 triangles). `dod-gc/tools/split_studio_mdl.py info` parsed both outputs and reported one sequence and one texture. The generated MDLs stay in `/tmp/mohaa-script-models/`; retail-derived models are not committed.
+`tools/mohaa_tiki_model.py` bakes `vehicles/gmctruck_opening.tik` as a 269,724-byte Studio v10 model (13 surface bodygroups, 5,171 triangles) and `vehicles/opeltruck.tik` as a 214,624-byte model (11 bodygroups, 4,659 triangles). The `scriptmodels` stage in `tools/mohaa_sd.py` writes both to the user's SD game directory and creates `maps/m1l1.models`. A staging run produced the two MDLs plus that manifest; `dod-gc/tools/split_studio_mdl.py info` parsed both outputs. Retail-derived outputs stay on the SD card and are not committed.
 
-This conversion is a static idle-pose mesh only. It does not preserve the truck's animated wheels/lights, the scripted driver poses, or other SKC sequences, and the game does not load or display these MDLs yet.
+This conversion is a static idle-pose mesh only. It does not preserve the truck's animated wheels/lights, the scripted driver poses, or other SKC sequences. The new source binding still needs a GameCube runtime capture to prove it loads and displays these MDLs.
 
 ## Next implementation
 
-Add runtime model preloading and binding for the two converted truck meshes so the script's `.model`, `.origin`, and `.angles` commands affect visible entities. Then add SKC sequence playback for commands such as `idlenolights` and `start_wheels`, and convert/render the scripted human actors. The path-follow TIKIs are tag carriers with a tiny helper triangle, so keep them as tag sources rather than treating them as visible truck models. Capture the ride mid-sequence in Dolphin and compare placement and motion against the retail script/reference. Do not call the opening cutscene complete until the models render and the frame capture confirms the scripted camera/path visually.
+Run the new code on a GameCube build with the `scriptmodels` stage output. Confirm that both models precache, render, follow the script's `.origin`/`.angles`, and remain in the camera view during the opening. Then add SKC playback for sequences such as `idlenolights` and `start_wheels`, and convert/render the scripted human actors. The path-follow TIKIs are tag carriers with helper triangles; keep them as tag sources. Do not call the opening cutscene complete until a mid-sequence runtime capture confirms the models and camera visually.
 
 Physical GameCube playback remains a separate validation gate.

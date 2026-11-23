@@ -384,14 +384,26 @@ def integrate_pm_layout_hook(dlls: Path) -> None:
 
 
 def integrate_precache_bodies_hook(dlls: Path) -> None:
-	"""ServerActivate precaches the map's team bodies (DodGC_PrecacheTeamBodies in dod_runtime.cpp), after the entities spawn."""
+	"""ServerActivate precaches DoD bodies and MOHAA script models after map entities spawn."""
 	client = dlls / "client.cpp"
-	if "DodGC_PrecacheTeamBodies" in client.read_text():
-		return
-	replace_once(client, "void ServerActivate( edict_t *pEdictList, int edictCount, int clientMax )\n{\n",
-		"void DodGC_PrecacheTeamBodies( void );\nvoid ServerActivate( edict_t *pEdictList, int edictCount, int clientMax )\n{\n")
-	replace_once(client, "\tg_serveractive = 1;\n",
-		"\tg_serveractive = 1;\n#ifdef __GAMECUBE__\n\tDodGC_PrecacheTeamBodies();\n#endif\n")
+	text = client.read_text()
+	decls = []
+	if "DodGC_PrecacheTeamBodies" not in text:
+		decls.append("void DodGC_PrecacheTeamBodies( void );")
+	if "DodGC_MohaaPrecacheModels" not in text:
+		decls.append("void DodGC_MohaaPrecacheModels( void );")
+	if decls:
+		replace_once(client, "void ServerActivate( edict_t *pEdictList, int edictCount, int clientMax )\n{\n",
+			"\n".join(decls) + "\nvoid ServerActivate( edict_t *pEdictList, int edictCount, int clientMax )\n{\n")
+	text = client.read_text()
+	call = "\tg_serveractive = 1;\n#ifdef __GAMECUBE__\n"
+	if "DodGC_PrecacheTeamBodies();" not in text:
+		call += "\tDodGC_PrecacheTeamBodies();\n"
+	if "DodGC_MohaaPrecacheModels();" not in text:
+		call += "\tDodGC_MohaaPrecacheModels();\n"
+	call += "#endif\n"
+	if "DodGC_PrecacheTeamBodies();" not in text or "DodGC_MohaaPrecacheModels();" not in text:
+		replace_once(client, "\tg_serveractive = 1;\n", call)
 
 
 def integrate_weaponbox_null_check(dlls: Path) -> None:

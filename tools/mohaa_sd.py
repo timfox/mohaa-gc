@@ -34,6 +34,8 @@ Stages run in this order (--stages picks some; by default every one whose tools 
   music     soundtracks and tracks                         needs ffmpeg
   sounds    per-map sound tables and samples
   scripts   level scripts and the global/ libraries
+  scriptmodels static MDL meshes for m1l1's scripted trucks (needs Pillow)
+  tags      cutscene model tags and animation durations
   maps      maps/<map>.bsp with MOHAA's textures and skybox (+ .mcol collision, .nodes, media/lg_<map>.gcg light grid)
                                                            needs the patched SDHLT: built once (git, cmake, C++)
   worlddl   media/wd_<map>.gcd GameCube world bake         needs --xash3d-gc DIR (a checkout of xash3d-gc)
@@ -255,6 +257,40 @@ def stage_tags(sources, game_root, maps, work):
     before = _snapshot(game_root)
     if mohaa_tags.main(list(sources) + ["--out", game_root, "--maps", ",".join(maps)]):
         raise SystemExit("tags stage failed")
+    return _written(game_root, before)
+
+
+SCRIPT_TIKI_MODELS = {
+    # The visible m1l1 trucks. The gmctruckpath/truck2path TIKIs are tag carriers with helper triangles.
+    "m1l1": ("vehicles/gmctruck_opening.tik", "vehicles/opeltruck.tik"),
+}
+
+
+def stage_script_models(sources, game_root, maps, work):
+    """Bake the supported scripted TIKI meshes and a map-local precache manifest."""
+    from pathlib import Path
+    import mohaa_tiki_model
+
+    selected = maps or sorted(map_sources(sources))
+    before = _snapshot(game_root)
+    for mapname in selected:
+        tikis = SCRIPT_TIKI_MODELS.get(mapname.lower(), ())
+        if not tikis:
+            continue
+        model_paths = []
+        for tiki in tikis:
+            rel = "models/" + tiki[:-4] + ".mdl"
+            output = os.path.join(game_root, rel)
+            parts, verts, tris, textures, scale, idle = mohaa_tiki_model.convert(
+                sources, tiki, Path(output))
+            print("MOHAA script model %s: %d bodygroups, %d triangles, %d bodygroup verts, scale %.5f, idle %s" %
+                  (tiki, parts, tris, verts, scale, idle or "-"))
+            model_paths.append(rel)
+        manifest = os.path.join(game_root, "maps", mapname.lower() + ".models")
+        os.makedirs(os.path.dirname(manifest), exist_ok=True)
+        with open(manifest, "w", newline="\n") as fh:
+            fh.write("# Baked MOHAA script models; retail assets stay on the user's SD card.\n")
+            fh.writelines(path + "\n" for path in model_paths)
     return _written(game_root, before)
 
 
@@ -571,6 +607,7 @@ STAGES = {
     "sounds": stage_sounds,
     "scripts": stage_scripts,
     "tags": stage_tags,
+    "scriptmodels": stage_script_models,
     "maps": stage_maps,
     "worlddl": stage_worlddl,
     "props": stage_props,
@@ -587,6 +624,11 @@ def missing_tools(stage):
         except ImportError:
             return "needs Pillow and numpy (pip install pillow numpy)"
     if stage == "hud":
+        try:
+            import PIL  # noqa: F401
+        except ImportError:
+            return "needs Pillow (pip install pillow)"
+    if stage == "scriptmodels":
         try:
             import PIL  # noqa: F401
         except ImportError:

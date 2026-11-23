@@ -1392,11 +1392,18 @@ static const char *anim_name(ms_call *c, int i, char *buf, size_t size)
 static int c_model(ms_call *c)
 {
 	char buf[128];
-	DodCine *k = cine(target_id(c), 1);
+	const uint32_t id = target_id(c);
+	DodCine *k = cine(id, 1);
+	const char *name = anim_name(c, 0, buf, sizeof(buf));
 	if (k) {
-		k->model = MohaaTags_Model(&S.tags, MohaaTags_Hash(anim_name(c, 0, buf, sizeof(buf))));
+		k->model = MohaaTags_Model(&S.tags, MohaaTags_Hash(name));
 		k->anim = 0;
 	}
+	/* The tag-carrier path TIKIs have no drawable mesh. The backend accepts only
+	   script models listed in this map's .models precache manifest. */
+	if (S.be.set_model && valid(id) && S.be.get_str &&
+	    !strcmp(S.be.get_str(id, DOD_MOHAA_CLASSNAME), "mohaa_script_model"))
+		S.be.set_model(id, name);
 	return 0;
 }
 
@@ -2181,6 +2188,70 @@ static void nodes_load(const char *mapname)
 	snprintf(msg, sizeof(msg), "mohaa: %d path nodes from %s, %d links (%d walk tests)\n", S.paths.count, path,
 		S.path_links, traces);
 	S.be.print(DOD_MOHAA_PRINT_CONSOLE, msg);
+}
+
+/* The script VM is created before map activation, but model precaching must wait until ServerActivate:
+   the game DLL then knows all map models and the engine promotes only precached models to its studio arena. */
+void Dod_MohaaPrecacheModels(void)
+{
+	char path[128], line[128];
+	size_t len = 0, at = 0;
+	char *text;
+	int loaded = 0;
+	if (!S.level_script[0] || !S.be.load_file || !S.be.precache_model)
+		return;
+	if (snprintf(path, sizeof(path), "%s", S.level_script) >= (int)sizeof(path))
+		return;
+	{
+		char *ext = strrchr(path, '.');
+		if (!ext || strcmp(ext, ".scr"))
+			return;
+		snprintf(ext, sizeof(path) - (size_t)(ext - path), ".models");
+	}
+	text = S.be.load_file(path, &len);
+	if (!text)
+		return;
+	while (at < len) {
+		size_t n = 0;
+		int too_long = 0;
+		while (at < len && text[at] != '\n') {
+			if (n + 1 < sizeof(line))
+				line[n++] = text[at];
+			else
+				too_long = 1;
+			at++;
+		}
+		if (at < len)
+			at++;
+		line[n] = 0;
+		while (n && (line[n - 1] == '\r' || line[n - 1] == ' ' || line[n - 1] == '\t'))
+			line[--n] = 0;
+		{
+			char *first = line;
+			size_t first_len;
+			while (*first == ' ' || *first == '\t')
+				first++;
+			if (too_long || !*first || *first == '#' || *first == '/')
+				continue;
+			first_len = strlen(first);
+			if (strncmp(first, "models/", 7) || first_len < 12 ||
+			    strcmp(first + first_len - 4, ".mdl") || strstr(first, "..")) {
+				S.be.print(DOD_MOHAA_PRINT_ERROR, "mohaa: ignored invalid model in precache manifest\n");
+				continue;
+			}
+			if (S.be.precache_model(first))
+				loaded++;
+			else
+				S.be.print(DOD_MOHAA_PRINT_ERROR, "mohaa: could not precache a scripted model\n");
+		}
+	}
+	if (S.be.free_file)
+		S.be.free_file(text);
+	if (loaded) {
+		char msg[128];
+		snprintf(msg, sizeof(msg), "mohaa: pre-cached %d scripted models from %s\n", loaded, path);
+		S.be.print(DOD_MOHAA_PRINT_CONSOLE, msg);
+	}
 }
 
 int Dod_MohaaLevelInit(const DodMohaaBackend *backend, const char *mapname, float now, size_t memory_budget)

@@ -69,6 +69,12 @@ typedef struct DodMohaaBackend {
 	void (*sound)(uint32_t id, const char *sample, int loop, float volume, float attn, int channel);
 	/* At level start, for each sample maps/<map>.snd names. NULL: nothing to precache (host tests). */
 	void (*precache_sound)(const char *sample);
+	/* Scripted TIKI models baked to GoldSrc MDL by tools/mohaa_tiki_model.py. Models are precached
+	   from maps/<map>.models at ServerActivate, before the level script's first frame. */
+	int (*precache_model)(const char *model);
+	/* Set a script_model/script_object to its already-preloaded GoldSrc model. 0 when this TIKI was
+	   not baked/staged for the map; tag sampling still works without a drawable mesh. */
+	int (*set_model)(uint32_t id, const char *tiki);
 	/* An order to an actor; returns 0 when id is not one. The game sends "movedone" when a walk/run
 	   order arrives and "death" when the actor dies, through Dod_MohaaNotify. NULL: no actors. */
 	int (*actor)(uint32_t id, int order, const float pos[3]);
@@ -121,6 +127,8 @@ typedef struct DodMohaaStats {
 /* Start the map's script if maps/<mapname>.scr exists. Replaces any previous map's VM.
  * memory_budget 0 means unlimited. Returns 1 when a script is running. */
 int Dod_MohaaLevelInit(const DodMohaaBackend *backend, const char *mapname, float now, size_t memory_budget);
+/* Called from ServerActivate, after map entities spawn but before runtime. */
+void Dod_MohaaPrecacheModels(void);
 /* Every server frame: sends "prespawn" then "spawn" to level, runs threads, finishes moves. */
 void Dod_MohaaThink(float now);
 void Dod_MohaaShutdown(void);

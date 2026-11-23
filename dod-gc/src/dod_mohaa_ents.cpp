@@ -15,6 +15,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 /* Script memory cap in KiB. MEM1 is tight on GameCube (see docs/MEMORY.md); a level whose
  * scripts do not fit is refused cleanly at load instead of starving the engine. */
@@ -122,6 +123,72 @@ static void M_SetVec( uint32_t id, int what, const float v[3] )
 	else
 		UTIL_SetOrigin( VARS( e ), Vector( v[0], v[1], v[2] ) );
 }
+
+/* Scripted TIKI models baked for this map and precached from its .models manifest. */
+#define MOHAA_SCRIPT_MODEL_LIMIT 32
+static char g_mohaa_script_models[MOHAA_SCRIPT_MODEL_LIMIT][128];
+static int g_mohaa_script_model_count;
+
+static int M_PrecacheModel( const char *path )
+{
+	if( !path || strncmp( path, "models/", 7 ) || strlen( path ) < 12 ||
+	    strcmp( path + strlen( path ) - 4, ".mdl" ) || strstr( path, ".." ) ||
+	    g_mohaa_script_model_count >= MOHAA_SCRIPT_MODEL_LIMIT )
+		return 0;
+	for( int i = 0; i < g_mohaa_script_model_count; i++ )
+		if( !strcmp( g_mohaa_script_models[i], path ) )
+			return 1;
+	if( PRECACHE_MODEL( (char *)path ) <= 0 )
+		return 0;
+	strncpy( g_mohaa_script_models[g_mohaa_script_model_count], path,
+	         sizeof( g_mohaa_script_models[0] ) - 1 );
+	g_mohaa_script_model_count++;
+	return 1;
+}
+
+static int M_SetModel( uint32_t id, const char *tiki )
+{
+	edict_t *e = EdictFor( id );
+	char path[128];
+	size_t n;
+	if( !e || !tiki || strcmp( STRING( e->v.classname ), "mohaa_script_model" ) )
+		return 0;
+	if( !strncmp( tiki, "models/", 7 ) )
+		snprintf( path, sizeof( path ), "%s", tiki );
+	else
+		snprintf( path, sizeof( path ), "models/%s", tiki );
+	n = strlen( path );
+	if( n < 4 || strcmp( path + n - 4, ".tik" ) )
+		return 0;
+	memcpy( path + n - 4, ".mdl", 5 );
+	for( char *p = path; *p; p++ )
+		*p = (char)tolower( (unsigned char)*p );
+	for( int i = 0; i < g_mohaa_script_model_count; i++ )
+		if( !strcmp( g_mohaa_script_models[i], path ) ) {
+			SET_MODEL( e, path );
+			e->v.sequence = 0;
+			e->v.frame = 0;
+			e->v.framerate = 0.0f; /* the baked idle pose remains static */
+			e->v.animtime = gpGlobals->time;
+			return 1;
+		}
+	return 0; /* tag-carrier TIKIs have no drawable MDL in the manifest */
+}
+
+class CMohaaScriptModel : public CBaseAnimating
+{
+public:
+	void Spawn( void )
+	{
+		pev->movetype = MOVETYPE_NONE;
+		pev->solid = SOLID_NOT;
+		pev->sequence = 0;
+		pev->frame = 0;
+		pev->framerate = 0.0f;
+		UTIL_SetOrigin( pev, pev->origin );
+	}
+};
+LINK_ENTITY_TO_CLASS( mohaa_script_model, CMohaaScriptModel )
 
 static float M_GetHealth( uint32_t id )
 {
@@ -625,8 +692,10 @@ static uint32_t M_Spawn( const char *classname, const char *const *keys, const c
 {
 	if( IsActorClass( classname ) )
 		return SpawnActor( classname, keys, values, count );
-	/* MOHAA's script helpers have no GoldSrc class: a point entity holds their place */
-	if( !strcmp( classname, "script_model" ) || !strcmp( classname, "script_origin" ) || !strcmp( classname, "script_object" ) )
+	/* Renderable script models use a CBaseAnimating point entity; origins remain invisible helpers. */
+	if( !strcmp( classname, "script_model" ) || !strcmp( classname, "script_object" ) )
+		classname = "mohaa_script_model";
+	else if( !strcmp( classname, "script_origin" ) )
 		classname = "info_target";
 	/* "spawn models/statweapons/x.tik" (a model as the class, as MOHAA allows) or an empty class: no GoldSrc class has
 	 * such a name, and asking the engine would only log "No spawn function" */
@@ -643,7 +712,7 @@ static uint32_t M_Spawn( const char *classname, const char *const *keys, const c
 	for( int i = 0; i < count; i++ )
 	{
 		if( !strcmp( keys[i], "model" ) )
-			continue;	/* MOHAA .tik models are not converted yet; an unprecached model would abort the server */
+			continue;	/* script model names are applied by the later .model command, after preloading */
 		KeyValueData kvd;
 		kvd.szClassName = (char *)classname;
 		kvd.szKeyName = (char *)keys[i];
@@ -804,6 +873,8 @@ void DodGC_MohaaLevelInit( void )
 	b.spawn = M_Spawn;
 	b.sound = M_Sound;
 	b.precache_sound = M_Precache;
+	b.precache_model = M_PrecacheModel;
+	b.set_model = M_SetModel;
 	b.actor = M_Actor;
 	b.music = M_Music;
 	if( g_music_intro[0] )
@@ -821,6 +892,8 @@ void DodGC_MohaaLevelInit( void )
 	g_saved_viewmodel = 0;
 	g_hud_hide = 0;
 	g_nwaiting = 0;	/* the last map's waiting soldiers went with it */
+	g_mohaa_script_model_count = 0;
+	memset( g_mohaa_script_models, 0, sizeof( g_mohaa_script_models ) );
 	memset( g_actors, 0, sizeof( g_actors ) );
 	memset( g_dead, 0, sizeof( g_dead ) );
 	g_next_waiting_check = 0.0f;
@@ -846,6 +919,11 @@ void DodGC_MohaaLevelInit( void )
 		ALERT( at_console, "mohaa: running maps/%s.scr (budget %u KiB, %u KiB in the map arena in %d piece%s, the rest from the heap)\n",
 			STRING( gpGlobals->mapname ), (unsigned)( budget / 1024u ), (unsigned)( arena / 1024u ), pieces, pieces == 1 ? "" : "s" );
 	}
+}
+
+void DodGC_MohaaPrecacheModels( void )
+{
+	Dod_MohaaPrecacheModels();
 }
 
 void DodGC_MohaaTrigger( edict_t *e, edict_t *activator )
