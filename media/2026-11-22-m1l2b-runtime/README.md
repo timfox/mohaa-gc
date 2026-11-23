@@ -30,9 +30,17 @@ A second scratch ISO mounted an `extras.pk3` containing the MOHAA prop, terrain,
 - The scratch ISO SHA-256 is `9987a5c970821b39ca5cbd34d5920ef8af368bbdc857b7d1c77e04efa2330cf0`; the 45-second Dolphin log is [props-dolphin.log](props-dolphin.log).
 
 
-## Open issues from this run
+## WorldDL versus live-BSP comparison — 2026-11-22 4:16 PM PT
 
-- The runtime reported `newgame world render ready`, then a measured frame split of 217.6 ms (`4.6 fps`) in the second probe; the initial capture measured 198.5 ms (`5.0 fps`). Map performance needs optimization and another capture.
+A matched 45-second Dolphin control run used the same engine DOL, map stage, props/audio extras, `--smoke-map m1l2b --world-render` path, resolution, and Dolphin configuration, but omitted the scratch WorldDL pack. The live-BSP/CapFaces route reached `MAP_READY m1l2b` and `newgame world render ready`. Its first recorded frame split was 45.8 ms (21.8 fps); subsequent samples stabilized at 17.9–18.3 ms (54.6–56.0 fps). `R_EdgeDrawing GX CapFaces drawn=1920`.
+
+The earlier WorldDL smoke ISO measured 198.5 ms (5.0 fps) and 217.6 ms (4.6 fps), with 2,799 CapFaces batches. Taken together, this points to the WorldDL path or its generated workload as the dominant cost in that smoke build. It does not isolate whether the cost is WorldDL itself or a difference in baked workload, and Dolphin is not physical GameCube evidence. The current MOHAA SD stage has no `wd_m1l2b.gcd`; the generic smoke builder added WorldDL only to its first scratch ISO.
+
+Control ISO SHA-256: `c00140bf03815fda3f497f79b42c96b1d9965c217d4edbe1153415fd41621a6c`. DOL SHA-256 is the same as above. Full control log: [live-bsp-dolphin.log](live-bsp-dolphin.log); screenshot: [m1l2b-live-bsp-dolphin.png](m1l2b-live-bsp-dolphin.png); run details: [worlddl-vs-live-bsp.md](worlddl-vs-live-bsp.md).
+
+## Open issues
+
+- Validate representative WorldDL and live-BSP routes under physical GameCube hardware or a closer hardware budget. Current numbers are emulator observations from a smoke route.
 - The new m1l2b prop pack is staged and verified at runtime. `media/ss_m1l2b.gcs` remains absent; the generated `maps/m1l2b.snd` table has no runtime read marker yet. The first-person object remains a fallback melee model.
 - A filesystem pool allocation failed once during map load (225.04 KiB request); the map still reached the render-ready marker.
 
