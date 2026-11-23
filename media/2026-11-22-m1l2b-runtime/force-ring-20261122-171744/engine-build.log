@@ -1,0 +1,1055 @@
+GameCube BBA link: XASH_GAMECUBE_LINK_BBA=1
+GameCube OGC stack resolution:
+  libogc /opt/devkitpro/libogc fat=libfat
+GameCube build profile: gamedir=mohaa dol=mohaagc.dol
+GameCube build lock: /tmp/mohaa-worlddl-ring/engine-build.lock
+Skipped 3 source entities absent from archive
+Generated 280 GameCube HLSDK entity exports: /tmp/mohaa-worlddl-ring/hlsdk-install/mohaa/dlls/gamecube_server_entity_exports.inc
+Setting top to                                          : /home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc 
+Setting out to                                          : /tmp/mohaa-worlddl-ring/xash-build 
+Build type                                              : humanrights 
+LTO build                                               : no 
+PolyOpt build                                           : no 
+OpenMP build                                            : no 
+Generate profile                                        : no 
+Use profile                                             : not found 
+GameCube OGC stack: stack=libogc root=/opt/devkitpro/libogc fat=libfat
+Checking for 'gcc' (C compiler)                         : /opt/devkitpro/devkitPPC/bin/powerpc-eabi-gcc 
+Target OS                                               : gamecube 
+Target CPU                                              : powerpc 
+Target binfmt                                           : elf 
+Checking for 'g++' (C++ compiler)                       : /opt/devkitpro/devkitPPC/bin/powerpc-eabi-g++ 
+Target OS                                               : gamecube 
+Target CPU                                              : powerpc 
+Target binfmt                                           : elf 
+Checking for c flags '-MMD'                             : yes 
+Checking for cxx flags '-MMD'                           : yes 
+Checking for program 'strip'                            : /opt/devkitpro/devkitPPC/bin/powerpc-eabi-strip 
+Checking for program '/opt/devkitpro/devkitPPC/bin/powerpc-eabi-objcopy' : /opt/devkitpro/devkitPPC/bin/powerpc-eabi-objcopy 
+Checking if 'gcc' generates 32-bit code                                  : yes 
+Checking for program 'clang-format'                                      : /usr/bin/clang-format 
+Checking clang-format version                                            : 21 
+GameCube OGC stack: stack=libogc root=/opt/devkitpro/libogc fat=libfat
+GameCube pure Flipper GX renderer enabled (soft/GL disabled)
+Checking for required C flags                                            : yes 
+Checking for required C++ flags                                          : yes 
+Checking supported flags for gcc in parallel                             : started 
+... -Werror=implicit-function-declaration                                : yes 
+-> processing test results                                               : all ok 
+Checking supported flags for g++ in parallel                             : started 
+-> processing test results                                               : all ok 
+GameCube slim client slots: table 5, default 5
+GameCube BBA/eth2sp1: XASH_GAMECUBE_HAVE_LIBBBA=1 (-lbba)
+Checking for library m                                                   : yes 
+--> public                                                               : in progress 
+Checking for program 'git'                                               : /usr/bin/git 
+Git commit hash                                                          : 8b508c2d9-dirty 
+Git branch                                                               : codex/mohaa-local-diagnostics 
+Git commit date                                                          : 2026-11-22 16:46:18 -0800 
+Checking for alloca in alloca.h                                          : yes 
+Executing 8 configuration tests                                          : started 
+Checking for strncasecmp                                                 : yes 
+Checking for tgmath.h                                                    : yes 
+Checking for strcasecmp                                                  : yes 
+Checking for strnlen                                                     : yes 
+Checking for strlcpy                                                     : yes 
+Checking for strlcat                                                     : yes 
+Checking for strcasestr                                                  : yes 
+Checking for strchrnul                                                   : yes 
+-> processing test results                                               : all ok 
+<-- public                                                               : done 
+--> 3rdparty/miniz                                                       : in progress 
+<-- 3rdparty/miniz                                                       : done 
+--> filesystem                                                           : in progress 
+Checking for memfd_create                                                : no 
+Checking for d_type field in struct dirent                               : yes 
+<-- filesystem                                                           : done 
+--> 3rdparty/libbacktrace                                                : in progress 
+<-- 3rdparty/libbacktrace                                                : done 
+--> 3rdparty/library_suffix                                              : in progress 
+<-- 3rdparty/library_suffix                                              : done 
+--> 3rdparty/yy-thunks                                                   : in progress 
+<-- 3rdparty/yy-thunks                                                   : done 
+--> 3rdparty/extras                                                      : in progress 
+Checking for program 'rsvg-convert'                                      : not found 
+<-- 3rdparty/extras                                                      : done 
+--> ref/common                                                           : in progress 
+<-- ref/common                                                           : done 
+--> ref/gx                                                               : in progress 
+<-- ref/gx                                                               : done 
+--> 3rdparty/bzip2                                                       : in progress 
+<-- 3rdparty/bzip2                                                       : done 
+--> 3rdparty/mbedtls                                                     : in progress 
+<-- 3rdparty/mbedtls                                                     : done 
+--> 3rdparty/opus                                                        : in progress 
+Checking for C99 lrint                                                   : yes 
+Checking for C99 lrintf                                                  : yes 
+Checking for C99 VLA support                                             : yes 
+<-- 3rdparty/opus                                                        : done 
+--> 3rdparty/libogg                                                      : in progress 
+Checking for header inttypes.h                                           : yes 
+<-- 3rdparty/libogg                                                      : done 
+--> 3rdparty/vorbis                                                      : in progress 
+Checking for memory.h header                                             : yes 
+Checking for alloca in alloca.h header                                   : yes 
+<-- 3rdparty/vorbis                                                      : done 
+--> 3rdparty/opusfile                                                    : in progress 
+<-- 3rdparty/opusfile                                                    : done 
+--> 3rdparty/mainui                                                      : in progress 
+Checking if 'g++' supports C++11                                         : yes 
+<-- 3rdparty/mainui                                                      : done 
+--> 3rdparty/MultiEmulator                                               : in progress 
+<-- 3rdparty/MultiEmulator                                               : done 
+--> engine                                                               : in progress 
+Checking for getrusage                                                   : no 
+Checking if a pthread flag is necessary for compiling                    : None 
+Checking if a pthread flag is necessary for linking                      : None 
+<-- engine                                                               : done 
+'configure' finished successfully (1.062s)
+GameCube ref_gx static library (XASH_PURE_GX=1) scheduled
+GameCube HLSDK gamedir=mohaa (server=found client=found)
+GameCube engine link stack: stack=libogc root=/opt/devkitpro/libogc fat=libfat
+Using GameCube HLSDK server archive from /tmp/mohaa-worlddl-ring/hlsdk-install
+Using GameCube HLSDK client archive from /tmp/mohaa-worlddl-ring/hlsdk-install
+Build commands will be stored in /tmp/mohaa-worlddl-ring/xash-build/compile_commands.json
+Waf: Entering directory `/tmp/mohaa-worlddl-ring/xash-build'
+GameCube ref_gx static library (XASH_PURE_GX=1) scheduled
+GameCube HLSDK gamedir=mohaa (server=found client=found)
+GameCube engine link stack: stack=libogc root=/opt/devkitpro/libogc fat=libfat
+Using GameCube HLSDK server archive from /tmp/mohaa-worlddl-ring/hlsdk-install
+Using GameCube HLSDK client archive from /tmp/mohaa-worlddl-ring/hlsdk-install
+[  3/617] Processing 3rdparty/libogg/libogg/src/bitwise.c
+[  4/617] Processing 3rdparty/libogg/libogg/src/framing.c
+[  5/617] Processing public/build.c
+[  6/617] Processing public/crclib.c
+[  7/617] Processing public/crtlib.c
+[  8/617] Processing public/matrixlib.c
+[ 10/617] Processing public/utflib.c
+[ 11/617] Processing public/dllhelpers.c
+[ 12/617] Processing public/getopt.c
+[ 13/617] Processing public/atlas.c
+[ 14/617] Processing public/xash3d_mathlib.c
+[ 16/617] Processing 3rdparty/miniz/miniz.c
+[ 17/617] Processing 3rdparty/opus/opus/celt/mdct.c
+[ 18/617] Processing 3rdparty/opus/opus/celt/quant_bands.c
+[ 19/617] Processing 3rdparty/opus/opus/src/opus_encoder.c
+[ 20/617] Processing 3rdparty/opus/opus/celt/mathops.c
+[ 21/617] Processing 3rdparty/opus/opus/src/opus_decoder.c
+[ 23/617] Processing 3rdparty/opus/opus/silk/float/scale_vector_FLP.c
+[ 24/617] Processing 3rdparty/opus/opus/celt/laplace.c
+[ 25/617] Processing 3rdparty/opus/opus/silk/NLSF_VQ.c
+[ 26/617] Processing 3rdparty/opus/opus/silk/NLSF_VQ_weights_laroia.c
+[ 27/617] Processing 3rdparty/opus/opus/silk/decode_parameters.c
+[ 28/617] Processing 3rdparty/opus/opus/celt/kiss_fft.c
+[ 29/617] Processing 3rdparty/opus/opus/src/opus.c
+[ 30/617] Processing 3rdparty/opus/opus/silk/float/scale_copy_vector_FLP.c
+[ 31/617] Processing 3rdparty/opus/opus/src/mlp_data.c
+[ 32/617] Processing 3rdparty/opus/opus/silk/float/residual_energy_FLP.c
+[ 33/617] Processing 3rdparty/opus/opus/celt/vq.c
+[ 34/617] Processing 3rdparty/opus/opus/silk/A2NLSF.c
+[ 35/617] Processing 3rdparty/opus/opus/src/mlp.c
+[ 36/617] Processing 3rdparty/opus/opus/silk/NSQ_del_dec.c
+[ 37/617] Processing 3rdparty/opus/opus/silk/decode_indices.c
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/decode_indices.c: In function 'silk_decode_indices':
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/decode_indices.c:74:42: warning: writing 1 byte into a region of size 0 [-Wstringop-overflow=]
+   74 |         psDec->indices.GainsIndices[ i ] = (opus_int8)ec_dec_icdf( psRangeDec, silk_delta_gain_iCDF, 8 );
+      |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/main.h:33,
+                 from /home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/decode_indices.c:32:
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/structs.h:119:34: note: at offset 4 into destination object 'GainsIndices' of size 4
+  119 |     opus_int8                    GainsIndices[ MAX_NB_SUBFR ];
+      |                                  ^~~~~~~~~~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/decode_indices.c:133:42: warning: writing 1 byte into a region of size 0 [-Wstringop-overflow=]
+  133 |             psDec->indices.LTPIndex[ k ] = (opus_int8)ec_dec_icdf( psRangeDec, silk_LTP_gain_iCDF_ptrs[ psDec->indices.PERIndex ], 8 );
+      |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/structs.h:120:34: note: at offset 4 into destination object 'LTPIndex' of size 4
+  120 |     opus_int8                    LTPIndex[ MAX_NB_SUBFR ];
+      |                                  ^~~~~~~~
+
+[ 38/617] Processing 3rdparty/opus/opus/silk/float/process_gains_FLP.c
+[ 39/617] Processing 3rdparty/opus/opus/silk/float/regularize_correlations_FLP.c
+[ 40/617] Processing 3rdparty/opus/opus/src/mapping_matrix.c
+[ 41/617] Processing 3rdparty/opus/opus/celt/entenc.c
+[ 42/617] Processing 3rdparty/opus/opus/silk/float/pitch_analysis_core_FLP.c
+[ 43/617] Processing 3rdparty/opus/opus/celt/entdec.c
+[ 44/617] Processing 3rdparty/opus/opus/celt/modes.c
+[ 45/617] Processing 3rdparty/opus/opus/src/analysis.c
+[ 46/617] Processing 3rdparty/opus/opus/silk/decode_frame.c
+[ 47/617] Processing 3rdparty/opus/opus/silk/float/noise_shape_analysis_FLP.c
+[ 48/617] Processing 3rdparty/opus/opus/silk/tables_pulses_per_block.c
+[ 49/617] Processing 3rdparty/opus/opus/celt/entcode.c
+[ 50/617] Processing 3rdparty/opus/opus/silk/float/k2a_FLP.c
+[ 51/617] Processing 3rdparty/opus/opus/celt/cwrs.c
+[ 52/617] Processing 3rdparty/opus/opus/silk/tables_pitch_lag.c
+[ 53/617] Processing 3rdparty/opus/opus/silk/tables_other.c
+[ 54/617] Processing 3rdparty/opus/opus/silk/LP_variable_cutoff.c
+[ 55/617] Processing 3rdparty/opus/opus/silk/dec_API.c
+[ 56/617] Processing 3rdparty/opus/opus/silk/decode_core.c
+[ 57/617] Processing 3rdparty/opus/opus/celt/celt_lpc.c
+[ 58/617] Processing 3rdparty/opus/opus/silk/float/inner_product_FLP.c
+[ 59/617] Processing 3rdparty/opus/opus/silk/tables_gain.c
+[ 60/617] Processing 3rdparty/opus/opus/celt/celt_encoder.c
+[ 61/617] Processing 3rdparty/opus/opus/celt/celt_decoder.c
+[ 62/617] Processing 3rdparty/opus/opus/silk/tables_NLSF_CB_WB.c
+[ 63/617] Processing 3rdparty/opus/opus/silk/NLSF2A.c
+[ 64/617] Processing 3rdparty/opus/opus/silk/float/find_pred_coefs_FLP.c
+[ 65/617] Processing 3rdparty/opus/opus/silk/tables_NLSF_CB_NB_MB.c
+[ 66/617] Processing 3rdparty/opus/opus/celt/celt.c
+[ 67/617] Processing 3rdparty/opus/opus/silk/tables_LTP.c
+[ 68/617] Processing 3rdparty/opus/opus/silk/NSQ.c
+[ 69/617] Processing 3rdparty/opus/opus/silk/debug.c
+[ 70/617] Processing 3rdparty/opus/opus/silk/table_LSF_cos.c
+[ 71/617] Processing 3rdparty/opus/opus/silk/float/find_pitch_lags_FLP.c
+[ 72/617] Processing 3rdparty/opus/opus/celt/bands.c
+[ 73/617] Processing 3rdparty/opus/opus/silk/CNG.c
+[ 74/617] Processing 3rdparty/opus/opus/silk/control_audio_bandwidth.c
+[ 75/617] Processing 3rdparty/opus/opus/silk/control_codec.c
+[ 76/617] Processing 3rdparty/opus/opus/silk/float/find_LTP_FLP.c
+[ 77/617] Processing 3rdparty/opus/opus/silk/sum_sqr_shift.c
+[ 78/617] Processing 3rdparty/opus/opus/silk/stereo_quant_pred.c
+[ 79/617] Processing 3rdparty/opus/opus/silk/float/find_LPC_FLP.c
+[ 80/617] Processing 3rdparty/opus/opus/silk/stereo_find_predictor.c
+[ 81/617] Processing 3rdparty/opus/opus/silk/stereo_encode_pred.c
+[ 82/617] Processing 3rdparty/opus/opus/silk/control_SNR.c
+[ 83/617] Processing 3rdparty/opus/opus/silk/float/energy_FLP.c
+[ 84/617] Processing 3rdparty/opus/opus/silk/stereo_decode_pred.c
+[ 85/617] Processing 3rdparty/opus/opus/src/repacketizer.c
+[ 86/617] Processing 3rdparty/opus/opus/src/opus_projection_encoder.c
+[ 87/617] Processing 3rdparty/opus/opus/silk/float/corrMatrix_FLP.c
+[ 88/617] Processing 3rdparty/opus/opus/silk/float/encode_frame_FLP.c
+[ 89/617] Processing 3rdparty/opus/opus/silk/stereo_MS_to_LR.c
+[ 90/617] Processing 3rdparty/opus/opus/src/opus_projection_decoder.c
+[ 91/617] Processing 3rdparty/opus/opus/src/opus_multistream_encoder.c
+[ 92/617] Processing 3rdparty/opus/opus/silk/stereo_LR_to_MS.c
+[ 93/617] Processing 3rdparty/opus/opus/src/opus_multistream_decoder.c
+[ 94/617] Processing 3rdparty/opus/opus/silk/PLC.c
+[ 95/617] Processing 3rdparty/opus/opus/silk/code_signs.c
+[ 96/617] Processing 3rdparty/opus/opus/silk/float/bwexpander_FLP.c
+[ 97/617] Processing 3rdparty/opus/opus/silk/sort.c
+[ 98/617] Processing 3rdparty/opus/opus/silk/float/burg_modified_FLP.c
+[ 99/617] Processing 3rdparty/opus/opus/silk/sigm_Q15.c
+[100/617] Processing 3rdparty/opus/opus/silk/NLSF_unpack.c
+[101/617] Processing 3rdparty/opus/opus/celt/rate.c
+[102/617] Processing 3rdparty/opus/opus/silk/float/autocorrelation_FLP.c
+[103/617] Processing 3rdparty/opus/opus/silk/shell_coder.c
+[104/617] Processing 3rdparty/opus/opus/silk/float/apply_sine_window_FLP.c
+[105/617] Processing 3rdparty/opus/opus/silk/resampler_rom.c
+[106/617] Processing 3rdparty/opus/opus/silk/resampler_private_up2_HQ.c
+[107/617] Processing 3rdparty/opus/opus/silk/NLSF_stabilize.c
+[108/617] Processing 3rdparty/opus/opus/silk/check_control_input.c
+[109/617] Processing 3rdparty/opus/opus/celt/pitch.c
+[110/617] Processing 3rdparty/opus/opus/silk/resampler_private_down_FIR.c
+[111/617] Processing 3rdparty/opus/opus/silk/resampler_private_IIR_FIR.c
+[112/617] Processing 3rdparty/opus/opus/silk/resampler_private_AR2.c
+[113/617] Processing 3rdparty/opus/opus/silk/bwexpander_32.c
+[114/617] Processing 3rdparty/opus/opus/silk/float/LTP_scale_ctrl_FLP.c
+[115/617] Processing 3rdparty/opus/opus/silk/resampler_down2_3.c
+[116/617] Processing 3rdparty/opus/opus/silk/resampler_down2.c
+[117/617] Processing 3rdparty/opus/opus/silk/float/LTP_analysis_filter_FLP.c
+[118/617] Processing 3rdparty/opus/opus/silk/resampler.c
+[119/617] Processing 3rdparty/opus/opus/silk/LPC_inv_pred_gain.c
+[120/617] Processing 3rdparty/opus/opus/silk/LPC_fit.c
+[121/617] Processing 3rdparty/opus/opus/silk/NLSF_encode.c
+[122/617] Processing 3rdparty/opus/opus/silk/float/LPC_inv_pred_gain_FLP.c
+[123/617] Processing 3rdparty/opus/opus/silk/quant_LTP_gains.c
+[124/617] Processing 3rdparty/opus/opus/silk/bwexpander.c
+[125/617] Processing 3rdparty/opus/opus/silk/float/LPC_analysis_filter_FLP.c
+[126/617] Processing 3rdparty/opus/opus/silk/process_NLSFs.c
+[127/617] Processing 3rdparty/opus/opus/silk/pitch_est_tables.c
+[128/617] Processing 3rdparty/opus/opus/silk/LPC_analysis_filter.c
+[129/617] Processing 3rdparty/opus/opus/silk/biquad_alt.c
+[130/617] Processing 3rdparty/opus/opus/silk/encode_pulses.c
+[131/617] Processing 3rdparty/opus/opus/silk/log2lin.c
+[132/617] Processing 3rdparty/opus/opus/silk/encode_indices.c
+[133/617] Processing 3rdparty/opus/opus/silk/HP_variable_cutoff.c
+[134/617] Processing 3rdparty/opus/opus/silk/enc_API.c
+[135/617] Processing 3rdparty/opus/opus/silk/interpolate.c
+[136/617] Processing 3rdparty/opus/opus/silk/lin2log.c
+[137/617] Processing 3rdparty/opus/opus/silk/NLSF_del_dec_quant.c
+[138/617] Processing 3rdparty/opus/opus/silk/inner_prod_aligned.c
+[139/617] Processing 3rdparty/opus/opus/silk/NLSF_decode.c
+[140/617] Processing 3rdparty/opus/opus/silk/VQ_WMat_EC.c
+[141/617] Processing 3rdparty/opus/opus/silk/ana_filt_bank_1.c
+[142/617] Processing 3rdparty/opus/opus/silk/init_encoder.c
+[143/617] Processing 3rdparty/opus/opus/silk/decoder_set_fs.c
+[144/617] Processing 3rdparty/opus/opus/silk/init_decoder.c
+[145/617] Processing 3rdparty/opus/opus/silk/decode_pulses.c
+[146/617] Processing 3rdparty/opus/opus/silk/gain_quant.c
+[147/617] Processing 3rdparty/opus/opus/silk/VAD.c
+[148/617] Processing 3rdparty/opus/opus/silk/decode_pitch.c
+[149/617] Processing 3rdparty/opus/opus/silk/float/wrappers_FLP.c
+In file included from /home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/float/structs_FLP.h:32,
+                 from /home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/float/main_FLP.h:33,
+                 from /home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/float/wrappers_FLP.c:32:
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/float/wrappers_FLP.c: In function 'silk_NSQ_wrapper_FLP':
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/main.h:296:18: warning: 'silk_NSQ_del_dec_c' reading 64 bytes from a region of size 32 [-Wstringop-overread]
+  296 |     ((void)(arch),silk_NSQ_del_dec_c(psEncC, NSQ, psIndices, x16, pulses, PredCoef_Q12, LTPCoef_Q14, AR_Q13, \
+      |     ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  297 |                            HarmShapeGain_Q14, Tilt_Q14, LF_shp_Q14, Gains_Q16, pitchL, Lambda_Q10, LTP_scale_Q14))
+      |                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/float/wrappers_FLP.c:164:9: note: in expansion of macro 'silk_NSQ_del_dec'
+  164 |         silk_NSQ_del_dec( &psEnc->sCmn, psNSQ, psIndices, x16, pulses, PredCoef_Q12[ 0 ], LTPCoef_Q14,
+      |         ^~~~~~~~~~~~~~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/main.h:296:18: note: referencing argument 6 of type 'const opus_int16[32]' {aka 'const short int[32]'}
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/float/wrappers_FLP.c:164:9: note: in expansion of macro 'silk_NSQ_del_dec'
+  164 |         silk_NSQ_del_dec( &psEnc->sCmn, psNSQ, psIndices, x16, pulses, PredCoef_Q12[ 0 ], LTPCoef_Q14,
+      |         ^~~~~~~~~~~~~~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/main.h:296:18: note: referencing argument 7 of type 'const opus_int16[20]' {aka 'const short int[20]'}
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/float/wrappers_FLP.c:164:9: note: in expansion of macro 'silk_NSQ_del_dec'
+  164 |         silk_NSQ_del_dec( &psEnc->sCmn, psNSQ, psIndices, x16, pulses, PredCoef_Q12[ 0 ], LTPCoef_Q14,
+      |         ^~~~~~~~~~~~~~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/main.h:296:18: note: referencing argument 8 of type 'const opus_int16[96]' {aka 'const short int[96]'}
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/float/wrappers_FLP.c:164:9: note: in expansion of macro 'silk_NSQ_del_dec'
+  164 |         silk_NSQ_del_dec( &psEnc->sCmn, psNSQ, psIndices, x16, pulses, PredCoef_Q12[ 0 ], LTPCoef_Q14,
+      |         ^~~~~~~~~~~~~~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/main.h:296:18: note: referencing argument 9 of type 'const int[4]'
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/float/wrappers_FLP.c:164:9: note: in expansion of macro 'silk_NSQ_del_dec'
+  164 |         silk_NSQ_del_dec( &psEnc->sCmn, psNSQ, psIndices, x16, pulses, PredCoef_Q12[ 0 ], LTPCoef_Q14,
+      |         ^~~~~~~~~~~~~~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/main.h:296:18: note: referencing argument 10 of type 'const int[4]'
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/float/wrappers_FLP.c:164:9: note: in expansion of macro 'silk_NSQ_del_dec'
+  164 |         silk_NSQ_del_dec( &psEnc->sCmn, psNSQ, psIndices, x16, pulses, PredCoef_Q12[ 0 ], LTPCoef_Q14,
+      |         ^~~~~~~~~~~~~~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/main.h:296:18: note: referencing argument 11 of type 'const opus_int32[4]' {aka 'const int[4]'}
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/float/wrappers_FLP.c:164:9: note: in expansion of macro 'silk_NSQ_del_dec'
+  164 |         silk_NSQ_del_dec( &psEnc->sCmn, psNSQ, psIndices, x16, pulses, PredCoef_Q12[ 0 ], LTPCoef_Q14,
+      |         ^~~~~~~~~~~~~~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/main.h:296:18: note: referencing argument 12 of type 'const opus_int32[4]' {aka 'const int[4]'}
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/float/wrappers_FLP.c:164:9: note: in expansion of macro 'silk_NSQ_del_dec'
+  164 |         silk_NSQ_del_dec( &psEnc->sCmn, psNSQ, psIndices, x16, pulses, PredCoef_Q12[ 0 ], LTPCoef_Q14,
+      |         ^~~~~~~~~~~~~~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/main.h:296:18: note: referencing argument 13 of type 'const int[4]'
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/float/wrappers_FLP.c:164:9: note: in expansion of macro 'silk_NSQ_del_dec'
+  164 |         silk_NSQ_del_dec( &psEnc->sCmn, psNSQ, psIndices, x16, pulses, PredCoef_Q12[ 0 ], LTPCoef_Q14,
+      |         ^~~~~~~~~~~~~~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/main.h:275:6: note: in a call to function 'silk_NSQ_del_dec_c'
+  275 | void silk_NSQ_del_dec_c(
+      |      ^~~~~~~~~~~~~~~~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/main.h:270:18: warning: 'silk_NSQ_c' reading 64 bytes from a region of size 32 [-Wstringop-overread]
+  270 |     ((void)(arch),silk_NSQ_c(psEncC, NSQ, psIndices, x16, pulses, PredCoef_Q12, LTPCoef_Q14, AR_Q13, \
+      |     ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  271 |                    HarmShapeGain_Q14, Tilt_Q14, LF_shp_Q14, Gains_Q16, pitchL, Lambda_Q10, LTP_scale_Q14))
+      |                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/float/wrappers_FLP.c:167:9: note: in expansion of macro 'silk_NSQ'
+  167 |         silk_NSQ( &psEnc->sCmn, psNSQ, psIndices, x16, pulses, PredCoef_Q12[ 0 ], LTPCoef_Q14,
+      |         ^~~~~~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/main.h:270:18: note: referencing argument 6 of type 'const opus_int16[32]' {aka 'const short int[32]'}
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/float/wrappers_FLP.c:167:9: note: in expansion of macro 'silk_NSQ'
+  167 |         silk_NSQ( &psEnc->sCmn, psNSQ, psIndices, x16, pulses, PredCoef_Q12[ 0 ], LTPCoef_Q14,
+      |         ^~~~~~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/main.h:270:18: note: referencing argument 7 of type 'const opus_int16[20]' {aka 'const short int[20]'}
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/float/wrappers_FLP.c:167:9: note: in expansion of macro 'silk_NSQ'
+  167 |         silk_NSQ( &psEnc->sCmn, psNSQ, psIndices, x16, pulses, PredCoef_Q12[ 0 ], LTPCoef_Q14,
+      |         ^~~~~~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/main.h:270:18: note: referencing argument 8 of type 'const opus_int16[96]' {aka 'const short int[96]'}
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/float/wrappers_FLP.c:167:9: note: in expansion of macro 'silk_NSQ'
+  167 |         silk_NSQ( &psEnc->sCmn, psNSQ, psIndices, x16, pulses, PredCoef_Q12[ 0 ], LTPCoef_Q14,
+      |         ^~~~~~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/main.h:270:18: note: referencing argument 9 of type 'const int[4]'
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/float/wrappers_FLP.c:167:9: note: in expansion of macro 'silk_NSQ'
+  167 |         silk_NSQ( &psEnc->sCmn, psNSQ, psIndices, x16, pulses, PredCoef_Q12[ 0 ], LTPCoef_Q14,
+      |         ^~~~~~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/main.h:270:18: note: referencing argument 10 of type 'const int[4]'
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/float/wrappers_FLP.c:167:9: note: in expansion of macro 'silk_NSQ'
+  167 |         silk_NSQ( &psEnc->sCmn, psNSQ, psIndices, x16, pulses, PredCoef_Q12[ 0 ], LTPCoef_Q14,
+      |         ^~~~~~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/main.h:270:18: note: referencing argument 11 of type 'const opus_int32[4]' {aka 'const int[4]'}
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/float/wrappers_FLP.c:167:9: note: in expansion of macro 'silk_NSQ'
+  167 |         silk_NSQ( &psEnc->sCmn, psNSQ, psIndices, x16, pulses, PredCoef_Q12[ 0 ], LTPCoef_Q14,
+      |         ^~~~~~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/main.h:270:18: note: referencing argument 12 of type 'const opus_int32[4]' {aka 'const int[4]'}
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/float/wrappers_FLP.c:167:9: note: in expansion of macro 'silk_NSQ'
+  167 |         silk_NSQ( &psEnc->sCmn, psNSQ, psIndices, x16, pulses, PredCoef_Q12[ 0 ], LTPCoef_Q14,
+      |         ^~~~~~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/main.h:270:18: note: referencing argument 13 of type 'const int[4]'
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/float/wrappers_FLP.c:167:9: note: in expansion of macro 'silk_NSQ'
+  167 |         silk_NSQ( &psEnc->sCmn, psNSQ, psIndices, x16, pulses, PredCoef_Q12[ 0 ], LTPCoef_Q14,
+      |         ^~~~~~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/3rdparty/opus/opus/silk/main.h:249:6: note: in a call to function 'silk_NSQ_c'
+  249 | void silk_NSQ_c(
+      |      ^~~~~~~~~~
+
+[150/617] Processing 3rdparty/opus/opus/silk/float/warped_autocorrelation_FLP.c
+[151/617] Processing 3rdparty/opus/opus/silk/float/schur_FLP.c
+[152/617] Processing 3rdparty/opus/opus/silk/float/sort_FLP.c
+[153/617] Processing 3rdparty/opus/opus/src/opus_multistream.c
+[155/617] Processing 3rdparty/vorbis/vorbis-src/lib/bitrate.c
+[156/617] Processing 3rdparty/vorbis/vorbis-src/lib/codebook.c
+[157/617] Processing 3rdparty/vorbis/vorbis-src/lib/registry.c
+[158/617] Processing 3rdparty/vorbis/vorbis-src/lib/res0.c
+[159/617] Processing 3rdparty/vorbis/vorbis-src/lib/floor0.c
+[160/617] Processing 3rdparty/vorbis/vorbis-src/lib/floor1.c
+[161/617] Processing 3rdparty/vorbis/vorbis-src/lib/mapping0.c
+[162/617] Processing 3rdparty/vorbis/vorbis-src/lib/psy.c
+[163/617] Processing 3rdparty/vorbis/vorbis-src/lib/info.c
+[164/617] Processing 3rdparty/vorbis/vorbis-src/lib/lookup.c
+[165/617] Processing 3rdparty/vorbis/vorbis-src/lib/sharedbook.c
+[166/617] Processing 3rdparty/vorbis/vorbis-src/lib/synthesis.c
+[167/617] Processing 3rdparty/vorbis/vorbis-src/lib/analysis.c
+[168/617] Processing 3rdparty/vorbis/vorbis-src/lib/lpc.c
+[169/617] Processing 3rdparty/vorbis/vorbis-src/lib/lsp.c
+[170/617] Processing 3rdparty/vorbis/vorbis-src/lib/window.c
+[171/617] Processing 3rdparty/vorbis/vorbis-src/lib/block.c
+[172/617] Processing 3rdparty/vorbis/vorbis-src/lib/envelope.c
+[173/617] Processing 3rdparty/vorbis/vorbis-src/lib/smallft.c
+[174/617] Processing 3rdparty/vorbis/vorbis-src/lib/mdct.c
+[176/617] Processing ref/common/ref_math.c
+[177/617] Processing ref/common/ref_skybox.c
+[178/617] Processing ref/common/ref_light.c
+[179/617] Processing ref/common/ref_image.c
+[180/617] Processing ref/common/ref_light.c
+[181/617] Processing ref/common/ref_image.c
+[182/617] Processing ref/common/ref_math.c
+[183/617] Processing ref/common/ref_skybox.c
+[184/617] Processing public/build_vcs.c
+[185/617] Processing filesystem/pak.c
+[186/617] Processing filesystem/gameinfo.c
+[187/617] Processing filesystem/filesystem.c
+[188/617] Processing filesystem/dll.c
+[189/617] Processing filesystem/zip.c
+[191/617] Processing filesystem/android.c
+[192/617] Processing filesystem/wad_dir_gc.c
+[193/617] Processing filesystem/wad.c
+[194/617] Processing filesystem/dir.c
+[195/617] Processing filesystem/sys.c
+[196/617] Processing filesystem/searchpath.c
+[197/617] Processing filesystem/VFileSystem009.cpp
+[198/617] Processing filesystem/io.c
+[199/617] Processing filesystem/probe_save_gc.c
+[201/617] Processing 3rdparty/library_suffix/src/library_suffix.c
+[202/617] Processing ref/gx/r_triapi.c
+[203/617] Processing ref/gx/r_trialias.c
+[204/617] Processing ref/gx/r_context.c
+[205/617] Processing ref/gx/r_surf.c
+[206/617] Processing ref/gx/r_studio.c
+[208/617] Processing ref/gx/r_bsp.c
+[209/617] Processing ref/gx/r_sprite.c
+[210/617] Processing ref/gx/r_refcontext_vars.c
+[211/617] Processing ref/gx/r_refcontext.c
+[212/617] Processing ref/gx/r_beams.c
+[213/617] Processing ref/gx/r_rast.c
+[214/617] Processing ref/gx/r_scan.c
+[215/617] Processing ref/gx/r_polyse.c
+[216/617] Processing ref/gx/r_decals.c
+[217/617] Processing ref/gx/r_dll_export.c
+[218/617] Processing ref/gx/r_misc.c
+[219/617] Processing ref/gx/r_part.c
+[220/617] Processing ref/gx/r_aclip.c
+[221/617] Processing ref/gx/r_main.c
+[222/617] Processing ref/gx/r_image.c
+In file included from /opt/devkitpro/libogc/include/gccore.h:47,
+                 from /home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/ref/gx/r_image.c:18:
+/opt/devkitpro/libogc/include/ogc/color.h:22:9: warning: 'COLOR_WHITE' redefined
+   22 | #define COLOR_WHITE        (0xEB80EB80)
+      |         ^~~~~~~~~~~
+In file included from /home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/ref/gx/r_image.c:16:
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/ref/gx/r_local.h:101:9: note: this is the location of the previous definition
+  101 | #define COLOR_WHITE 0xFFFF
+      |         ^~~~~~~~~~~
+
+[223/617] Processing ref/gx/r_gx_studiodl.c
+In file included from /opt/devkitpro/libogc/include/gccore.h:47,
+                 from /home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/ref/gx/r_gx_studiodl.c:18:
+/opt/devkitpro/libogc/include/ogc/color.h:22:9: warning: 'COLOR_WHITE' redefined
+   22 | #define COLOR_WHITE        (0xEB80EB80)
+      |         ^~~~~~~~~~~
+In file included from /home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/ref/gx/r_gx_studiodl.c:14:
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/ref/gx/r_local.h:101:9: note: this is the location of the previous definition
+  101 | #define COLOR_WHITE 0xFFFF
+      |         ^~~~~~~~~~~
+
+[224/617] Processing ref/gx/r_gx_skins.c
+In file included from /opt/devkitpro/libogc/include/gccore.h:47,
+                 from /home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/ref/gx/r_gx_skins.c:22:
+/opt/devkitpro/libogc/include/ogc/color.h:22:9: warning: 'COLOR_WHITE' redefined
+   22 | #define COLOR_WHITE        (0xEB80EB80)
+      |         ^~~~~~~~~~~
+In file included from /home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/ref/gx/r_gx_skins.c:19:
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/ref/gx/r_local.h:101:9: note: this is the location of the previous definition
+  101 | #define COLOR_WHITE 0xFFFF
+      |         ^~~~~~~~~~~
+
+[225/617] Processing ref/gx/r_gx_gesture.c
+In file included from /opt/devkitpro/libogc/include/gccore.h:47,
+                 from /home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/ref/gx/r_gx_gesture.c:36:
+/opt/devkitpro/libogc/include/ogc/color.h:22:9: warning: 'COLOR_WHITE' redefined
+   22 | #define COLOR_WHITE        (0xEB80EB80)
+      |         ^~~~~~~~~~~
+In file included from /home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/ref/gx/r_gx_gesture.c:33:
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/ref/gx/r_local.h:101:9: note: this is the location of the previous definition
+  101 | #define COLOR_WHITE 0xFFFF
+      |         ^~~~~~~~~~~
+
+[226/617] Processing ref/gx/r_gx_face.c
+In file included from /opt/devkitpro/libogc/include/gccore.h:47,
+                 from /home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/ref/gx/r_gx_face.c:43:
+/opt/devkitpro/libogc/include/ogc/color.h:22:9: warning: 'COLOR_WHITE' redefined
+   22 | #define COLOR_WHITE        (0xEB80EB80)
+      |         ^~~~~~~~~~~
+In file included from /home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/ref/gx/r_gx_face.c:40:
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/ref/gx/r_local.h:101:9: note: this is the location of the previous definition
+  101 | #define COLOR_WHITE 0xFFFF
+      |         ^~~~~~~~~~~
+
+[227/617] Processing ref/gx/r_gx_cmpr.c
+In file included from /opt/devkitpro/libogc/include/gccore.h:47,
+                 from /home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/ref/gx/r_gx_cmpr.c:17:
+/opt/devkitpro/libogc/include/ogc/color.h:22:9: warning: 'COLOR_WHITE' redefined
+   22 | #define COLOR_WHITE        (0xEB80EB80)
+      |         ^~~~~~~~~~~
+In file included from /home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/ref/gx/r_gx_cmpr.c:14:
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/ref/gx/r_local.h:101:9: note: this is the location of the previous definition
+  101 | #define COLOR_WHITE 0xFFFF
+      |         ^~~~~~~~~~~
+
+[228/617] Processing ref/gx/r_gx_bloom.c
+In file included from /opt/devkitpro/libogc/include/gccore.h:47,
+                 from /home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/ref/gx/r_gx_bloom.c:25:
+/opt/devkitpro/libogc/include/ogc/color.h:22:9: warning: 'COLOR_WHITE' redefined
+   22 | #define COLOR_WHITE        (0xEB80EB80)
+      |         ^~~~~~~~~~~
+In file included from /home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/ref/gx/r_gx_bloom.c:21:
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/ref/gx/r_local.h:101:9: note: this is the location of the previous definition
+  101 | #define COLOR_WHITE 0xFFFF
+      |         ^~~~~~~~~~~
+
+[229/617] Processing ref/gx/r_gx_actor.c
+In file included from /opt/devkitpro/libogc/include/gccore.h:47,
+                 from /home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/ref/gx/r_gx_actor.c:35:
+/opt/devkitpro/libogc/include/ogc/color.h:22:9: warning: 'COLOR_WHITE' redefined
+   22 | #define COLOR_WHITE        (0xEB80EB80)
+      |         ^~~~~~~~~~~
+In file included from /home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/ref/gx/r_gx_actor.c:31:
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/ref/gx/r_local.h:101:9: note: this is the location of the previous definition
+  101 | #define COLOR_WHITE 0xFFFF
+      |         ^~~~~~~~~~~
+
+[230/617] Processing ref/gx/r_glblit.c
+[231/617] Processing ref/gx/r_gx_world.c
+[232/617] Processing ref/gx/r_gx_worlddl.c
+In file included from /opt/devkitpro/libogc/include/gccore.h:47,
+                 from /home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/ref/gx/r_gx_worlddl.c:22:
+/opt/devkitpro/libogc/include/ogc/color.h:22:9: warning: 'COLOR_WHITE' redefined
+   22 | #define COLOR_WHITE        (0xEB80EB80)
+      |         ^~~~~~~~~~~
+In file included from /home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/ref/gx/r_gx_worlddl.c:16:
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/ref/gx/r_local.h:101:9: note: this is the location of the previous definition
+  101 | #define COLOR_WHITE 0xFFFF
+      |         ^~~~~~~~~~~
+
+[233/617] Processing ref/gx/r_gcmap.c
+[234/617] Processing ref/gx/r_edge.c
+[235/617] Processing ref/gx/r_draw.c
+[236/617] Linking /tmp/mohaa-worlddl-ring/xash-build/ref/gx/libref_gx.a
+[237/617] Processing 3rdparty/bzip2/bzip2/bzlib.c
+[238/617] Processing 3rdparty/bzip2/bzip2/decompress.c
+[239/617] Processing 3rdparty/bzip2/bzip2/compress.c
+[240/617] Processing 3rdparty/bzip2/bzip2/randtable.c
+[241/617] Processing 3rdparty/bzip2/bzip2/crctable.c
+[242/617] Processing 3rdparty/bzip2/bzip2/huffman.c
+[243/617] Processing 3rdparty/bzip2/bzip2/blocksort.c
+[245/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/extras/pkparse.c
+[246/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/extras/pk_wrap.c
+[247/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/extras/pk_rsa.c
+[248/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/extras/pk_ecc.c
+[249/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/extras/pk.c
+[250/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/extras/nist_kw.c
+[251/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/extras/md.c
+[252/617] Processing 3rdparty/mbedtls/mbedtls/library/ssl_cookie.c
+[253/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/extras/lms.c
+[254/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/extras/lmots.c
+[255/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/sha512.c
+[256/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/sha3.c
+[257/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/sha256.c
+[258/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/sha1.c
+[259/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/psa_crypto_hash.c
+[260/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/rsa_alt_helpers.c
+[261/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/rsa.c
+[262/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/ripemd160.c
+[263/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/platform/memory_buffer_alloc.c
+[264/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/psa_crypto_xof.c
+[265/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/psa_crypto_rsa.c
+[266/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/psa_crypto_pake.c
+[267/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/utilities/pkcs5.c
+[268/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/psa_crypto_ffdh.c
+[269/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/psa_crypto_ecp.c
+[270/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/psa_crypto_cipher.c
+[271/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/psa_crypto_aead.c
+[272/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/poly1305.c
+[273/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/md5.c
+[274/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/hmac_drbg.c
+[275/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/gcm.c
+[276/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/entropy_poll.c
+[277/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/entropy.c
+[278/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/utilities/constant_time.c
+[279/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/ecp_curves.c
+[280/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/ecp_curves_new.c
+[281/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/ecp.c
+[282/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/ecdsa.c
+[283/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/ecjpake.c
+[284/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/ctr_drbg.c
+[285/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/cmac.c
+[286/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/platform/threading.c
+[287/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/cipher_wrap.c
+[288/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/cipher.c
+[289/617] Processing 3rdparty/mbedtls/mbedtls/library/x509_csr.c
+[290/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/chachapoly.c
+[291/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/chacha20_neon.c
+[292/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/utilities/pem.c
+[293/617] Processing 3rdparty/mbedtls/mbedtls/library/x509.c
+[294/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/extras/pkwrite.c
+[295/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/ccm.c
+[296/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/block_cipher.c
+[297/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/camellia.c
+[298/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/bignum_mod.c
+[299/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/bignum_core.c
+[300/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/bignum.c
+[301/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/bignum_mod_raw.c
+[302/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/aria.c
+[303/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/aesni.c
+[304/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/aesce.c
+[305/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/aes.c
+[306/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/core/tf_psa_crypto_version.c
+[307/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/core/tf_psa_crypto_config.c
+[308/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/core/psa_util.c
+[309/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/core/psa_its_file.c
+[310/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/core/psa_crypto_storage.c
+[311/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/core/psa_crypto_slot_management.c
+[312/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/platform/platform.c
+[313/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/core/psa_crypto_random.c
+[314/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/core/psa_crypto_driver_wrappers_no_static.c
+[315/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/core/psa_crypto_client.c
+[316/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/core/psa_crypto.c
+[317/617] Processing 3rdparty/mbedtls/mbedtls/library/x509write_csr.c
+[318/617] Processing 3rdparty/mbedtls/mbedtls/library/x509write_crt.c
+[319/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/chacha20.c
+[320/617] Processing 3rdparty/mbedtls/mbedtls/library/x509write.c
+[321/617] Processing 3rdparty/mbedtls/mbedtls/library/x509_oid.c
+[322/617] Processing 3rdparty/mbedtls/mbedtls/library/ssl_ticket.c
+[323/617] Processing 3rdparty/mbedtls/mbedtls/library/x509_crt.c
+[324/617] Processing 3rdparty/mbedtls/mbedtls/library/x509_crl.c
+[325/617] Processing 3rdparty/mbedtls/mbedtls/library/x509_create.c
+[326/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/utilities/oid.c
+[327/617] Processing 3rdparty/mbedtls/mbedtls/library/version_features.c
+[328/617] Processing 3rdparty/mbedtls/mbedtls/library/version.c
+[329/617] Processing 3rdparty/mbedtls/mbedtls/library/timing.c
+[330/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/psa_crypto_mac.c
+[331/617] Processing 3rdparty/mbedtls/mbedtls/library/ssl_tls13_server.c
+[332/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/utilities/asn1parse.c
+[333/617] Processing 3rdparty/mbedtls/mbedtls/library/ssl_tls13_keys.c
+[334/617] Processing 3rdparty/mbedtls/mbedtls/library/ssl_tls12_server.c
+[335/617] Processing 3rdparty/mbedtls/mbedtls/library/ssl_tls12_client.c
+[336/617] Processing 3rdparty/mbedtls/mbedtls/library/ssl_tls.c
+[337/617] Processing 3rdparty/mbedtls/compat.c
+[338/617] Processing 3rdparty/mbedtls/mbedtls/library/ssl_cache.c
+[339/617] Processing 3rdparty/mbedtls/mbedtls/library/ssl_msg.c
+[340/617] Processing 3rdparty/mbedtls/mbedtls/library/ssl_debug_helpers_generated.c
+[341/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/platform/platform_util.c
+[342/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/utilities/asn1write.c
+[343/617] Processing 3rdparty/mbedtls/mbedtls/library/ssl_client.c
+[344/617] Processing 3rdparty/mbedtls/mbedtls/library/ssl_tls13_client.c
+[345/617] Processing 3rdparty/mbedtls/mbedtls/library/ssl_tls13_generic.c
+[346/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/src/psa_util_internal.c
+[347/617] Processing 3rdparty/mbedtls/mbedtls/library/ssl_ciphersuites.c
+[348/617] Processing 3rdparty/mbedtls/mbedtls/library/pkcs7.c
+[349/617] Processing 3rdparty/mbedtls/mbedtls/library/net_sockets.c
+[350/617] Processing 3rdparty/mbedtls/mbedtls/tf-psa-crypto/utilities/base64.c
+[351/617] Processing 3rdparty/mbedtls/mbedtls/library/mps_trace.c
+[352/617] Processing 3rdparty/mbedtls/mbedtls/library/mps_reader.c
+[353/617] Processing 3rdparty/mbedtls/mbedtls/library/mbedtls_config.c
+[354/617] Processing 3rdparty/mbedtls/mbedtls/library/error.c
+[355/617] Processing 3rdparty/mbedtls/mbedtls/library/debug.c
+[357/617] Processing 3rdparty/vorbis/vorbis-src/lib/vorbisfile.c
+[358/617] Processing 3rdparty/opusfile/opusfile/src/stream.c
+[359/617] Processing 3rdparty/opusfile/opusfile/src/info.c
+[360/617] Processing 3rdparty/opusfile/opusfile/src/opusfile.c
+[361/617] Processing 3rdparty/opusfile/opusfile/src/internal.c
+[362/617] Processing 3rdparty/mainui/menus/Touch.cpp
+[364/617] Processing 3rdparty/mainui/controls/Framework.cpp
+[366/617] Processing 3rdparty/mainui/controls/Bitmap.cpp
+[367/617] Processing 3rdparty/mainui/miniutl/utlmemory.cpp
+[368/617] Processing 3rdparty/mainui/controls/ColorPicker.cpp
+[369/617] Processing 3rdparty/mainui/controls/BaseClientWindow.cpp
+[370/617] Processing 3rdparty/mainui/menus/Achievements.cpp
+[371/617] Processing 3rdparty/mainui/MenuStrings.cpp
+[372/617] Processing 3rdparty/mainui/utflib.cpp
+[373/617] Processing 3rdparty/mainui/EventSystem.cpp
+[374/617] Processing 3rdparty/mainui/EngineCallback.cpp
+[375/617] Processing 3rdparty/mainui/menus/LoadGame.cpp
+[376/617] Processing 3rdparty/mainui/BaseMenu.cpp
+[377/617] Processing 3rdparty/mainui/miniutl/strtools.cpp
+[378/617] Processing 3rdparty/mainui/menus/Gamepad.cpp
+[379/617] Processing 3rdparty/mainui/menus/ConnectionProgress.cpp
+[380/617] Processing 3rdparty/mainui/controls/BaseWindow.cpp
+[381/617] Processing 3rdparty/mainui/udll_int.cpp
+[382/617] Processing 3rdparty/mainui/controls/ItemsHolder.cpp
+[383/617] Processing 3rdparty/mainui/controls/AnimatedBanner.cpp
+[384/617] Processing 3rdparty/mainui/font/WinAPIFont.cpp
+[385/617] Processing 3rdparty/mainui/menus/AdvancedControls.cpp
+[386/617] Processing 3rdparty/mainui/controls/TabView.cpp
+[387/617] Processing 3rdparty/mainui/font/StbFont.cpp
+[388/617] Processing 3rdparty/mainui/font/FreeTypeFont.cpp
+[389/617] Processing 3rdparty/mainui/menus/PlayerIntroduceDialog.cpp
+[390/617] Processing 3rdparty/mainui/miniutl/utlbuffer.cpp
+[391/617] Processing 3rdparty/mainui/controls/YesNoMessageBox.cpp
+[392/617] Processing 3rdparty/mainui/controls/Table.cpp
+[393/617] Processing 3rdparty/mainui/miniutl/utlstring.cpp
+[394/617] Processing 3rdparty/mainui/menus/VideoOptions.cpp
+[395/617] Processing 3rdparty/mainui/miniutl/generichash.cpp
+[396/617] Processing 3rdparty/mainui/controls/MovieBanner.cpp
+[397/617] Processing 3rdparty/mainui/menus/Video.cpp
+[398/617] Processing 3rdparty/mainui/Utils.cpp
+[399/617] Processing 3rdparty/mainui/menus/TouchOptions.cpp
+[400/617] Processing 3rdparty/mainui/menus/dynamic/ScriptMenu.cpp
+[401/617] Processing 3rdparty/mainui/controls/BackgroundBitmap.cpp
+[402/617] Processing 3rdparty/mainui/controls/CheckBox.cpp
+[403/617] Processing 3rdparty/mainui/menus/VideoModes.cpp
+[404/617] Processing 3rdparty/mainui/menus/TouchButtons.cpp
+[405/617] Processing 3rdparty/mainui/menus/PadLayout.cpp
+[406/617] Processing 3rdparty/mainui/gamecube_menu_export.cpp
+[407/617] Processing 3rdparty/mainui/menus/SaveLoad.cpp
+[408/617] Processing 3rdparty/mainui/menus/PlayerSetup.cpp
+[409/617] Processing 3rdparty/mainui/controls/DropDown.cpp
+[410/617] Processing 3rdparty/mainui/controls/BaseItem.cpp
+[411/617] Processing 3rdparty/mainui/menus/Multiplayer.cpp
+[412/617] Processing 3rdparty/mainui/menus/NewGame.cpp
+[413/617] Processing 3rdparty/mainui/menus/ServerBrowser.cpp
+[414/617] Processing 3rdparty/mainui/menus/Network.cpp
+[415/617] Processing 3rdparty/mainui/Scissor.cpp
+[416/617] Processing 3rdparty/mainui/controls/Action.cpp
+[417/617] Processing 3rdparty/mainui/font/BaseFontBackend.cpp
+[418/617] Processing 3rdparty/mainui/menus/Zoo.cpp
+[419/617] Processing 3rdparty/mainui/menus/CustomGame.cpp
+[420/617] Processing 3rdparty/mainui/menus/Credits.cpp
+[421/617] Processing 3rdparty/mainui/menus/ServerInfo.cpp
+[422/617] Processing 3rdparty/mainui/menus/FileDialog.cpp
+[423/617] Processing 3rdparty/mainui/font/FontManager.cpp
+[424/617] Processing 3rdparty/mainui/WindowSystem.cpp
+[425/617] Processing 3rdparty/mainui/menus/InputDevices.cpp
+[427/617] Processing 3rdparty/mainui/CFGScript.cpp
+[428/617] Processing 3rdparty/mainui/Btns.cpp
+[429/617] Processing 3rdparty/mainui/menus/Gyro.cpp
+[430/617] Processing 3rdparty/mainui/menus/GameOptions.cpp
+[431/617] Processing 3rdparty/mainui/menus/CreateGame.cpp
+[432/617] Processing 3rdparty/mainui/menus/PlayerName.cpp
+[433/617] Processing 3rdparty/mainui/menus/Configuration.cpp
+[434/617] Processing 3rdparty/mainui/controls/SpinControl.cpp
+[435/617] Processing 3rdparty/mainui/controls/PlayerModelView.cpp
+[436/617] Processing 3rdparty/mainui/menus/Audio.cpp
+[437/617] Processing 3rdparty/mainui/menus/Controls.cpp
+[438/617] Processing 3rdparty/mainui/controls/ScrollView.cpp
+[439/617] Processing 3rdparty/mainui/menus/Main.cpp
+[440/617] Processing 3rdparty/mainui/font/BitmapFont.cpp
+[441/617] Processing 3rdparty/mainui/menus/ConnectionWarning.cpp
+[442/617] Processing 3rdparty/mainui/controls/Field.cpp
+[443/617] Processing 3rdparty/mainui/controls/Switch.cpp
+[444/617] Processing 3rdparty/mainui/controls/Slider.cpp
+[445/617] Processing 3rdparty/mainui/controls/ProgressBar.cpp
+[446/617] Processing 3rdparty/mainui/controls/Editable.cpp
+[447/617] Processing 3rdparty/mainui/menus/ColorPickerDialog.cpp
+[448/617] Processing 3rdparty/mainui/miniutl/bitstring.cpp
+[449/617] Processing 3rdparty/mainui/controls/PicButton.cpp
+[450/617] Processing 3rdparty/mainui/menus/TouchEdit.cpp
+[451/617] Processing 3rdparty/mainui/controls/MessageBox.cpp
+[453/617] Processing 3rdparty/MultiEmulator/src/Setti.c
+[454/617] Processing 3rdparty/MultiEmulator/src/SHA.c
+[455/617] Processing 3rdparty/MultiEmulator/src/AVSMP.c
+[456/617] Processing 3rdparty/MultiEmulator/src/SC2009.c
+[457/617] Processing 3rdparty/MultiEmulator/src/OldRevEmu.c
+[458/617] Processing 3rdparty/MultiEmulator/src/RevSpoofer.c
+[459/617] Processing 3rdparty/MultiEmulator/src/CRijndael.c
+[460/617] Processing 3rdparty/MultiEmulator/src/RevEmu2013.c
+[461/617] Processing 3rdparty/MultiEmulator/src/SteamEmu.c
+[462/617] Processing 3rdparty/MultiEmulator/src/RevEmu.c
+[464/617] Processing ref/common/ref_context.c
+[465/617] Processing engine/client/gamma.c
+[466/617] Processing engine/client/cl_scrn.c
+[467/617] Processing engine/common/soundlib/snd_utils.c
+[468/617] Processing engine/common/model.c
+[469/617] Processing engine/common/mcol.c
+[470/617] Linking /tmp/mohaa-worlddl-ring/xash-build/ref/common/libref_common.a
+[471/617] Processing engine/client/soundlib/snd_main.c
+[472/617] Processing engine/common/pm_surface.c
+[473/617] Processing engine/client/soundlib/snd_wav.c
+[474/617] Processing engine/client/sound/s_mouth.c
+[475/617] Processing engine/server/sv_gc_campaign.c
+[476/617] Processing engine/client/parse/cl_parse_gs.c
+[477/617] Processing engine/common/lib_common.c
+[478/617] Processing engine/common/system.c
+[479/617] Processing engine/platform/gamecube/soundscape_gamecube.c
+[480/617] Processing engine/client/sound/voice.c
+[481/617] Processing engine/common/masterlist.c
+[482/617] Processing engine/client/console.c
+[483/617] Processing engine/client/cl_view.c
+[484/617] Processing engine/client/dll_int/cl_securedstub.c
+[485/617] Processing engine/common/http/net_http_xash.c
+[486/617] Processing engine/platform/gamecube/mem_gamecube.c
+[487/617] Processing engine/common/net_ws.c
+[488/617] Processing engine/common/world.c
+[489/617] Processing engine/common/filesystem_engine.c
+[490/617] Processing engine/client/cl_font.c
+[491/617] Processing engine/common/launcher.c
+[492/617] Processing engine/client/cl_efx.c
+[493/617] Processing engine/client/soundlib/snd_ogg_vorbis.c
+[494/617] Processing engine/common/imagelib/img_png.c
+[495/617] Processing engine/client/cl_cine.c
+[496/617] Processing engine/common/common.c
+[497/617] Processing engine/client/cl_cmds.c
+[498/617] Processing engine/common/sounds.c
+[499/617] Processing engine/server/sv_game.c
+In file included from /home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/engine/common/system.h:30,
+                 from /home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/engine/common/common.h:36,
+                 from /home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/engine/server/sv_game.c:16:
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/engine/server/sv_game.c: In function 'SV_GCLazyBlockTargetname':
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/engine/server/sv_game.c:2538:39: warning: passing argument 1 of 'COM_ParseFileSafe' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+ 2538 |         while(( text = COM_ParseFile( text, key, sizeof( key ))) != NULL )
+      |                                       ^~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/public/crtlib.h:134:63: note: in definition of macro 'COM_ParseFile'
+  134 | #define COM_ParseFile( data, token, size ) COM_ParseFileSafe( data, token, size, 0, NULL, NULL )
+      |                                                               ^~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/public/crtlib.h:133:32: note: expected 'char *' but argument is of type 'const char *'
+  133 | char *COM_ParseFileSafe( char *data, char *token, const int size, unsigned int flags, int *len, qboolean *quoted );
+      |                          ~~~~~~^~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/engine/server/sv_game.c:2542:44: warning: passing argument 1 of 'COM_ParseFileSafe' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+ 2542 |                 if(( text = COM_ParseFile( text, value, sizeof( value ))) == NULL )
+      |                                            ^~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/public/crtlib.h:134:63: note: in definition of macro 'COM_ParseFile'
+  134 | #define COM_ParseFile( data, token, size ) COM_ParseFileSafe( data, token, size, 0, NULL, NULL )
+      |                                                               ^~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/public/crtlib.h:133:32: note: expected 'char *' but argument is of type 'const char *'
+  133 | char *COM_ParseFileSafe( char *data, char *token, const int size, unsigned int flags, int *len, qboolean *quoted );
+      |                          ~~~~~~^~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/engine/server/sv_game.c: In function 'SV_GCLazyReport':
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/engine/server/sv_game.c:2632:47: warning: passing argument 1 of 'COM_ParseFileSafe' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+ 2632 |                 while(( text = COM_ParseFile( text, key, sizeof( key ))) != NULL && key[0] != '}' )
+      |                                               ^~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/public/crtlib.h:134:63: note: in definition of macro 'COM_ParseFile'
+  134 | #define COM_ParseFile( data, token, size ) COM_ParseFileSafe( data, token, size, 0, NULL, NULL )
+      |                                                               ^~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/public/crtlib.h:133:32: note: expected 'char *' but argument is of type 'const char *'
+  133 | char *COM_ParseFileSafe( char *data, char *token, const int size, unsigned int flags, int *len, qboolean *quoted );
+      |                          ~~~~~~^~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/engine/server/sv_game.c:2634:52: warning: passing argument 1 of 'COM_ParseFileSafe' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+ 2634 |                         if(( text = COM_ParseFile( text, value, sizeof( value ))) == NULL )
+      |                                                    ^~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/public/crtlib.h:134:63: note: in definition of macro 'COM_ParseFile'
+  134 | #define COM_ParseFile( data, token, size ) COM_ParseFileSafe( data, token, size, 0, NULL, NULL )
+      |                                                               ^~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/public/crtlib.h:133:32: note: expected 'char *' but argument is of type 'const char *'
+  133 | char *COM_ParseFileSafe( char *data, char *token, const int size, unsigned int flags, int *len, qboolean *quoted );
+      |                          ~~~~~~^~~~
+
+[500/617] Processing engine/common/imagelib/img_quant.c
+[501/617] Processing engine/server/sv_phys.c
+[502/617] Processing engine/client/cl_frame.c
+[503/617] Processing engine/client/cl_netgraph.c
+[504/617] Processing engine/common/cvar.c
+In file included from /home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/engine/common/system.h:30,
+                 from /home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/engine/common/common.h:36,
+                 from /home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/engine/common/cvar.c:17:
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/engine/common/cvar.c: In function 'Cvar_Set_f':
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/public/crtlib.h:97:36: warning: 'strlen' reading 1 or more bytes from a region of size 0 [-Wstringop-overread]
+   97 | #define Q_strlen( str ) (( str ) ? strlen(( str )) : 0 )
+      |                                    ^~~~~~~~~~~~~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/engine/common/cvar.c:1182:27: note: in expansion of macro 'Q_strlen'
+ 1182 |                 int len = Q_strlen( Cmd_Argv(i) + 1 );
+      |                           ^~~~~~~~
+
+[505/617] Processing engine/server/sv_save.c
+[506/617] Processing engine/platform/gamecube/in_gamecube.c
+[507/617] Processing engine/platform/gamecube/hitext_gamecube.c
+[508/617] Processing engine/client/input/in_touch.c
+[509/617] Processing engine/platform/gamecube/iso9660_gamecube.c
+In file included from /opt/devkitpro/libogc/include/gccore.h:62,
+                 from /opt/devkitpro/libogc/include/ogc/../ogcsys.h:4,
+                 from /opt/devkitpro/libogc/include/ogc/lwp_watchdog.h:7,
+                 from /home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/engine/platform/gamecube/iso9660_gamecube.c:51:
+/opt/devkitpro/libogc/include/ogc/system.h:219:1: warning: packed attribute is unnecessary for '_syssramex' [-Wpacked]
+  219 | } ATTRIBUTE_PACKED;
+      | ^
+/opt/devkitpro/libogc/include/ogc/system.h:249:1: warning: packed attribute is unnecessary for '_sys_fontheader' [-Wpacked]
+  249 | } ATTRIBUTE_PACKED;
+      | ^
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/engine/platform/gamecube/iso9660_gamecube.c:62:9: warning: 'basename' redefined
+   62 | #define basename iso9660_basename
+      |         ^~~~~~~~
+In file included from /home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/engine/platform/gamecube/iso9660_gamecube.c:55:
+/opt/devkitpro/devkitPPC/powerpc-eabi/include/string.h:173:10: note: this is the location of the previous definition
+  173 | # define basename basename
+      |          ^~~~~~~~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/engine/platform/gamecube/iso9660_gamecube.c: In function '_read':
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/engine/platform/gamecube/iso9660_gamecube.c:209:21: warning: comparison of integer expressions of different signedness: 'int' and 'size_t' {aka 'unsigned int'} [-Wsign-compare]
+  209 |         while (read < len)
+      |                     ^
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/engine/platform/gamecube/iso9660_gamecube.c: In function 'read_directory':
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/engine/platform/gamecube/iso9660_gamecube.c:354:143: warning: comparison of integer expressions of different signedness: 'int' and 'u32' {aka 'unsigned int'} [-Wsign-compare]
+  354 |                         if (__read(mdescr, mdescr->cluster_buffer, (u64) sector * SECTOR_SIZE + sector_offset, (SECTOR_SIZE - sector_offset)) != (SECTOR_SIZE - sector_offset))
+      |                                                                                                                                               ^~
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/engine/platform/gamecube/iso9660_gamecube.c: In function 'find_file_in_directory':
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/engine/platform/gamecube/iso9660_gamecube.c:466:116: warning: comparison of integer expressions of different signedness: 'int' and 'u32' {aka 'unsigned int'} [-Wsign-compare]
+  466 |                 if (__read(mdescr, buf, (u64) sector * SECTOR_SIZE + sector_offset, (SECTOR_SIZE - sector_offset)) != (SECTOR_SIZE - sector_offset))
+      |                                                                                                                    ^~
+
+[510/617] Processing engine/platform/gamecube/hud_hires.c
+[511/617] Processing engine/server/sv_pmove.c
+[512/617] Processing engine/common/net_chan.c
+[513/617] Processing engine/common/xrcon.c
+[514/617] Processing engine/common/imagelib/img_ktx2.c
+[515/617] Processing engine/client/sound/s_dsp.c
+[516/617] Processing engine/common/munge.c
+[517/617] Processing engine/client/mod_dbghulls.c
+[518/617] Processing engine/client/cine_path.c
+[519/617] Processing engine/common/ipv6text.c
+[520/617] Processing engine/platform/gamecube/tas_gamecube.c
+[521/617] Processing engine/client/dll_int/cl_render.c
+[522/617] Processing engine/client/vid_common.c
+[523/617] Processing engine/modules/module.c
+[524/617] Processing engine/client/soundlib/snd_ogg_opus.c
+[525/617] Processing engine/server/sv_client.c
+[526/617] Processing engine/common/infostring.c
+[527/617] Processing engine/client/cl_video.c
+[528/617] Processing engine/common/imagelib/img_main.c
+[529/617] Processing engine/client/cl_sprite.c
+[530/617] Processing engine/common/cmd.c
+[531/617] Processing engine/common/imagelib/img_tga_gc.c
+[532/617] Processing engine/common/mod_bmodel.c
+[533/617] Processing engine/platform/gamecube/perf_gamecube.c
+[534/617] Processing engine/platform/gamecube/card_gamecube.c
+[535/617] Processing engine/platform/gamecube/net_gamecube.c
+[536/617] Processing engine/common/host.c
+[537/617] Processing engine/common/con_utils.c
+[538/617] Processing engine/common/net_encode.c
+[539/617] Processing engine/platform/gamecube/malloc_trace.c
+[540/617] Processing engine/platform/gamecube/skin_stream.c
+[541/617] Processing engine/common/http/net_http_tls.c
+[542/617] Processing engine/platform/gamecube/vid_gamecube.c
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/engine/platform/gamecube/vid_gamecube.c: In function 'GC_MaybeRestreamRideMapFaces':
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/engine/platform/gamecube/vid_gamecube.c:7601:37: warning: assignment discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+ 7601 |                 gc_newgame_surfbits = bits;
+      |                                     ^
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/engine/platform/gamecube/vid_gamecube.c: In function 'GC_CapFacesSeedLeanDecals':
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/engine/platform/gamecube/vid_gamecube.c:14331:52: warning: passing argument 1 of 'CL_TraceLine' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+14331 |                                 tr = CL_TraceLine( org, end, PM_STUDIO_IGNORE );
+      |                                                    ^~~
+In file included from /home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/engine/platform/gamecube/vid_gamecube.c:11:
+/home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/engine/client/client.h:1056:32: note: expected 'vec_t *' {aka 'float *'} but argument is of type 'const float *'
+ 1056 | pmtrace_t CL_TraceLine( vec3_t start, vec3_t end, int flags );
+      |                         ~~~~~~~^~~~~
+
+[543/617] Processing engine/platform/gamecube/sys_gamecube.c
+[544/617] Processing engine/client/cl_debug.c
+[545/617] Processing engine/client/vgui/vgui_draw.c
+[546/617] Processing engine/server/sv_move.c
+[547/617] Processing engine/common/imagelib/img_wad.c
+[548/617] Processing engine/server/sv_frame.c
+[549/617] Processing engine/common/net_buffer.c
+[550/617] Processing engine/platform/gamecube/actor_gesture.c
+[551/617] Processing engine/client/identification.c
+[552/617] Processing engine/platform/gamecube/aram_core.c
+[553/617] Processing engine/client/dll_int/cl_game.c
+[554/617] Processing engine/common/host_state.c
+[555/617] Processing engine/client/sound/s_vox.c
+[556/617] Processing engine/common/dedicated.c
+[557/617] Processing engine/server/sv_world.c
+[558/617] Processing engine/server/sv_log.c
+[559/617] Processing engine/client/sound/s_main.c
+[560/617] Processing engine/server/sv_query.c
+[561/617] Processing engine/client/cl_main.c
+[562/617] Processing engine/client/cl_remap.c
+[563/617] Processing engine/client/cl_events.c
+[564/617] Processing engine/client/sound/s_load.c
+[565/617] Processing engine/client/gc_vmanim.c
+[566/617] Processing engine/common/mod_studio.c
+[567/617] Processing engine/client/input/in_osk.c
+[568/617] Processing engine/client/input/input.c
+[569/617] Processing engine/client/avi/avi_gc.c
+[570/617] Processing engine/client/dll_int/cl_mobile.c
+[571/617] Processing engine/client/dll_int/cl_pmove.c
+[572/617] Processing engine/server/sv_lazy_logic.c
+[573/617] Processing engine/common/zone.c
+[574/617] Processing engine/common/hpak.c
+[575/617] Processing engine/common/sys_con.c
+[576/617] Processing engine/client/cl_spray.c
+[577/617] Processing engine/client/titles.c
+[578/617] Processing engine/client/input/in_keys.c
+[579/617] Processing engine/client/parse/cl_qparse.c
+[580/617] Processing engine/client/cl_custom.c
+[581/617] Processing engine/server/sv_cmds.c
+[582/617] Processing engine/client/avi/avi_cinepak.c
+[583/617] Processing engine/platform/gamecube/voice_stream.c
+[584/617] Processing engine/client/sound/s_stream.c
+[585/617] Processing engine/common/mod_alias.c
+[586/617] Processing engine/server/sv_custom.c
+[587/617] Processing engine/client/soundlib/ogg_filestream.c
+[588/617] Processing engine/client/cl_tent.c
+[589/617] Processing engine/client/cl_demo.c
+[590/617] Processing engine/common/whereami.c
+[591/617] Processing engine/common/cfgscript.c
+[592/617] Processing engine/client/sound/s_mix.c
+[593/617] Processing engine/client/cl_efrag.c
+[594/617] Processing engine/client/input/in_gyro.c
+[595/617] Processing engine/common/imagelib/img_bmp.c
+[596/617] Processing engine/client/soundlib/snd_mp3_stub_gc.c
+[597/617] Processing engine/common/imagelib/img_utils.c
+[598/617] Processing engine/common/imagelib/img_tga.c
+[599/617] Processing engine/platform/gamecube/settings_blob.c
+[600/617] Processing engine/common/pm_trace.c
+[602/617] Processing engine/server/sv_filter.c
+[603/617] Processing engine/platform/gamecube/snddma_gamecube.c
+[604/617] Processing engine/server/sv_main.c
+[605/617] Processing engine/client/dll_int/ref_common.c
+[606/617] Processing engine/common/mod_sprite.c
+[607/617] Processing engine/platform/gamecube/dll_gamecube.c
+[608/617] Processing engine/platform/gamecube/hello.c
+[609/617] Processing engine/server/sv_init.c
+[610/617] Processing engine/common/imagelib/img_dds.c
+[611/617] Processing engine/client/dll_int/cl_gameui.c
+[612/617] Processing engine/client/input/in_joy.c
+[613/617] Processing engine/common/custom.c
+[614/617] Processing engine/client/parse/cl_parse.c
+[615/617] Processing engine/common/base_cmd.c
+[616/617] Linking /tmp/mohaa-worlddl-ring/xash-build/engine/xash
+Waf: Leaving directory `/tmp/mohaa-worlddl-ring/xash-build'
+'build' finished successfully (2m47.370s)
+Waf: Entering directory `/tmp/mohaa-worlddl-ring/xash-build'
+GameCube ref_gx static library (XASH_PURE_GX=1) scheduled
+GameCube HLSDK gamedir=mohaa (server=found client=found)
+GameCube engine link stack: stack=libogc root=/opt/devkitpro/libogc fat=libfat
+Using GameCube HLSDK server archive from /tmp/mohaa-worlddl-ring/hlsdk-install
+Using GameCube HLSDK client archive from /tmp/mohaa-worlddl-ring/hlsdk-install
+[ 18/621] Processing ref/common/ref_skybox.c
+[ 19/621] Processing ref/common/ref_light.c
+[ 20/621] Processing ref/common/ref_math.c
+[ 21/621] Processing ref/common/ref_image.c
+[ 22/621] Processing ref/common/ref_image.c
+[ 23/621] Processing ref/common/ref_math.c
+[ 24/621] Processing ref/common/ref_skybox.c
+[ 25/621] Processing ref/common/ref_light.c
+- install /tmp/mohaa-worlddl-ring/engine-out/libfilesystem_stdio.a (from /tmp/mohaa-worlddl-ring/xash-build/filesystem/libfilesystem_stdio.a)
+- install /tmp/mohaa-worlddl-ring/engine-out/mohaa/extras.pk3 (from /tmp/mohaa-worlddl-ring/xash-build/3rdparty/extras/extras.pk3)
++ install /tmp/mohaa-worlddl-ring/engine-out/libref_gx.a (from /tmp/mohaa-worlddl-ring/xash-build/ref/gx/libref_gx.a)
+- install /tmp/mohaa-worlddl-ring/engine-out/libmenu.a (from /tmp/mohaa-worlddl-ring/xash-build/3rdparty/mainui/libmenu.a)
+Waf: Leaving directory `/tmp/mohaa-worlddl-ring/xash-build'
+'install' finished successfully (1.437s)
+DOL generated successfully: /tmp/mohaa-worlddl-ring/engine-out/bin/mohaagc.dol
+xash3d-gc hardware handoff
+built_at=2026-11-23T01:14:48Z
+host=ceres
+renderer=REF_GX
+policy=retail-flipper
+loader=swiss
+gamedir=mohaa
+dol_name=mohaagc.dol
+ogc_stack=libogc
+ogc_root=/opt/devkitpro/libogc
+fat_provider=libfat
+elf=/tmp/mohaa-worlddl-ring/engine-out/bin/xash
+elf_profile=/tmp/mohaa-worlddl-ring/engine-out/bin/xash-mohaa
+dol=/tmp/mohaa-worlddl-ring/engine-out/bin/mohaagc.dol
+elf_bytes=46883516
+dol_bytes=8078368
+Handoff metadata: /tmp/mohaa-worlddl-ring/engine-out/bin/gamecube-handoff.txt
+GameCube build installed to /tmp/mohaa-worlddl-ring/engine-out/
+Skipping disc build (XASH3D_GC_SKIP_DISC_BUILD=1).
+For disc packaging, run: python3 scripts/build-gamecube-disc.py --output /tmp/mohaa-worlddl-ring/engine-out/xash3d-gc.iso --data Half-Life/mohaa --gamedir mohaa --dol /tmp/mohaa-worlddl-ring/engine-out/bin/mohaagc.dol
+For DOL testing, provide assets at sd:/xash3d/mohaa/ before launching /tmp/mohaa-worlddl-ring/engine-out/bin/mohaagc.dol.
