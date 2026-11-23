@@ -162,6 +162,10 @@ third_party/sdhlt-bsp30ext/build.sh /tmp/sdhlt
 python3 tools/bsp30_check.py m1l2a.bsp --point 0 0 40 1
 ```
 
+## In-game cutscenes
+
+MOHAA scripts and baked model tags can advance the m1l1 opening truck path in Dolphin. The retail trucks and their scripted mesh animations are not rendered yet: scripted model entities still use invisible `info_target` placeholders. See [the cutscene status and next implementation](docs/MOHAA_CUTSCENE_STATUS.md) and [the tag-motion runtime evidence](media/2026-11-22-m1l1-tag-arena/README.md).
+
 ## Mission scripts
 
 `script/` holds a clean-room, MIT-licensed VM for MOHAA's `.scr` (Morpheus)
