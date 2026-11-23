@@ -164,7 +164,7 @@ python3 tools/bsp30_check.py m1l2a.bsp --point 0 0 40 1
 
 ## In-game cutscenes
 
-MOHAA scripts and baked model tags can advance the m1l1 opening truck path in Dolphin. The scripted GMC and Opel truck models now export their SKC sequences and TIKI surface states, and `anim` commands select the matching Studio sequence/bodygroups. Those latest source changes have not yet been built into a fresh DOL or verified in-game. See [the cutscene status and next implementation](docs/MOHAA_CUTSCENE_STATUS.md) and [the tag-motion runtime evidence](media/2026-11-22-m1l1-tag-arena/README.md).
+MOHAA scripts and baked model tags can advance the m1l1 opening truck path in Dolphin. The scripted GMC and Opel truck models now export their SKC sequences and TIKI surface states, and `anim` commands select the matching Studio sequence/bodygroups. The latest game-side sources now compile and link into an isolated DOL, and the menu-provenance text check passes with a clean local mainui snapshot. The engine source copy has no canonical Git metadata and the DOL has not been run in-game. See [the cutscene status and next implementation](docs/MOHAA_CUTSCENE_STATUS.md) and [the tag-motion runtime evidence](media/2026-11-22-m1l1-tag-arena/README.md).
 
 `tools/mohaa_tiki_model.py` can bake a TIKI mesh, skeleton, named SKC sequences and per-sequence surface visibility into a GoldSrc Studio v10 MDL. For example, write the output into a temporary game tree; generated models contain retail data and must stay out of Git:
 
