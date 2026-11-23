@@ -22,6 +22,8 @@ Sources (give one or both):
                 and reused.
   --music-source DIR  an extra folder containing loose sound/ music files; repeat for split extractions.
                       Used by the music stage only. Normally the installed game folder already includes these.
+  --sound-source DIR  an extra folder containing loose sound/ effects and dialogue; repeat for split extractions.
+                      Used by the sounds stage only.
 
 Stages run in this order (--stages picks some; by default every one whose tools are found):
   menu      the retail main menu: the war room, its lit      needs Pillow and numpy
@@ -638,6 +640,8 @@ def main(argv=None):
     ap.add_argument("--cd", nargs="+", help="install CD folders (holding DATA1.HDR / DATAn.CAB)")
     ap.add_argument("--music-source", action="append", default=[], metavar="DIR",
                     help="extra folder containing loose sound/ music files; repeat for split extractions")
+    ap.add_argument("--sound-source", action="append", default=[], metavar="DIR",
+                    help="extra folder containing loose sound/ effects or dialogue; repeat for split extractions")
     ap.add_argument("--movie-source", action="append", default=[], metavar="DIR",
                     help="extra folder containing the loose intro movie and soundtrack; repeat for split extractions")
     ap.add_argument("--sd", required=True, help="SD card root (or a folder to copy onto one later)")
@@ -674,6 +678,10 @@ def main(argv=None):
     for path in a.music_source:
         if not os.path.isdir(path):
             ap.error("music source folder does not exist: %s" % path)
+    a.sound_source = [os.path.abspath(path) for path in a.sound_source]
+    for path in a.sound_source:
+        if not os.path.isdir(path):
+            ap.error("sound source folder does not exist: %s" % path)
     a.movie_source = [os.path.abspath(path) for path in a.movie_source]
     for path in a.movie_source:
         if not os.path.isdir(path):
@@ -725,6 +733,8 @@ def main(argv=None):
             extra_sources = []
             if s == "music":
                 extra_sources = a.music_source
+            elif s == "sounds":
+                extra_sources = a.sound_source
             elif s == "movie":
                 extra_sources = a.movie_source
             stage_sources = sources + extra_sources

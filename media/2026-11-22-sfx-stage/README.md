@@ -68,3 +68,20 @@ The generated stage was written under `/tmp` and removed after this audit.
 Retail assets and converted audio are not committed. No test suite or hardware
 playback was run; runtime SFX playback, unresolved aliases, and the two missing
 cello sources remain open.
+
+## Split loose SFX source — 2026-11-22
+
+`tools/mohaa_sd.py` now accepts repeatable `--sound-source DIR` arguments for the sounds stage only. This handles retail effects and dialogue extracted separately from the installed `main/` PK3 folder, without changing source order for music, maps, or other stages.
+
+For a focused m1l2b conversion, three radio mechanics WAVs (`shortwave1.wav`, `shortwave2.wav`, `static1.wav`) and nine `m5l3/a/dfr_m5l2_*h.wav` dialogue WAVs were extracted from the two local retail CD cabinets into a temporary `main/sound/` tree. No retail data went into this repository. The run was:
+
+```sh
+python3 tools/mohaa_sd.py --mohaa /home/tim/Desktop/mohaa-gc/retail \
+  --sound-source /tmp/mohaa-sfx-loose-20261122/main \
+  --sd /tmp/mohaa-sfx-source-complete-20261122 \
+  --maps m1l2b --stages sounds --list
+```
+
+The stage read 31 scripts, found 20 aliases and 29 distinct samples, reported zero unresolved aliases, and converted all 29 samples with zero skipped. It wrote 30 files (3.5 MB): `maps/m1l2b.snd` plus 29 native WAVs. The `.snd` table has 38 rows because some aliases have variants; all 29 unique referenced paths exist. Every referenced WAV was inspected as mono, 16-bit PCM at 22,050 Hz. The [run log](m1l2b-loose-source-stage.log) has the exact output list.
+
+This verifies native SFX staging for m1l2b. The map smoke route does not run the MOHAA script VM, so in-game `.snd` loading and playback remain to be checked through the gameplay route.

@@ -20,6 +20,14 @@ PCM samples under `sound/mohaa/`. It keeps nested retail dialogue paths intact. 
 still needs separate loose tracks when the install's `main/` folder does not contain them; see
 `--music-source` below.
 
+If effects or dialogue were extracted into a separate folder containing `sound/`, pass it with
+`--sound-source`. It is read only by the sounds stage:
+
+```bash
+python3 tools/mohaa_sd.py --mohaa ~/MOHAA --sound-source /path/to/extracted/main \
+  --sd /media/SDCARD --stages sounds
+```
+
 If the loose music files were extracted separately from the `main/` folder,
 pass that directory with `--music-source`; it is read only by the music stage:
 
