@@ -164,7 +164,7 @@ python3 tools/bsp30_check.py m1l2a.bsp --point 0 0 40 1
 
 ## In-game cutscenes
 
-MOHAA scripts and baked model tags can advance the m1l1 opening truck path in Dolphin. The scripted GMC and Opel truck models now export their SKC sequences and TIKI surface states, and `anim` commands select the matching Studio sequence/bodygroups. The latest game-side sources now compile and link into an isolated DOL, and the menu-provenance text check passes with a clean local mainui snapshot. The engine source copy has no canonical Git metadata and the DOL has not been run in-game. See [the cutscene status and next implementation](docs/MOHAA_CUTSCENE_STATUS.md) and [the tag-motion runtime evidence](media/2026-11-22-m1l1-tag-arena/README.md).
+MOHAA scripts and baked model tags can advance the m1l1 opening truck path in Dolphin. The scripted GMC and Opel truck models export their SKC sequences and TIKI surface states, and `anim` commands select the matching Studio sequence/bodygroups. The latest isolated DOL has run through the m1l2b listenserver: it reaches map-ready, connects its local client, and draws the first-person weapon and HUD. That frame is very dark, and the isolated engine source has no canonical Git metadata. See the [m1l2b runtime capture](media/2026-11-23-m1l2b-current-runtime/README.md), [cutscene status](docs/MOHAA_CUTSCENE_STATUS.md), and [m1l1 tag-motion evidence](media/2026-11-22-m1l1-tag-arena/README.md).
 
 The current project-history and progress talk is [available as a PDF](output/pdf/mohaa-gamecube-progress-2026-11-23.pdf), with its [full speaker script](output/presentation/mohaa-gdc-narration.txt). The full nine-slide talk is available as a [narrated video](output/presentation/mohaa-gdc-progress-narrated.mp4) and [audio track](output/presentation/mohaa-gdc-narration.mp3), rendered locally with Qwen3-TTS 1.7B CustomVoice.
 
@@ -176,9 +176,9 @@ python3 tools/mohaa_tiki_model.py retail/main \
   --out /tmp/mohaa-script-models/models/vehicles/gmctruck_opening.mdl
 ```
 
-The exporter supports Xash's four-influence Studio v10 skinning format and up to 31 surface bodygroups. It reads animation aliases through included TIKIs; repeat `--animation <alias>` to keep a small mission-specific sequence set. When a vertex has more than four influences, it keeps the four strongest and renormalizes them. Models with an unsupported skeleton fall back to a posed static model. The script-entity sequence binding still needs a GameCube build and runtime capture.
+The exporter supports Xash's four-influence Studio v10 skinning format and up to 31 surface bodygroups. It reads animation aliases through included TIKIs; repeat `--animation <alias>` to keep a small mission-specific sequence set. When a vertex has more than four influences, it keeps the four strongest and renormalizes them. Models with an unsupported skeleton fall back to a posed static model. The script-entity sequence binding is in the GameCube DOL; direct visual confirmation still needs an m1l1 runtime capture.
 
-The m1l1 German Afrika private TIKI exports as a composite Studio model: body, covered head, hands, helmet, loadout, and KAR clip share a 72-bone rig. The stage keeps all ten m1l1 actor aliases used by the retail script, from `opel_driver` through the kill, get-visa, and idle-visa animations. The map staging manifest includes it, and the MOHAA binding assigns the baked model and sequences to tracked script actors. This is conversion and source-integration evidence; a visible in-game actor animation still needs runtime capture.
+The m1l1 German Afrika private TIKI exports as a composite Studio model: body, covered head, hands, helmet, loadout, and KAR clip share a 72-bone rig. The stage keeps all ten m1l1 actor aliases used by the retail script, from `opel_driver` through the kill, get-visa, and idle-visa animations. The map staging manifest includes it, and the MOHAA binding assigns the baked model and sequences to tracked script actors. The current model and manifest are packaged in `/tmp/mohaa-m1l1-actor-20261123/out/mohaa-m1l1-actor-code.iso`; the model extracted from the ISO byte-matches the staged MDL. It is built from the current isolated DOL, but the actor still needs an in-game visual check.
 
 To stage the visible m1l1 trucks, configured scripted actors, and `maps/m1l1.models` on an SD card, use:
 
@@ -187,7 +187,7 @@ python3 tools/mohaa_sd.py --mohaa ~/MOHAA --sd /media/SDCARD \
   --maps m1l1 --stages scriptmodels --list
 ```
 
-The GameCube game code precaches the manifest at `ServerActivate`; matching TIKIs are assigned to script entities and tracked mission actors. No runtime capture has confirmed the truck or actor models animating in-game.
+The GameCube game code precaches the manifest at `ServerActivate`; matching TIKIs are assigned to script entities and tracked mission actors. Current runtime evidence confirms m1l2b boot, local listenserver connection and first-person HUD/weapon drawing, but does not confirm the m1l1 truck or actor models animating.
 
 ## Mission scripts
 
