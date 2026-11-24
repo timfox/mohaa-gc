@@ -34,7 +34,7 @@ Stages run in this order (--stages picks some; by default every one whose tools 
   music     soundtracks and tracks                         needs ffmpeg
   sounds    per-map sound tables and samples
   scripts   level scripts and the global/ libraries
-  scriptmodels static MDL meshes for m1l1's scripted trucks (needs Pillow)
+  scriptmodels static Studio models for m1l1's scripted actors and trucks (needs Pillow + DoD-GC splitter)
   tags      cutscene model tags and animation durations
   maps      maps/<map>.bsp with MOHAA's textures and skybox (+ .mcol collision, .nodes, media/lg_<map>.gcg light grid)
                                                            needs the patched SDHLT: built once (git, cmake, C++)
@@ -288,11 +288,26 @@ SCRIPT_TIKI_ANIMATIONS = {
     ),
 }
 
+# Keep the complete retail actor animation set, but move it out of the core
+# Studio MDL. Xash3D-GC streams these native packs from ARAM one sequence at a
+# time, which keeps the model header/mesh below the lean per-file MEM1 limit.
+SCRIPT_TIKI_ANIMATION_PACKS = {
+    "human/german_afrika_private.tik": "models/human/german_afrika_private_%s.gca",
+}
+
 
 def stage_script_models(sources, game_root, maps, work):
     """Bake the supported scripted TIKI meshes and a map-local precache manifest."""
     from pathlib import Path
+    import importlib.util
     import mohaa_tiki_model
+
+    split_tool = os.path.join(HERE, "..", "dod-gc", "tools", "split_studio_mdl.py")
+    split_spec = importlib.util.spec_from_file_location("mohaa_split_studio_mdl", split_tool)
+    if split_spec is None or split_spec.loader is None:
+        raise RuntimeError("could not load dod-gc/tools/split_studio_mdl.py")
+    split_studio_mdl = importlib.util.module_from_spec(split_spec)
+    split_spec.loader.exec_module(split_studio_mdl)
 
     selected = maps or sorted(map_sources(sources))
     before = _snapshot(game_root)
@@ -310,6 +325,21 @@ def stage_script_models(sources, game_root, maps, work):
                 components=SCRIPT_TIKI_COMPONENTS.get(tiki, ()))
             print("MOHAA script model %s: %d bodygroups, %d triangles, %d bodygroup verts, scale %.5f, idle %s" %
                   (tiki, parts, tris, verts, scale, idle or "-"))
+            pack_path = SCRIPT_TIKI_ANIMATION_PACKS.get(tiki)
+            if pack_path:
+                model_name = os.path.splitext(os.path.basename(output))[0]
+                split_files, _ = split_studio_mdl.split(
+                    Path(output).read_bytes(), model_name, pack_path=pack_path)
+                model_dir = os.path.dirname(output)
+                for filename, data in split_files.items():
+                    with open(os.path.join(model_dir, filename), "wb") as fh:
+                        fh.write(data)
+                pack_name, pack_data = next(
+                    (name, data) for name, data in split_files.items() if name.endswith(".gca"))
+                print("  streamed %d sequences to %s (%d bytes); core %d bytes, external skin %d bytes" % (
+                    len(SCRIPT_TIKI_ANIMATIONS[tiki]), pack_name, len(pack_data),
+                    len(split_files[model_name + ".mdl"]),
+                    len(split_files[model_name + "T.mdl"])))
             model_paths.append(rel)
         manifest = os.path.join(game_root, "maps", mapname.lower() + ".models")
         os.makedirs(os.path.dirname(manifest), exist_ok=True)
