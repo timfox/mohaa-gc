@@ -2025,7 +2025,8 @@ static int c_iprintlnbold(ms_call *c)
 	int arg;
 	/* Retail MOHAA presents gameplay tips as a left-aligned line beneath the
 	 * compass, rather than a center-screen notification. */
-	d->x = 20.0f; d->y = 126.0f; d->w = d->h = 0.0f;
+	/* Retail places this short instruction just below the 48 px compass. */
+	d->x = 8.0f; d->y = 45.0f; d->w = d->h = 0.0f;
 	d->r = d->g = d->b = d->a = 1.0f;
 	d->align_x = DOD_MOHAA_HUD_ALIGN_LEFT;
 	d->align_y = DOD_MOHAA_HUD_ALIGN_TOP;

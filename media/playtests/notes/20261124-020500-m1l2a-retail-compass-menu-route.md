@@ -9,3 +9,5 @@
 - Runtime log: `../screenshots/20261124-020500-m1l2a-retail-compass-menu-route/dolphin.log`
 - DOL SHA-256: `eb8cee28db6ae1a9a6b063e22a88d900a674bce97f1c03c0fa77208e96cf9490`
 - ISO SHA-256: `827498f51bd6000c5b0ef3a061e1212b93986f2dc0a4d3275d3b71af799b15c0`
+
+- Full Dolphin log: `media/playtests/screenshots/20261124-020500-m1l2a-retail-compass-menu-route/dolphin.log.gz`
