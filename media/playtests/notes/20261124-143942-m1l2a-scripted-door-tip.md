@@ -12,3 +12,7 @@ MOHAA probe attempt. Repo HEAD: e2b7286310. Engine checkout: /home/tim/Desktop/m
 ## Launch log
 
 The captured launcher log is `media/playtests/screenshots/20261124-143942-m1l2a-scripted-door-tip/dolphin.log.gz`. It contains the Qt xcb connection failure; Dolphin never opened a guest window. The host has no reachable X server (`xdpyinfo` fails on `:0`, `:1`, and available stale socket displays), and Xvfb cannot create its socket because the managed `/tmp/.X11-unix` directory is owned by `nobody` rather than root. A separate `-b -v Null` headless attempt ran until its 90-second timeout but produced no Dolphin OSReport log, so it does not verify the game VM.
+
+## Static path verification
+
+The ISO contains both `xash3d/mohaa/maps/m1l2a.scr` and `xash3d/mohaa/global/door_locked.scr`. The MOHAA GameCube module ELF `/tmp/mohaa-matching-layout-build/out/bin/xash-mohaa` exports `Dod_MohaaLevelInit`, `Dod_MohaaNotify`, and `DodGC_MohaaTrigger`. In `/tmp/mohaa-current-clean-build/hlsdk-gamecube/mohaa/dlls/libhl_gamecube_ppc.a`, `triggers.cpp.1.o` references `DodGC_MohaaTrigger`, while `dod_mohaa_ents.cpp.1.o` defines it. This verifies the script and trigger bridge are linked into the probe build; it does not prove they execute in-game or that the HUD tip is visible.
