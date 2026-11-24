@@ -1422,8 +1422,14 @@ static int c_anim(ms_call *c)
 	const char *classname = valid(id) && S.be.get_str ? S.be.get_str(id, DOD_MOHAA_CLASSNAME) : "";
 	const char *model = valid(id) && S.be.get_str ? S.be.get_str(id, DOD_MOHAA_MODEL) : "";
 	if (S.be.set_animation && valid(id) &&
-	    (!strcmp(classname, "mohaa_script_model") || strstr(model, ".tik")))
-		S.be.set_animation(id, alias);
+	    (!strcmp(classname, "mohaa_script_model") || !strcmp(classname, "dod_grunt") || strstr(model, ".tik"))) {
+		if (!S.be.set_animation(id, alias)) {
+			char msg[192];
+			snprintf(msg, sizeof(msg), "mohaa: animation '%s' could not be applied to %s\n",
+				 alias, model && *model ? model : classname);
+			S.be.print(DOD_MOHAA_PRINT_CONSOLE, msg);
+		}
+	}
 	if (!k)
 		return 0;
 	k->anim = MohaaTags_Hash(alias);

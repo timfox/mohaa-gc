@@ -33,11 +33,13 @@ PROBE="$DODGC_ROOT/scripts/probe-playtest.sh"
 
 ENGINE="${MOHAA_ENGINE:-}"
 DOLPHIN="${MOHAA_DOLPHIN_BIN:-}"
+ENGINE_EXPLICIT=0
+[[ -n "$ENGINE" ]] && ENGINE_EXPLICIT=1
 if [[ -z "$DOLPHIN" ]]; then
 	for candidate in "${ENGINE:-}" /run/media/tim/Expansion1/xash3d-gc /home/tim/xash3d-gc-lostcoast; do
 		[[ -n "$candidate" ]] || continue
 		if [[ -x "$candidate/3rdparty/dolphin/build/Binaries/dolphin-emu" ]]; then
-			ENGINE="$candidate"
+			[[ "$ENGINE_EXPLICIT" == 1 ]] || ENGINE="$candidate"
 			DOLPHIN="$candidate/3rdparty/dolphin/build/Binaries/dolphin-emu"
 			break
 		fi
@@ -86,6 +88,10 @@ done
 SEED_HOME="$(mktemp -d /tmp/mohaa-playtest-profile.XXXXXX)"
 cleanup() { rm -rf "$SEED_HOME"; }
 trap cleanup EXIT
+if [[ -z "${XDG_RUNTIME_DIR:-}" || ! -d "$XDG_RUNTIME_DIR" || ! -w "$XDG_RUNTIME_DIR" ]]; then
+	export XDG_RUNTIME_DIR="$SEED_HOME/runtime"
+fi
+mkdir -p "$XDG_RUNTIME_DIR"
 SEED_CONFIG="$SEED_HOME/dod-gc/dolphin/Config"
 mkdir -p "$SEED_CONFIG"
 cp "$PROFILE/Config/GCPadNew.ini" "$SEED_CONFIG/"
@@ -112,12 +118,14 @@ export XDG_DATA_HOME="$SEED_HOME"
 python3 - "$MEDIA" <<'PY'
 import gzip
 import json
+import re
 import shutil
 import sys
 from pathlib import Path
 
 root = Path(sys.argv[1])
 rows = []
+video_stamps = set()
 for path in (root / "notes").glob("*.md"):
     text = path.read_text(encoding="utf-8")
     text = text.replace("# Probe ", "# MOHAA Probe ")
@@ -141,11 +149,30 @@ for path in sorted((root / "videos").glob("*.json"), reverse=True):
     data["project"] = "mohaa-gc"
     if data.get("engine_commit") == "unknown":
         data["engine_commit"] = "unavailable"
+    video_stamps.add(re.sub(r"\D", "", str(data.get("date", "")))[:14])
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
     rows.append(
-        f"| {data.get('date', '')} | `{data.get('file', '')}` | "
+        f"| {data.get('date', '')} | `videos/{data.get('file', '')}` | "
         f"{data.get('route', '')} | {data.get('duration_s', '')}s | "
         f"{data.get('size_mb', '')} MB | `{data.get('commit', '')}` |"
+    )
+
+for note_path in sorted((root / "notes").glob("*.md"), reverse=True):
+    stamp = note_path.stem[:15]
+    if re.sub(r"\D", "", stamp)[:14] in video_stamps:
+        continue
+    shot_dir = root / "screenshots" / note_path.stem
+    shot = next((p for p in (shot_dir / "final.png", shot_dir / "menu.png", shot_dir / "intro.png") if p.is_file()), None)
+    if shot is None:
+        continue
+    note_text = note_path.read_text(encoding="utf-8")
+    route = next((line.split(":", 1)[1].strip().strip("`") for line in note_text.splitlines() if line.startswith("- Route:")), "")
+    commit = next((line.split(":", 1)[1].strip().strip("`") for line in note_text.splitlines() if line.startswith("- Repo:")), "")
+    date = f"{stamp[:4]}-{stamp[4:6]}-{stamp[6:8]}T{stamp[9:11]}:{stamp[11:13]}:{stamp[13:15]}"
+    size_mb = shot.stat().st_size / (1024 * 1024)
+    rows.append(
+        f"| {date} | `{shot.relative_to(root)}` | {route} | still | "
+        f"{size_mb:.1f} MB | `{commit}` |"
     )
 
 index = (
