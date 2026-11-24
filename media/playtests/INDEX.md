@@ -2,10 +2,14 @@
 
 Screenshots: `screenshots/` · Videos: `videos/` · Notes: `notes/`
 
-Latest probe note: [m1l1 64-pixel static compass candidate](notes/20261124-033634-m1l1-compass-64-static.md). Smoke ISO packaging succeeded; Dolphin could not connect to display `:0`, so no candidate gameplay capture was produced.
+Latest probe note: [m1l1 64-pixel compass source-rectangle fix](notes/20261124-035031-m1l1-compass-64-fixed.md). Dolphin reached `MAP_READY` and captured the HUD; the smoke ISO has reduced map assets.
 
 | Date | File | Route | Duration | Size | Commit |
 |------|------|-------|----------|------|--------|
+| 2026-11-24T03:45:29 | `videos/20261124-034529-m1l1-compass-64-hud-silent.mp4` | m1l1-compass-64-hud | 42.0s | 0.2 MB | `4141399` |
+| 2026-11-24T03:41:21 | `videos/20261124-034121-m1l1-compass-64-static-silent.mp4` | m1l1 smoke ISO boot; compass sprites omitted by smoke builder | 32.0s | 0.2 MB | `4141399` |
+| 2026-11-24T03:50:31 | `videos/20261124-035031-m1l1-compass-64-fixed-silent.mp4` | m1l1-compass-64-fixed | 42.0s | 0.2 MB | `4141399` |
+| 2026-11-24T03:50:31 | `screenshots/20261124-035031-m1l1-compass-64-fixed/final.png` | m1l1 compass with full 64px static sprite source rect; smoke map asset set | still | 0.1 MB | `4141399` |
 | 2026-11-24T03:24:50 | `videos/20261124-032450-m1l1-force-intro-truck-hud-silent.mp4` | m1l1-force-intro-truck-hud | 21.4s | 0.2 MB | `ebf188540a` |
 | 2026-11-24T03:22:57 | `videos/20261124-032257-m1l1-mainui-newgame-hud-silent.mp4` | m1l1-mainui-newgame-hud | 22.3s | 0.1 MB | `ebf188540a` |
 | 2026-11-24T03:20:10 | `videos/20261124-032010-m1l1-retail-newgame-hud-lazy-arrow-silent.mp4` | m1l1-retail-newgame-hud-lazy-arrow | 21.1s | 0.1 MB | `ebf188540a` |

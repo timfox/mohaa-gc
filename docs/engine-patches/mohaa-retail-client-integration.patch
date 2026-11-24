@@ -12,7 +12,7 @@ index 3ee2481..64580df 100644
  	gEngfuncs.Con_Printf( "Xash3D GameCube: CHud::Init begin quality=%d\n", quality );
  	/* cl_dodhud and the DodHud message: needed by the lean path too. */
 diff --git a/cl_dll/hud_dod.cpp b/cl_dll/hud_dod.cpp
-index efbab5e..6cd27ba 100644
+index efbab5e..7607596 100644
 --- a/cl_dll/hud_dod.cpp
 +++ b/cl_dll/hud_dod.cpp
 @@ -4,6 +4,8 @@
@@ -128,7 +128,7 @@ index efbab5e..6cd27ba 100644
  	return 1;
  }
  
-@@ -586,8 +664,230 @@ int CHudDod::DrawRetail( float flTime )
+@@ -586,8 +664,236 @@ int CHudDod::DrawRetail( float flTime )
  	return 1;
  }
  
@@ -149,8 +149,14 @@ index efbab5e..6cd27ba 100644
 +
 +static void mohaa_draw_compass_layer( HSPRITE sprite, int frame, int x, int y, int width, int height )
 +{
-+	wrect_t source = {0, 0, 32, 32};
++	wrect_t source;
 +	if( !sprite )
++		return;
++	source.left = 0;
++	source.top = 0;
++	source.right = SPR_Width( sprite, frame );
++	source.bottom = SPR_Height( sprite, frame );
++	if( source.right < 1 || source.bottom < 1 )
 +		return;
 +	SPR_Set( sprite, 255, 255, 255 );
 +	gEngfuncs.pfnSPR_DrawGeneric( frame, x, y, &source, 0, 0, width, height );
