@@ -1,0 +1,15 @@
+{
+  "file": "20261124-041356-m1l2a-door-hint-controller-silent.mp4",
+  "date": "2026-11-24T04:13:56",
+  "commit": "f465697668",
+  "engine_commit": "db73d0d126",
+  "route": "m1l2a-door-hint-controller",
+  "disc": "/tmp/mohaa-door-hint/mohaa-m1l2a-door-hint-playable.iso",
+  "duration_s": 43.7,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 0.4,
+  "project": "mohaa-gc",
+  "audio": "silent screen capture (forced or PulseAudio unavailable)"
+}

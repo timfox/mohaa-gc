@@ -4,6 +4,7 @@ Screenshots: `screenshots/` · Videos: `videos/` · Notes: `notes/`
 
 | Date | File | Route | Duration | Size | Commit |
 |------|------|-------|----------|------|--------|
+| 2026-11-24T04:13:56 | `videos/20261124-041356-m1l2a-door-hint-controller-silent.mp4` | m1l2a-door-hint-controller | 43.7s | 0.4 MB | `f465697668` |
 | 2026-11-24T04:06:32 | `videos/20261124-040632-m1l2a-retail-door-hint-playable-silent.mp4` | m1l2a-retail-door-hint-playable | 60.3s | 0.2 MB | `893bf3e037` |
 | 2026-11-24T04:04:43 | `videos/20261124-040443-m1l2a-retail-door-hint-silent.mp4` | m1l2a-retail-door-hint | 58.7s | 0.1 MB | `893bf3e037` |
 | 2026-11-24T03:50:31 | `videos/20261124-035031-m1l1-compass-64-fixed-silent.mp4` | m1l1-compass-64-fixed | 41.4s | 0.1 MB | `4141399` |
