@@ -1,0 +1,15 @@
+{
+  "file": "20261123-actor-playthrough-silent.mp4",
+  "date": "2026-11-23T21:12:20",
+  "commit": "c1064a463f",
+  "engine_commit": "db73d0d126",
+  "route": "m1l1-actor-playthrough",
+  "disc": "/tmp/mohaa-actor-anim-fix/out/mohaa-m1l1-actor-animation-dispatch.iso",
+  "duration_s": 53.2,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 1.0,
+  "project": "mohaa-gc",
+  "audio": "silent screen capture (PulseAudio unavailable)"
+}

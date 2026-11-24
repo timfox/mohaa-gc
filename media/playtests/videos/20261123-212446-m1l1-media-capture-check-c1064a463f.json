@@ -1,0 +1,15 @@
+{
+  "file": "20261123-212446-m1l1-media-capture-check-c1064a463f.mp4",
+  "date": "2026-11-23T21:24:46",
+  "commit": "c1064a463f",
+  "engine_commit": "unavailable",
+  "route": "m1l1-media-capture-check",
+  "disc": "/tmp/mohaa-actor-anim-fix/out/mohaa-m1l1-actor-animation-dispatch.iso",
+  "duration_s": 28.5,
+  "streams": [
+    "video:h264",
+    "audio:aac"
+  ],
+  "size_mb": 0.7,
+  "project": "mohaa-gc"
+}

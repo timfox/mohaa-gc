@@ -107,7 +107,7 @@ def stage_map_sky(sources, map_name: str, bsp_data: bytes, game_root: str) -> tu
     root = sky_root_from_bsp(bsp_data, "maps/%s.bsp" % map_name, sources)
     if not root:
         return None, []
-    marker = os.path.join(game_root, "media", "sky_%srt.cmp" % root)
-    if os.path.isfile(marker):
+    faces = [os.path.join(game_root, "media", "sky_%s%s.cmp" % (root, side)) for side in SIDES]
+    if all(os.path.isfile(path) for path in faces):
         return root, []
     return root, write_skybox(sources, root, game_root)

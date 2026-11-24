@@ -1,0 +1,15 @@
+{
+  "file": "20261123-213552-m1l1-skybox-runtime-verify-silent.mp4",
+  "date": "2026-11-23T21:35:52",
+  "commit": "c1064a463f",
+  "engine_commit": "db73d0d126",
+  "route": "m1l1-skybox-runtime-verify",
+  "disc": "/tmp/mohaa-sky-update/out/m1l1-skybox-v2.iso",
+  "duration_s": 27.9,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 0.3,
+  "project": "mohaa-gc",
+  "audio": "silent screen capture (forced for fallback verification)"
+}
