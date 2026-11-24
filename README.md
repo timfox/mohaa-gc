@@ -178,7 +178,7 @@ python3 tools/mohaa_tiki_model.py retail/main \
 
 The exporter supports Xash's four-influence Studio v10 skinning format and up to 31 surface bodygroups. It reads animation aliases through included TIKIs; repeat `--animation <alias>` to keep a small mission-specific sequence set. When a vertex has more than four influences, it keeps the four strongest and renormalizes them. Models with an unsupported skeleton fall back to a posed static model. The script-entity sequence binding still needs a GameCube build and runtime capture.
 
-The m1l1 German Afrika private TIKI now exports as a composite Studio model: body, covered head, hands, helmet, loadout, and KAR clip share a 72-bone rig, with the three scripted visa-idle sequences (`driver_idlevisa`, `passenger_idlevisa`, `guard_idlevisa`). The map staging manifest includes it, and the MOHAA binding assigns the baked model and sequences to tracked script actors. This is conversion and source-integration evidence; a visible in-game actor animation still needs runtime capture.
+The m1l1 German Afrika private TIKI exports as a composite Studio model: body, covered head, hands, helmet, loadout, and KAR clip share a 72-bone rig. The stage keeps all ten m1l1 actor aliases used by the retail script, from `opel_driver` through the kill, get-visa, and idle-visa animations. The map staging manifest includes it, and the MOHAA binding assigns the baked model and sequences to tracked script actors. This is conversion and source-integration evidence; a visible in-game actor animation still needs runtime capture.
 
 To stage the visible m1l1 trucks, configured scripted actors, and `maps/m1l1.models` on an SD card, use:
 

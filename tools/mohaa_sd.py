@@ -280,7 +280,12 @@ SCRIPT_TIKI_COMPONENTS = {
 }
 
 SCRIPT_TIKI_ANIMATIONS = {
-    "human/german_afrika_private.tik": ("driver_idlevisa", "passenger_idlevisa", "guard_idlevisa"),
+    "human/german_afrika_private.tik": (
+        "opel_driver",
+        "driver_killvisa", "passenger_killvisa", "guard_killvisa",
+        "driver_getvisa", "passenger_getvisa", "guard_getvisa",
+        "driver_idlevisa", "passenger_idlevisa", "guard_idlevisa",
+    ),
 }
 
 
