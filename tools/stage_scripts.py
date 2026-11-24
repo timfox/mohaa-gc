@@ -23,6 +23,31 @@ from ubersound import collect, read  # noqa: E402
 GLOBAL = re.compile(r'(global/[\w/\-]+\.scr)', re.I)
 
 
+def gc_script_overrides(mapname, path, data):
+    """Apply small GameCube parity hooks to copied retail mission scripts."""
+    if mapname.lower() != "m1l2a" or path.lower() != "maps/m1l2a.scr":
+        return data
+    text = data.decode("latin-1").replace("\r\n", "\n").replace("\r", "\n")
+    if "gc_door_hint_watch:" in text:
+        return data
+    anchor = "\texec global/door_locked.scr"
+    if anchor not in text:
+        raise ValueError("m1l2a script has no door_locked bootstrap to attach the door hint")
+    text = text.replace(anchor, anchor + "\n\t$door_locked thread gc_door_hint_watch", 1)
+    anchor = "hint_door:\n"
+    if anchor not in text:
+        raise ValueError("m1l2a script has no retail hint_door label")
+    watcher = (
+        "gc_door_hint_watch:\n"
+        "\tself waittill trigger\n"
+        "\tthread hint_door\n"
+        "\tgoto gc_door_hint_watch\n"
+        "end\n\n"
+    )
+    text = text.replace(anchor, watcher + anchor, 1)
+    return text.encode("latin-1")
+
+
 def closure(scripts, mapname):
     """(scripts the level needs, in the order found; global scripts named but missing)."""
     start = ["maps/%s.scr" % mapname]
@@ -59,6 +84,7 @@ def main(argv=None):
         size = 0
         for path in need:
             data = read(scripts[path])
+            data = gc_script_overrides(m, path, data)
             dest = os.path.join(args.out, path)
             os.makedirs(os.path.dirname(dest), exist_ok=True)
             with open(dest, "wb") as fh:
