@@ -677,6 +677,42 @@ static float mohaa_clamp01( float value )
 	return value;
 }
 
+/* iprintlnbold has no explicit width. Wrap at the active client font's pixel
+ * widths so long retail tips stay inside the visible GameCube viewport. */
+static void mohaa_wrap_hint( char *text, int max_width )
+{
+	char *line = text;
+	while( *line )
+	{
+		char *p = line, *last_space = NULL;
+		int width = 0;
+		while( *p && *p != '\n' )
+		{
+			const int char_width = gHUD.m_scrinfo.charWidths[(unsigned char)*p];
+			if( width + char_width > max_width )
+				break;
+			if( *p == ' ' )
+				last_space = p;
+			width += char_width;
+			p++;
+		}
+		if( *p == '\n' )
+			line = p + 1;
+		else if( *p )
+		{
+			if( last_space )
+			{
+				*last_space = '\n';
+				line = last_space + 1;
+			}
+			else
+				line = p + 1;
+		}
+		else
+			break;
+	}
+}
+
 int CHudDod::DrawMohaa( float flTime )
 {
 	const int screen_w = ScreenWidth > 0 ? ScreenWidth : 320;
@@ -790,6 +826,8 @@ int CHudDod::DrawMohaa( float flTime )
 		cg = (int)( mohaa_clamp01( d->g * draw_alpha ) * 255.0f + 0.5f );
 		cb = (int)( mohaa_clamp01( d->b * draw_alpha ) * 255.0f + 0.5f );
 		strncpy( text, d->text, sizeof( text ) - 1 ); text[sizeof( text ) - 1] = 0;
+		if( i == DOD_MOHAA_HUD_HINT_INDEX )
+			mohaa_wrap_hint( text, screen_w > 16 ? screen_w - 16 : screen_w );
 		for( line = text; *line; line++ ) if( *line == '\n' ) line_no++;
 		line_no++;
 		y_anchor = (int)( d->y * sy + 0.5f );

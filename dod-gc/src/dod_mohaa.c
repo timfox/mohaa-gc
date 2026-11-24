@@ -1785,6 +1785,31 @@ static int c_setcurrentobjective(ms_call *c)
 	return 0;
 }
 
+/* Retail mission scripts move the compass target with set_objective_pos. The
+ * argument is normally a vector, though some campaigns pass an entity. */
+static int c_set_objective_pos(ms_call *c)
+{
+	const ms_value *arg = ms_arg(c, 0);
+	float raw[3] = {0, 0, 0};
+	float pos[3] = {0, 0, 0};
+	int visible = 1;
+	if (arg->type == MS_ENTITY) {
+		if (!S.be.get_vec || (S.be.valid && !S.be.valid(arg->u.id)))
+			visible = 0;
+		else
+			S.be.get_vec(arg->u.id, DOD_MOHAA_ORIGIN, raw);
+	} else if (arg->type == MS_NIL || arg->type == MS_NULL) {
+		visible = 0;
+	} else {
+		ms_arg_vector(c, 0, raw);
+	}
+	if (visible)
+		scale_in(raw, pos);
+	if (S.be.compass_target)
+		S.be.compass_target(pos, visible);
+	return 0;
+}
+
 static int hud_align_x(const char *name)
 {
 	if (name && (!strcmp(name, "center") || !strcmp(name, "middle")))
@@ -1996,9 +2021,8 @@ static int c_centerprint(ms_call *c)
 static int c_iprintlnbold(ms_call *c)
 {
 	DodMohaaHudDraw *d = &S.hud_draw[DOD_MOHAA_HUD_HINT_INDEX];
-	const char *src = ms_arg_string(c, 0);
 	size_t out = 0;
-	int column = 0;
+	int arg;
 	d->x = 0.0f; d->y = 150.0f; d->w = d->h = 0.0f;
 	d->r = d->g = d->b = d->a = 1.0f;
 	d->align_x = DOD_MOHAA_HUD_ALIGN_CENTER;
@@ -2006,15 +2030,13 @@ static int c_iprintlnbold(ms_call *c)
 	d->virtual_size = 1;
 	d->initialized = 1;
 	d->shader[0] = 0;
-	while (src && *src && out + 1 < sizeof(d->text)) {
-		if (column >= 54 && *src == ' ') {
-			d->text[out++] = '\n';
-			column = 0;
-			src++;
-			continue;
+	/* Retail scripts build some hints from several localized text fragments and
+	 * the current key binding. Match print_args(): concatenate arguments as-is. */
+	for (arg = 0; arg < ms_argc(c) && out + 1 < sizeof(d->text); arg++) {
+		const char *src = ms_arg_string(c, arg);
+		while (src && *src && out + 1 < sizeof(d->text)) {
+			d->text[out++] = *src++;
 		}
-		d->text[out++] = *src++;
-		column++;
 	}
 	d->text[out] = 0;
 	if (S.be.hud_draw)
@@ -2096,6 +2118,7 @@ static void register_commands(ms_vm *vm)
 		{"setcvar", MS_ON_THREAD, c_setcvar},
 		{"addobjective", MS_ON_THREAD, c_addobjective},
 		{"setcurrentobjective", MS_ON_THREAD, c_setcurrentobjective},
+		{"set_objective_pos", MS_ON_THREAD | MS_ON_ENTITY, c_set_objective_pos},
 		{"lighton", MS_ON_ENTITY, c_ignored},
 		{"light", MS_ON_ENTITY, c_ignored},
 		/* animation, TIKI models, attachment, vehicles and turrets, weapons and inventory: none of it exists on the

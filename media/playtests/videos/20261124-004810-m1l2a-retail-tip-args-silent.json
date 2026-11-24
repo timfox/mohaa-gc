@@ -1,0 +1,15 @@
+{
+  "file": "20261124-004810-m1l2a-retail-tip-args-silent.mp4",
+  "date": "2026-11-24T00:48:10",
+  "commit": "2c0a59c871",
+  "engine_commit": "db73d0d126",
+  "route": "m1l2a-retail-tip-args",
+  "disc": "/tmp/mohaa-compass-build/mohaa-hud-retail-args-probe.iso",
+  "duration_s": 45.1,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 0.3,
+  "project": "mohaa-gc",
+  "audio": "silent screen capture (forced or PulseAudio unavailable)"
+}

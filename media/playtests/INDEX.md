@@ -4,6 +4,10 @@ Screenshots: `screenshots/` · Videos: `videos/` · Notes: `notes/`
 
 | Date | File | Route | Duration | Size | Commit |
 |------|------|-------|----------|------|--------|
+| 2026-11-24T00:59:40 | `videos/20261124-005940-m1l2a-retail-objective-pos-silent.mp4` | m1l2a-retail-objective-pos | 45.3s | 0.3 MB | `2c0a59c871` |
+| 2026-11-24T00:55:51 | `videos/20261124-005551-m1l2a-compass-objective-silent.mp4` | m1l2a-compass-objective | 44.1s | 0.3 MB | `2c0a59c871` |
+| 2026-11-24T00:51:53 | `videos/20261124-005153-m1l2a-retail-tip-wrap-silent.mp4` | m1l2a-retail-tip-wrap | 45.2s | 0.9 MB | `2c0a59c871` |
+| 2026-11-24T00:48:10 | `videos/20261124-004810-m1l2a-retail-tip-args-silent.mp4` | m1l2a-retail-tip-args | 45.1s | 0.3 MB | `2c0a59c871` |
 | 2026-11-24T00:39:47 | `videos/20261124-003947-m1l2a-hint-render-v3-silent.mp4` | m1l2a-hint-render-v3 | 44.7s | 0.8 MB | `d9a2faa539` |
 | 2026-11-24T00:36:04 | `videos/20261124-003604-m1l2a-hint-render-v2-silent.mp4` | m1l2a-hint-render-v2 | 44.2s | 0.8 MB | `d9a2faa539` |
 | 2026-11-24T00:33:29 | `videos/20261124-003329-m1l2a-hint-render-silent.mp4` | m1l2a-hint-render | 45.6s | 0.2 MB | `d9a2faa539` |
