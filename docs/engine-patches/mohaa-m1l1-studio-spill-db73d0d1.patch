@@ -1,0 +1,57 @@
+diff --git a/engine/common/mod_bmodel.c b/engine/common/mod_bmodel.c
+index 11f59b2a..1cccdc0f 100644
+--- a/engine/common/mod_bmodel.c
++++ b/engine/common/mod_bmodel.c
+@@ -449,7 +449,13 @@ qboolean GC_CapFacesLeanSurfaces( void )
+ /* 800 KiB total: last 32 KiB reserved for CapFaces CMPR bounce so tip-tight
+  * maps (dod_donner) still texture CapFaces after listen spawn. */
+ /* Faces+surfedges+medges (~785 KiB) must coexist for FULL surface high-slot. */
++#if defined(XASH_MOHAA_GAMECUBE)
++/* m1l1 holds two opening vehicles and a mission-long scripted actor alongside
++ * the ordinary world arrays; keep the larger reserve MOHAA-only. */
++#define GC_WORLD_ARRAY_SPILL_BYTES (1024u * 1024u)
++#else
+ #define GC_WORLD_ARRAY_SPILL_BYTES (900u * 1024u)
++#endif
+ #define GC_WORLD_ARRAY_SPILL_BOUNCE_RESERVE (32u * 1024u)
+ #define GC_WORLD_ARRAY_SPILL_USABLE \
+ 	( GC_WORLD_ARRAY_SPILL_BYTES - GC_WORLD_ARRAY_SPILL_BOUNCE_RESERVE )
+diff --git a/engine/common/model.c b/engine/common/model.c
+index 7a6a7093..07ba70b6 100644
+--- a/engine/common/model.c
++++ b/engine/common/model.c
+@@ -96,7 +96,11 @@ static qboolean Mod_GCIsWeaponModelPath( const char *path )
+ static qboolean Mod_GCStudioPrefersSpill( const char *model_path )
+ {
+ 	return Q_stristr( model_path, "mapmodels/" ) != NULL
+-		|| Q_stristr( model_path, "models/player" ) != NULL;
++		|| Q_stristr( model_path, "models/player" ) != NULL
++		/* MOHAA's opening vehicles are map-bound script models, not static props. */
++		|| Q_stristr( model_path, "models/vehicles/" ) != NULL
++		/* Scripted m1l1 actor remains resident for the whole opening. */
++		|| Q_stristr( model_path, "models/human/german_afrika_private" ) != NULL;
+ }
+ 
+ /* Real MDLs live in the 1 MiB studio BSS arena (lean meshes + viewweapons).
+@@ -824,6 +828,8 @@ static qboolean Mod_GCStudioNameAllowed( const char *name, qboolean *is_viewmode
+ 		/* Xen's final encounters require these studio headers for boss AI,
+ 		 * animation and visible alien controllers. */
+ 		"nihilanth", "big_mom", "baby_headcrab", "controller",
++		/* MOHAA m1l1's manifest-precached opening ride and scripted cast. */
++		"german_afrika_private", "opeltruck", "gmctruck_opening",
+ 		/* Tiny lean world-weapon stub for Flipper studio draw admit. */
+ 		"w_crowbar",
+ 		/* Thrown grenade bodies: tiny lean meshes, no skin atlas. */
+diff --git a/wscript b/wscript
+index bf31fa43..78ae14f8 100644
+--- a/wscript
++++ b/wscript
+@@ -643,6 +643,8 @@ def configure(conf):
+ 		# mohaa (mohaa-gc) is DoD-GC's game code with MOHAA content: same tables and limits.
+ 		if conf.options.GAMEDIR in ('dod', 'mohaa'):
+ 			conf.define('XASH_DODGC_NETWORK', 1)
++			if conf.options.GAMEDIR == 'mohaa':
++				conf.define('XASH_MOHAA_GAMECUBE', 1)
+ 			# dod_charlie's own entities take ~422 of the 460, which leaves a scripted film cast
+ 			# about 30. A capture DOL (-gccapture, where frame rate matters less than what is on
+ 			# screen) can be built with a bigger table: XASH_GC_MAX_EDICTS=560 costs about
