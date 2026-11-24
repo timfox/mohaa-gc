@@ -1,0 +1,15 @@
+{
+  "file": "20261124-044428-m1l2a-door-hint-trigger-touch-after-engine-fix-silent.mkv",
+  "date": "2026-11-24T04:44:28",
+  "commit": "bd6a4241d7",
+  "engine_commit": "db73d0d126",
+  "route": "m1l2a-door-hint-trigger-touch-after-engine-fix",
+  "disc": "/dev/shm/mohaa-door-hint-engine-out/mohaa-m1l2a-door-hint.iso",
+  "duration_s": 39.9,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 0.1,
+  "project": "mohaa-gc",
+  "audio": "silent capture of failed map-load screen"
+}

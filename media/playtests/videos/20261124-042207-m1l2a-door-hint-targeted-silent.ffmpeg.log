@@ -1,0 +1,2 @@
+[x11grab @ 0x650d20604040] Failed to translate xcb geometry
+[in#0/x11grab @ 0x650d20603d80] Error during demuxing: Generic error in an external library

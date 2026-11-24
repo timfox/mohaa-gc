@@ -4,6 +4,13 @@ Screenshots: `screenshots/` · Videos: `videos/` · Notes: `notes/`
 
 | Date | File | Route | Duration | Size | Commit |
 |------|------|-------|----------|------|--------|
+| 2026-11-24T04:44:28 | `videos/20261124-044428-m1l2a-door-hint-trigger-touch-after-engine-fix-silent.mkv` | m1l2a-door-hint-trigger-touch-after-engine-fix (map-load failure) | 39.9s | 0.1 MB | `bd6a4241d7` |
+| 2026-11-24T04:40:01 | `videos/20261124-044001-m1l2a-door-hint-engine-exception-silent.mp4` | m1l2a-door-hint-engine-exception (layout mismatch) | 1.9s | 0.0 MB | `bd6a4241d7` |
+| 2026-11-24T04:27:23 | `videos/20261124-042723-m1l2a-door-hint-trigger-crossing-silent.mp4` | m1l2a-door-hint-trigger-crossing | 39.9s | 0.2 MB | `bd6a4241d7` |
+| 2026-11-24T04:25:17 | `videos/20261124-042517-m1l2a-door-hint-trigger-touch2-silent.mp4` | m1l2a-door-hint-trigger-touch2 | 40.0s | 0.2 MB | `bd6a4241d7` |
+| 2026-11-24T04:23:51 | `videos/20261124-042351-m1l2a-door-hint-trigger-touch-silent.mp4` | m1l2a-door-hint-trigger-touch | 39.0s | 0.2 MB | `bd6a4241d7` |
+| 2026-11-24T04:22:07 | `videos/20261124-042207-m1l2a-door-hint-targeted-silent.mp4` | m1l2a-door-hint-targeted | 43.9s | 0.2 MB | `bd6a4241d7` |
+| 2026-11-24T04:19:49 | `videos/20261124-041949-m1l2a-door-hint-straight-approach-silent.mp4` | m1l2a-door-hint-straight-approach | 45.0s | 0.2 MB | `bd6a4241d7` |
 | 2026-11-24T04:13:56 | `videos/20261124-041356-m1l2a-door-hint-controller-silent.mp4` | m1l2a-door-hint-controller | 43.7s | 0.4 MB | `f465697668` |
 | 2026-11-24T04:06:32 | `videos/20261124-040632-m1l2a-retail-door-hint-playable-silent.mp4` | m1l2a-retail-door-hint-playable | 60.3s | 0.2 MB | `893bf3e037` |
 | 2026-11-24T04:04:43 | `videos/20261124-040443-m1l2a-retail-door-hint-silent.mp4` | m1l2a-retail-door-hint | 58.7s | 0.1 MB | `893bf3e037` |

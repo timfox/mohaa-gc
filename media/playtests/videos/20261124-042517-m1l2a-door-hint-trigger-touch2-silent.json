@@ -1,0 +1,15 @@
+{
+  "file": "20261124-042517-m1l2a-door-hint-trigger-touch2-silent.mp4",
+  "date": "2026-11-24T04:25:17",
+  "commit": "bd6a4241d7",
+  "engine_commit": "db73d0d126",
+  "route": "m1l2a-door-hint-trigger-touch2",
+  "disc": "/tmp/mohaa-door-hint/mohaa-m1l2a-door-hint-playable.iso",
+  "duration_s": 40.0,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 0.2,
+  "project": "mohaa-gc",
+  "audio": "silent screen capture (forced or PulseAudio unavailable)"
+}
