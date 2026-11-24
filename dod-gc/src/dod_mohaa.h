@@ -27,7 +27,8 @@ extern "C" {
 
 enum { DOD_MOHAA_ORIGIN = 0, DOD_MOHAA_ANGLES = 1 };
 enum { DOD_MOHAA_TARGETNAME = 0, DOD_MOHAA_CLASSNAME = 1, DOD_MOHAA_MODEL = 2, DOD_MOHAA_TARGET = 3 };
-enum { DOD_MOHAA_HIDDEN = 0, DOD_MOHAA_NOTSOLID = 1 };
+/* set_flag modes: hide, solidity, and whether damage can affect this entity. */
+enum { DOD_MOHAA_HIDDEN = 0, DOD_MOHAA_NOTSOLID = 1, DOD_MOHAA_TAKEDAMAGE = 2 };
 /* Sound channels, from the ubersound alias's channel name. */
 enum { DOD_MOHAA_CHAN_AUTO = 0, DOD_MOHAA_CHAN_VOICE, DOD_MOHAA_CHAN_ITEM, DOD_MOHAA_CHAN_BODY, DOD_MOHAA_CHAN_WEAPON };
 /* Sound aliases come from maps/<map>.snd, written by mohaa-gc tools/ubersound.py (lines "alias sample volume mindist

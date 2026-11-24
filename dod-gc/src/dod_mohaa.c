@@ -578,6 +578,8 @@ static int c_hide(ms_call *c) { S.be.set_flag(target_id(c), DOD_MOHAA_HIDDEN, 1)
 static int c_show(ms_call *c) { S.be.set_flag(target_id(c), DOD_MOHAA_HIDDEN, 0); return 0; }
 static int c_notsolid(ms_call *c) { S.be.set_flag(target_id(c), DOD_MOHAA_NOTSOLID, 1); return 0; }
 static int c_solid(ms_call *c) { S.be.set_flag(target_id(c), DOD_MOHAA_NOTSOLID, 0); return 0; }
+static int c_nodamage(ms_call *c) { S.be.set_flag(target_id(c), DOD_MOHAA_TAKEDAMAGE, 0); return 0; }
+static int c_takedamage(ms_call *c) { S.be.set_flag(target_id(c), DOD_MOHAA_TAKEDAMAGE, 1); return 0; }
 
 static int c_remove(ms_call *c)
 {
@@ -1974,8 +1976,8 @@ static void register_commands(ms_vm *vm)
 		{"forcelegsstate", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"gren_awareness", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"holster", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
-		{"nodamage", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
-		{"takedamage", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"nodamage", MS_ON_ENTITY | MS_ON_THREAD, c_nodamage},
+		{"takedamage", MS_ON_ENTITY | MS_ON_THREAD, c_takedamage},
 		{"scale", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"setplayerusable", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"threatbias", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},

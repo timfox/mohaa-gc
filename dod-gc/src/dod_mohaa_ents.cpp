@@ -308,6 +308,11 @@ static void M_SetFlag( uint32_t id, int flag, int on )
 			e->v.effects &= ~EF_NODRAW;
 		return;
 	}
+	if( flag == DOD_MOHAA_TAKEDAMAGE )
+	{
+		e->v.takedamage = on ? DAMAGE_YES : DAMAGE_NO;
+		return;
+	}
 	if( on )
 		e->v.solid = SOLID_NOT;
 	else
