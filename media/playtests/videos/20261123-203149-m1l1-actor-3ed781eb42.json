@@ -1,0 +1,15 @@
+{
+  "file": "20261123-203149-m1l1-actor-3ed781eb42.mp4",
+  "date": "2026-11-23T20:31:49",
+  "commit": "3ed781eb42",
+  "engine_commit": "unavailable",
+  "route": "m1l1-actor",
+  "disc": "/tmp/mohaa-m1l1-spill1024-build/out/mohaa-m1l1-spill1024.iso",
+  "duration_s": 60.6,
+  "streams": [
+    "video:h264",
+    "audio:aac"
+  ],
+  "size_mb": 1.5,
+  "project": "mohaa-gc"
+}
