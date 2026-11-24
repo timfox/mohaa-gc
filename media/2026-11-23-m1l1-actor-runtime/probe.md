@@ -75,3 +75,10 @@ final.png: (640, 480) black=8.9% mean=(52, 48, 46)
 1253:25:30:328 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [16:25:29] Xash3D GameCube: serverdata HUD vidinit deferred for local map route
 1254:25:30:329 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [16:25:29] Xash3D GameCube: client edicts capped for map route max=460 requested=460
 ```
+
+## Matched GCA actor run
+
+Current matched ISO SHA-256: `2cac04c5223330c7bc84ccdd235c938943c607f73bc9846c70404d69c649aeb3`.
+The full guest log is `/tmp/mohaa-m1l1-actor-gca-20261123/profile-matched/dod-gc/dolphin/Logs/dolphin.log`.
+
+The ISO contains `maps/m1l1.nodes` (23,835 bytes, 643 numeric node records) and `maps/m1l1.models`. Runtime finds the node file but reports `mohaa: 0 path nodes from maps/m1l1.nodes, 0 links (0 walk tests)`. The script then reports `walkto: walkto needs a vector, an entity or a node name` at `maps/m1l1.scr:380` twice and `:868` once. An earlier m1l1 log from a different DOL reports 643 path nodes and 2,067 links. The current log also confirms the split German actor GCA loads into ARAM and actor draw calls are submitted; this does not prove its animation in the capture.
