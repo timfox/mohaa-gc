@@ -1,7 +1,7 @@
 /* dod_mohaa_paths.h - MOHAA path nodes for DoD-GC, included once by dod_mohaa.c (all static).
  *
  * MOHAA info_pathnodes come from maps/<map>.nodes, written by mohaa-gc tools/bsp19_to_map.py. They are
- * not entities: a node costs no edict, 32 bytes here plus 14 bytes of search scratch. Links are made once
+ * not entities: a node costs no edict, 32 bytes here plus 10 bytes of search scratch. Links are made once
  * at level load with one walkable() test per pair tried; a soldier's move order then walks node to node,
  * one A* per node reached (see route_* in dod_mohaa.c). */
 #ifndef MOHAA_PATHS_H
@@ -19,6 +19,8 @@
 #define MOHAA_PATH_REACH 400.0f		/* farthest link (MOHAA links nodes up to 512 units; x72/94 is 392) */
 #define MOHAA_PATH_NONE 0xFFFF
 
+typedef void *(*MohaaPathsAlloc)(void *ptr, size_t old_size, size_t new_size);
+
 typedef struct MohaaPaths {
 	int count;
 	float (*pos)[3];			/* feet, GoldSrc units */
@@ -27,6 +29,8 @@ typedef struct MohaaPaths {
 	float *cost;				/* search scratch */
 	unsigned short *from, *heap, *slot;
 	void *block;				/* one allocation holds all of it */
+	size_t block_size;
+	MohaaPathsAlloc alloc;
 } MohaaPaths;
 
 typedef int (*MohaaPathWalkable)(void *ctx, const float a[3], const float b[3]);
@@ -47,7 +51,12 @@ static uint32_t MohaaPaths_Hash(const char *name)
 
 static void MohaaPaths_Free(MohaaPaths *g)
 {
-	free(g->block);
+	if (g->block) {
+		if (g->alloc)
+			g->alloc(g->block, g->block_size, 0);
+		else
+			free(g->block);
+	}
 	memset(g, 0, sizeof(*g));
 }
 
@@ -70,13 +79,15 @@ static int path_next_line(const char **at, const char *end, char *buf, size_t si
 	return 1;
 }
 
-static int MohaaPaths_Load(MohaaPaths *g, const char *text, size_t len)
+static int MohaaPaths_Load(MohaaPaths *g, const char *text, size_t len, MohaaPathsAlloc alloc)
 {
 	const char *end = text + len, *at = text;
 	char line[512], name[96];
 	float v[3];
+	size_t bytes;
 	int n = 0, k = 0;
 	memset(g, 0, sizeof(*g));
+	g->alloc = alloc;
 	while (path_next_line(&at, end, line, sizeof(line)))
 		if (line[0] != '#' && sscanf(line, "%f %f %f", &v[0], &v[1], &v[2]) == 3)
 			n++;
@@ -87,9 +98,15 @@ static int MohaaPaths_Load(MohaaPaths *g, const char *text, size_t len)
 	{
 		const size_t pos = sizeof(float) * 3 * (size_t)n, nm = sizeof(uint32_t) * (size_t)n;
 		const size_t lk = sizeof(unsigned short) * MOHAA_PATH_LINKS * (size_t)n, cost = sizeof(float) * (size_t)n;
-		char *b = (char *)malloc(pos + nm + cost + lk + sizeof(unsigned short) * 3 * (size_t)n);
-		if (!b)
-			return 0;
+		char *b;
+		bytes = pos + nm + cost + lk + sizeof(unsigned short) * 3 * (size_t)n;
+		g->block_size = bytes;
+		b = (char *)(alloc ? alloc(NULL, 0, bytes) : malloc(bytes));
+		if (!b) {
+			g->block_size = 0;
+			g->alloc = NULL;
+			return -n;
+		}
 		g->block = b;
 		g->pos = (float (*)[3])b;
 		g->name = (uint32_t *)(b + pos);

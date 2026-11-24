@@ -2084,6 +2084,8 @@ void Dod_MohaaDropPool(void)
 	/* the region is gone (or about to be reused): forget everything in it without freeing */
 	S.vm = NULL;
 	S.sounds = NULL;
+	memset(&S.paths, 0, sizeof(S.paths));
+	S.path_links = 0;
 	memset(&S.tags, 0, sizeof(S.tags));
 	Dod_MohaaShutdown();   /* frees the overflow blocks on the heap too */
 	S.be.alloc = default_alloc;
@@ -2179,23 +2181,39 @@ static void nodes_load(const char *mapname)
 	char path[128], msg[256];
 	size_t len = 0;
 	char *text;
-	int i, k, traces = 0;
+	int i, k, traces = 0, loaded;
 	snprintf(path, sizeof(path), "maps/%s.nodes", mapname);
 	text = S.be.load_file(path, &len);
-	if (!text)
+	if (!text) {
+		snprintf(msg, sizeof(msg), "mohaa: could not load path nodes %s\n", path);
+		S.be.print(DOD_MOHAA_PRINT_CONSOLE, msg);
 		return;
-	MohaaPaths_Load(&S.paths, text, len);
-	MohaaPaths_Keys(text, len, S.paths.count, node_key, NULL);
+	}
+	loaded = MohaaPaths_Load(&S.paths, text, len, S.be.alloc);
+	if (loaded > 0)
+		MohaaPaths_Keys(text, len, S.paths.count, node_key, NULL);
 	if (S.be.free_file)
 		S.be.free_file(text);
+	if (loaded < 0) {
+		const size_t per_node = sizeof(float) * 4 + sizeof(uint32_t) +
+			sizeof(unsigned short) * (MOHAA_PATH_LINKS + 3);
+		snprintf(msg, sizeof(msg), "mohaa: path node allocation failed for %d nodes (%u bytes, file %u bytes)\n",
+			-loaded, (unsigned)(per_node * (size_t)-loaded), (unsigned)len);
+		S.be.print(DOD_MOHAA_PRINT_ERROR, msg);
+	}
 	if (S.be.walkable && S.paths.count > 1)
 		traces = MohaaPaths_Link(&S.paths, walk_test, NULL, MOHAA_PATH_REACH);
 	for (i = 0; i < S.paths.count; i++)
 		for (k = 0; k < MOHAA_PATH_LINKS && S.paths.link[i][k] != MOHAA_PATH_NONE; k++)
 			S.path_links++;
 	S.path_links /= 2;
-	snprintf(msg, sizeof(msg), "mohaa: %d path nodes from %s, %d links (%d walk tests)\n", S.paths.count, path,
-		S.path_links, traces);
+	if (!loaded)
+		snprintf(msg, sizeof(msg), "mohaa: 0 path nodes parsed from %s (%u bytes)\n", path, (unsigned)len);
+	else if (loaded > 0)
+		snprintf(msg, sizeof(msg), "mohaa: %d path nodes from %s, %d links (%d walk tests)\n", S.paths.count, path,
+			S.path_links, traces);
+	else
+		return;
 	S.be.print(DOD_MOHAA_PRINT_CONSOLE, msg);
 }
 
