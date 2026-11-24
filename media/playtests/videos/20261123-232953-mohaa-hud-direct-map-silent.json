@@ -1,0 +1,15 @@
+{
+  "file": "20261123-232953-mohaa-hud-direct-map-silent.mp4",
+  "date": "2026-11-23T23:29:53",
+  "commit": "6be6ce53a9",
+  "engine_commit": "db73d0d126",
+  "route": "mohaa-hud-direct-map",
+  "disc": "/tmp/mohaa-hud-visual/mohaa-m1l1-hud-direct.iso",
+  "duration_s": 59.2,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 1.0,
+  "project": "mohaa-gc",
+  "audio": "silent screen capture (forced or PulseAudio unavailable)"
+}

@@ -5,6 +5,9 @@ Screenshots: `screenshots/` · Videos: `videos/` · Notes: `notes/`
 | Date | File | Route | Duration | Size | Commit |
 |------|------|-------|----------|------|--------|
 | 2026-11-23T21:12:20 | `videos/20261123-actor-playthrough-silent.mp4` | m1l1-actor-playthrough | 53.2s | 1.0 MB | `c1064a463f` |
+| 2026-11-23T23:29:53 | `videos/20261123-232953-mohaa-hud-direct-map-silent.mp4` | mohaa-hud-direct-map | 59.2s | 1.0 MB | `6be6ce53a9` |
+| 2026-11-23T23:26:51 | `videos/20261123-232651-mohaa-hud-native-iso-silent.mp4` | mohaa-hud-native-iso | 60.1s | 1.0 MB | `6be6ce53a9` |
+| 2026-11-23T23:23:32 | `videos/20261123-232332-mohaa-hud-art-silent.mp4` | mohaa-hud-art | 59.2s | 0.1 MB | `6be6ce53a9` |
 | 2026-11-23T23:16:19 | `videos/20261123-231619-m1l1-hud-sky-retail-silent.mp4` | m1l1-hud-sky-retail | 22.3s | 0.1 MB | `f8b4c7ecc9` |
 | 2026-11-23T23:14:06 | `videos/20261123-231406-m1l1-hud-bbaoff-silent.mp4` | m1l1-hud-bbaoff | 22.4s | 0.2 MB | `f8b4c7ecc9` |
 | 2026-11-23T23:08:25 | `videos/20261123-230825-m1l1-hud-redraw-proof-silent.mp4` | m1l1-hud-redraw-proof | 120.2s | 0.4 MB | `f8b4c7ecc9` |
