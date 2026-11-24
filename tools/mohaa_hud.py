@@ -19,6 +19,15 @@ SPR_FWD_PARALLEL_UPRIGHT = 0
 FRAME_SINGLE = 0
 HUD_SOURCE_DIR = "textures/hud/"
 MAX_IMAGE_SIDE = 512
+REQUIRED_HUD_IMAGES = frozenset({
+    "healthback.tga",
+    "healthmeter.tga",
+    "healthneedle.tga",
+    "ammotoparm.tga",
+    "ammobotmarm.tga",
+    "ammotoparmbar.tga",
+    "crosshair.tga",
+})
 
 
 def encode_sprite_rgba(width: int, height: int, rgba: bytes) -> bytes:
@@ -58,6 +67,10 @@ def stage_hud(sources, game_root: str) -> list[str]:
     }
     if not images:
         raise ValueError("no retail textures/hud/*.tga files found in the MOHAA sources")
+    missing = sorted(REQUIRED_HUD_IMAGES - set(images))
+    if missing:
+        missing_paths = ", ".join("textures/hud/" + name for name in missing)
+        raise ValueError("retail HUD source is incomplete; missing " + missing_paths)
 
     outdir = os.path.join(game_root, "sprites", "mohaa")
     os.makedirs(outdir, exist_ok=True)

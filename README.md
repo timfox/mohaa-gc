@@ -132,7 +132,7 @@ python3 tools/bsp19_lightmaps.py retail/main/Pak5.pk3:maps/m1l1.bsp m1l1.bsp   #
 
 The maps stage resolves each BSP's sky shader through the retail `scripts/sky.shader`, reads its six `skyParms` environment images from the paks, and writes 128x128 GameCube CMPR faces as `media/sky_<env><side>.cmp`. It also writes that environment root as the compiled map's `skyname`. For example, m1l2a's `textures/sky/africanight` resolves to `env/mohnight1`, avoiding the renderer's clear-colour fallback when the source BSP has no GoldSrc `skyname` key.
 
-The `hud` stage reads retail `textures/hud/*.tga` art from the paks and writes one-frame Xash3D version-32 RGBA sprites under `sprites/mohaa/`. The low-memory GameCube HUD path draws the retail health gauge, ammo arm pieces, ammo readout, and crosshair from these sprites, keeping the source alpha edges intact for the GX texture path. Select it with `--stages hud` or include it when rebuilding maps with `--stages hud,maps`.
+The `hud` stage reads retail `textures/hud/*.tga` art from the paks and writes one-frame Xash3D version-32 RGBA sprites under `sprites/mohaa/`. It fails early if any of the seven directly loaded textures (health gauge, ammo arms, or crosshair) are missing. The low-memory GameCube HUD path draws the retail health gauge, ammo arm pieces, ammo readout, and crosshair from these sprites, keeping the source alpha edges intact for the GX texture path. Select it with `--stages hud` or include it when rebuilding maps with `--stages hud,maps`.
 
 Writes a Valve-220 .map that SDHLT compiles to BSP30. Stage one only covers brushes:
 
