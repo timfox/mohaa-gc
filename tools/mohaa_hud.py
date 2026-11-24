@@ -20,6 +20,7 @@ FRAME_SINGLE = 0
 HUD_SOURCE_DIR = "textures/hud/"
 MAX_IMAGE_SIDE = 512
 COMPASS_SPRITE_SIDE = 32
+COMPASS_STATIC_SIDE = 64
 COMPASS_FRAMES = 16
 ROTATING_HUD_IMAGES = {"compassface.tga": 1, "compassobjarrow.tga": -1}
 COMPACT_COMPASS_IMAGES = {
@@ -116,7 +117,12 @@ def stage_hud(sources, game_root: str) -> list[str]:
             if name.lower() in ROTATING_HUD_IMAGES:
                 sprite = encode_rotating_compass(image, ROTATING_HUD_IMAGES[name.lower()])
             else:
-                if name.lower() in COMPACT_COMPASS_IMAGES:
+                # The stationary bronze housing and needle contain fine ring
+                # marks that disappear at 32 px. Keep those at 64 px; the
+                # 16-frame rotating layers stay 32 px to bound MEM1 usage.
+                if name.lower() in {"compassback.tga", "compassneedle.tga"}:
+                    image = image.resize((COMPASS_STATIC_SIDE, COMPASS_STATIC_SIDE), Image.Resampling.LANCZOS)
+                elif name.lower() in COMPACT_COMPASS_IMAGES:
                     image = image.resize((COMPASS_SPRITE_SIDE, COMPASS_SPRITE_SIDE), Image.Resampling.LANCZOS)
                 sprite = encode_sprite_rgba(image.width, image.height, image.tobytes())
         path = os.path.join(outdir, stem.lower() + ".spr")

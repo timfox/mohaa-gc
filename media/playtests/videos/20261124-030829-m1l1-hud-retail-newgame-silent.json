@@ -1,0 +1,15 @@
+{
+  "file": "20261124-030829-m1l1-hud-retail-newgame-silent.mp4",
+  "date": "2026-11-24T03:08:29",
+  "commit": "ebf188540a",
+  "engine_commit": "db73d0d126",
+  "route": "m1l1-hud-retail-newgame",
+  "disc": "/tmp/mohaa-hud-refine/out/mohaa-m1l1-hud-retail-newgame.iso",
+  "duration_s": 21.9,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 0.0,
+  "project": "mohaa-gc",
+  "audio": "silent screen capture (forced or PulseAudio unavailable)"
+}

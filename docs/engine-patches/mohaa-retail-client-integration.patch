@@ -1,0 +1,1482 @@
+diff --git a/cl_dll/hud.cpp b/cl_dll/hud.cpp
+index 3ee2481..64580df 100644
+--- a/cl_dll/hud.cpp
++++ b/cl_dll/hud.cpp
+@@ -425,7 +425,7 @@ void CHud::Init( void )
+ {
+ #ifdef __GAMECUBE__
+ 	// Check for emergency -nohud mode or low visual quality
+-	const int quality = GC_HudQuality();
++	const int quality = HUD_IsGame( "mohaa" ) ? 0 : GC_HudQuality();
+ 	m_iGcLeanHudMode = (quality == 0);
+ 	gEngfuncs.Con_Printf( "Xash3D GameCube: CHud::Init begin quality=%d\n", quality );
+ 	/* cl_dodhud and the DodHud message: needed by the lean path too. */
+diff --git a/cl_dll/hud_dod.cpp b/cl_dll/hud_dod.cpp
+index efbab5e..6cd27ba 100644
+--- a/cl_dll/hud_dod.cpp
++++ b/cl_dll/hud_dod.cpp
+@@ -4,6 +4,8 @@
+ #include "parsemsg.h"
+ #include "ammohistory.h"
+ 
++#include <math.h>
++
+ int __MsgFunc_DodHud( const char *pszName, int iSize, void *pbuf )
+ {
+ 	return gHUD.m_Dod.MsgFunc_DodHud( pszName, iSize, pbuf );
+@@ -24,6 +26,16 @@ int __MsgFunc_DodBoard( const char *pszName, int iSize, void *pbuf )
+ 	return gHUD.m_Dod.MsgFunc_DodBoard( pszName, iSize, pbuf );
+ }
+ 
++int __MsgFunc_MohaaHudDraw( const char *pszName, int iSize, void *pbuf )
++{
++	return gHUD.m_Dod.MsgFunc_MohaaHudDraw( pszName, iSize, pbuf );
++}
++
++int __MsgFunc_MohaaCompass( const char *pszName, int iSize, void *pbuf )
++{
++	return gHUD.m_Dod.MsgFunc_MohaaCompass( pszName, iSize, pbuf );
++}
++
+ void CHudDod::InitState( void )
+ {
+ 	int i;
+@@ -31,6 +43,16 @@ void CHudDod::InitState( void )
+ 	if( m_pCvar )
+ 		return;	/* Init after InitState: already registered */
+ 	memset( &m_state, 0, sizeof( m_state ) );
++	memset( m_mohaaHud, 0, sizeof( m_mohaaHud ) );
++	memset( m_hMohaaHudShader, 0, sizeof( m_hMohaaHudShader ) );
++	memset( m_mohaaHudShaderTried, 0, sizeof( m_mohaaHudShaderTried ) );
++	memset( m_mohaaCompassTarget, 0, sizeof( m_mohaaCompassTarget ) );
++	m_mohaaCompassHasTarget = 0;
++	m_mohaaCompassTried = 0;
++	m_mohaaCompassObjectiveTried = 0;
++	m_flMohaaHintUntil = 0.0f;
++	m_hMohaaCompassBack = m_hMohaaCompassFace = m_hMohaaCompassNeedle = m_hMohaaCompassObjective = 0;
++	memset( m_szMohaaHudShader, 0, sizeof( m_szMohaaHudShader ) );
+ 	m_flLastUpdate = 0.0f;
+ 	m_flTimerBase = 0.0f;
+ 	m_fHaveState = 0;
+@@ -58,6 +80,8 @@ void CHudDod::InitState( void )
+ 	HOOK_MESSAGE( DodBoard );
+ 	HOOK_MESSAGE( DodVoice );
+ 	HOOK_MESSAGE( DodKill );
++	HOOK_MESSAGE( MohaaHudDraw );
++	HOOK_MESSAGE( MohaaCompass );
+ 	m_nKills = 0;
+ 	m_fChatting = 0;
+ 	m_szVoice[0] = 0;
+@@ -86,6 +110,60 @@ int CHudDod::VidInit( void )
+ 		m_hSheets[i] = 0;
+ 	m_fSheetsTried = 0;
+ 	m_fSheetTried = 0;
++	m_mohaaCompassTried = 0;
++	m_mohaaCompassObjectiveTried = 0;
++	m_hMohaaCompassBack = m_hMohaaCompassFace = m_hMohaaCompassNeedle = m_hMohaaCompassObjective = 0;
++	memset( m_hMohaaHudShader, 0, sizeof( m_hMohaaHudShader ) );
++	memset( m_mohaaHudShaderTried, 0, sizeof( m_mohaaHudShaderTried ) );
++	return 1;
++}
++
++int CHudDod::MsgFunc_MohaaHudDraw( const char *pszName, int iSize, void *pbuf )
++{
++	DodMohaaHudDraw *d;
++	int index;
++	const char *text, *shader;
++	(void)pszName;
++	BEGIN_READ( pbuf, iSize );
++	index = READ_BYTE();
++	if( index == 255 ) {
++		memset( m_mohaaHud, 0, sizeof( m_mohaaHud ) );
++		memset( m_mohaaHudShaderTried, 0, sizeof( m_mohaaHudShaderTried ) );
++		memset( m_szMohaaHudShader, 0, sizeof( m_szMohaaHudShader ) );
++		return 1;
++	}
++	if( index < 0 || index >= DOD_MOHAA_HUD_DRAW_COUNT )
++		return 1;
++	d = &m_mohaaHud[index];
++	d->x = READ_COORD(); d->y = READ_COORD(); d->w = READ_COORD(); d->h = READ_COORD();
++	d->r = READ_BYTE() / 255.0f; d->g = READ_BYTE() / 255.0f;
++	d->b = READ_BYTE() / 255.0f; d->a = READ_BYTE() / 255.0f;
++	d->align_x = READ_BYTE(); d->align_y = READ_BYTE(); d->virtual_size = READ_BYTE();
++	text = READ_STRING();
++	strncpy( d->text, text ? text : "", sizeof( d->text ) - 1 );
++	d->text[sizeof( d->text ) - 1] = 0;
++	shader = READ_STRING();
++	strncpy( d->shader, shader ? shader : "", sizeof( d->shader ) - 1 );
++	d->shader[sizeof( d->shader ) - 1] = 0;
++	if( index == DOD_MOHAA_HUD_HINT_INDEX )
++		m_flMohaaHintUntil = d->text[0] && d->a > 0.0f ? gHUD.m_flTime + 5.0f : 0.0f;
++	if( strcmp( m_szMohaaHudShader[index], d->shader )) {
++		strncpy( m_szMohaaHudShader[index], d->shader, sizeof( m_szMohaaHudShader[index] ) - 1 );
++		m_szMohaaHudShader[index][sizeof( m_szMohaaHudShader[index] ) - 1] = 0;
++		m_mohaaHudShaderTried[index] = 0;
++		m_hMohaaHudShader[index] = 0;
++	}
++	return 1;
++}
++
++int CHudDod::MsgFunc_MohaaCompass( const char *pszName, int iSize, void *pbuf )
++{
++	(void)pszName;
++	BEGIN_READ( pbuf, iSize );
++	m_mohaaCompassHasTarget = READ_BYTE() != 0;
++	m_mohaaCompassTarget[0] = READ_COORD();
++	m_mohaaCompassTarget[1] = READ_COORD();
++	m_mohaaCompassTarget[2] = READ_COORD();
+ 	return 1;
+ }
+ 
+@@ -586,8 +664,230 @@ int CHudDod::DrawRetail( float flTime )
+ 	return 1;
+ }
+ 
++static int mohaa_frame16( float degrees )
++{
++	int frame = (int)( degrees * ( 16.0f / 360.0f ) + ( degrees >= 0.0f ? 0.5f : -0.5f ));
++	frame %= 16;
++	if( frame < 0 ) frame += 16;
++	return frame;
++}
++
++static float mohaa_clamp01( float value )
++{
++	if( value < 0.0f ) return 0.0f;
++	if( value > 1.0f ) return 1.0f;
++	return value;
++}
++
++static void mohaa_draw_compass_layer( HSPRITE sprite, int frame, int x, int y, int width, int height )
++{
++	wrect_t source = {0, 0, 32, 32};
++	if( !sprite )
++		return;
++	SPR_Set( sprite, 255, 255, 255 );
++	gEngfuncs.pfnSPR_DrawGeneric( frame, x, y, &source, 0, 0, width, height );
++}
++
++/* iprintlnbold has no explicit width. Wrap at the active client font's pixel
++ * widths so long retail tips stay inside the visible GameCube viewport. */
++static void mohaa_wrap_hint( char *text, int max_width )
++{
++	char *line = text;
++	while( *line )
++	{
++		char *p = line, *last_space = NULL;
++		int width = 0;
++		while( *p && *p != '\n' )
++		{
++			const int char_width = gHUD.m_scrinfo.charWidths[(unsigned char)*p];
++			if( width + char_width > max_width )
++				break;
++			if( *p == ' ' )
++				last_space = p;
++			width += char_width;
++			p++;
++		}
++		if( *p == '\n' )
++			line = p + 1;
++		else if( *p )
++		{
++			if( last_space )
++			{
++				*last_space = '\n';
++				line = last_space + 1;
++			}
++			else
++				line = p + 1;
++		}
++		else
++			break;
++	}
++}
++
++int CHudDod::DrawMohaa( float flTime )
++{
++	const int screen_w = ScreenWidth > 0 ? ScreenWidth : 320;
++	const int screen_h = ScreenHeight > 0 ? ScreenHeight : 240;
++	const int line_h = gHUD.m_scrinfo.iCharHeight > 0 ? gHUD.m_scrinfo.iCharHeight : 10;
++	float view[3] = {0, 0, 0};
++	float yaw = 0.0f;
++	int i;
++	(void)flTime;
++	if( !HUD_IsGame( "mohaa" ) )
++		return 0;
++	if( gHUD.m_iHideHUDDisplay & HIDEHUD_ALL )
++		return 1;
++
++	if( !m_mohaaCompassTried )
++	{
++		m_mohaaCompassTried = 1;
++		m_hMohaaCompassBack = SPR_Load( "sprites/mohaa/compassback.spr" );
++		m_hMohaaCompassFace = SPR_Load( "sprites/mohaa/compassface.spr" );
++		m_hMohaaCompassNeedle = SPR_Load( "sprites/mohaa/compassneedle.spr" );
++		gEngfuncs.Con_Printf( "MOHAA HUD compass: back=%d face=%d needle=%d; objective deferred\n",
++			m_hMohaaCompassBack != 0, m_hMohaaCompassFace != 0,
++			m_hMohaaCompassNeedle != 0 );
++	}
++	/* The 16-frame objective arrow is comparatively expensive on MEM1. Load it
++	 * only when retail scripting supplies a target, not for the opening HUD. */
++	if( m_mohaaCompassHasTarget && !m_mohaaCompassObjectiveTried )
++	{
++		m_mohaaCompassObjectiveTried = 1;
++		m_hMohaaCompassObjective = SPR_Load( "sprites/mohaa/compassobjarrow.spr" );
++		gEngfuncs.Con_Printf( "MOHAA HUD objective arrow: loaded=%d\n",
++			m_hMohaaCompassObjective != 0 );
++	}
++	gEngfuncs.GetViewAngles( view );
++	yaw = view[1];
++	while( yaw < 0.0f ) yaw += 360.0f;
++	while( yaw >= 360.0f ) yaw -= 360.0f;
++	{
++		const int x = (int)( 8.0f * screen_w / 320.0f + 0.5f );
++		const int y = (int)( 6.0f * screen_h / 240.0f + 0.5f );
++		const int width = (int)( 48.0f * screen_w / 320.0f + 0.5f );
++		const int height = (int)( 48.0f * screen_h / 240.0f + 0.5f );
++		mohaa_draw_compass_layer( m_hMohaaCompassBack, 0, x, y, width, height );
++		mohaa_draw_compass_layer( m_hMohaaCompassFace, mohaa_frame16( yaw ), x, y, width, height );
++		if( m_hMohaaCompassObjective && m_mohaaCompassHasTarget )
++		{
++			cl_entity_t *player = gEngfuncs.GetLocalPlayer();
++			if( player )
++			{
++				const float dx = m_mohaaCompassTarget[0] - player->origin[0];
++				const float dy = m_mohaaCompassTarget[1] - player->origin[1];
++				const float target_yaw = (float)( atan2( dy, dx ) * ( 180.0 / 3.14159265358979323846 ));
++				mohaa_draw_compass_layer( m_hMohaaCompassObjective,
++					mohaa_frame16( yaw - target_yaw ), x, y, width, height );
++			}
++		}
++		mohaa_draw_compass_layer( m_hMohaaCompassNeedle, 0, x, y, width, height );
++	}
++
++	/* Scripted shader cards (the gas-mask overlay, for example) sit above the compass. */
++	for( i = 0; i < DOD_MOHAA_HUD_DRAW_COUNT; i++ )
++	{
++		DodMohaaHudDraw *d = &m_mohaaHud[i];
++		if( !d->shader[0] || d->a <= 0.0f )
++			continue;
++		if( !m_mohaaHudShaderTried[i] )
++		{
++			char sprite[96], stem[64];
++			const char *base = strrchr( d->shader, '/' );
++			const char *ext;
++			base = base ? base + 1 : d->shader;
++			strncpy( stem, base, sizeof( stem ) - 1 ); stem[sizeof( stem ) - 1] = 0;
++			ext = strrchr( stem, '.' ); if( ext ) ((char *)ext)[0] = 0;
++			snprintf( sprite, sizeof( sprite ), "sprites/mohaa/%s.spr", stem );
++			m_hMohaaHudShader[i] = SPR_Load( sprite );
++			m_mohaaHudShaderTried[i] = 1;
++			gEngfuncs.Con_Printf( "MOHAA HUD shader %s: sprite=%d\n", d->shader, m_hMohaaHudShader[i] != 0 );
++		}
++		if( m_hMohaaHudShader[i] )
++		{
++			const float sx = d->virtual_size ? screen_w / 640.0f : 1.0f;
++			const float sy = d->virtual_size ? screen_h / 480.0f : 1.0f;
++			const int sw = SPR_Width( m_hMohaaHudShader[i], 0 ), sh = SPR_Height( m_hMohaaHudShader[i], 0 );
++			const int w = d->w > 0.0f ? (int)( d->w * sx + 0.5f ) : sw;
++			const int h = d->h > 0.0f ? (int)( d->h * sy + 0.5f ) : sh;
++			int x = (int)( d->x * sx + 0.5f ), y = (int)( d->y * sy + 0.5f );
++			wrect_t rc = {0, 0, sw, sh};
++			if( d->align_x == DOD_MOHAA_HUD_ALIGN_CENTER ) x += screen_w / 2 - w / 2;
++			else if( d->align_x == DOD_MOHAA_HUD_ALIGN_RIGHT ) x += screen_w - w;
++			if( d->align_y == DOD_MOHAA_HUD_ALIGN_MIDDLE ) y += screen_h / 2 - h / 2;
++			else if( d->align_y == DOD_MOHAA_HUD_ALIGN_BOTTOM ) y += screen_h - h;
++			SPR_Set( m_hMohaaHudShader[i], (int)( d->r * d->a * 255.0f ),
++				(int)( d->g * d->a * 255.0f ), (int)( d->b * d->a * 255.0f ) );
++			gEngfuncs.pfnSPR_DrawGeneric( 0, x, y, &rc, 0, 0, w, h );
++		}
++	}
++
++	/* Retail huddraw text supports independent slots, alignment, RGB and fade alpha. */
++	for( i = 0; i < DOD_MOHAA_HUD_DRAW_COUNT; i++ )
++	{
++		DodMohaaHudDraw *d = &m_mohaaHud[i];
++		char text[DOD_MOHAA_HUD_TEXT];
++		char *line;
++		const float sx = d->virtual_size ? screen_w / 640.0f : 1.0f;
++		const float sy = d->virtual_size ? screen_h / 480.0f : 1.0f;
++		int y_anchor, y, line_no = 0;
++		float draw_alpha = d->a;
++		int cr, cg, cb;
++		if( !d->text[0] || d->a <= 0.0f )
++			continue;
++		if( i == DOD_MOHAA_HUD_HINT_INDEX )
++		{
++			const float remaining = m_flMohaaHintUntil - flTime;
++			if( remaining <= 0.0f )
++				continue;
++			if( remaining < 0.5f )
++				draw_alpha *= remaining / 0.5f;
++		}
++		cr = (int)( mohaa_clamp01( d->r * draw_alpha ) * 255.0f + 0.5f );
++		cg = (int)( mohaa_clamp01( d->g * draw_alpha ) * 255.0f + 0.5f );
++		cb = (int)( mohaa_clamp01( d->b * draw_alpha ) * 255.0f + 0.5f );
++		strncpy( text, d->text, sizeof( text ) - 1 ); text[sizeof( text ) - 1] = 0;
++		if( i == DOD_MOHAA_HUD_HINT_INDEX )
++		{
++			const int left = (int)( d->x * sx + 0.5f );
++			const int right_margin = 8;
++			mohaa_wrap_hint( text, screen_w > left + right_margin ? screen_w - left - right_margin : screen_w );
++		}
++		for( line = text; *line; line++ ) if( *line == '\n' ) line_no++;
++		line_no++;
++		y_anchor = (int)( d->y * sy + 0.5f );
++		if( d->align_y == DOD_MOHAA_HUD_ALIGN_MIDDLE ) y_anchor = screen_h / 2 + y_anchor;
++		else if( d->align_y == DOD_MOHAA_HUD_ALIGN_BOTTOM ) y_anchor = screen_h - y_anchor;
++		if( d->align_y == DOD_MOHAA_HUD_ALIGN_MIDDLE ) y_anchor -= ( line_no * line_h ) / 2;
++		else if( d->align_y == DOD_MOHAA_HUD_ALIGN_BOTTOM ) y_anchor -= line_no * line_h;
++		y = y_anchor;
++		line = text;
++		while( line )
++		{
++			char *next = strchr( line, '\n' );
++			int width, x_anchor, x;
++			if( next ) *next = 0;
++			width = gHUD.DrawHudStringLen( line );
++			x_anchor = (int)( d->x * sx + 0.5f );
++			if( d->align_x == DOD_MOHAA_HUD_ALIGN_CENTER ) x_anchor += screen_w / 2;
++			else if( d->align_x == DOD_MOHAA_HUD_ALIGN_RIGHT ) x_anchor += screen_w;
++			x = x_anchor;
++			if( d->align_x == DOD_MOHAA_HUD_ALIGN_CENTER ) x -= width / 2;
++			else if( d->align_x == DOD_MOHAA_HUD_ALIGN_RIGHT ) x -= width;
++			if( i == DOD_MOHAA_HUD_HINT_INDEX )
++				gHUD.DrawHudString( x + 1, y + 1, screen_w, line, 24, 18, 12 );
++			gHUD.DrawHudString( x, y, screen_w, line, cr, cg, cb );
++			y += line_h;
++			line = next ? next + 1 : NULL;
++		}
++	}
++	return 1;
++}
++
+ int CHudDod::Draw( float flTime )
+ {
+-	DrawRetail( flTime );
++	if( HUD_IsGame( "mohaa" ) )
++		DrawMohaa( flTime );
++	else
++		DrawRetail( flTime );
+ 	return 1;
+ }
+diff --git a/cl_dll/hud_dod.h b/cl_dll/hud_dod.h
+index bdb5560..c46f3d1 100644
+--- a/cl_dll/hud_dod.h
++++ b/cl_dll/hud_dod.h
+@@ -10,6 +10,7 @@
+ #include "dod_hud.h"
+ #include "dod_hud_retail.h"
+ #include "dod_hud_geom.h"
++#include "dod_mohaa_hud.h"
+ 
+ class CHudDod : public CHudBase
+ {
+@@ -23,10 +24,13 @@ public:
+ 	/* The retail HUD, for the lean tier's Redraw: returns 1 when it drew and
+ 	 * the caller should skip its own HUD. */
+ 	int DrawRetail( float flTime );
++	int DrawMohaa( float flTime );
+ 	int MsgFunc_DodHud( const char *pszName, int iSize, void *pbuf );
+ 	int MsgFunc_DodBoard( const char *pszName, int iSize, void *pbuf );
+ 	int MsgFunc_DodVoice( const char *pszName, int iSize, void *pbuf );
+ 	int MsgFunc_DodKill( const char *pszName, int iSize, void *pbuf );
++	int MsgFunc_MohaaHudDraw( const char *pszName, int iSize, void *pbuf );
++	int MsgFunc_MohaaCompass( const char *pszName, int iSize, void *pbuf );
+ 	/* A modal panel is up (team/class menu, voice menu, scoreboard, chat prompt): the kill feed and chat lines step aside
+ 	 * so nothing draws over anything else (see dod_hud_geom.h). */
+ 	int Modal( void );
+@@ -55,6 +59,16 @@ private:
+ 	int m_fDrawLogged;
+ 	char m_szLoggedWeapon[32];
+ 	unsigned m_fSheetTried;	/* on-use sheets already attempted (bit per sheet) */
++	DodMohaaHudDraw m_mohaaHud[DOD_MOHAA_HUD_DRAW_COUNT];
++	HSPRITE m_hMohaaCompassBack, m_hMohaaCompassFace, m_hMohaaCompassNeedle, m_hMohaaCompassObjective;
++	HSPRITE m_hMohaaHudShader[DOD_MOHAA_HUD_DRAW_COUNT];
++	unsigned char m_mohaaHudShaderTried[DOD_MOHAA_HUD_DRAW_COUNT];
++	float m_mohaaCompassTarget[3];
++	int m_mohaaCompassHasTarget;
++	int m_mohaaCompassTried;
++	int m_mohaaCompassObjectiveTried;
++	float m_flMohaaHintUntil;
++	char m_szMohaaHudShader[DOD_MOHAA_HUD_DRAW_COUNT][DOD_MOHAA_HUD_SHADER];
+ 	cvar_t *m_pCvar;
+ };
+ 
+diff --git a/cl_dll/hud_redraw.cpp b/cl_dll/hud_redraw.cpp
+index 786908f..2d5fc13 100644
+--- a/cl_dll/hud_redraw.cpp
++++ b/cl_dll/hud_redraw.cpp
+@@ -342,6 +342,7 @@ int CHud::Redraw( float flTime, int intermission )
+ 			/* MOHAA uses its Pak1 HUD art instead of the Half-Life sprite sheet. */
+ 			if( GC_DrawMohaaHud( m_Health.m_iHealth, m_Ammo.GetLeanClip() ) )
+ 			{
++				m_Dod.DrawMohaa( flTime );
+ 				if( m_Menu.m_fMenuDisplayed )
+ 					m_Menu.Draw( flTime );
+ 				return 1;
+diff --git a/dlls/client.cpp b/dlls/client.cpp
+index cd1f222..28da301 100644
+--- a/dlls/client.cpp
++++ b/dlls/client.cpp
+@@ -750,6 +750,7 @@ void ServerDeactivate( void )
+ }
+ 
+ void DodGC_PrecacheTeamBodies( void );
++void DodGC_MohaaPrecacheModels( void );
+ void ServerActivate( edict_t *pEdictList, int edictCount, int clientMax )
+ {
+ 	int		i;
+@@ -759,6 +760,9 @@ void ServerActivate( edict_t *pEdictList, int edictCount, int clientMax )
+ 
+ 	// Every call to ServerActivate should be matched by a call to ServerDeactivate
+ 	g_serveractive = 1;
++#ifdef __GAMECUBE__
++	DodGC_MohaaPrecacheModels();
++#endif
+ #ifdef __GAMECUBE__
+ 	DodGC_PrecacheTeamBodies();
+ #endif
+diff --git a/dlls/dod_mohaa.c b/dlls/dod_mohaa.c
+index b4404c8..e0e7d01 100644
+--- a/dlls/dod_mohaa.c
++++ b/dlls/dod_mohaa.c
+@@ -218,7 +218,9 @@ static struct {
+ 	char level_script[128];
+ 	int started;              /* main has run (it waits for the first frame: entities spawn after the VM) */
+ 	size_t budget;
+-	char objectives[8][96];	/* addobjective texts, by index 1..8 */	/* maps/<map>.scr, where a trigger's setthread label lives */
++	struct { char text[96]; int status, has_pos; float pos[3]; } objectives[8];
++	int current_objective;
++	DodMohaaHudDraw hud_draw[DOD_MOHAA_HUD_DRAW_COUNT];
+ 	/* path nodes, and the soldiers walking them: a route is the goal plus the node it heads for now */
+ 	MohaaPaths paths;
+ 	int path_links;
+@@ -578,6 +580,8 @@ static int c_hide(ms_call *c) { S.be.set_flag(target_id(c), DOD_MOHAA_HIDDEN, 1)
+ static int c_show(ms_call *c) { S.be.set_flag(target_id(c), DOD_MOHAA_HIDDEN, 0); return 0; }
+ static int c_notsolid(ms_call *c) { S.be.set_flag(target_id(c), DOD_MOHAA_NOTSOLID, 1); return 0; }
+ static int c_solid(ms_call *c) { S.be.set_flag(target_id(c), DOD_MOHAA_NOTSOLID, 0); return 0; }
++static int c_nodamage(ms_call *c) { S.be.set_flag(target_id(c), DOD_MOHAA_TAKEDAMAGE, 0); return 0; }
++static int c_takedamage(ms_call *c) { S.be.set_flag(target_id(c), DOD_MOHAA_TAKEDAMAGE, 1); return 0; }
+ 
+ static int c_remove(ms_call *c)
+ {
+@@ -1392,11 +1396,20 @@ static const char *anim_name(ms_call *c, int i, char *buf, size_t size)
+ static int c_model(ms_call *c)
+ {
+ 	char buf[128];
+-	DodCine *k = cine(target_id(c), 1);
++	const uint32_t id = target_id(c);
++	DodCine *k = cine(id, 1);
++	const char *name = anim_name(c, 0, buf, sizeof(buf));
++	const char *classname = valid(id) && S.be.get_str ? S.be.get_str(id, DOD_MOHAA_CLASSNAME) : "";
++	const char *model = valid(id) && S.be.get_str ? S.be.get_str(id, DOD_MOHAA_MODEL) : "";
+ 	if (k) {
+-		k->model = MohaaTags_Model(&S.tags, MohaaTags_Hash(anim_name(c, 0, buf, sizeof(buf))));
++		k->model = MohaaTags_Model(&S.tags, MohaaTags_Hash(name));
+ 		k->anim = 0;
+ 	}
++	/* The tag-carrier path TIKIs have no drawable mesh. The backend accepts only
++	   script models and actors listed in this map's .models precache manifest. */
++	if (S.be.set_model && valid(id) &&
++	    (!strcmp(classname, "mohaa_script_model") || strstr(model, ".tik")))
++		S.be.set_model(id, name);
+ 	return 0;
+ }
+ 
+@@ -1404,11 +1417,24 @@ static int c_model(ms_call *c)
+ static int c_anim(ms_call *c)
+ {
+ 	char buf[96];
+-	DodCine *k = cine(target_id(c), 1);
++	const uint32_t id = target_id(c);
++	DodCine *k = cine(id, 1);
+ 	float len;
++	const char *alias = anim_name(c, 0, buf, sizeof(buf));
++	const char *classname = valid(id) && S.be.get_str ? S.be.get_str(id, DOD_MOHAA_CLASSNAME) : "";
++	const char *model = valid(id) && S.be.get_str ? S.be.get_str(id, DOD_MOHAA_MODEL) : "";
++	if (S.be.set_animation && valid(id) &&
++	    (!strcmp(classname, "mohaa_script_model") || !strcmp(classname, "dod_grunt") || strstr(model, ".tik"))) {
++		if (!S.be.set_animation(id, alias)) {
++			char msg[192];
++			snprintf(msg, sizeof(msg), "mohaa: animation '%s' could not be applied to %s\n",
++				 alias, model && *model ? model : classname);
++			S.be.print(DOD_MOHAA_PRINT_CONSOLE, msg);
++		}
++	}
+ 	if (!k)
+ 		return 0;
+-	k->anim = MohaaTags_Hash(anim_name(c, 0, buf, sizeof(buf)));
++	k->anim = MohaaTags_Hash(alias);
+ 	len = MohaaTags_Length(&S.tags, k->model, k->anim);
+ 	k->anim_start = S.now;
+ 	k->anim_end = S.now + (len >= 0.0f ? len : DOD_MOHAA_ANIM_DEFAULT);
+@@ -1717,26 +1743,142 @@ static int c_setcvar(ms_call *c)
+ 	return 0;
+ }
+ 
+-/* "addobjective <index> <state> <text> [location]" keeps the text; "setcurrentobjective <index>" shows it */
++/* "addobjective <index> <state> <text> [location]" keeps the text and map-space target. */
+ static int c_addobjective(ms_call *c)
+ {
+ 	const int i = ms_arg_int(c, 0);
+-	if (i >= 1 && i <= 8 && ms_argc(c) >= 3)
+-		snprintf(S.objectives[i - 1], sizeof(S.objectives[0]), "%s", ms_arg_string(c, 2));
++	if (i >= 1 && i <= 8 && ms_argc(c) >= 3) {
++		float raw[3];
++		int k;
++		snprintf(S.objectives[i - 1].text, sizeof(S.objectives[0].text), "%s", ms_arg_string(c, 2));
++		S.objectives[i - 1].status = ms_arg_int(c, 1);
++		S.objectives[i - 1].has_pos = ms_argc(c) >= 4;
++		if (S.objectives[i - 1].has_pos) {
++			ms_arg_vector(c, 3, raw);
++			for (k = 0; k < 3; k++)
++				S.objectives[i - 1].pos[k] = raw[k];
++		}
++		if (S.current_objective == i - 1 && S.be.compass_target) {
++			float pos[3] = {0, 0, 0};
++			if (S.objectives[i - 1].has_pos)
++				scale_in(S.objectives[i - 1].pos, pos);
++			S.be.compass_target(pos, S.objectives[i - 1].status == 2 && S.objectives[i - 1].has_pos);
++		}
++	}
+ 	return 0;
+ }
+ 
+ static int c_setcurrentobjective(ms_call *c)
+ {
+ 	const int i = ms_arg_int(c, 0);
+-	if (i >= 1 && i <= 8 && S.objectives[i - 1][0]) {
++	if (i >= 1 && i <= 8 && S.objectives[i - 1].text[0]) {
+ 		char msg[128];
+-		snprintf(msg, sizeof(msg), "Objective: %s", S.objectives[i - 1]);
++		float pos[3] = {0, 0, 0};
++		S.current_objective = i - 1;
++		if (S.objectives[i - 1].has_pos)
++			scale_in(S.objectives[i - 1].pos, pos);
++		if (S.be.compass_target)
++			S.be.compass_target(pos, S.objectives[i - 1].status == 2 && S.objectives[i - 1].has_pos);
++		snprintf(msg, sizeof(msg), "Objective: %s", S.objectives[i - 1].text);
+ 		S.be.print(DOD_MOHAA_PRINT_CENTER, msg);
+ 	}
+ 	return 0;
+ }
+ 
++/* Retail mission scripts move the compass target with set_objective_pos. The
++ * argument is normally a vector, though some campaigns pass an entity. */
++static int c_set_objective_pos(ms_call *c)
++{
++	const ms_value *arg = ms_arg(c, 0);
++	float raw[3] = {0, 0, 0};
++	float pos[3] = {0, 0, 0};
++	int visible = 1;
++	if (arg->type == MS_ENTITY) {
++		if (!S.be.get_vec || (S.be.valid && !S.be.valid(arg->u.id)))
++			visible = 0;
++		else
++			S.be.get_vec(arg->u.id, DOD_MOHAA_ORIGIN, raw);
++	} else if (arg->type == MS_NIL || arg->type == MS_NULL) {
++		visible = 0;
++	} else {
++		ms_arg_vector(c, 0, raw);
++	}
++	if (visible)
++		scale_in(raw, pos);
++	if (S.be.compass_target)
++		S.be.compass_target(pos, visible);
++	return 0;
++}
++
++static int hud_align_x(const char *name)
++{
++	if (name && (!strcmp(name, "center") || !strcmp(name, "middle")))
++		return DOD_MOHAA_HUD_ALIGN_CENTER;
++	if (name && !strcmp(name, "right"))
++		return DOD_MOHAA_HUD_ALIGN_RIGHT;
++	return DOD_MOHAA_HUD_ALIGN_LEFT;
++}
++
++static int hud_align_y(const char *name)
++{
++	if (name && (!strcmp(name, "center") || !strcmp(name, "middle")))
++		return DOD_MOHAA_HUD_ALIGN_MIDDLE;
++	if (name && !strcmp(name, "bottom"))
++		return DOD_MOHAA_HUD_ALIGN_BOTTOM;
++	return DOD_MOHAA_HUD_ALIGN_TOP;
++}
++
++/* MOHAA's retail scripts use huddraw slots for contextual hints, overlays and status text. */
++static int c_huddraw(ms_call *c)
++{
++	const int index = ms_arg_int(c, 0);
++	DodMohaaHudDraw *d;
++	const char *op = ms_call_name(c);
++	if (index < 0 || index >= DOD_MOHAA_HUD_DRAW_COUNT)
++		return 0;
++	d = &S.hud_draw[index];
++	if (!d->initialized) {
++		d->r = d->g = d->b = d->a = 1.0f;
++		d->align_x = DOD_MOHAA_HUD_ALIGN_LEFT;
++		d->align_y = DOD_MOHAA_HUD_ALIGN_TOP;
++		d->virtual_size = 1;
++		d->initialized = 1;
++	}
++	if (!strcmp(op, "huddraw_string")) {
++		snprintf(d->text, sizeof(d->text), "%s", ms_arg_string(c, 1));
++	} else if (!strcmp(op, "huddraw_shader")) {
++		snprintf(d->shader, sizeof(d->shader), "%s", ms_arg_string(c, 1));
++	} else if (!strcmp(op, "huddraw_rect")) {
++		if (ms_argc(c) >= 5) {
++			d->x = ms_arg_float(c, 1); d->y = ms_arg_float(c, 2);
++			d->w = ms_arg_float(c, 3); d->h = ms_arg_float(c, 4);
++		}
++	} else if (!strcmp(op, "huddraw_align")) {
++		d->align_x = hud_align_x(ms_arg_string(c, 1));
++		d->align_y = hud_align_y(ms_arg_string(c, 2));
++	} else if (!strcmp(op, "huddraw_color")) {
++		if (ms_argc(c) >= 4) {
++			d->r = ms_arg_float(c, 1); d->g = ms_arg_float(c, 2); d->b = ms_arg_float(c, 3);
++			if (d->r > 1.0f || d->g > 1.0f || d->b > 1.0f) {
++				d->r /= 255.0f; d->g /= 255.0f; d->b /= 255.0f;
++			}
++			if (d->r < 0.0f) d->r = 0.0f; if (d->r > 1.0f) d->r = 1.0f;
++			if (d->g < 0.0f) d->g = 0.0f; if (d->g > 1.0f) d->g = 1.0f;
++			if (d->b < 0.0f) d->b = 0.0f; if (d->b > 1.0f) d->b = 1.0f;
++		}
++	} else if (!strcmp(op, "huddraw_alpha")) {
++		d->a = ms_arg_float(c, 1);
++		if (d->a > 1.0f) d->a /= 255.0f;
++		if (d->a < 0.0f) d->a = 0.0f;
++		if (d->a > 1.0f) d->a = 1.0f;
++	} else if (!strcmp(op, "huddraw_virtualsize")) {
++		d->virtual_size = ms_arg_int(c, 1) != 0;
++	}
++	if (S.be.hud_draw)
++		S.be.hud_draw(index, d);
++	return 0;
++}
++
+ /* "isalive $guy": 1 while the entity exists and has health left */
+ static int c_isalive(ms_call *c)
+ {
+@@ -1874,6 +2016,37 @@ static int c_centerprint(ms_call *c)
+ 	return 0;
+ }
+ 
++/* iprintlnbold is the retail mission-script hint command. HudText is not part
++ * of the GameCube client DLL, so route the hint through its script HUD slot. */
++static int c_iprintlnbold(ms_call *c)
++{
++	DodMohaaHudDraw *d = &S.hud_draw[DOD_MOHAA_HUD_HINT_INDEX];
++	size_t out = 0;
++	int arg;
++	/* Retail MOHAA presents gameplay tips as a left-aligned line beneath the
++	 * compass, rather than a center-screen notification. */
++	/* Retail places this short instruction just below the 48 px compass. */
++	d->x = 8.0f; d->y = 45.0f; d->w = d->h = 0.0f;
++	d->r = d->g = d->b = d->a = 1.0f;
++	d->align_x = DOD_MOHAA_HUD_ALIGN_LEFT;
++	d->align_y = DOD_MOHAA_HUD_ALIGN_TOP;
++	d->virtual_size = 1;
++	d->initialized = 1;
++	d->shader[0] = 0;
++	/* Retail scripts build some hints from several localized text fragments and
++	 * the current key binding. Match print_args(): concatenate arguments as-is. */
++	for (arg = 0; arg < ms_argc(c) && out + 1 < sizeof(d->text); arg++) {
++		const char *src = ms_arg_string(c, arg);
++		while (src && *src && out + 1 < sizeof(d->text)) {
++			d->text[out++] = *src++;
++		}
++	}
++	d->text[out] = 0;
++	if (S.be.hud_draw)
++		S.be.hud_draw(DOD_MOHAA_HUD_HINT_INDEX, d);
++	return 0;
++}
++
+ static void register_commands(ms_vm *vm)
+ {
+ 	static const struct { const char *name; unsigned on; ms_cmd_fn fn; } table[] = {
+@@ -1948,6 +2121,7 @@ static void register_commands(ms_vm *vm)
+ 		{"setcvar", MS_ON_THREAD, c_setcvar},
+ 		{"addobjective", MS_ON_THREAD, c_addobjective},
+ 		{"setcurrentobjective", MS_ON_THREAD, c_setcurrentobjective},
++		{"set_objective_pos", MS_ON_THREAD | MS_ON_ENTITY, c_set_objective_pos},
+ 		{"lighton", MS_ON_ENTITY, c_ignored},
+ 		{"light", MS_ON_ENTITY, c_ignored},
+ 		/* animation, TIKI models, attachment, vehicles and turrets, weapons and inventory: none of it exists on the
+@@ -1958,8 +2132,8 @@ static void register_commands(ms_vm *vm)
+ 		{"forcelegsstate", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+ 		{"gren_awareness", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+ 		{"holster", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+-		{"nodamage", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+-		{"takedamage", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
++		{"nodamage", MS_ON_ENTITY | MS_ON_THREAD, c_nodamage},
++		{"takedamage", MS_ON_ENTITY | MS_ON_THREAD, c_takedamage},
+ 		{"scale", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+ 		{"setplayerusable", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+ 		{"threatbias", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+@@ -1985,14 +2159,14 @@ static void register_commands(ms_vm *vm)
+ 		{"dontdropweapons", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+ 		{"unholster", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+ 		{"detach", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+-		/* scripted HUD elements (m6l1a's mg42 overlay): there is no matching HUD element on the GoldSrc side yet */
+-		{"huddraw_shader", MS_ON_THREAD, c_ignored},
+-		{"huddraw_align", MS_ON_THREAD, c_ignored},
+-		{"huddraw_rect", MS_ON_THREAD, c_ignored},
+-		{"huddraw_virtualsize", MS_ON_THREAD, c_ignored},
+-		{"huddraw_color", MS_ON_THREAD, c_ignored},
+-		{"huddraw_alpha", MS_ON_THREAD, c_ignored},
+-		{"huddraw_string", MS_ON_THREAD, c_ignored},
++		/* scripted HUD elements (hints, compass overlays and the m6l1a mg42 overlay) */
++		{"huddraw_shader", MS_ON_THREAD, c_huddraw},
++		{"huddraw_align", MS_ON_THREAD, c_huddraw},
++		{"huddraw_rect", MS_ON_THREAD, c_huddraw},
++		{"huddraw_virtualsize", MS_ON_THREAD, c_huddraw},
++		{"huddraw_color", MS_ON_THREAD, c_huddraw},
++		{"huddraw_alpha", MS_ON_THREAD, c_huddraw},
++		{"huddraw_string", MS_ON_THREAD, c_huddraw},
+ 		{"huddraw_font", MS_ON_THREAD, c_ignored},
+ 		{"lightoff", MS_ON_ENTITY, c_ignored},
+ 		{"lightradius", MS_ON_ENTITY, c_ignored},
+@@ -2005,6 +2179,8 @@ static void register_commands(ms_vm *vm)
+ 		{"trigger", MS_ON_THREAD, c_trigger},
+ 		{"spawn", MS_ON_THREAD, c_spawn},
+ 		{"centerprint", MS_ON_THREAD, c_centerprint},
++		{"iprintlnbold", MS_ON_THREAD, c_iprintlnbold},
++		{"iprintlnbold_noloc", MS_ON_THREAD, c_iprintlnbold},
+ 		{"queryturretslotentity", MS_ON_ENTITY, c_queryturretslotentity},
+ 		{"drive", MS_ON_ENTITY, c_drive},
+ 		{"modifydrive", MS_ON_ENTITY, c_modifydrive},
+@@ -2032,6 +2208,11 @@ static void register_commands(ms_vm *vm)
+ 
+ void Dod_MohaaShutdown(void)
+ {
++	static const float no_target[3] = {0, 0, 0};
++	if (S.be.hud_draw)
++		S.be.hud_draw(-1, NULL);
++	if (S.be.compass_target)
++		S.be.compass_target(no_target, 0);
+ 	if (S.vm)
+ 		ms_destroy(S.vm);
+ 	S.vm = NULL;
+@@ -2045,6 +2226,8 @@ void Dod_MohaaShutdown(void)
+ 	S.mood = S.fallback = -1;
+ 	S.cue[0] = 0;
+ 	memset(S.objectives, 0, sizeof(S.objectives));
++	S.current_objective = -1;
++	memset(S.hud_draw, 0, sizeof(S.hud_draw));
+ 	MohaaPaths_Free(&S.paths);
+ 	S.path_links = 0;
+ 	memset(S.routes, 0, sizeof(S.routes));
+@@ -2068,6 +2251,8 @@ void Dod_MohaaDropPool(void)
+ 	/* the region is gone (or about to be reused): forget everything in it without freeing */
+ 	S.vm = NULL;
+ 	S.sounds = NULL;
++	memset(&S.paths, 0, sizeof(S.paths));
++	S.path_links = 0;
+ 	memset(&S.tags, 0, sizeof(S.tags));
+ 	Dod_MohaaShutdown();   /* frees the overflow blocks on the heap too */
+ 	S.be.alloc = default_alloc;
+@@ -2099,17 +2284,62 @@ static void tags_load(const char *mapname)
+ 	char path[128], msg[320];
+ 	size_t len = 0;
+ 	char *data;
++	int arena_data = 0;
+ 	snprintf(path, sizeof(path), "maps/%s.tags", mapname);
+ 	data = S.be.load_file(path, &len);
+ 	if (!data)
+ 		return;
++	/* A large MTAG cannot fit in the fragmented engine heap on maps like m1l1. The baker
++	 * writes MTGC plus small numbered pieces; assemble them in the reserved script arena. */
++	if (len >= 20 && !memcmp(data, "MTGC", 4)) {
++		const unsigned char *h = (const unsigned char *)data;
++		uint32_t version = (uint32_t)h[4] | ((uint32_t)h[5] << 8) | ((uint32_t)h[6] << 16) | ((uint32_t)h[7] << 24);
++		uint32_t total = (uint32_t)h[8] | ((uint32_t)h[9] << 8) | ((uint32_t)h[10] << 16) | ((uint32_t)h[11] << 24);
++		uint32_t chunk = (uint32_t)h[12] | ((uint32_t)h[13] << 8) | ((uint32_t)h[14] << 16) | ((uint32_t)h[15] << 24);
++		uint32_t count = (uint32_t)h[16] | ((uint32_t)h[17] << 8) | ((uint32_t)h[18] << 16) | ((uint32_t)h[19] << 24);
++		char *manifest = data, *assembled = NULL;
++		int ok = version == 1 && total > 0 && total <= 4u * 1024u * 1024u && chunk >= 512 && chunk <= 16384 &&
++			count == (total + chunk - 1) / chunk;
++		if (ok)
++			assembled = (char *)S.be.alloc(NULL, 0, total);
++		if (!assembled)
++			ok = 0;
++		if (ok) {
++			for (uint32_t i = 0, offset = 0; i < count; i++) {
++				char part_path[160];
++				size_t part_len = 0;
++				char *part;
++				snprintf(part_path, sizeof(part_path), "maps/%s.tags.%03u", mapname, (unsigned)i);
++				part = S.be.load_file(part_path, &part_len);
++				if (!part || part_len != (size_t)((total - offset) < chunk ? total - offset : chunk)) {
++					ok = 0;
++					if (part && S.be.free_file) S.be.free_file(part);
++					break;
++				}
++				memcpy(assembled + offset, part, part_len);
++				offset += (uint32_t)part_len;
++				if (S.be.free_file) S.be.free_file(part);
++			}
++		}
++		if (S.be.free_file) S.be.free_file(manifest);
++		if (!ok) {
++			if (assembled) S.be.alloc(assembled, total, 0);
++			S.be.print(DOD_MOHAA_PRINT_CONSOLE, "mohaa: tag chunks are incomplete or out of memory\n");
++			return;
++		}
++		data = assembled;
++		len = total;
++		arena_data = 1;
++	}
+ 	if (MohaaTags_Load(&S.tags, data, len, S.be.alloc))
+ 		snprintf(msg, sizeof(msg), "mohaa: %s: %d models with tags, %d animation lengths, %u KB\n", path,
+ 			S.tags.nmodels, S.tags.ndur, (unsigned)(S.tags.size / 1024u));
+ 	else
+ 		snprintf(msg, sizeof(msg), "mohaa: %s is unreadable or did not fit, cutscene tags sit at entity origins\n", path);
+ 	S.be.print(DOD_MOHAA_PRINT_CONSOLE, msg);
+-	if (S.be.free_file)
++	if (arena_data)
++		S.be.alloc(data, len, 0);
++	else if (S.be.free_file)
+ 		S.be.free_file(data);
+ }
+ 
+@@ -2118,26 +2348,106 @@ static void nodes_load(const char *mapname)
+ 	char path[128], msg[256];
+ 	size_t len = 0;
+ 	char *text;
+-	int i, k, traces = 0;
++	int i, k, traces = 0, loaded;
+ 	snprintf(path, sizeof(path), "maps/%s.nodes", mapname);
+ 	text = S.be.load_file(path, &len);
+-	if (!text)
++	if (!text) {
++		snprintf(msg, sizeof(msg), "mohaa: could not load path nodes %s\n", path);
++		S.be.print(DOD_MOHAA_PRINT_CONSOLE, msg);
+ 		return;
+-	MohaaPaths_Load(&S.paths, text, len);
+-	MohaaPaths_Keys(text, len, S.paths.count, node_key, NULL);
++	}
++	loaded = MohaaPaths_Load(&S.paths, text, len, S.be.alloc);
++	if (loaded > 0)
++		MohaaPaths_Keys(text, len, S.paths.count, node_key, NULL);
+ 	if (S.be.free_file)
+ 		S.be.free_file(text);
++	if (loaded < 0) {
++		const size_t per_node = sizeof(float) * 4 + sizeof(uint32_t) +
++			sizeof(unsigned short) * (MOHAA_PATH_LINKS + 3);
++		snprintf(msg, sizeof(msg), "mohaa: path node allocation failed for %d nodes (%u bytes, file %u bytes)\n",
++			-loaded, (unsigned)(per_node * (size_t)-loaded), (unsigned)len);
++		S.be.print(DOD_MOHAA_PRINT_ERROR, msg);
++	}
+ 	if (S.be.walkable && S.paths.count > 1)
+ 		traces = MohaaPaths_Link(&S.paths, walk_test, NULL, MOHAA_PATH_REACH);
+ 	for (i = 0; i < S.paths.count; i++)
+ 		for (k = 0; k < MOHAA_PATH_LINKS && S.paths.link[i][k] != MOHAA_PATH_NONE; k++)
+ 			S.path_links++;
+ 	S.path_links /= 2;
+-	snprintf(msg, sizeof(msg), "mohaa: %d path nodes from %s, %d links (%d walk tests)\n", S.paths.count, path,
+-		S.path_links, traces);
++	if (!loaded)
++		snprintf(msg, sizeof(msg), "mohaa: 0 path nodes parsed from %s (%u bytes)\n", path, (unsigned)len);
++	else if (loaded > 0)
++		snprintf(msg, sizeof(msg), "mohaa: %d path nodes from %s, %d links (%d walk tests)\n", S.paths.count, path,
++			S.path_links, traces);
++	else
++		return;
+ 	S.be.print(DOD_MOHAA_PRINT_CONSOLE, msg);
+ }
+ 
++/* The script VM is created before map activation, but model precaching must wait until ServerActivate:
++   the game DLL then knows all map models and the engine promotes only precached models to its studio arena. */
++void Dod_MohaaPrecacheModels(void)
++{
++	char path[128], line[128];
++	size_t len = 0, at = 0;
++	char *text;
++	int loaded = 0;
++	if (!S.level_script[0] || !S.be.load_file || !S.be.precache_model)
++		return;
++	if (snprintf(path, sizeof(path), "%s", S.level_script) >= (int)sizeof(path))
++		return;
++	{
++		char *ext = strrchr(path, '.');
++		if (!ext || strcmp(ext, ".scr"))
++			return;
++		snprintf(ext, sizeof(path) - (size_t)(ext - path), ".models");
++	}
++	text = S.be.load_file(path, &len);
++	if (!text)
++		return;
++	while (at < len) {
++		size_t n = 0;
++		int too_long = 0;
++		while (at < len && text[at] != '\n') {
++			if (n + 1 < sizeof(line))
++				line[n++] = text[at];
++			else
++				too_long = 1;
++			at++;
++		}
++		if (at < len)
++			at++;
++		line[n] = 0;
++		while (n && (line[n - 1] == '\r' || line[n - 1] == ' ' || line[n - 1] == '\t'))
++			line[--n] = 0;
++		{
++			char *first = line;
++			size_t first_len;
++			while (*first == ' ' || *first == '\t')
++				first++;
++			if (too_long || !*first || *first == '#' || *first == '/')
++				continue;
++			first_len = strlen(first);
++			if (strncmp(first, "models/", 7) || first_len < 12 ||
++			    strcmp(first + first_len - 4, ".mdl") || strstr(first, "..")) {
++				S.be.print(DOD_MOHAA_PRINT_ERROR, "mohaa: ignored invalid model in precache manifest\n");
++				continue;
++			}
++			if (S.be.precache_model(first))
++				loaded++;
++			else
++				S.be.print(DOD_MOHAA_PRINT_ERROR, "mohaa: could not precache a scripted model\n");
++		}
++	}
++	if (S.be.free_file)
++		S.be.free_file(text);
++	if (loaded) {
++		char msg[128];
++		snprintf(msg, sizeof(msg), "mohaa: pre-cached %d scripted models from %s\n", loaded, path);
++		S.be.print(DOD_MOHAA_PRINT_CONSOLE, msg);
++	}
++}
++
+ int Dod_MohaaLevelInit(const DodMohaaBackend *backend, const char *mapname, float now, size_t memory_budget)
+ {
+ 	char path[128];
+@@ -2150,6 +2460,12 @@ int Dod_MohaaLevelInit(const DodMohaaBackend *backend, const char *mapname, floa
+ 	if (!backend || !mapname || !*mapname)
+ 		return 0;
+ 	S.be = *backend;
++	if (S.be.hud_draw)
++		S.be.hud_draw(-1, NULL);
++	if (S.be.compass_target) {
++		static const float no_target[3] = {0, 0, 0};
++		S.be.compass_target(no_target, 0);
++	}
+ 	if (!S.be.alloc) {
+ 		if (S.be.pool && MohaaPool_Init(&g_pool, S.be.pool, S.be.pool_size)) {
+ 			int r;
+@@ -2237,10 +2553,13 @@ void Dod_MohaaThink(float now)
+ 	level.type = MS_LEVEL;
+ 	start_main();
+ 	/* MOHAA level scripts wait for these before touching the world */
+-	if (S.ticks == 0)
++	if (S.ticks == 0) {
++		S.be.print(DOD_MOHAA_PRINT_CONSOLE, "mohaa: signal prespawn\n");
+ 		ms_notify(S.vm, &level, "prespawn");
+-	else if (S.ticks == 1)
++	} else if (S.ticks == 1) {
++		S.be.print(DOD_MOHAA_PRINT_CONSOLE, "mohaa: signal spawn\n");
+ 		ms_notify(S.vm, &level, "spawn");
++	}
+ 	S.ticks++;
+ 	for (i = 0; i < DOD_MOHAA_MAX_MOVERS && S.vm; i++) {
+ 		DodMover *m = &S.movers[i];
+diff --git a/dlls/dod_mohaa.h b/dlls/dod_mohaa.h
+index 2eaf616..54a496b 100644
+--- a/dlls/dod_mohaa.h
++++ b/dlls/dod_mohaa.h
+@@ -17,6 +17,7 @@
+ 
+ #include <stddef.h>
+ #include <stdint.h>
++#include "dod_mohaa_hud.h"
+ 
+ #ifdef __cplusplus
+ extern "C" {
+@@ -27,7 +28,8 @@ extern "C" {
+ 
+ enum { DOD_MOHAA_ORIGIN = 0, DOD_MOHAA_ANGLES = 1 };
+ enum { DOD_MOHAA_TARGETNAME = 0, DOD_MOHAA_CLASSNAME = 1, DOD_MOHAA_MODEL = 2, DOD_MOHAA_TARGET = 3 };
+-enum { DOD_MOHAA_HIDDEN = 0, DOD_MOHAA_NOTSOLID = 1 };
++/* set_flag modes: hide, solidity, and whether damage can affect this entity. */
++enum { DOD_MOHAA_HIDDEN = 0, DOD_MOHAA_NOTSOLID = 1, DOD_MOHAA_TAKEDAMAGE = 2 };
+ /* Sound channels, from the ubersound alias's channel name. */
+ enum { DOD_MOHAA_CHAN_AUTO = 0, DOD_MOHAA_CHAN_VOICE, DOD_MOHAA_CHAN_ITEM, DOD_MOHAA_CHAN_BODY, DOD_MOHAA_CHAN_WEAPON };
+ /* Sound aliases come from maps/<map>.snd, written by mohaa-gc tools/ubersound.py (lines "alias sample volume mindist
+@@ -69,6 +71,14 @@ typedef struct DodMohaaBackend {
+ 	void (*sound)(uint32_t id, const char *sample, int loop, float volume, float attn, int channel);
+ 	/* At level start, for each sample maps/<map>.snd names. NULL: nothing to precache (host tests). */
+ 	void (*precache_sound)(const char *sample);
++	/* Scripted TIKI models baked to GoldSrc MDL by tools/mohaa_tiki_model.py. Models are precached
++	   from maps/<map>.models at ServerActivate, before the level script's first frame. */
++	int (*precache_model)(const char *model);
++	/* Set a script_model/script_object to its already-preloaded GoldSrc model. 0 when this TIKI was
++	   not baked/staged for the map; tag sampling still works without a drawable mesh. */
++	int (*set_model)(uint32_t id, const char *tiki);
++	/* Select a named exported sequence on an already-bound script model. */
++	int (*set_animation)(uint32_t id, const char *alias);
+ 	/* An order to an actor; returns 0 when id is not one. The game sends "movedone" when a walk/run
+ 	   order arrives and "death" when the actor dies, through Dod_MohaaNotify. NULL: no actors. */
+ 	int (*actor)(uint32_t id, int order, const float pos[3]);
+@@ -96,6 +106,9 @@ typedef struct DodMohaaBackend {
+ 	void (*view)(uint32_t id, const float angles[3], int add);
+ 	/* What of every player's HUD to hide: DOD_MOHAA_HUD_* bits, 0 shows it all. */
+ 	void (*hud)(int hide);
++	/* Scripted huddraw elements and the current objective compass target. NULL: no custom HUD. */
++	void (*hud_draw)(int index, const DodMohaaHudDraw *draw);
++	void (*compass_target)(const float target[3], int visible);
+ 	/* A shot or blast at point (GoldSrc units): damage what is within radius and fire MOHAA damage triggers
+ 	   (converted with spawnflags 2, no touch) whose box holds the point. attacker 0: the world. */
+ 	void (*damage_at)(uint32_t attacker, const float point[3], float radius, float damage);
+@@ -121,6 +134,8 @@ typedef struct DodMohaaStats {
+ /* Start the map's script if maps/<mapname>.scr exists. Replaces any previous map's VM.
+  * memory_budget 0 means unlimited. Returns 1 when a script is running. */
+ int Dod_MohaaLevelInit(const DodMohaaBackend *backend, const char *mapname, float now, size_t memory_budget);
++/* Called from ServerActivate, after map entities spawn but before runtime. */
++void Dod_MohaaPrecacheModels(void);
+ /* Every server frame: sends "prespawn" then "spawn" to level, runs threads, finishes moves. */
+ void Dod_MohaaThink(float now);
+ void Dod_MohaaShutdown(void);
+diff --git a/dlls/dod_mohaa_ents.cpp b/dlls/dod_mohaa_ents.cpp
+index 1c17efe..e910f68 100644
+--- a/dlls/dod_mohaa_ents.cpp
++++ b/dlls/dod_mohaa_ents.cpp
+@@ -10,16 +10,26 @@
+ #include "dod_mohaa.h"
+ #include "dod_mohaa_ents.h"
+ #include "shake.h"
++#include "studio.h"
+ 
+ #include <stdio.h>
+ #include <math.h>
+ #include <stdlib.h>
+ #include <string.h>
++#include <ctype.h>
+ 
+ /* Script memory cap in KiB. MEM1 is tight on GameCube (see docs/MEMORY.md); a level whose
+  * scripts do not fit is refused cleanly at load instead of starving the engine. */
+ static cvar_t mohaa_script_kb = { "mohaa_script_kb", "384", FCVAR_SERVER };
+ static int g_mohaa_cvar_registered;
++static int gmsgMohaaHudDraw;
++static int gmsgMohaaCompass;
++
++void DodGC_MohaaRegisterHudMessages( void )
++{
++	if( !gmsgMohaaHudDraw ) gmsgMohaaHudDraw = REG_USER_MSG( "MohaaHudDraw", -1 );
++	if( !gmsgMohaaCompass ) gmsgMohaaCompass = REG_USER_MSG( "MohaaCompass", -1 );
++}
+ 
+ /* id = edict index (12 bits) | serial number (19 bits): a freed and reused edict does
+  * not answer for an old script reference. Bit 31 stays clear: DOD_MOHAA_NODE_ID marks a path node. */
+@@ -123,6 +133,141 @@ static void M_SetVec( uint32_t id, int what, const float v[3] )
+ 		UTIL_SetOrigin( VARS( e ), Vector( v[0], v[1], v[2] ) );
+ }
+ 
++/* Scripted TIKI models baked for this map and precached from its .models manifest. */
++#define MOHAA_SCRIPT_MODEL_LIMIT 32
++static char g_mohaa_script_models[MOHAA_SCRIPT_MODEL_LIMIT][128];
++static int g_mohaa_script_model_count;
++
++static int M_PrecacheModel( const char *path )
++{
++	if( !path || strncmp( path, "models/", 7 ) || strlen( path ) < 12 ||
++	    strcmp( path + strlen( path ) - 4, ".mdl" ) || strstr( path, ".." ) ||
++	    g_mohaa_script_model_count >= MOHAA_SCRIPT_MODEL_LIMIT )
++		return 0;
++	for( int i = 0; i < g_mohaa_script_model_count; i++ )
++		if( !strcmp( g_mohaa_script_models[i], path ) )
++			return 1;
++	if( PRECACHE_MODEL( (char *)path ) <= 0 )
++		return 0;
++	strncpy( g_mohaa_script_models[g_mohaa_script_model_count], path,
++	         sizeof( g_mohaa_script_models[0] ) - 1 );
++	g_mohaa_script_model_count++;
++	return 1;
++}
++
++static int M_SetAnimation( uint32_t id, const char *alias );
++static const char *ActorTik( uint32_t id );
++
++static int M_SetModel( uint32_t id, const char *tiki )
++{
++	edict_t *e = EdictFor( id );
++	const char *classname;
++	const int actor = ActorTik( id ) != NULL;
++	char path[128];
++	size_t n;
++	if( !e || !tiki )
++		return 0;
++	classname = STRING( e->v.classname );
++	if( strcmp( classname, "mohaa_script_model" ) && !actor )
++		return 0;
++	if( !strncmp( tiki, "models/", 7 ) )
++		snprintf( path, sizeof( path ), "%s", tiki );
++	else
++		snprintf( path, sizeof( path ), "models/%s", tiki );
++	n = strlen( path );
++	if( n < 4 || strcmp( path + n - 4, ".tik" ) )
++		return 0;
++	memcpy( path + n - 4, ".mdl", 5 );
++	for( char *p = path; *p; p++ )
++		*p = (char)tolower( (unsigned char)*p );
++	for( int i = 0; i < g_mohaa_script_model_count; i++ )
++		if( !strcmp( g_mohaa_script_models[i], path ) ) {
++			SET_MODEL( e, path );
++			e->v.sequence = 0;
++			e->v.frame = 0;
++			e->v.framerate = 0.0f; /* M_SetAnimation starts the TIKI's idle sequence below */
++			e->v.animtime = gpGlobals->time;
++			if( actor ) {
++				studiohdr_t *header = (studiohdr_t *)GET_MODEL_PTR( e );
++				if( header )
++					for( int group = 0; group < header->numbodyparts && group < 31; group++ )
++						((CBaseAnimating *)e->pvPrivateData)->SetBodygroup( group, 1 );
++			} else {
++				M_SetAnimation( id, "idle" ); /* applies the TIKI init surface state too */
++			}
++			return 1;
++		}
++	return 0; /* tag-carrier TIKIs have no drawable MDL in the manifest */
++}
++
++class CMohaaScriptModel : public CBaseAnimating
++{
++public:
++	int SetScriptAnimation( const char *alias )
++	{
++		const int sequence = LookupSequence( alias );
++		if( sequence < 0 )
++			return 0;
++		pev->sequence = sequence;
++		pev->frame = 0;
++		pev->framerate = 1.0f;
++		studiohdr_t *header = (studiohdr_t *)GET_MODEL_PTR( ENT( pev ) );
++		if( header && sequence < header->numseq )
++		{
++			mstudioseqdesc_t *sequences = (mstudioseqdesc_t *)( (byte *)header + header->seqindex );
++			/* Script TIKI MDLs store their per-alias visible-surface mask in activity. */
++			const unsigned int visible = (unsigned int)sequences[sequence].activity;
++			const int groups = header->numbodyparts < 31 ? header->numbodyparts : 31;
++			for( int group = 0; group < groups; group++ )
++				SetBodygroup( group, ( visible >> group ) & 1 );
++		}
++		ResetSequenceInfo();
++		return 1;
++	}
++
++	void Spawn( void )
++	{
++		pev->movetype = MOVETYPE_NONE;
++		pev->solid = SOLID_NOT;
++		pev->sequence = 0;
++		pev->frame = 0;
++		pev->framerate = 0.0f;
++		UTIL_SetOrigin( pev, pev->origin );
++	}
++};
++LINK_ENTITY_TO_CLASS( mohaa_script_model, CMohaaScriptModel )
++
++static int M_SetAnimation( uint32_t id, const char *alias )
++{
++	edict_t *e = EdictFor( id );
++	if( !e || !alias )
++		return 0;
++	if( !strcmp( STRING( e->v.classname ), "mohaa_script_model" ) ) {
++		CMohaaScriptModel *model = (CMohaaScriptModel *)e->pvPrivateData;
++		return model ? model->SetScriptAnimation( alias ) : 0;
++	}
++	if( ActorTik( id ) ) {
++		CBaseAnimating *model = (CBaseAnimating *)e->pvPrivateData;
++		const int sequence = model ? model->LookupSequence( alias ) : -1;
++		if( sequence < 0 )
++			return 0;
++		e->v.sequence = sequence;
++		e->v.frame = 0;
++		e->v.framerate = 1.0f;
++		e->v.animtime = gpGlobals->time;
++		studiohdr_t *header = (studiohdr_t *)GET_MODEL_PTR( e );
++		if( header && sequence < header->numseq ) {
++			mstudioseqdesc_t *sequences = (mstudioseqdesc_t *)( (byte *)header + header->seqindex );
++			const unsigned int visible = (unsigned int)sequences[sequence].activity;
++			for( int group = 0; group < header->numbodyparts && group < 31; group++ )
++				model->SetBodygroup( group, ( visible >> group ) & 1 );
++		}
++		model->ResetSequenceInfo();
++		return 1;
++	}
++	return 0;
++}
++
+ static float M_GetHealth( uint32_t id )
+ {
+ 	edict_t *e = EdictFor( id );
+@@ -136,8 +281,6 @@ static void M_SetHealth( uint32_t id, float health )
+ 		e->v.health = health;
+ }
+ 
+-static const char *ActorTik( uint32_t id );
+-
+ static const char *M_GetStr( uint32_t id, int what )
+ {
+ 	edict_t *e = EdictFor( id );
+@@ -173,6 +316,11 @@ static void M_SetFlag( uint32_t id, int flag, int on )
+ 			e->v.effects &= ~EF_NODRAW;
+ 		return;
+ 	}
++	if( flag == DOD_MOHAA_TAKEDAMAGE )
++	{
++		e->v.takedamage = on ? DAMAGE_YES : DAMAGE_NO;
++		return;
++	}
+ 	if( on )
+ 		e->v.solid = SOLID_NOT;
+ 	else
+@@ -290,6 +438,8 @@ static edict_t *SpawnActorAt( int team, const Vector &origin, float yaw, const c
+ 	if( targetname && targetname[0] )
+ 		e->v.targetname = ALLOC_STRING( targetname );
+ 	ActorTrack( e, team, tik );
++	if( tik )
++		M_SetModel( IdFor( e ), STRING( tik ) );
+ 	return e;
+ }
+ 
+@@ -563,6 +713,37 @@ static void M_Hud( int hide )
+ 	}
+ }
+ 
++/* Send a complete script HUD slot. Index 255 is reserved for a one-packet clear-all. */
++static void M_HudDraw( int index, const DodMohaaHudDraw *d )
++{
++	if( !gmsgMohaaHudDraw )
++		return;
++	MESSAGE_BEGIN( MSG_ALL, gmsgMohaaHudDraw );
++		WRITE_BYTE( index < 0 ? 255 : index );
++		if( index >= 0 && d ) {
++			WRITE_COORD( d->x ); WRITE_COORD( d->y ); WRITE_COORD( d->w ); WRITE_COORD( d->h );
++			WRITE_BYTE( (int)( d->r * 255.0f + 0.5f ) );
++			WRITE_BYTE( (int)( d->g * 255.0f + 0.5f ) );
++			WRITE_BYTE( (int)( d->b * 255.0f + 0.5f ) );
++			WRITE_BYTE( (int)( d->a * 255.0f + 0.5f ) );
++			WRITE_BYTE( d->align_x ); WRITE_BYTE( d->align_y ); WRITE_BYTE( d->virtual_size );
++			WRITE_STRING( d->text ); WRITE_STRING( d->shader );
++		}
++	MESSAGE_END();
++}
++
++static void M_CompassTarget( const float target[3], int visible )
++{
++	if( !gmsgMohaaCompass )
++		return;
++	MESSAGE_BEGIN( MSG_ALL, gmsgMohaaCompass );
++		WRITE_BYTE( visible != 0 );
++		WRITE_COORD( target ? target[0] : 0.0f );
++		WRITE_COORD( target ? target[1] : 0.0f );
++		WRITE_COORD( target ? target[2] : 0.0f );
++	MESSAGE_END();
++}
++
+ /* While held, the player cannot fire either (FL_FROZEN only stops movement). */
+ static void CutsceneThink( void )
+ {
+@@ -625,8 +806,10 @@ static uint32_t M_Spawn( const char *classname, const char *const *keys, const c
+ {
+ 	if( IsActorClass( classname ) )
+ 		return SpawnActor( classname, keys, values, count );
+-	/* MOHAA's script helpers have no GoldSrc class: a point entity holds their place */
+-	if( !strcmp( classname, "script_model" ) || !strcmp( classname, "script_origin" ) || !strcmp( classname, "script_object" ) )
++	/* Renderable script models use a CBaseAnimating point entity; origins remain invisible helpers. */
++	if( !strcmp( classname, "script_model" ) || !strcmp( classname, "script_object" ) )
++		classname = "mohaa_script_model";
++	else if( !strcmp( classname, "script_origin" ) )
+ 		classname = "info_target";
+ 	/* "spawn models/statweapons/x.tik" (a model as the class, as MOHAA allows) or an empty class: no GoldSrc class has
+ 	 * such a name, and asking the engine would only log "No spawn function" */
+@@ -643,7 +826,7 @@ static uint32_t M_Spawn( const char *classname, const char *const *keys, const c
+ 	for( int i = 0; i < count; i++ )
+ 	{
+ 		if( !strcmp( keys[i], "model" ) )
+-			continue;	/* MOHAA .tik models are not converted yet; an unprecached model would abort the server */
++			continue;	/* script model names are applied by the later .model command, after preloading */
+ 		KeyValueData kvd;
+ 		kvd.szClassName = (char *)classname;
+ 		kvd.szKeyName = (char *)keys[i];
+@@ -779,6 +962,7 @@ static size_t M_PoolCarve( size_t want, DodMohaaBackend *b )
+ 
+ void DodGC_MohaaLevelInit( void )
+ {
++	DodGC_MohaaRegisterHudMessages();
+ 	if( !g_mohaa_cvar_registered )
+ 	{
+ 		CVAR_REGISTER( &mohaa_script_kb );
+@@ -804,6 +988,9 @@ void DodGC_MohaaLevelInit( void )
+ 	b.spawn = M_Spawn;
+ 	b.sound = M_Sound;
+ 	b.precache_sound = M_Precache;
++	b.precache_model = M_PrecacheModel;
++	b.set_model = M_SetModel;
++	b.set_animation = M_SetAnimation;
+ 	b.actor = M_Actor;
+ 	b.music = M_Music;
+ 	if( g_music_intro[0] )
+@@ -816,11 +1003,15 @@ void DodGC_MohaaLevelInit( void )
+ 	b.place_player = M_PlacePlayer;
+ 	b.view = M_View;
+ 	b.hud = M_Hud;
++	b.hud_draw = M_HudDraw;
++	b.compass_target = M_CompassTarget;
+ 	b.damage_at = M_DamageAt;
+ 	g_locked_player = 0;	/* a new map starts everyone free (the last map's VM let go in its shutdown) */
+ 	g_saved_viewmodel = 0;
+ 	g_hud_hide = 0;
+ 	g_nwaiting = 0;	/* the last map's waiting soldiers went with it */
++	g_mohaa_script_model_count = 0;
++	memset( g_mohaa_script_models, 0, sizeof( g_mohaa_script_models ) );
+ 	memset( g_actors, 0, sizeof( g_actors ) );
+ 	memset( g_dead, 0, sizeof( g_dead ) );
+ 	g_next_waiting_check = 0.0f;
+@@ -848,6 +1039,11 @@ void DodGC_MohaaLevelInit( void )
+ 	}
+ }
+ 
++void DodGC_MohaaPrecacheModels( void )
++{
++	Dod_MohaaPrecacheModels();
++}
++
+ void DodGC_MohaaTrigger( edict_t *e, edict_t *activator )
+ {
+ 	Dod_MohaaSetOther( IdFor( activator ) );
+diff --git a/dlls/dod_mohaa_ents.h b/dlls/dod_mohaa_ents.h
+index c148f39..8df6974 100644
+--- a/dlls/dod_mohaa_ents.h
++++ b/dlls/dod_mohaa_ents.h
+@@ -5,6 +5,7 @@
+ 
+ /* At map start (game rules construction): runs maps/<map>.scr if the map has one. */
+ void DodGC_MohaaLevelInit( void );
++void DodGC_MohaaRegisterHudMessages( void );
+ /* Every game rules Think. */
+ void DodGC_MohaaThink( void );
+ /* An entity event a script can wait for, e.g. ("trigger") from a trigger firing. */
+diff --git a/dlls/dod_mohaa_hud.h b/dlls/dod_mohaa_hud.h
+new file mode 100644
+index 0000000..6083932
+--- /dev/null
++++ b/dlls/dod_mohaa_hud.h
+@@ -0,0 +1,32 @@
++/* Shared MOHAA HUD draw state sent from the game DLL to the client HUD. */
++#ifndef DODGC_MOHAA_HUD_H
++#define DODGC_MOHAA_HUD_H
++
++#define DOD_MOHAA_HUD_DRAW_COUNT 255 /* wire index 255 is the clear-all marker */
++#define DOD_MOHAA_HUD_HINT_INDEX 254 /* reserved for retail iprintlnbold hints */
++#define DOD_MOHAA_HUD_TEXT 128
++#define DOD_MOHAA_HUD_SHADER 64
++
++enum {
++	DOD_MOHAA_HUD_ALIGN_LEFT = 0,
++	DOD_MOHAA_HUD_ALIGN_CENTER,
++	DOD_MOHAA_HUD_ALIGN_RIGHT
++};
++
++enum {
++	DOD_MOHAA_HUD_ALIGN_TOP = 0,
++	DOD_MOHAA_HUD_ALIGN_MIDDLE,
++	DOD_MOHAA_HUD_ALIGN_BOTTOM
++};
++
++typedef struct DodMohaaHudDraw {
++	float x, y, w, h;
++	float r, g, b, a;
++	int align_x, align_y;
++	int virtual_size;
++	int initialized;
++	char text[DOD_MOHAA_HUD_TEXT];
++	char shader[DOD_MOHAA_HUD_SHADER];
++} DodMohaaHudDraw;
++
++#endif
+diff --git a/dlls/dod_mohaa_paths.h b/dlls/dod_mohaa_paths.h
+index 300a747..35c2e3a 100644
+--- a/dlls/dod_mohaa_paths.h
++++ b/dlls/dod_mohaa_paths.h
+@@ -1,7 +1,7 @@
+ /* dod_mohaa_paths.h - MOHAA path nodes for DoD-GC, included once by dod_mohaa.c (all static).
+  *
+  * MOHAA info_pathnodes come from maps/<map>.nodes, written by mohaa-gc tools/bsp19_to_map.py. They are
+- * not entities: a node costs no edict, 32 bytes here plus 14 bytes of search scratch. Links are made once
++ * not entities: a node costs no edict, 32 bytes here plus 10 bytes of search scratch. Links are made once
+  * at level load with one walkable() test per pair tried; a soldier's move order then walks node to node,
+  * one A* per node reached (see route_* in dod_mohaa.c). */
+ #ifndef MOHAA_PATHS_H
+@@ -19,6 +19,8 @@
+ #define MOHAA_PATH_REACH 400.0f		/* farthest link (MOHAA links nodes up to 512 units; x72/94 is 392) */
+ #define MOHAA_PATH_NONE 0xFFFF
+ 
++typedef void *(*MohaaPathsAlloc)(void *ptr, size_t old_size, size_t new_size);
++
+ typedef struct MohaaPaths {
+ 	int count;
+ 	float (*pos)[3];			/* feet, GoldSrc units */
+@@ -27,6 +29,8 @@ typedef struct MohaaPaths {
+ 	float *cost;				/* search scratch */
+ 	unsigned short *from, *heap, *slot;
+ 	void *block;				/* one allocation holds all of it */
++	size_t block_size;
++	MohaaPathsAlloc alloc;
+ } MohaaPaths;
+ 
+ typedef int (*MohaaPathWalkable)(void *ctx, const float a[3], const float b[3]);
+@@ -47,7 +51,12 @@ static uint32_t MohaaPaths_Hash(const char *name)
+ 
+ static void MohaaPaths_Free(MohaaPaths *g)
+ {
+-	free(g->block);
++	if (g->block) {
++		if (g->alloc)
++			g->alloc(g->block, g->block_size, 0);
++		else
++			free(g->block);
++	}
+ 	memset(g, 0, sizeof(*g));
+ }
+ 
+@@ -70,13 +79,15 @@ static int path_next_line(const char **at, const char *end, char *buf, size_t si
+ 	return 1;
+ }
+ 
+-static int MohaaPaths_Load(MohaaPaths *g, const char *text, size_t len)
++static int MohaaPaths_Load(MohaaPaths *g, const char *text, size_t len, MohaaPathsAlloc alloc)
+ {
+ 	const char *end = text + len, *at = text;
+ 	char line[512], name[96];
+ 	float v[3];
++	size_t bytes;
+ 	int n = 0, k = 0;
+ 	memset(g, 0, sizeof(*g));
++	g->alloc = alloc;
+ 	while (path_next_line(&at, end, line, sizeof(line)))
+ 		if (line[0] != '#' && sscanf(line, "%f %f %f", &v[0], &v[1], &v[2]) == 3)
+ 			n++;
+@@ -87,9 +98,15 @@ static int MohaaPaths_Load(MohaaPaths *g, const char *text, size_t len)
+ 	{
+ 		const size_t pos = sizeof(float) * 3 * (size_t)n, nm = sizeof(uint32_t) * (size_t)n;
+ 		const size_t lk = sizeof(unsigned short) * MOHAA_PATH_LINKS * (size_t)n, cost = sizeof(float) * (size_t)n;
+-		char *b = (char *)malloc(pos + nm + cost + lk + sizeof(unsigned short) * 3 * (size_t)n);
+-		if (!b)
+-			return 0;
++		char *b;
++		bytes = pos + nm + cost + lk + sizeof(unsigned short) * 3 * (size_t)n;
++		g->block_size = bytes;
++		b = (char *)(alloc ? alloc(NULL, 0, bytes) : malloc(bytes));
++		if (!b) {
++			g->block_size = 0;
++			g->alloc = NULL;
++			return -n;
++		}
+ 		g->block = b;
+ 		g->pos = (float (*)[3])b;
+ 		g->name = (uint32_t *)(b + pos);

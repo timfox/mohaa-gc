@@ -1,0 +1,15 @@
+{
+  "file": "20261124-030150-m1l1-hud-folder-probe-silent.mp4",
+  "date": "2026-11-24T03:01:50",
+  "commit": "ebf188540a",
+  "engine_commit": "db73d0d126",
+  "route": "m1l1-hud-folder-probe",
+  "disc": "/tmp/mohaa-hud-refine/out/mohaa-m1l1-intro-hud-detect.iso",
+  "duration_s": 23.9,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 0.1,
+  "project": "mohaa-gc",
+  "audio": "silent screen capture (forced or PulseAudio unavailable)"
+}

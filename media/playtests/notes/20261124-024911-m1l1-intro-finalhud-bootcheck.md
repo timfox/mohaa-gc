@@ -1,11 +1,12 @@
-# Probe m1l1-intro-finalhud-bootcheck — 20261124-024911
+# MOHAA Probe m1l1-intro-finalhud-bootcheck — 20261124-024911
 
 - ISO: `/tmp/mohaa-hud-refine/out/mohaa-m1l1-intro-smoke-finalhud.iso`
 - Route: `m1l1-intro-finalhud-bootcheck`
 - Duration cap: 25s
 - Repo: `43fa234343`
 - Engine: `db73d0d126`
-- Shots: `playtests/screenshots/20261124-024911-m1l1-intro-finalhud-bootcheck/`
+- Shots: `media/playtests/screenshots/20261124-024911-m1l1-intro-finalhud-bootcheck/`
+- Periodic guest frames: 1 screenshots in `media/playtests/screenshots/20261124-024911-m1l1-intro-finalhud-bootcheck/frames/`
 
 MOHAA GameCube playtest. Repo HEAD: 43fa234343. Engine checkout: /tmp/mohaa-loopback-fix/engine (Git revision db73d0d126). ISO: /tmp/mohaa-hud-refine/out/mohaa-m1l1-intro-smoke-finalhud.iso (SHA-256 c92ac67d9cd5162b6dbc0f35029eeea23617a9b0a45723c698de63aa20a012a8). Freshly rebuilt client/server archives and MOHAA DOL; m1l1 smoke intro=1 boot check.
 
