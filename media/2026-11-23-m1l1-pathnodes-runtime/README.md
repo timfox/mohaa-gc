@@ -13,3 +13,5 @@ This session used an isolated profile in `/tmp/mohaa-m1l1-user`. It did not enab
 ## Controls in the isolated profile
 
 The copied Dolphin profile maps the keyboard as the GameCube pad: D-pad `T/G/F/H` (up/down/left/right), A `X`, B `Z`, Start `Enter`; movement uses arrow keys, with `Q/W` for L/R. No input was injected during the check.
+
+The live process started without OSReport logging, so its path-node message is unavailable. OSReport-to-console and file logging are now configured in its isolated Dolphin profile for a later launch; the currently running game was not restarted.
