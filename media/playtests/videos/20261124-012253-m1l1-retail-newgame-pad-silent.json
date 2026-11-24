@@ -1,0 +1,15 @@
+{
+  "file": "20261124-012253-m1l1-retail-newgame-pad-silent.mp4",
+  "date": "2026-11-24T01:22:53",
+  "commit": "8d0887dca6",
+  "engine_commit": "db73d0d126",
+  "route": "m1l1-retail-newgame-pad",
+  "disc": "/tmp/mohaa-compass-build/mohaa-m1l1-retail-newgame-current.iso",
+  "duration_s": 21.9,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 0.2,
+  "project": "mohaa-gc",
+  "audio": "silent screen capture (forced or PulseAudio unavailable)"
+}

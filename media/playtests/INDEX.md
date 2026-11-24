@@ -4,6 +4,12 @@ Screenshots: `screenshots/` · Videos: `videos/` · Notes: `notes/`
 
 | Date | File | Route | Duration | Size | Commit |
 |------|------|-------|----------|------|--------|
+| 2026-11-24T02:05:00 | `screenshots/20261124-020500-m1l2a-retail-compass-menu-route/final.png` | m1l2a-retail-compass-menu-route | still | 0.02 MB | `8d0887dca6` |
+| 2026-11-24T01:54:35 | `videos/20261124-015435-m1l2a-retail-tip-layout-final-silent.mp4` | m1l2a-retail-tip-layout-final | 60.3s | 0.1 MB | `8d0887dca6` |
+| 2026-11-24T01:34:46 | `videos/20261124-013446-m1l1-retail-startmap-truck-silent.mp4` | m1l1-retail-startmap-truck | 90.4s | 0.2 MB | `8d0887dca6` |
+| 2026-11-24T01:30:08 | `videos/20261124-013008-m1l1-retail-play-current-silent.mp4` | m1l1-retail-play-current | 89.5s | 0.3 MB | `8d0887d` |
+| 2026-11-24T01:26:02 | `videos/20261124-012602-m1l1-retail-play-pad-silent.mp4` | m1l1-retail-play-pad | 21.8s | 0.1 MB | `8d0887dca6` |
+| 2026-11-24T01:22:53 | `videos/20261124-012253-m1l1-retail-newgame-pad-silent.mp4` | m1l1-retail-newgame-pad | 21.9s | 0.2 MB | `8d0887dca6` |
 | 2026-11-24T01:08:59 | `videos/20261124-010859-m1l2a-retail-trigger-live-silent.mp4` | m1l2a-retail-trigger-live | 65.3s | 0.4 MB | `be19bf9df1` |
 | 2026-11-24T00:59:40 | `videos/20261124-005940-m1l2a-retail-objective-pos-silent.mp4` | m1l2a-retail-objective-pos | 45.3s | 0.3 MB | `2c0a59c871` |
 | 2026-11-24T00:55:51 | `videos/20261124-005551-m1l2a-compass-objective-silent.mp4` | m1l2a-compass-objective | 44.1s | 0.3 MB | `2c0a59c871` |
@@ -43,6 +49,8 @@ Screenshots: `screenshots/` · Videos: `videos/` · Notes: `notes/`
 | 2026-11-23T21:35:52 | `videos/20261123-213552-m1l1-skybox-runtime-verify-silent.mp4` | m1l1-skybox-runtime-verify | 27.9s | 0.3 MB | `c1064a463f` |
 | 2026-11-23T21:24:46 | `videos/20261123-212446-m1l1-media-capture-check-c1064a463f.mp4` | m1l1-media-capture-check | 28.5s | 0.7 MB | `c1064a463f` |
 | 2026-11-23T20:31:49 | `videos/20261123-203149-m1l1-actor-3ed781eb42.mp4` | m1l1-actor | 60.6s | 1.5 MB | `3ed781eb42` |
+| 2026-11-24T01:59:43 | `screenshots/20261124-015943-m1l2a-retail-tip-layout-fullphysics/final.png` | m1l2a-retail-tip-layout-fullphysics | still | 0.1 MB | `8d0887dca6` |
+| 2026-11-24T01:57:25 | `screenshots/20261124-015725-m1l2a-retail-tip-layout-listenserver/final.png` | m1l2a-retail-tip-layout-listenserver | still | 0.1 MB | `8d0887dca6` |
 | 2026-11-23T21:10:20 | `screenshots/20261123-211020-m1l1-actor-playthrough/final.png` | m1l1-actor-playthrough | still | 0.2 MB | `c1064a463f` |
 | 2026-11-23T21:08:07 | `screenshots/20261123-210807-m1l1-actor-playthrough/final.png` | m1l1-actor-playthrough | still | 0.2 MB | `c1064a463f` |
 | 2026-11-23T20:59:17 | `screenshots/20261123-205917-m1l1-capture-wrapper-check/final.png` | m1l1-capture-wrapper-check | still | 0.2 MB | `daa2c65049` |

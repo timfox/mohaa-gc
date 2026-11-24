@@ -1,0 +1,15 @@
+{
+  "file": "20261124-015435-m1l2a-retail-tip-layout-final-silent.mp4",
+  "date": "2026-11-24T01:54:35",
+  "commit": "8d0887dca6",
+  "engine_commit": "db73d0d126",
+  "route": "m1l2a-retail-tip-layout-final",
+  "disc": "/tmp/mohaa-hud-refine/out/mohaa-compass-layout.iso",
+  "duration_s": 60.3,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 0.1,
+  "project": "mohaa-gc",
+  "audio": "silent screen capture (forced or PulseAudio unavailable)"
+}

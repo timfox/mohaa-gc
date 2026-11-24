@@ -2023,9 +2023,11 @@ static int c_iprintlnbold(ms_call *c)
 	DodMohaaHudDraw *d = &S.hud_draw[DOD_MOHAA_HUD_HINT_INDEX];
 	size_t out = 0;
 	int arg;
-	d->x = 0.0f; d->y = 150.0f; d->w = d->h = 0.0f;
+	/* Retail MOHAA presents gameplay tips as a left-aligned line beneath the
+	 * compass, rather than a center-screen notification. */
+	d->x = 20.0f; d->y = 126.0f; d->w = d->h = 0.0f;
 	d->r = d->g = d->b = d->a = 1.0f;
-	d->align_x = DOD_MOHAA_HUD_ALIGN_CENTER;
+	d->align_x = DOD_MOHAA_HUD_ALIGN_LEFT;
 	d->align_y = DOD_MOHAA_HUD_ALIGN_TOP;
 	d->virtual_size = 1;
 	d->initialized = 1;

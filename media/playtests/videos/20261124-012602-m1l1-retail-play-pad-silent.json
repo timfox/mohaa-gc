@@ -1,0 +1,15 @@
+{
+  "file": "20261124-012602-m1l1-retail-play-pad-silent.mp4",
+  "date": "2026-11-24T01:26:02",
+  "commit": "8d0887dca6",
+  "engine_commit": "db73d0d126",
+  "route": "m1l1-retail-play-pad",
+  "disc": "/tmp/mohaa-compass-build/mohaa-m1l1-retail-play-current.iso",
+  "duration_s": 21.8,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 0.1,
+  "project": "mohaa-gc",
+  "audio": "silent screen capture (forced or PulseAudio unavailable)"
+}

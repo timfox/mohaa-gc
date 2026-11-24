@@ -677,6 +677,15 @@ static float mohaa_clamp01( float value )
 	return value;
 }
 
+static void mohaa_draw_compass_layer( HSPRITE sprite, int frame, int x, int y, int width, int height )
+{
+	wrect_t source = {0, 0, 32, 32};
+	if( !sprite )
+		return;
+	SPR_Set( sprite, 255, 255, 255 );
+	gEngfuncs.pfnSPR_DrawGeneric( frame, x, y, &source, 0, 0, width, height );
+}
+
 /* iprintlnbold has no explicit width. Wrap at the active client font's pixel
  * widths so long retail tips stay inside the visible GameCube viewport. */
 static void mohaa_wrap_hint( char *text, int max_width )
@@ -745,9 +754,10 @@ int CHudDod::DrawMohaa( float flTime )
 	{
 		const int x = (int)( 8.0f * screen_w / 320.0f + 0.5f );
 		const int y = (int)( 6.0f * screen_h / 240.0f + 0.5f );
-		wrect_t rc = {0, 0, 32, 32};
-		if( m_hMohaaCompassBack ) { SPR_Set( m_hMohaaCompassBack, 255, 255, 255 ); SPR_DrawHoles( 0, x, y, &rc ); }
-		if( m_hMohaaCompassFace ) { SPR_Set( m_hMohaaCompassFace, 255, 255, 255 ); SPR_DrawHoles( mohaa_frame16( yaw ), x, y, &rc ); }
+		const int width = (int)( 48.0f * screen_w / 320.0f + 0.5f );
+		const int height = (int)( 48.0f * screen_h / 240.0f + 0.5f );
+		mohaa_draw_compass_layer( m_hMohaaCompassBack, 0, x, y, width, height );
+		mohaa_draw_compass_layer( m_hMohaaCompassFace, mohaa_frame16( yaw ), x, y, width, height );
 		if( m_hMohaaCompassObjective && m_mohaaCompassHasTarget )
 		{
 			cl_entity_t *player = gEngfuncs.GetLocalPlayer();
@@ -756,11 +766,11 @@ int CHudDod::DrawMohaa( float flTime )
 				const float dx = m_mohaaCompassTarget[0] - player->origin[0];
 				const float dy = m_mohaaCompassTarget[1] - player->origin[1];
 				const float target_yaw = (float)( atan2( dy, dx ) * ( 180.0 / 3.14159265358979323846 ));
-				SPR_Set( m_hMohaaCompassObjective, 255, 255, 255 );
-				SPR_DrawHoles( mohaa_frame16( yaw - target_yaw ), x, y, &rc );
+				mohaa_draw_compass_layer( m_hMohaaCompassObjective,
+					mohaa_frame16( yaw - target_yaw ), x, y, width, height );
 			}
 		}
-		if( m_hMohaaCompassNeedle ) { SPR_Set( m_hMohaaCompassNeedle, 255, 255, 255 ); SPR_DrawHoles( 0, x, y, &rc ); }
+		mohaa_draw_compass_layer( m_hMohaaCompassNeedle, 0, x, y, width, height );
 	}
 
 	/* Scripted shader cards (the gas-mask overlay, for example) sit above the compass. */
@@ -827,7 +837,11 @@ int CHudDod::DrawMohaa( float flTime )
 		cb = (int)( mohaa_clamp01( d->b * draw_alpha ) * 255.0f + 0.5f );
 		strncpy( text, d->text, sizeof( text ) - 1 ); text[sizeof( text ) - 1] = 0;
 		if( i == DOD_MOHAA_HUD_HINT_INDEX )
-			mohaa_wrap_hint( text, screen_w > 16 ? screen_w - 16 : screen_w );
+		{
+			const int left = (int)( d->x * sx + 0.5f );
+			const int right_margin = 8;
+			mohaa_wrap_hint( text, screen_w > left + right_margin ? screen_w - left - right_margin : screen_w );
+		}
 		for( line = text; *line; line++ ) if( *line == '\n' ) line_no++;
 		line_no++;
 		y_anchor = (int)( d->y * sy + 0.5f );
@@ -849,6 +863,8 @@ int CHudDod::DrawMohaa( float flTime )
 			x = x_anchor;
 			if( d->align_x == DOD_MOHAA_HUD_ALIGN_CENTER ) x -= width / 2;
 			else if( d->align_x == DOD_MOHAA_HUD_ALIGN_RIGHT ) x -= width;
+			if( i == DOD_MOHAA_HUD_HINT_INDEX )
+				gHUD.DrawHudString( x + 1, y + 1, screen_w, line, 24, 18, 12 );
 			gHUD.DrawHudString( x, y, screen_w, line, cr, cg, cb );
 			y += line_h;
 			line = next ? next + 1 : NULL;

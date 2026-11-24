@@ -4,7 +4,7 @@
 
 The GameCube client draws a MOHAA compass in the upper-left corner. The compass uses the retail back, face, needle, and objective-arrow textures converted to compact Xash v32 sprites. The face and objective arrow are baked into 16 orientation frames so the GameCube renderer does not need runtime sprite rotation. The active mission objective supplies the compass target.
 
-The MOHAA script VM now handles the retail `huddraw_*` slot commands and routes `iprintlnbold` / `iprintlnbold_noloc` to a centered, five-second HUD message. It concatenates multi-argument tips like the retail VM print routine. The client wraps those tips using the active font's pixel widths to keep long lines inside the GameCube viewport. The HUD draw runs on the MOHAA branch of the lean client redraw path. Menu-like shader slots are also supported through converted MOHAA sprite textures.
+The MOHAA script VM now handles the retail `huddraw_*` slot commands and routes `iprintlnbold` / `iprintlnbold_noloc` to a five-second gameplay tip. It concatenates multi-argument tips like the retail VM print routine. Tips are left-aligned under the compass and use a dark offset for readability; wrapping uses the active font's pixel widths and the remaining viewport width. The HUD draw runs on the MOHAA branch of the lean client redraw path. Menu-like shader slots are also supported through converted MOHAA sprite textures.
 
 The retail `set_objective_pos` script command is now bound for both vector and entity arguments. It updates the client compass target, so scripts can steer the objective arrow toward a fixed point or a moving mission actor.
 
@@ -16,6 +16,7 @@ The retail `set_objective_pos` script command is now bound for both vector and e
 - A follow-up probe calls `iprintlnbold_noloc` with three text fragments, then runs the existing retail `hint_door` function via the script VM. Dolphin shows the exact retail message and confirms the client-width wrapping path. The injected `thread hint_door` call is only a probe; it does not prove which retail gameplay trigger should invoke that function.
 - A separate probe invokes retail `set_objective_pos` with a known vector. The command is no longer reported as unbound, all compass sprites load, and the gameplay capture includes the compass and scripted hint. This proves command dispatch and HUD transport; matching the arrow bearing against a live retail mission target is still open.
 - The test map's side/class chooser overlaps part of that message in the captured frame. A separate m1l1 gameplay capture shows the compass unobstructed.
+- Follow-up visual refinement moves the tip to virtual x=20/y=126 beneath the compass, draws a dark one-pixel text offset, and scales the 32x32 compact compass sprites to a 48x48 logical display size. Both changed GameCube source files pass PowerPC syntax checks and the isolated DOL build succeeds (`/tmp/mohaa-hud-refine/engine-out/bin/mohaagc.dol`, SHA-256 `eb8cee28db6ae1a9a6b063e22a88d900a674bce97f1c03c0fa77208e96cf9490`). A full retail-data ISO was launched in Dolphin and reached the MOHAA front end, but the bounded pad-input probe did not enter gameplay; its capture is [here](../media/playtests/screenshots/20261124-020500-m1l2a-retail-compass-menu-route/final.png). Therefore the latest 48x48 compass and x=20/y=126 tip layout are build-verified but not yet visually verified in a gameplay frame.
 
 Evidence:
 
@@ -30,4 +31,4 @@ Evidence:
 
 ## Still to verify
 
-The compass and retail hint function are runtime-proven, but the real door interaction has not yet been played to prove its trigger invokes the message. The objective-position command now reaches the HUD; bearing against a real moving mission target remains unverified. Additional work remains to compare compass size, font, lifetime, and fade against retail footage, and to verify non-text `huddraw_*` overlays such as the MG42 view across their campaign triggers. Physical GameCube playback is also unverified.
+The compass and retail hint function are runtime-proven in earlier builds, but the latest position and scale need a gameplay capture. The real door interaction has not yet been played to prove its trigger invokes the message. The objective-position command reaches the HUD; bearing against a real moving mission target remains unverified. Compare compass size, font, lifetime, and fade against retail footage, verify non-text `huddraw_*` overlays such as the MG42 view across campaign triggers, and verify on physical GameCube hardware.
