@@ -4,6 +4,7 @@ Screenshots: `screenshots/` · Videos: `videos/` · Notes: `notes/`
 
 | Date | File | Route | Duration | Size | Commit |
 |------|------|-------|----------|------|--------|
+| 2026-11-24T02:08:00 | `screenshots/20261124-020800-m1l2a-retail-compass-menu-route/final.png` | m1l2a-retail-route-dsi | still | 0.1 MB | `8d0887dca6` |
 | 2026-11-24T02:05:00 | `screenshots/20261124-020500-m1l2a-retail-compass-menu-route/final.png` | m1l2a-retail-compass-menu-route | still | 0.02 MB | `8d0887dca6` |
 | 2026-11-24T01:54:35 | `videos/20261124-015435-m1l2a-retail-tip-layout-final-silent.mp4` | m1l2a-retail-tip-layout-final | 60.3s | 0.1 MB | `8d0887dca6` |
 | 2026-11-24T01:34:46 | `videos/20261124-013446-m1l1-retail-startmap-truck-silent.mp4` | m1l1-retail-startmap-truck | 90.4s | 0.2 MB | `8d0887dca6` |
