@@ -722,7 +722,7 @@ DOD_DLL_SOURCES = (
 	"dod_film.c", "dod_film.h", "dod_film_actor.cpp",
 	"dod_achievements.c", "dod_achievements.h",
 	"dod_grunts.c", "dod_grunts.h", "dod_grunt.cpp",
-	"dod_mohaa.c", "dod_mohaa.h", "dod_mohaa_paths.h", "dod_mohaa_pool.h", "dod_mohaa_tags.h", "dod_mohaa_ents.cpp", "dod_mohaa_ents.h",
+	"dod_mohaa.c", "dod_mohaa.h", "dod_mohaa_hud.h", "dod_mohaa_paths.h", "dod_mohaa_pool.h", "dod_mohaa_tags.h", "dod_mohaa_ents.cpp", "dod_mohaa_ents.h",
 )
 # The MOHAA script VM (src/mohaa/, vendored from timfox/mohaa-gc), copied flat into dlls/.
 MOHAA_VM_SOURCES = ("morpheus.h", "ms_internal.h", "ms_value.c", "ms_compile.c", "ms_vm.c", "ms_builtins.c")
@@ -817,6 +817,14 @@ def integrate_dod_hud(client: Path) -> None:
 		'\t\t\t\t\tm_Menu.Draw( flTime );\n'
 		'\t\t\t\treturn 1;\n'
 		'\t\t\t}\n')
+	# Keep the scripted MOHAA compass/tip renderer in the lean HUD path too;
+	# the retail HUD art returns early before CHud::Redraw's regular HUD list.
+	replace_once(client / "hud_redraw.cpp",
+		'\t\t\tif( GC_DrawMohaaHud( m_Health.m_iHealth, m_Ammo.GetLeanClip() ) )\n'
+		'\t\t\t{\n',
+		'\t\t\tif( GC_DrawMohaaHud( m_Health.m_iHealth, m_Ammo.GetLeanClip() ) )\n'
+		'\t\t\t{\n'
+		'\t\t\t\tm_Dod.DrawMohaa( flTime );\n')
 
 
 def integrate_spectator_camera(client: Path) -> None:

@@ -17,6 +17,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include "dod_mohaa_hud.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -105,6 +106,9 @@ typedef struct DodMohaaBackend {
 	void (*view)(uint32_t id, const float angles[3], int add);
 	/* What of every player's HUD to hide: DOD_MOHAA_HUD_* bits, 0 shows it all. */
 	void (*hud)(int hide);
+	/* Scripted huddraw elements and the current objective compass target. NULL: no custom HUD. */
+	void (*hud_draw)(int index, const DodMohaaHudDraw *draw);
+	void (*compass_target)(const float target[3], int visible);
 	/* A shot or blast at point (GoldSrc units): damage what is within radius and fire MOHAA damage triggers
 	   (converted with spawnflags 2, no touch) whose box holds the point. attacker 0: the world. */
 	void (*damage_at)(uint32_t attacker, const float point[3], float radius, float damage);

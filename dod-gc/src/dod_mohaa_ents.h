@@ -5,6 +5,7 @@
 
 /* At map start (game rules construction): runs maps/<map>.scr if the map has one. */
 void DodGC_MohaaLevelInit( void );
+void DodGC_MohaaRegisterHudMessages( void );
 /* Every game rules Think. */
 void DodGC_MohaaThink( void );
 /* An entity event a script can wait for, e.g. ("trigger") from a trigger firing. */

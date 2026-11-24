@@ -10,6 +10,7 @@
 #include "dod_hud.h"
 #include "dod_hud_retail.h"
 #include "dod_hud_geom.h"
+#include "dod_mohaa_hud.h"
 
 class CHudDod : public CHudBase
 {
@@ -23,10 +24,13 @@ public:
 	/* The retail HUD, for the lean tier's Redraw: returns 1 when it drew and
 	 * the caller should skip its own HUD. */
 	int DrawRetail( float flTime );
+	int DrawMohaa( float flTime );
 	int MsgFunc_DodHud( const char *pszName, int iSize, void *pbuf );
 	int MsgFunc_DodBoard( const char *pszName, int iSize, void *pbuf );
 	int MsgFunc_DodVoice( const char *pszName, int iSize, void *pbuf );
 	int MsgFunc_DodKill( const char *pszName, int iSize, void *pbuf );
+	int MsgFunc_MohaaHudDraw( const char *pszName, int iSize, void *pbuf );
+	int MsgFunc_MohaaCompass( const char *pszName, int iSize, void *pbuf );
 	/* A modal panel is up (team/class menu, voice menu, scoreboard, chat prompt): the kill feed and chat lines step aside
 	 * so nothing draws over anything else (see dod_hud_geom.h). */
 	int Modal( void );
@@ -55,6 +59,15 @@ private:
 	int m_fDrawLogged;
 	char m_szLoggedWeapon[32];
 	unsigned m_fSheetTried;	/* on-use sheets already attempted (bit per sheet) */
+	DodMohaaHudDraw m_mohaaHud[DOD_MOHAA_HUD_DRAW_COUNT];
+	HSPRITE m_hMohaaCompassBack, m_hMohaaCompassFace, m_hMohaaCompassNeedle, m_hMohaaCompassObjective;
+	HSPRITE m_hMohaaHudShader[DOD_MOHAA_HUD_DRAW_COUNT];
+	unsigned char m_mohaaHudShaderTried[DOD_MOHAA_HUD_DRAW_COUNT];
+	float m_mohaaCompassTarget[3];
+	int m_mohaaCompassHasTarget;
+	int m_mohaaCompassTried;
+	float m_flMohaaHintUntil;
+	char m_szMohaaHudShader[DOD_MOHAA_HUD_DRAW_COUNT][DOD_MOHAA_HUD_SHADER];
 	cvar_t *m_pCvar;
 };
 

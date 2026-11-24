@@ -1,0 +1,15 @@
+{
+  "file": "20261123-235029-m1l1-truck-confirm-input-silent.mp4",
+  "date": "2026-11-23T23:50:29",
+  "commit": "d9a2faa539",
+  "engine_commit": "unavailable",
+  "route": "m1l1-truck-confirm-input",
+  "disc": "/tmp/mohaa-hud-visual/mohaa-m1l1-hud-direct.iso",
+  "duration_s": 55.1,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 0.6,
+  "project": "mohaa-gc",
+  "audio": "silent screen capture (forced or PulseAudio unavailable)"
+}

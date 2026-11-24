@@ -4,6 +4,8 @@
 #include "parsemsg.h"
 #include "ammohistory.h"
 
+#include <math.h>
+
 int __MsgFunc_DodHud( const char *pszName, int iSize, void *pbuf )
 {
 	return gHUD.m_Dod.MsgFunc_DodHud( pszName, iSize, pbuf );
@@ -24,6 +26,16 @@ int __MsgFunc_DodBoard( const char *pszName, int iSize, void *pbuf )
 	return gHUD.m_Dod.MsgFunc_DodBoard( pszName, iSize, pbuf );
 }
 
+int __MsgFunc_MohaaHudDraw( const char *pszName, int iSize, void *pbuf )
+{
+	return gHUD.m_Dod.MsgFunc_MohaaHudDraw( pszName, iSize, pbuf );
+}
+
+int __MsgFunc_MohaaCompass( const char *pszName, int iSize, void *pbuf )
+{
+	return gHUD.m_Dod.MsgFunc_MohaaCompass( pszName, iSize, pbuf );
+}
+
 void CHudDod::InitState( void )
 {
 	int i;
@@ -31,6 +43,15 @@ void CHudDod::InitState( void )
 	if( m_pCvar )
 		return;	/* Init after InitState: already registered */
 	memset( &m_state, 0, sizeof( m_state ) );
+	memset( m_mohaaHud, 0, sizeof( m_mohaaHud ) );
+	memset( m_hMohaaHudShader, 0, sizeof( m_hMohaaHudShader ) );
+	memset( m_mohaaHudShaderTried, 0, sizeof( m_mohaaHudShaderTried ) );
+	memset( m_mohaaCompassTarget, 0, sizeof( m_mohaaCompassTarget ) );
+	m_mohaaCompassHasTarget = 0;
+	m_mohaaCompassTried = 0;
+	m_flMohaaHintUntil = 0.0f;
+	m_hMohaaCompassBack = m_hMohaaCompassFace = m_hMohaaCompassNeedle = m_hMohaaCompassObjective = 0;
+	memset( m_szMohaaHudShader, 0, sizeof( m_szMohaaHudShader ) );
 	m_flLastUpdate = 0.0f;
 	m_flTimerBase = 0.0f;
 	m_fHaveState = 0;
@@ -58,6 +79,8 @@ void CHudDod::InitState( void )
 	HOOK_MESSAGE( DodBoard );
 	HOOK_MESSAGE( DodVoice );
 	HOOK_MESSAGE( DodKill );
+	HOOK_MESSAGE( MohaaHudDraw );
+	HOOK_MESSAGE( MohaaCompass );
 	m_nKills = 0;
 	m_fChatting = 0;
 	m_szVoice[0] = 0;
@@ -86,6 +109,59 @@ int CHudDod::VidInit( void )
 		m_hSheets[i] = 0;
 	m_fSheetsTried = 0;
 	m_fSheetTried = 0;
+	m_mohaaCompassTried = 0;
+	m_hMohaaCompassBack = m_hMohaaCompassFace = m_hMohaaCompassNeedle = m_hMohaaCompassObjective = 0;
+	memset( m_hMohaaHudShader, 0, sizeof( m_hMohaaHudShader ) );
+	memset( m_mohaaHudShaderTried, 0, sizeof( m_mohaaHudShaderTried ) );
+	return 1;
+}
+
+int CHudDod::MsgFunc_MohaaHudDraw( const char *pszName, int iSize, void *pbuf )
+{
+	DodMohaaHudDraw *d;
+	int index;
+	const char *text, *shader;
+	(void)pszName;
+	BEGIN_READ( pbuf, iSize );
+	index = READ_BYTE();
+	if( index == 255 ) {
+		memset( m_mohaaHud, 0, sizeof( m_mohaaHud ) );
+		memset( m_mohaaHudShaderTried, 0, sizeof( m_mohaaHudShaderTried ) );
+		memset( m_szMohaaHudShader, 0, sizeof( m_szMohaaHudShader ) );
+		return 1;
+	}
+	if( index < 0 || index >= DOD_MOHAA_HUD_DRAW_COUNT )
+		return 1;
+	d = &m_mohaaHud[index];
+	d->x = READ_COORD(); d->y = READ_COORD(); d->w = READ_COORD(); d->h = READ_COORD();
+	d->r = READ_BYTE() / 255.0f; d->g = READ_BYTE() / 255.0f;
+	d->b = READ_BYTE() / 255.0f; d->a = READ_BYTE() / 255.0f;
+	d->align_x = READ_BYTE(); d->align_y = READ_BYTE(); d->virtual_size = READ_BYTE();
+	text = READ_STRING();
+	strncpy( d->text, text ? text : "", sizeof( d->text ) - 1 );
+	d->text[sizeof( d->text ) - 1] = 0;
+	shader = READ_STRING();
+	strncpy( d->shader, shader ? shader : "", sizeof( d->shader ) - 1 );
+	d->shader[sizeof( d->shader ) - 1] = 0;
+	if( index == DOD_MOHAA_HUD_HINT_INDEX )
+		m_flMohaaHintUntil = d->text[0] && d->a > 0.0f ? gHUD.m_flTime + 5.0f : 0.0f;
+	if( strcmp( m_szMohaaHudShader[index], d->shader )) {
+		strncpy( m_szMohaaHudShader[index], d->shader, sizeof( m_szMohaaHudShader[index] ) - 1 );
+		m_szMohaaHudShader[index][sizeof( m_szMohaaHudShader[index] ) - 1] = 0;
+		m_mohaaHudShaderTried[index] = 0;
+		m_hMohaaHudShader[index] = 0;
+	}
+	return 1;
+}
+
+int CHudDod::MsgFunc_MohaaCompass( const char *pszName, int iSize, void *pbuf )
+{
+	(void)pszName;
+	BEGIN_READ( pbuf, iSize );
+	m_mohaaCompassHasTarget = READ_BYTE() != 0;
+	m_mohaaCompassTarget[0] = READ_COORD();
+	m_mohaaCompassTarget[1] = READ_COORD();
+	m_mohaaCompassTarget[2] = READ_COORD();
 	return 1;
 }
 
@@ -586,8 +662,168 @@ int CHudDod::DrawRetail( float flTime )
 	return 1;
 }
 
+static int mohaa_frame16( float degrees )
+{
+	int frame = (int)( degrees * ( 16.0f / 360.0f ) + ( degrees >= 0.0f ? 0.5f : -0.5f ));
+	frame %= 16;
+	if( frame < 0 ) frame += 16;
+	return frame;
+}
+
+static float mohaa_clamp01( float value )
+{
+	if( value < 0.0f ) return 0.0f;
+	if( value > 1.0f ) return 1.0f;
+	return value;
+}
+
+int CHudDod::DrawMohaa( float flTime )
+{
+	const int screen_w = ScreenWidth > 0 ? ScreenWidth : 320;
+	const int screen_h = ScreenHeight > 0 ? ScreenHeight : 240;
+	const int line_h = gHUD.m_scrinfo.iCharHeight > 0 ? gHUD.m_scrinfo.iCharHeight : 10;
+	float view[3] = {0, 0, 0};
+	float yaw = 0.0f;
+	int i;
+	(void)flTime;
+	if( !HUD_IsGame( "mohaa" ) )
+		return 0;
+	if( gHUD.m_iHideHUDDisplay & HIDEHUD_ALL )
+		return 1;
+
+	if( !m_mohaaCompassTried )
+	{
+		m_mohaaCompassTried = 1;
+		m_hMohaaCompassBack = SPR_Load( "sprites/mohaa/compassback.spr" );
+		m_hMohaaCompassFace = SPR_Load( "sprites/mohaa/compassface.spr" );
+		m_hMohaaCompassNeedle = SPR_Load( "sprites/mohaa/compassneedle.spr" );
+		m_hMohaaCompassObjective = SPR_Load( "sprites/mohaa/compassobjarrow.spr" );
+		gEngfuncs.Con_Printf( "MOHAA HUD compass: back=%d face=%d needle=%d objective=%d\n",
+			m_hMohaaCompassBack != 0, m_hMohaaCompassFace != 0,
+			m_hMohaaCompassNeedle != 0, m_hMohaaCompassObjective != 0 );
+	}
+	gEngfuncs.GetViewAngles( view );
+	yaw = view[1];
+	while( yaw < 0.0f ) yaw += 360.0f;
+	while( yaw >= 360.0f ) yaw -= 360.0f;
+	{
+		const int x = (int)( 8.0f * screen_w / 320.0f + 0.5f );
+		const int y = (int)( 6.0f * screen_h / 240.0f + 0.5f );
+		wrect_t rc = {0, 0, 32, 32};
+		if( m_hMohaaCompassBack ) { SPR_Set( m_hMohaaCompassBack, 255, 255, 255 ); SPR_DrawHoles( 0, x, y, &rc ); }
+		if( m_hMohaaCompassFace ) { SPR_Set( m_hMohaaCompassFace, 255, 255, 255 ); SPR_DrawHoles( mohaa_frame16( yaw ), x, y, &rc ); }
+		if( m_hMohaaCompassObjective && m_mohaaCompassHasTarget )
+		{
+			cl_entity_t *player = gEngfuncs.GetLocalPlayer();
+			if( player )
+			{
+				const float dx = m_mohaaCompassTarget[0] - player->origin[0];
+				const float dy = m_mohaaCompassTarget[1] - player->origin[1];
+				const float target_yaw = (float)( atan2( dy, dx ) * ( 180.0 / 3.14159265358979323846 ));
+				SPR_Set( m_hMohaaCompassObjective, 255, 255, 255 );
+				SPR_DrawHoles( mohaa_frame16( yaw - target_yaw ), x, y, &rc );
+			}
+		}
+		if( m_hMohaaCompassNeedle ) { SPR_Set( m_hMohaaCompassNeedle, 255, 255, 255 ); SPR_DrawHoles( 0, x, y, &rc ); }
+	}
+
+	/* Scripted shader cards (the gas-mask overlay, for example) sit above the compass. */
+	for( i = 0; i < DOD_MOHAA_HUD_DRAW_COUNT; i++ )
+	{
+		DodMohaaHudDraw *d = &m_mohaaHud[i];
+		if( !d->shader[0] || d->a <= 0.0f )
+			continue;
+		if( !m_mohaaHudShaderTried[i] )
+		{
+			char sprite[96], stem[64];
+			const char *base = strrchr( d->shader, '/' );
+			const char *ext;
+			base = base ? base + 1 : d->shader;
+			strncpy( stem, base, sizeof( stem ) - 1 ); stem[sizeof( stem ) - 1] = 0;
+			ext = strrchr( stem, '.' ); if( ext ) ((char *)ext)[0] = 0;
+			snprintf( sprite, sizeof( sprite ), "sprites/mohaa/%s.spr", stem );
+			m_hMohaaHudShader[i] = SPR_Load( sprite );
+			m_mohaaHudShaderTried[i] = 1;
+			gEngfuncs.Con_Printf( "MOHAA HUD shader %s: sprite=%d\n", d->shader, m_hMohaaHudShader[i] != 0 );
+		}
+		if( m_hMohaaHudShader[i] )
+		{
+			const float sx = d->virtual_size ? screen_w / 640.0f : 1.0f;
+			const float sy = d->virtual_size ? screen_h / 480.0f : 1.0f;
+			const int sw = SPR_Width( m_hMohaaHudShader[i], 0 ), sh = SPR_Height( m_hMohaaHudShader[i], 0 );
+			const int w = d->w > 0.0f ? (int)( d->w * sx + 0.5f ) : sw;
+			const int h = d->h > 0.0f ? (int)( d->h * sy + 0.5f ) : sh;
+			int x = (int)( d->x * sx + 0.5f ), y = (int)( d->y * sy + 0.5f );
+			wrect_t rc = {0, 0, sw, sh};
+			if( d->align_x == DOD_MOHAA_HUD_ALIGN_CENTER ) x += screen_w / 2 - w / 2;
+			else if( d->align_x == DOD_MOHAA_HUD_ALIGN_RIGHT ) x += screen_w - w;
+			if( d->align_y == DOD_MOHAA_HUD_ALIGN_MIDDLE ) y += screen_h / 2 - h / 2;
+			else if( d->align_y == DOD_MOHAA_HUD_ALIGN_BOTTOM ) y += screen_h - h;
+			SPR_Set( m_hMohaaHudShader[i], (int)( d->r * d->a * 255.0f ),
+				(int)( d->g * d->a * 255.0f ), (int)( d->b * d->a * 255.0f ) );
+			gEngfuncs.pfnSPR_DrawGeneric( 0, x, y, &rc, 0, 0, w, h );
+		}
+	}
+
+	/* Retail huddraw text supports independent slots, alignment, RGB and fade alpha. */
+	for( i = 0; i < DOD_MOHAA_HUD_DRAW_COUNT; i++ )
+	{
+		DodMohaaHudDraw *d = &m_mohaaHud[i];
+		char text[DOD_MOHAA_HUD_TEXT];
+		char *line;
+		const float sx = d->virtual_size ? screen_w / 640.0f : 1.0f;
+		const float sy = d->virtual_size ? screen_h / 480.0f : 1.0f;
+		int y_anchor, y, line_no = 0;
+		float draw_alpha = d->a;
+		int cr, cg, cb;
+		if( !d->text[0] || d->a <= 0.0f )
+			continue;
+		if( i == DOD_MOHAA_HUD_HINT_INDEX )
+		{
+			const float remaining = m_flMohaaHintUntil - flTime;
+			if( remaining <= 0.0f )
+				continue;
+			if( remaining < 0.5f )
+				draw_alpha *= remaining / 0.5f;
+		}
+		cr = (int)( mohaa_clamp01( d->r * draw_alpha ) * 255.0f + 0.5f );
+		cg = (int)( mohaa_clamp01( d->g * draw_alpha ) * 255.0f + 0.5f );
+		cb = (int)( mohaa_clamp01( d->b * draw_alpha ) * 255.0f + 0.5f );
+		strncpy( text, d->text, sizeof( text ) - 1 ); text[sizeof( text ) - 1] = 0;
+		for( line = text; *line; line++ ) if( *line == '\n' ) line_no++;
+		line_no++;
+		y_anchor = (int)( d->y * sy + 0.5f );
+		if( d->align_y == DOD_MOHAA_HUD_ALIGN_MIDDLE ) y_anchor = screen_h / 2 + y_anchor;
+		else if( d->align_y == DOD_MOHAA_HUD_ALIGN_BOTTOM ) y_anchor = screen_h - y_anchor;
+		if( d->align_y == DOD_MOHAA_HUD_ALIGN_MIDDLE ) y_anchor -= ( line_no * line_h ) / 2;
+		else if( d->align_y == DOD_MOHAA_HUD_ALIGN_BOTTOM ) y_anchor -= line_no * line_h;
+		y = y_anchor;
+		line = text;
+		while( line )
+		{
+			char *next = strchr( line, '\n' );
+			int width, x_anchor, x;
+			if( next ) *next = 0;
+			width = gHUD.DrawHudStringLen( line );
+			x_anchor = (int)( d->x * sx + 0.5f );
+			if( d->align_x == DOD_MOHAA_HUD_ALIGN_CENTER ) x_anchor += screen_w / 2;
+			else if( d->align_x == DOD_MOHAA_HUD_ALIGN_RIGHT ) x_anchor += screen_w;
+			x = x_anchor;
+			if( d->align_x == DOD_MOHAA_HUD_ALIGN_CENTER ) x -= width / 2;
+			else if( d->align_x == DOD_MOHAA_HUD_ALIGN_RIGHT ) x -= width;
+			gHUD.DrawHudString( x, y, screen_w, line, cr, cg, cb );
+			y += line_h;
+			line = next ? next + 1 : NULL;
+		}
+	}
+	return 1;
+}
+
 int CHudDod::Draw( float flTime )
 {
-	DrawRetail( flTime );
+	if( HUD_IsGame( "mohaa" ) )
+		DrawMohaa( flTime );
+	else
+		DrawRetail( flTime );
 	return 1;
 }

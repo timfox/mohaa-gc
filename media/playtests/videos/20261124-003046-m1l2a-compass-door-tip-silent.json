@@ -1,0 +1,15 @@
+{
+  "file": "20261124-003046-m1l2a-compass-door-tip-silent.mp4",
+  "date": "2026-11-24T00:30:46",
+  "commit": "d9a2faa539",
+  "engine_commit": "db73d0d126",
+  "route": "m1l2a-compass-door-tip",
+  "disc": "/tmp/mohaa-compass-build/mohaa-compass-m1l2a-tip.iso",
+  "duration_s": 50.1,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 0.9,
+  "project": "mohaa-gc",
+  "audio": "silent screen capture (forced or PulseAudio unavailable)"
+}

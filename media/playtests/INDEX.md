@@ -4,7 +4,19 @@ Screenshots: `screenshots/` · Videos: `videos/` · Notes: `notes/`
 
 | Date | File | Route | Duration | Size | Commit |
 |------|------|-------|----------|------|--------|
+| 2026-11-24T00:39:47 | `videos/20261124-003947-m1l2a-hint-render-v3-silent.mp4` | m1l2a-hint-render-v3 | 44.7s | 0.8 MB | `d9a2faa539` |
+| 2026-11-24T00:36:04 | `videos/20261124-003604-m1l2a-hint-render-v2-silent.mp4` | m1l2a-hint-render-v2 | 44.2s | 0.8 MB | `d9a2faa539` |
+| 2026-11-24T00:33:29 | `videos/20261124-003329-m1l2a-hint-render-silent.mp4` | m1l2a-hint-render | 45.6s | 0.2 MB | `d9a2faa539` |
+| 2026-11-24T00:30:46 | `videos/20261124-003046-m1l2a-compass-door-tip-silent.mp4` | m1l2a-compass-door-tip | 50.1s | 0.9 MB | `d9a2faa539` |
+| 2026-11-24T00:28:32 | `videos/20261124-002832-m1l1-compass-tips-v3-silent.mp4` | m1l1-compass-tips-v3 | 49.3s | 0.8 MB | `d9a2faa539` |
+| 2026-11-24T00:26:11 | `videos/20261124-002611-m1l1-compass-tips-v2-silent.mp4` | m1l1-compass-tips-v2 | 60.3s | 0.9 MB | `d9a2faa539` |
+| 2026-11-24T00:23:42 | `videos/20261124-002342-m1l1-compass-tips-silent.mp4` | m1l1-compass-tips | 60.2s | 1.1 MB | `d9a2faa539` |
 | 2026-11-23T21:12:20 | `videos/20261123-actor-playthrough-silent.mp4` | m1l1-actor-playthrough | 53.2s | 1.0 MB | `c1064a463f` |
+| 2026-11-23T23:53:37 | `videos/20261123-235337-m1l1-truck-autojoin-silent.mp4` | m1l1-truck-autojoin | 63.9s | 0.1 MB | `d9a2faa539` |
+| 2026-11-23T23:50:29 | `videos/20261123-235029-m1l1-truck-confirm-input-silent.mp4` | m1l1-truck-confirm-input | 55.1s | 0.6 MB | `d9a2faa539` |
+| 2026-11-23T23:48:49 | `videos/20261123-234849-m1l1-truck-confirm-silent.mp4` | m1l1-truck-confirm | 54.1s | 0.7 MB | `d9a2faa539` |
+| 2026-11-23T23:39:56 | `videos/20261123-233956-mohaa-m1l1-rifleman-a-silent.mp4` | mohaa-m1l1-rifleman-a | 60.2s | 1.0 MB | `d9a2faa539` |
+| 2026-11-23T23:38:07 | `videos/20261123-233807-mohaa-m1l1-rifleman-join-silent.mp4` | mohaa-m1l1-rifleman-join | 60.3s | 1.1 MB | `d9a2faa539` |
 | 2026-11-23T23:29:53 | `videos/20261123-232953-mohaa-hud-direct-map-silent.mp4` | mohaa-hud-direct-map | 59.2s | 1.0 MB | `6be6ce53a9` |
 | 2026-11-23T23:26:51 | `videos/20261123-232651-mohaa-hud-native-iso-silent.mp4` | mohaa-hud-native-iso | 60.1s | 1.0 MB | `6be6ce53a9` |
 | 2026-11-23T23:23:32 | `videos/20261123-232332-mohaa-hud-art-silent.mp4` | mohaa-hud-art | 59.2s | 0.1 MB | `6be6ce53a9` |

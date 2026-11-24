@@ -19,6 +19,13 @@ SPR_FWD_PARALLEL_UPRIGHT = 0
 FRAME_SINGLE = 0
 HUD_SOURCE_DIR = "textures/hud/"
 MAX_IMAGE_SIDE = 512
+COMPASS_SPRITE_SIDE = 32
+COMPASS_FRAMES = 16
+ROTATING_HUD_IMAGES = {"compassface.tga": 1, "compassobjarrow.tga": -1}
+COMPACT_COMPASS_IMAGES = {
+    "compassback.tga", "compassface.tga", "compassneedle.tga",
+    "compassobjarrow.tga", "compassobjball.tga",
+}
 REQUIRED_HUD_IMAGES = frozenset({
     "healthback.tga",
     "healthmeter.tga",
@@ -32,12 +39,21 @@ REQUIRED_HUD_IMAGES = frozenset({
 
 def encode_sprite_rgba(width: int, height: int, rgba: bytes) -> bytes:
     """Encode one top-left-origin RGBA image as a single-frame Xash v32 .spr."""
+    return encode_sprite_frames(width, height, (rgba,))
+
+
+def encode_sprite_frames(width: int, height: int, frames) -> bytes:
+    """Encode equally-sized RGBA frames as a native Xash v32 animated sprite."""
     if width < 1 or height < 1 or width > MAX_IMAGE_SIDE or height > MAX_IMAGE_SIDE:
         raise ValueError("unsupported HUD image dimensions %dx%d" % (width, height))
     if width & (width - 1) or height & (height - 1):
         raise ValueError("HUD sprite dimensions must be powers of two: %dx%d" % (width, height))
-    if len(rgba) != width * height * 4:
-        raise ValueError("RGBA payload is %d bytes, expected %d" % (len(rgba), width * height * 4))
+    frames = tuple(frames)
+    if not frames or len(frames) > 32:
+        raise ValueError("sprite frame count must be between 1 and 32")
+    expected = width * height * 4
+    if any(len(rgba) != expected for rgba in frames):
+        raise ValueError("RGBA frame payload does not match %dx%d" % (width, height))
 
     radius = ((width * width + height * height) ** 0.5) / 2.0
     header = struct.pack(
@@ -48,12 +64,28 @@ def encode_sprite_rgba(width: int, height: int, rgba: bytes) -> bytes:
         radius,
         width,
         height,
-        1,
+        len(frames),
         0.0,
         0,
     )
-    frame = struct.pack("<iiiii", FRAME_SINGLE, 0, 0, width, height)
-    return header + frame + rgba
+    frame_header = struct.pack("<iiiii", FRAME_SINGLE, 0, 0, width, height)
+    return header + b"".join(frame_header + rgba for rgba in frames)
+
+
+def encode_rotating_compass(image, direction: int) -> bytes:
+    """Bake compact compass orientations so the GC HUD can select a frame without runtime rotation."""
+    from PIL import Image
+
+    image = image.convert("RGBA").resize(
+        (COMPASS_SPRITE_SIDE, COMPASS_SPRITE_SIDE), Image.Resampling.LANCZOS
+    )
+    frames = []
+    for i in range(COMPASS_FRAMES):
+        angle = direction * 360.0 * i / COMPASS_FRAMES
+        rotated = image.rotate(angle, resample=Image.Resampling.BICUBIC, expand=False,
+                               fillcolor=(0, 0, 0, 0))
+        frames.append(rotated.tobytes())
+    return encode_sprite_frames(COMPASS_SPRITE_SIDE, COMPASS_SPRITE_SIDE, frames)
 
 
 def stage_hud(sources, game_root: str) -> list[str]:
@@ -81,7 +113,12 @@ def stage_hud(sources, game_root: str) -> list[str]:
             raise ValueError("unexpected HUD texture path: %s" % name)
         with Image.open(io.BytesIO(read(entry))) as image:
             image = image.convert("RGBA")
-            sprite = encode_sprite_rgba(image.width, image.height, image.tobytes())
+            if name.lower() in ROTATING_HUD_IMAGES:
+                sprite = encode_rotating_compass(image, ROTATING_HUD_IMAGES[name.lower()])
+            else:
+                if name.lower() in COMPACT_COMPASS_IMAGES:
+                    image = image.resize((COMPASS_SPRITE_SIDE, COMPASS_SPRITE_SIDE), Image.Resampling.LANCZOS)
+                sprite = encode_sprite_rgba(image.width, image.height, image.tobytes())
         path = os.path.join(outdir, stem.lower() + ".spr")
         with open(path, "wb") as fh:
             fh.write(sprite)

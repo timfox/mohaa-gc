@@ -218,7 +218,9 @@ static struct {
 	char level_script[128];
 	int started;              /* main has run (it waits for the first frame: entities spawn after the VM) */
 	size_t budget;
-	char objectives[8][96];	/* addobjective texts, by index 1..8 */	/* maps/<map>.scr, where a trigger's setthread label lives */
+	struct { char text[96]; int status, has_pos; float pos[3]; } objectives[8];
+	int current_objective;
+	DodMohaaHudDraw hud_draw[DOD_MOHAA_HUD_DRAW_COUNT];
 	/* path nodes, and the soldiers walking them: a route is the goal plus the node it heads for now */
 	MohaaPaths paths;
 	int path_links;
@@ -1741,23 +1743,114 @@ static int c_setcvar(ms_call *c)
 	return 0;
 }
 
-/* "addobjective <index> <state> <text> [location]" keeps the text; "setcurrentobjective <index>" shows it */
+/* "addobjective <index> <state> <text> [location]" keeps the text and map-space target. */
 static int c_addobjective(ms_call *c)
 {
 	const int i = ms_arg_int(c, 0);
-	if (i >= 1 && i <= 8 && ms_argc(c) >= 3)
-		snprintf(S.objectives[i - 1], sizeof(S.objectives[0]), "%s", ms_arg_string(c, 2));
+	if (i >= 1 && i <= 8 && ms_argc(c) >= 3) {
+		float raw[3];
+		int k;
+		snprintf(S.objectives[i - 1].text, sizeof(S.objectives[0].text), "%s", ms_arg_string(c, 2));
+		S.objectives[i - 1].status = ms_arg_int(c, 1);
+		S.objectives[i - 1].has_pos = ms_argc(c) >= 4;
+		if (S.objectives[i - 1].has_pos) {
+			ms_arg_vector(c, 3, raw);
+			for (k = 0; k < 3; k++)
+				S.objectives[i - 1].pos[k] = raw[k];
+		}
+		if (S.current_objective == i - 1 && S.be.compass_target) {
+			float pos[3] = {0, 0, 0};
+			if (S.objectives[i - 1].has_pos)
+				scale_in(S.objectives[i - 1].pos, pos);
+			S.be.compass_target(pos, S.objectives[i - 1].status == 2 && S.objectives[i - 1].has_pos);
+		}
+	}
 	return 0;
 }
 
 static int c_setcurrentobjective(ms_call *c)
 {
 	const int i = ms_arg_int(c, 0);
-	if (i >= 1 && i <= 8 && S.objectives[i - 1][0]) {
+	if (i >= 1 && i <= 8 && S.objectives[i - 1].text[0]) {
 		char msg[128];
-		snprintf(msg, sizeof(msg), "Objective: %s", S.objectives[i - 1]);
+		float pos[3] = {0, 0, 0};
+		S.current_objective = i - 1;
+		if (S.objectives[i - 1].has_pos)
+			scale_in(S.objectives[i - 1].pos, pos);
+		if (S.be.compass_target)
+			S.be.compass_target(pos, S.objectives[i - 1].status == 2 && S.objectives[i - 1].has_pos);
+		snprintf(msg, sizeof(msg), "Objective: %s", S.objectives[i - 1].text);
 		S.be.print(DOD_MOHAA_PRINT_CENTER, msg);
 	}
+	return 0;
+}
+
+static int hud_align_x(const char *name)
+{
+	if (name && (!strcmp(name, "center") || !strcmp(name, "middle")))
+		return DOD_MOHAA_HUD_ALIGN_CENTER;
+	if (name && !strcmp(name, "right"))
+		return DOD_MOHAA_HUD_ALIGN_RIGHT;
+	return DOD_MOHAA_HUD_ALIGN_LEFT;
+}
+
+static int hud_align_y(const char *name)
+{
+	if (name && (!strcmp(name, "center") || !strcmp(name, "middle")))
+		return DOD_MOHAA_HUD_ALIGN_MIDDLE;
+	if (name && !strcmp(name, "bottom"))
+		return DOD_MOHAA_HUD_ALIGN_BOTTOM;
+	return DOD_MOHAA_HUD_ALIGN_TOP;
+}
+
+/* MOHAA's retail scripts use huddraw slots for contextual hints, overlays and status text. */
+static int c_huddraw(ms_call *c)
+{
+	const int index = ms_arg_int(c, 0);
+	DodMohaaHudDraw *d;
+	const char *op = ms_call_name(c);
+	if (index < 0 || index >= DOD_MOHAA_HUD_DRAW_COUNT)
+		return 0;
+	d = &S.hud_draw[index];
+	if (!d->initialized) {
+		d->r = d->g = d->b = d->a = 1.0f;
+		d->align_x = DOD_MOHAA_HUD_ALIGN_LEFT;
+		d->align_y = DOD_MOHAA_HUD_ALIGN_TOP;
+		d->virtual_size = 1;
+		d->initialized = 1;
+	}
+	if (!strcmp(op, "huddraw_string")) {
+		snprintf(d->text, sizeof(d->text), "%s", ms_arg_string(c, 1));
+	} else if (!strcmp(op, "huddraw_shader")) {
+		snprintf(d->shader, sizeof(d->shader), "%s", ms_arg_string(c, 1));
+	} else if (!strcmp(op, "huddraw_rect")) {
+		if (ms_argc(c) >= 5) {
+			d->x = ms_arg_float(c, 1); d->y = ms_arg_float(c, 2);
+			d->w = ms_arg_float(c, 3); d->h = ms_arg_float(c, 4);
+		}
+	} else if (!strcmp(op, "huddraw_align")) {
+		d->align_x = hud_align_x(ms_arg_string(c, 1));
+		d->align_y = hud_align_y(ms_arg_string(c, 2));
+	} else if (!strcmp(op, "huddraw_color")) {
+		if (ms_argc(c) >= 4) {
+			d->r = ms_arg_float(c, 1); d->g = ms_arg_float(c, 2); d->b = ms_arg_float(c, 3);
+			if (d->r > 1.0f || d->g > 1.0f || d->b > 1.0f) {
+				d->r /= 255.0f; d->g /= 255.0f; d->b /= 255.0f;
+			}
+			if (d->r < 0.0f) d->r = 0.0f; if (d->r > 1.0f) d->r = 1.0f;
+			if (d->g < 0.0f) d->g = 0.0f; if (d->g > 1.0f) d->g = 1.0f;
+			if (d->b < 0.0f) d->b = 0.0f; if (d->b > 1.0f) d->b = 1.0f;
+		}
+	} else if (!strcmp(op, "huddraw_alpha")) {
+		d->a = ms_arg_float(c, 1);
+		if (d->a > 1.0f) d->a /= 255.0f;
+		if (d->a < 0.0f) d->a = 0.0f;
+		if (d->a > 1.0f) d->a = 1.0f;
+	} else if (!strcmp(op, "huddraw_virtualsize")) {
+		d->virtual_size = ms_arg_int(c, 1) != 0;
+	}
+	if (S.be.hud_draw)
+		S.be.hud_draw(index, d);
 	return 0;
 }
 
@@ -1898,6 +1991,37 @@ static int c_centerprint(ms_call *c)
 	return 0;
 }
 
+/* iprintlnbold is the retail mission-script hint command. HudText is not part
+ * of the GameCube client DLL, so route the hint through its script HUD slot. */
+static int c_iprintlnbold(ms_call *c)
+{
+	DodMohaaHudDraw *d = &S.hud_draw[DOD_MOHAA_HUD_HINT_INDEX];
+	const char *src = ms_arg_string(c, 0);
+	size_t out = 0;
+	int column = 0;
+	d->x = 0.0f; d->y = 150.0f; d->w = d->h = 0.0f;
+	d->r = d->g = d->b = d->a = 1.0f;
+	d->align_x = DOD_MOHAA_HUD_ALIGN_CENTER;
+	d->align_y = DOD_MOHAA_HUD_ALIGN_TOP;
+	d->virtual_size = 1;
+	d->initialized = 1;
+	d->shader[0] = 0;
+	while (src && *src && out + 1 < sizeof(d->text)) {
+		if (column >= 54 && *src == ' ') {
+			d->text[out++] = '\n';
+			column = 0;
+			src++;
+			continue;
+		}
+		d->text[out++] = *src++;
+		column++;
+	}
+	d->text[out] = 0;
+	if (S.be.hud_draw)
+		S.be.hud_draw(DOD_MOHAA_HUD_HINT_INDEX, d);
+	return 0;
+}
+
 static void register_commands(ms_vm *vm)
 {
 	static const struct { const char *name; unsigned on; ms_cmd_fn fn; } table[] = {
@@ -2009,14 +2133,14 @@ static void register_commands(ms_vm *vm)
 		{"dontdropweapons", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"unholster", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"detach", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
-		/* scripted HUD elements (m6l1a's mg42 overlay): there is no matching HUD element on the GoldSrc side yet */
-		{"huddraw_shader", MS_ON_THREAD, c_ignored},
-		{"huddraw_align", MS_ON_THREAD, c_ignored},
-		{"huddraw_rect", MS_ON_THREAD, c_ignored},
-		{"huddraw_virtualsize", MS_ON_THREAD, c_ignored},
-		{"huddraw_color", MS_ON_THREAD, c_ignored},
-		{"huddraw_alpha", MS_ON_THREAD, c_ignored},
-		{"huddraw_string", MS_ON_THREAD, c_ignored},
+		/* scripted HUD elements (hints, compass overlays and the m6l1a mg42 overlay) */
+		{"huddraw_shader", MS_ON_THREAD, c_huddraw},
+		{"huddraw_align", MS_ON_THREAD, c_huddraw},
+		{"huddraw_rect", MS_ON_THREAD, c_huddraw},
+		{"huddraw_virtualsize", MS_ON_THREAD, c_huddraw},
+		{"huddraw_color", MS_ON_THREAD, c_huddraw},
+		{"huddraw_alpha", MS_ON_THREAD, c_huddraw},
+		{"huddraw_string", MS_ON_THREAD, c_huddraw},
 		{"huddraw_font", MS_ON_THREAD, c_ignored},
 		{"lightoff", MS_ON_ENTITY, c_ignored},
 		{"lightradius", MS_ON_ENTITY, c_ignored},
@@ -2029,6 +2153,8 @@ static void register_commands(ms_vm *vm)
 		{"trigger", MS_ON_THREAD, c_trigger},
 		{"spawn", MS_ON_THREAD, c_spawn},
 		{"centerprint", MS_ON_THREAD, c_centerprint},
+		{"iprintlnbold", MS_ON_THREAD, c_iprintlnbold},
+		{"iprintlnbold_noloc", MS_ON_THREAD, c_iprintlnbold},
 		{"queryturretslotentity", MS_ON_ENTITY, c_queryturretslotentity},
 		{"drive", MS_ON_ENTITY, c_drive},
 		{"modifydrive", MS_ON_ENTITY, c_modifydrive},
@@ -2056,6 +2182,11 @@ static void register_commands(ms_vm *vm)
 
 void Dod_MohaaShutdown(void)
 {
+	static const float no_target[3] = {0, 0, 0};
+	if (S.be.hud_draw)
+		S.be.hud_draw(-1, NULL);
+	if (S.be.compass_target)
+		S.be.compass_target(no_target, 0);
 	if (S.vm)
 		ms_destroy(S.vm);
 	S.vm = NULL;
@@ -2069,6 +2200,8 @@ void Dod_MohaaShutdown(void)
 	S.mood = S.fallback = -1;
 	S.cue[0] = 0;
 	memset(S.objectives, 0, sizeof(S.objectives));
+	S.current_objective = -1;
+	memset(S.hud_draw, 0, sizeof(S.hud_draw));
 	MohaaPaths_Free(&S.paths);
 	S.path_links = 0;
 	memset(S.routes, 0, sizeof(S.routes));
@@ -2301,6 +2434,12 @@ int Dod_MohaaLevelInit(const DodMohaaBackend *backend, const char *mapname, floa
 	if (!backend || !mapname || !*mapname)
 		return 0;
 	S.be = *backend;
+	if (S.be.hud_draw)
+		S.be.hud_draw(-1, NULL);
+	if (S.be.compass_target) {
+		static const float no_target[3] = {0, 0, 0};
+		S.be.compass_target(no_target, 0);
+	}
 	if (!S.be.alloc) {
 		if (S.be.pool && MohaaPool_Init(&g_pool, S.be.pool, S.be.pool_size)) {
 			int r;

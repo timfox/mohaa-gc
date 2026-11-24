@@ -1,0 +1,15 @@
+{
+  "file": "20261123-235337-m1l1-truck-autojoin-silent.mp4",
+  "date": "2026-11-23T23:53:37",
+  "commit": "d9a2faa539",
+  "engine_commit": "unavailable",
+  "route": "m1l1-truck-autojoin",
+  "disc": "/tmp/mohaa-hud-visual/mohaa-m1l1-truck-autojoin.iso",
+  "duration_s": 63.9,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 0.1,
+  "project": "mohaa-gc",
+  "audio": "silent screen capture (forced or PulseAudio unavailable)"
+}

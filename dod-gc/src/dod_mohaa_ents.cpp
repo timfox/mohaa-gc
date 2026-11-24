@@ -22,6 +22,14 @@
  * scripts do not fit is refused cleanly at load instead of starving the engine. */
 static cvar_t mohaa_script_kb = { "mohaa_script_kb", "384", FCVAR_SERVER };
 static int g_mohaa_cvar_registered;
+static int gmsgMohaaHudDraw;
+static int gmsgMohaaCompass;
+
+void DodGC_MohaaRegisterHudMessages( void )
+{
+	if( !gmsgMohaaHudDraw ) gmsgMohaaHudDraw = REG_USER_MSG( "MohaaHudDraw", -1 );
+	if( !gmsgMohaaCompass ) gmsgMohaaCompass = REG_USER_MSG( "MohaaCompass", -1 );
+}
 
 /* id = edict index (12 bits) | serial number (19 bits): a freed and reused edict does
  * not answer for an old script reference. Bit 31 stays clear: DOD_MOHAA_NODE_ID marks a path node. */
@@ -705,6 +713,37 @@ static void M_Hud( int hide )
 	}
 }
 
+/* Send a complete script HUD slot. Index 255 is reserved for a one-packet clear-all. */
+static void M_HudDraw( int index, const DodMohaaHudDraw *d )
+{
+	if( !gmsgMohaaHudDraw )
+		return;
+	MESSAGE_BEGIN( MSG_ALL, gmsgMohaaHudDraw );
+		WRITE_BYTE( index < 0 ? 255 : index );
+		if( index >= 0 && d ) {
+			WRITE_COORD( d->x ); WRITE_COORD( d->y ); WRITE_COORD( d->w ); WRITE_COORD( d->h );
+			WRITE_BYTE( (int)( d->r * 255.0f + 0.5f ) );
+			WRITE_BYTE( (int)( d->g * 255.0f + 0.5f ) );
+			WRITE_BYTE( (int)( d->b * 255.0f + 0.5f ) );
+			WRITE_BYTE( (int)( d->a * 255.0f + 0.5f ) );
+			WRITE_BYTE( d->align_x ); WRITE_BYTE( d->align_y ); WRITE_BYTE( d->virtual_size );
+			WRITE_STRING( d->text ); WRITE_STRING( d->shader );
+		}
+	MESSAGE_END();
+}
+
+static void M_CompassTarget( const float target[3], int visible )
+{
+	if( !gmsgMohaaCompass )
+		return;
+	MESSAGE_BEGIN( MSG_ALL, gmsgMohaaCompass );
+		WRITE_BYTE( visible != 0 );
+		WRITE_COORD( target ? target[0] : 0.0f );
+		WRITE_COORD( target ? target[1] : 0.0f );
+		WRITE_COORD( target ? target[2] : 0.0f );
+	MESSAGE_END();
+}
+
 /* While held, the player cannot fire either (FL_FROZEN only stops movement). */
 static void CutsceneThink( void )
 {
@@ -923,6 +962,7 @@ static size_t M_PoolCarve( size_t want, DodMohaaBackend *b )
 
 void DodGC_MohaaLevelInit( void )
 {
+	DodGC_MohaaRegisterHudMessages();
 	if( !g_mohaa_cvar_registered )
 	{
 		CVAR_REGISTER( &mohaa_script_kb );
@@ -963,6 +1003,8 @@ void DodGC_MohaaLevelInit( void )
 	b.place_player = M_PlacePlayer;
 	b.view = M_View;
 	b.hud = M_Hud;
+	b.hud_draw = M_HudDraw;
+	b.compass_target = M_CompassTarget;
 	b.damage_at = M_DamageAt;
 	g_locked_player = 0;	/* a new map starts everyone free (the last map's VM let go in its shutdown) */
 	g_saved_viewmodel = 0;
