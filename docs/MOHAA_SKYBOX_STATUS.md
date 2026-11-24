@@ -1,17 +1,17 @@
-# MOHAA skybox status — 2026-11-23
+# MOHAA skybox status — 2026-11-23 (updated)
 
 The m1l1 runtime now resolves and draws its retail skybox. The retail BSP shader `textures/sky/africanight` maps to the `env/mohnight1` cubemap. `tools/mohaa_sky.py` converts all six faces to 128×128 GameCube CMPR (`8,192` bytes each), and the maps stage writes `mohnight1` as the compiled BSP's `skyname`.
 
 ## Runtime evidence
 
-The previous m1l1 test ISO used an older converted BSP without a `skyname`; its log fell back to the empty `desert` sky. A separate scratch ISO was assembled with the m1l1 worldspawn set to `skyname "mohnight1"` and the six retail-derived CMPR faces. The source stage and original ISO were left untouched.
+The permanent campaign stage now contains a fresh m1l1 map build from the patched SDHLT toolchain. It writes the `mohnight1` BSP skyname and all six retail-derived CMPR faces. The staged BSP is 1,959,876 bytes (SHA-256 `ee57d44b48476f54a9ca82e821cc8604bab79dd4f290fcc4f605e8b01a6ab239`); the six faces are each 8,192 bytes.
 
-- ISO: `/tmp/mohaa-sky-update/out/m1l1-skybox-v2.iso` (1,199,233,024 bytes; SHA-256 `53975585c9d5b6f808e207e3a9b1247ec7a22a49021adb1d072711b9e5e7ef6a`)
-- Runtime: isolated Dolphin, 28-second m1l1 probe. OSReport confirms `map skyname early mohnight1`, `sky mohnight1 loaded (6 x 128x128 CMPR)`, `sky cube drawn name=mohnight1`, and `MAP_READY m1l1`.
-- Captures: [playtest note](../media/playtests/notes/20261123-213552-m1l1-skybox-runtime-verify.md), [silent H.264 clip](../media/playtests/videos/20261123-213552-m1l1-skybox-runtime-verify-silent.mp4), and [periodic guest frames](../media/playtests/screenshots/20261123-213552-m1l1-skybox-runtime-verify/frames/).
+- Runtime ISO: `/tmp/mohaa-m1l1-sky-final/out/m1l1-final-skybox.iso` (1,750,908,928 bytes; SHA-256 `b88ea68032c066f6b34c5e68392768f00385164f6bcc32fdf867568c1793ab53`).
+- Runtime: isolated Dolphin loaded m1l1 and reported `sky mohnight1 loaded (6 x 128x128 CMPR)` and `sky cube drawn name=mohnight1`; `direct map ready` confirms the map reached gameplay.
+- Visual evidence: [playtest note](../media/playtests/notes/20261123-215710-m1l1-final-skybox.md), [gameplay screenshot](../media/playtests/screenshots/20261123-215710-m1l1-final-skybox/final.png), [silent H.264 capture](../media/playtests/videos/20261123-215710-m1l1-final-skybox-silent.mp4), and [six periodic frames](../media/playtests/screenshots/20261123-215710-m1l1-final-skybox/frames/).
 
-The stills show the Allies class picker, not an unobstructed sky view. Runtime logs verify the six-face load and sky-cube draw; visual review from the player view remains open.
+The final screenshot shows the player view in m1l1 with the night sky over the village. Dolphin is emulator evidence; physical GameCube validation remains open.
 
-## Remaining build gate
+## Remaining coverage
 
-The full `mohaa_sd.py --stages maps --maps m1l1` rebuild could not run because the local SDHLT toolchain was absent and its build script could not clone `seedee/SDHLT` with network access restricted. The test ISO uses a scratch BSP copy to verify sky-name/runtime behavior. Regenerate the permanent m1l1 map stage with the local patched SDHLT toolchain when available; the six-face completeness check is now in `stage_map_sky`.
+The full m1l1 maps stage is complete. Other campaign maps still need their own sky resolution, stage output, and runtime validation. The six-face completeness check in `stage_map_sky` prevents a partial cubemap from being treated as complete.
