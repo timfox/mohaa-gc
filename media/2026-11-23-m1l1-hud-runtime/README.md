@@ -5,9 +5,9 @@ The previous runtime log reported seven missing files under `sprites/mohaa/`. Th
 For this test ISO, those 80 files were added to a temporary copy of the existing `extras.pk3`. The retail source files and existing staged data were not modified. In the 65-second isolated Dolphin probe:
 
 - The actor loaded (173.47 KiB), the 643-node graph loaded, and scripted `walkto` advanced.
-- There were no `Could not load HUD sprite` errors; the seven required sprite names are in the test pack.
-- One `UserMsg: No pfn HudText 73` error remains. Its callback/display behavior still needs investigation.
-- The frame is at the team picker; this run does not prove final in-game HUD drawing or actor animation.
+- There were no `Could not load HUD sprite` errors. All seven requested sprites load, and the engine reports `HUD sprites drawn n=6` at 320×240.
+- One `UserMsg: No pfn HudText 73` diagnostic appears. The low-memory client intentionally omits the callback; `CL_ParseUserMessage` routes HudText to the engine fallback (`CL_GCHudTextShow`). The probe did not verify rendered title text or timing.
+- The frame is at the team picker; actor animation and the complete opening remain unverified.
 
 The probe was bounded by a 65-second timeout and was isolated from the desktop Dolphin session. Compressed OSReport: `dolphin.log.gz`.
 
