@@ -4,6 +4,7 @@ Screenshots: `screenshots/` · Videos: `videos/` · Notes: `notes/`
 
 | Date | File | Route | Duration | Size | Commit |
 |------|------|-------|----------|------|--------|
+| 2026-11-24T01:08:59 | `videos/20261124-010859-m1l2a-retail-trigger-live-silent.mp4` | m1l2a-retail-trigger-live | 65.3s | 0.4 MB | `be19bf9df1` |
 | 2026-11-24T00:59:40 | `videos/20261124-005940-m1l2a-retail-objective-pos-silent.mp4` | m1l2a-retail-objective-pos | 45.3s | 0.3 MB | `2c0a59c871` |
 | 2026-11-24T00:55:51 | `videos/20261124-005551-m1l2a-compass-objective-silent.mp4` | m1l2a-compass-objective | 44.1s | 0.3 MB | `2c0a59c871` |
 | 2026-11-24T00:51:53 | `videos/20261124-005153-m1l2a-retail-tip-wrap-silent.mp4` | m1l2a-retail-tip-wrap | 45.2s | 0.9 MB | `2c0a59c871` |
