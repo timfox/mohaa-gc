@@ -9,3 +9,7 @@
 - Capture: [current.png](current.png)
 
 This session used an isolated profile in `/tmp/mohaa-m1l1-user`. It did not enable a guest OSReport log, so this frame confirms map presentation and input UI only; it does not verify path-node parsing or the cutscene actor.
+
+## Controls in the isolated profile
+
+The copied Dolphin profile maps the keyboard as the GameCube pad: D-pad `T/G/F/H` (up/down/left/right), A `X`, B `Z`, Start `Enter`; movement uses arrow keys, with `Q/W` for L/R. No input was injected during the check.
