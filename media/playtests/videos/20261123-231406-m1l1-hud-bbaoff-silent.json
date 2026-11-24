@@ -1,0 +1,15 @@
+{
+  "file": "20261123-231406-m1l1-hud-bbaoff-silent.mp4",
+  "date": "2026-11-23T23:14:06",
+  "commit": "f8b4c7ecc9",
+  "engine_commit": "db73d0d126",
+  "route": "m1l1-hud-bbaoff",
+  "disc": "/tmp/mohaa-hud-fix/mohaa-hud-m1l1.iso",
+  "duration_s": 22.4,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 0.2,
+  "project": "mohaa-gc",
+  "audio": "silent screen capture (forced or PulseAudio unavailable)"
+}

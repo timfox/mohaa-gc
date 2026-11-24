@@ -5,6 +5,10 @@ Screenshots: `screenshots/` · Videos: `videos/` · Notes: `notes/`
 | Date | File | Route | Duration | Size | Commit |
 |------|------|-------|----------|------|--------|
 | 2026-11-23T21:12:20 | `videos/20261123-actor-playthrough-silent.mp4` | m1l1-actor-playthrough | 53.2s | 1.0 MB | `c1064a463f` |
+| 2026-11-23T23:16:19 | `videos/20261123-231619-m1l1-hud-sky-retail-silent.mp4` | m1l1-hud-sky-retail | 22.3s | 0.1 MB | `f8b4c7ecc9` |
+| 2026-11-23T23:14:06 | `videos/20261123-231406-m1l1-hud-bbaoff-silent.mp4` | m1l1-hud-bbaoff | 22.4s | 0.2 MB | `f8b4c7ecc9` |
+| 2026-11-23T23:08:25 | `videos/20261123-230825-m1l1-hud-redraw-proof-silent.mp4` | m1l1-hud-redraw-proof | 120.2s | 0.4 MB | `f8b4c7ecc9` |
+| 2026-11-23T23:03:19 | `videos/20261123-230319-m1l1-hud-fix-confirmed-silent.mp4` | m1l1-hud-fix-confirmed | 20.9s | 0.1 MB | `f8b4c7ecc9` |
 | 2026-11-23T22:35:34 | `videos/20261123-223534-training-mohday2-player-silent.mp4` | training-mohday2-player | 24.8s | 0.2 MB | `06dfdba066` |
 | 2026-11-23T22:34:25 | `videos/20261123-223425-m3l1a-dday2-silent.mp4` | m3l1a-dday2 | 24.8s | 0.1 MB | `06dfdba066` |
 | 2026-11-23T22:32:30 | `videos/20261123-223230-m1l3a-mohnightfog-player-silent.mp4` | m1l3a-mohnightfog-player | 24.9s | 0.1 MB | `06dfdba066` |

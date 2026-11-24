@@ -22,11 +22,11 @@ Keep raw project captures local for debugging and future work-in-progress edits.
 
 ## Current evidence snapshot
 
-- M0: isolated Dolphin runs load MOHAA and reach m1l1; current probes retain build/engine/ISO provenance and OSReport.
-- M1: the stage resolves all 37 retail maps; 19 maps map to eight real cubemaps (48 CMPR faces), and 18 previously staged BSPs now have their skyname. m1l1 visibly draws its sky in Dolphin. m1l3a and training load all six faces for their distinct environments, though their current captures do not show a clear sky draw. Fourteen maps reference the missing retail root `idontexist` and are left without a skyname. Broader map conversion, collision coverage, per-root visual checks, and physical hardware validation remain open.
+- M0: isolated retail New Game reaches m1l1, initializes the lean HUD, and completes three client redraws without the prior null-cvar DSI. Latest evidence and provenance: [m1l1 HUD and retail sky capture](../media/playtests/notes/20261123-231619-m1l1-hud-sky-retail.md). Runtime certification and physical hardware validation remain open.
+- M1: the stage resolves all 37 retail maps; 19 maps map to eight real cubemaps (48 CMPR faces), and 18 previously staged BSPs now have their skyname. The latest retail New Game capture visibly draws the m1l1 `mohnight1` sky and logs all six CMPR faces loaded. m1l3a and training load all six faces for their distinct environments, though their current captures do not show a clear sky draw. Fourteen maps reference the missing retail root `idontexist` and are left without a skyname. Broader map conversion, collision coverage, per-root visual checks, and physical hardware validation remain open.
 - M2: m1l1 scripted `walkto` advances; complete cutscene/event parity is not yet certified.
 - M4: the German actor MDL and 10-sequence GCA pack load. Correct visible sequence playback and bodygroup fidelity remain open.
-- M5: representative HUD and map captures exist; full GX/material and audio parity remains open.
+- M5: latest m1l1 runtime evidence covers the retail cubemap draw and three HUD redraws; full GX/material and audio parity remains open.
 - M6: MOHAA-specific spill behavior has isolated build/runtime evidence; native GameCube performance remains unverified.
 
 The current detailed cutscene evidence and open checks are in [MOHAA_CUTSCENE_STATUS.md](MOHAA_CUTSCENE_STATUS.md). The capture archive and index are in [media/playtests](../media/playtests/).
