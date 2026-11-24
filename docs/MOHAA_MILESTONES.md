@@ -23,7 +23,7 @@ Keep raw project captures local for debugging and future work-in-progress edits.
 ## Current evidence snapshot
 
 - M0: isolated Dolphin runs load MOHAA and reach m1l1; current probes retain build/engine/ISO provenance and OSReport.
-- M1: m1l1's full maps stage now rebuilds with patched SDHLT, emits the `mohnight1` skyname and six 128×128 CMPR faces, and reaches gameplay in Dolphin with the sky visibly drawn. Its capture is archived; broader map conversion, collision coverage, and physical hardware validation remain open.
+- M1: the stage resolves all 37 retail maps; 19 maps map to eight real cubemaps (48 CMPR faces), and 18 previously staged BSPs now have their skyname. m1l1 visibly draws its sky in Dolphin. m1l3a and training load all six faces for their distinct environments, though their current captures do not show a clear sky draw. Fourteen maps reference the missing retail root `idontexist` and are left without a skyname. Broader map conversion, collision coverage, per-root visual checks, and physical hardware validation remain open.
 - M2: m1l1 scripted `walkto` advances; complete cutscene/event parity is not yet certified.
 - M4: the German actor MDL and 10-sequence GCA pack load. Correct visible sequence playback and bodygroup fidelity remain open.
 - M5: representative HUD and map captures exist; full GX/material and audio parity remains open.

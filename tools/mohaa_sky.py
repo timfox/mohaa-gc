@@ -108,6 +108,15 @@ def stage_map_sky(sources, map_name: str, bsp_data: bytes, game_root: str) -> tu
     if not root:
         return None, []
     faces = [os.path.join(game_root, "media", "sky_%s%s.cmp" % (root, side)) for side in SIDES]
-    if all(os.path.isfile(path) for path in faces):
+    expected_size = SKY_SIZE * SKY_SIZE // 2
+    if all(os.path.isfile(path) and os.path.getsize(path) == expected_size for path in faces):
         return root, []
-    return root, write_skybox(sources, root, game_root)
+    try:
+        return root, write_skybox(sources, root, game_root)
+    except ValueError as exc:
+        if str(exc).startswith("no retail sky face "):
+            # Some retail shader entries deliberately name a nonexistent env
+            # root (for example idontexist). Keep those maps' skyname unset so
+            # the converter does not advertise a cubemap that cannot load.
+            return None, []
+        raise

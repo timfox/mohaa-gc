@@ -534,6 +534,8 @@ def stage_maps(sources, game_root, maps, work):
         skyname, sky_files = mohaa_sky.stage_map_sky(sources, m, source_bsp, game_root)
         if skyname:
             print("   %s: skybox %s (%d new CMPR faces)" % (m, skyname, len(sky_files)))
+        else:
+            print("   %s: no stageable retail skybox; leaving skyname unset" % m)
         dest = os.path.join(out_maps, m + ".bsp")
         size = CONFIG["texture_size"]
         sizes = [size] if size is not None else [TEXTURE_SIZE, TEXTURE_FALLBACK]

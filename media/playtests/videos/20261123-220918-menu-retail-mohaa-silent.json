@@ -1,0 +1,15 @@
+{
+  "file": "20261123-220918-menu-retail-mohaa-silent.mp4",
+  "date": "2026-11-23T22:09:18",
+  "commit": "06dfdba066",
+  "engine_commit": "db73d0d126",
+  "route": "menu-retail-mohaa",
+  "disc": "/tmp/mohaa-m1l1-retail-play/out/mohaa-retail-menu-play.iso",
+  "duration_s": 9.7,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 0.0,
+  "project": "mohaa-gc",
+  "audio": "silent screen capture (forced or PulseAudio unavailable)"
+}
