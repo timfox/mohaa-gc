@@ -1810,6 +1810,17 @@ static int c_set_objective_pos(ms_call *c)
 	return 0;
 }
 
+/* Retail scripts clear the compass marker when the current objective has no
+ * world location (m5l1a.scr uses this after setting its objective list). */
+static int c_clear_objective_pos(ms_call *c)
+{
+	const float no_target[3] = {0, 0, 0};
+	(void)c;
+	if (S.be.compass_target)
+		S.be.compass_target(no_target, 0);
+	return 0;
+}
+
 static int hud_align_x(const char *name)
 {
 	if (name && (!strcmp(name, "center") || !strcmp(name, "middle")))
@@ -2025,8 +2036,9 @@ static int c_iprintlnbold(ms_call *c)
 	int arg;
 	/* Retail MOHAA presents gameplay tips as a left-aligned line beneath the
 	 * compass, rather than a center-screen notification. */
-	/* Retail places this short instruction just below the 48 px compass. */
-	d->x = 8.0f; d->y = 45.0f; d->w = d->h = 0.0f;
+	/* Retail places this instruction beneath the compass. Coordinates are in
+	 * 640x480 HUD space and scaled by the client for the GameCube viewport. */
+	d->x = 15.0f; d->y = 86.0f; d->w = d->h = 0.0f;
 	d->r = d->g = d->b = d->a = 1.0f;
 	d->align_x = DOD_MOHAA_HUD_ALIGN_LEFT;
 	d->align_y = DOD_MOHAA_HUD_ALIGN_TOP;
@@ -2122,6 +2134,7 @@ static void register_commands(ms_vm *vm)
 		{"addobjective", MS_ON_THREAD, c_addobjective},
 		{"setcurrentobjective", MS_ON_THREAD, c_setcurrentobjective},
 		{"set_objective_pos", MS_ON_THREAD | MS_ON_ENTITY, c_set_objective_pos},
+		{"clear_objective_pos", MS_ON_THREAD, c_clear_objective_pos},
 		{"lighton", MS_ON_ENTITY, c_ignored},
 		{"light", MS_ON_ENTITY, c_ignored},
 		/* animation, TIKI models, attachment, vehicles and turrets, weapons and inventory: none of it exists on the
