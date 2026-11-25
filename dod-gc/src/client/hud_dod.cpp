@@ -679,9 +679,17 @@ static float mohaa_clamp01( float value )
 
 static void mohaa_draw_compass_layer( HSPRITE sprite, int frame, int x, int y, int width, int height )
 {
-	wrect_t source = {0, 0, 32, 32};
+	int source_width, source_height;
+	wrect_t source;
 	if( !sprite )
 		return;
+	source_width = SPR_Width( sprite, frame );
+	source_height = SPR_Height( sprite, frame );
+	if( source_width <= 0 || source_height <= 0 )
+		return;
+	source.left = source.top = 0;
+	source.right = source_width;
+	source.bottom = source_height;
 	SPR_Set( sprite, 255, 255, 255 );
 	gEngfuncs.pfnSPR_DrawGeneric( frame, x, y, &source, 0, 0, width, height );
 }
@@ -697,7 +705,9 @@ static void mohaa_wrap_hint( char *text, int max_width )
 		int width = 0;
 		while( *p && *p != '\n' )
 		{
-			const int char_width = gHUD.m_scrinfo.charWidths[(unsigned char)*p];
+			char glyph[2] = { *p, 0 };
+			int char_width = 0;
+			gEngfuncs.pfnDrawConsoleStringLen( glyph, &char_width, NULL );
 			if( width + char_width > max_width )
 				break;
 			if( *p == ' ' )
@@ -730,12 +740,12 @@ int CHudDod::DrawMohaa( float flTime )
 	float view[3] = {0, 0, 0};
 	float yaw = 0.0f;
 	int i;
+	int hint_line_h = line_h;
 	(void)flTime;
 	if( !HUD_IsGame( "mohaa" ) )
 		return 0;
 	if( gHUD.m_iHideHUDDisplay & HIDEHUD_ALL )
 		return 1;
-
 	if( !m_mohaaCompassTried )
 	{
 		m_mohaaCompassTried = 1;
@@ -743,19 +753,16 @@ int CHudDod::DrawMohaa( float flTime )
 		m_hMohaaCompassFace = SPR_Load( "sprites/mohaa/compassface.spr" );
 		m_hMohaaCompassNeedle = SPR_Load( "sprites/mohaa/compassneedle.spr" );
 		m_hMohaaCompassObjective = SPR_Load( "sprites/mohaa/compassobjarrow.spr" );
-		gEngfuncs.Con_Printf( "MOHAA HUD compass: back=%d face=%d needle=%d objective=%d\n",
-			m_hMohaaCompassBack != 0, m_hMohaaCompassFace != 0,
-			m_hMohaaCompassNeedle != 0, m_hMohaaCompassObjective != 0 );
 	}
 	gEngfuncs.GetViewAngles( view );
 	yaw = view[1];
 	while( yaw < 0.0f ) yaw += 360.0f;
 	while( yaw >= 360.0f ) yaw -= 360.0f;
 	{
-		const int x = (int)( 8.0f * screen_w / 320.0f + 0.5f );
-		const int y = (int)( 6.0f * screen_h / 240.0f + 0.5f );
-		const int width = (int)( 48.0f * screen_w / 320.0f + 0.5f );
-		const int height = (int)( 48.0f * screen_h / 240.0f + 0.5f );
+		const int x = -(int)( 24.0f * screen_w / 320.0f + 0.5f );
+		const int y = (int)( 3.0f * screen_h / 240.0f + 0.5f );
+		const int width = (int)( 55.0f * screen_w / 320.0f + 0.5f );
+		const int height = (int)( 55.0f * screen_h / 240.0f + 0.5f );
 		mohaa_draw_compass_layer( m_hMohaaCompassBack, 0, x, y, width, height );
 		mohaa_draw_compass_layer( m_hMohaaCompassFace, mohaa_frame16( yaw ), x, y, width, height );
 		if( m_hMohaaCompassObjective && m_mohaaCompassHasTarget )
@@ -790,7 +797,6 @@ int CHudDod::DrawMohaa( float flTime )
 			snprintf( sprite, sizeof( sprite ), "sprites/mohaa/%s.spr", stem );
 			m_hMohaaHudShader[i] = SPR_Load( sprite );
 			m_mohaaHudShaderTried[i] = 1;
-			gEngfuncs.Con_Printf( "MOHAA HUD shader %s: sprite=%d\n", d->shader, m_hMohaaHudShader[i] != 0 );
 		}
 		if( m_hMohaaHudShader[i] )
 		{
@@ -840,6 +846,11 @@ int CHudDod::DrawMohaa( float flTime )
 		{
 			const int left = (int)( d->x * sx + 0.5f );
 			const int right_margin = 8;
+			/* Ensure the engine's one-shot scale cvar exists before setting it. */
+			gEngfuncs.pfnDrawConsoleStringLen( "M", NULL, &hint_line_h );
+			gEngfuncs.Cvar_SetValue( "gc_mohaa_hint_draw", 1.0f );
+			gEngfuncs.pfnDrawConsoleStringLen( "M", NULL, &hint_line_h );
+			if( hint_line_h < 1 ) hint_line_h = line_h;
 			mohaa_wrap_hint( text, screen_w > left + right_margin ? screen_w - left - right_margin : screen_w );
 		}
 		for( line = text; *line; line++ ) if( *line == '\n' ) line_no++;
@@ -847,8 +858,8 @@ int CHudDod::DrawMohaa( float flTime )
 		y_anchor = (int)( d->y * sy + 0.5f );
 		if( d->align_y == DOD_MOHAA_HUD_ALIGN_MIDDLE ) y_anchor = screen_h / 2 + y_anchor;
 		else if( d->align_y == DOD_MOHAA_HUD_ALIGN_BOTTOM ) y_anchor = screen_h - y_anchor;
-		if( d->align_y == DOD_MOHAA_HUD_ALIGN_MIDDLE ) y_anchor -= ( line_no * line_h ) / 2;
-		else if( d->align_y == DOD_MOHAA_HUD_ALIGN_BOTTOM ) y_anchor -= line_no * line_h;
+		if( d->align_y == DOD_MOHAA_HUD_ALIGN_MIDDLE ) y_anchor -= ( line_no * ( i == DOD_MOHAA_HUD_HINT_INDEX ? hint_line_h : line_h )) / 2;
+		else if( d->align_y == DOD_MOHAA_HUD_ALIGN_BOTTOM ) y_anchor -= line_no * ( i == DOD_MOHAA_HUD_HINT_INDEX ? hint_line_h : line_h );
 		y = y_anchor;
 		line = text;
 		while( line )
@@ -864,11 +875,23 @@ int CHudDod::DrawMohaa( float flTime )
 			if( d->align_x == DOD_MOHAA_HUD_ALIGN_CENTER ) x -= width / 2;
 			else if( d->align_x == DOD_MOHAA_HUD_ALIGN_RIGHT ) x -= width;
 			if( i == DOD_MOHAA_HUD_HINT_INDEX )
-				gHUD.DrawHudString( x + 1, y + 1, screen_w, line, 24, 18, 12 );
-			gHUD.DrawHudString( x, y, screen_w, line, cr, cg, cb );
-			y += line_h;
+			{
+				/* Retail tips use a compact scale of the credits face. */
+				char draw_line[ DOD_MOHAA_HUD_TEXT ];
+				strncpy( draw_line, line, sizeof( draw_line ) - 1 );
+				draw_line[ sizeof( draw_line ) - 1 ] = 0;
+				gEngfuncs.pfnDrawSetTextColor( 24.0f / 255.0f, 18.0f / 255.0f, 12.0f / 255.0f );
+				gEngfuncs.pfnDrawConsoleString( x + 1, y + 1, draw_line );
+				gEngfuncs.pfnDrawSetTextColor( cr / 255.0f, cg / 255.0f, cb / 255.0f );
+				gEngfuncs.pfnDrawConsoleString( x, y, draw_line );
+			}
+			else
+				gHUD.DrawHudString( x, y, screen_w, line, cr, cg, cb );
+			y += i == DOD_MOHAA_HUD_HINT_INDEX ? hint_line_h : line_h;
 			line = next ? next + 1 : NULL;
 		}
+		if( i == DOD_MOHAA_HUD_HINT_INDEX )
+			gEngfuncs.Cvar_SetValue( "gc_mohaa_hint_draw", 0.0f );
 	}
 	return 1;
 }
