@@ -181,6 +181,9 @@ typedef struct DodCine {
 	int done_pending;        /* "animdone" not yet sent */
 	uint32_t glue;           /* follows this entity */
 	int glue_angles;
+	int bind_relative;       /* bind preserves the child's local position and angles */
+	float bind_offset[3];
+	float bind_angle_offset[3];
 	int has_aim;
 	uint32_t aim_id;
 	float aim[3];            /* GoldSrc units, when aim_id is 0 */
@@ -451,6 +454,62 @@ static int h_valid(void *user, uint32_t id)
 	return valid(id);
 }
 
+/* GoldSrc pitch/yaw/roll basis, in the same axes as AngleVectors. */
+static void angle_axes(const float angles[3], float forward[3], float left[3], float up[3])
+{
+	const float d = 3.14159265f / 180.0f;
+	const float sp = sinf(angles[0] * d), cp = cosf(angles[0] * d);
+	const float sy = sinf(angles[1] * d), cy = cosf(angles[1] * d);
+	const float sr = sinf(angles[2] * d), cr = cosf(angles[2] * d);
+	forward[0] = cp * cy; forward[1] = cp * sy; forward[2] = -sp;
+	left[0] = sr * sp * cy - cr * sy; left[1] = sr * sp * sy + cr * cy; left[2] = sr * cp;
+	up[0] = cr * sp * cy + sr * sy; up[1] = cr * sp * sy - sr * cy; up[2] = cr * cp;
+}
+
+static float dot3(const float a[3], const float b[3])
+{
+	return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+}
+
+static void axes_angles(const float forward[3], const float left[3], const float up[3], float angles[3])
+{
+	const float to_degrees = 180.0f / 3.14159265f;
+	float pitch_sine = -forward[2];
+	if (pitch_sine < -1.0f) pitch_sine = -1.0f;
+	if (pitch_sine > 1.0f) pitch_sine = 1.0f;
+	angles[0] = asinf(pitch_sine) * to_degrees;
+	angles[1] = atan2f(forward[1], forward[0]) * to_degrees;
+	angles[2] = atan2f(left[2], up[2]) * to_degrees;
+}
+
+/* Express child world angles in the parent's local basis, matching BindEvent. */
+static void relative_angles(const float parent_angles[3], const float child_angles[3], float local[3])
+{
+	float pf[3], pl[3], pu[3], cf[3], cl[3], cu[3];
+	float lf[3], ll[3], lu[3];
+	angle_axes(parent_angles, pf, pl, pu);
+	angle_axes(child_angles, cf, cl, cu);
+	lf[0] = dot3(pf, cf); lf[1] = dot3(pl, cf); lf[2] = dot3(pu, cf);
+	ll[0] = dot3(pf, cl); ll[1] = dot3(pl, cl); ll[2] = dot3(pu, cl);
+	lu[0] = dot3(pf, cu); lu[1] = dot3(pl, cu); lu[2] = dot3(pu, cu);
+	axes_angles(lf, ll, lu, local);
+}
+
+static void compose_angles(const float parent_angles[3], const float local_angles[3], float world[3])
+{
+	float pf[3], pl[3], pu[3], lf[3], ll[3], lu[3];
+	float wf[3], wl[3], wu[3];
+	int i;
+	angle_axes(parent_angles, pf, pl, pu);
+	angle_axes(local_angles, lf, ll, lu);
+	for (i = 0; i < 3; i++) {
+		wf[i] = lf[0] * pf[i] + lf[1] * pl[i] + lf[2] * pu[i];
+		wl[i] = ll[0] * pf[i] + ll[1] * pl[i] + ll[2] * pu[i];
+		wu[i] = lu[0] * pf[i] + lu[1] * pl[i] + lu[2] * pu[i];
+	}
+	axes_angles(wf, wl, wu, world);
+}
+
 static int h_get_field(void *user, const ms_value *l, const char *name, ms_value *out)
 {
 	float v[3];
@@ -470,21 +529,12 @@ static int h_get_field(void *user, const ms_value *l, const char *name, ms_value
 	}
 	if (!strcmp(name, "forwardvector") || !strcmp(name, "leftvector") || !strcmp(name, "rightvector") ||
 	    !strcmp(name, "upvector")) {
-		/* unit axes from angles (pitch yaw roll, degrees; positive pitch looks down), as AngleVectors */
-		const float d = 3.14159265f / 180.0f;
-		float sp, cp, sy, cy, sr, cr, f[3];
+		float f[3], left[3], up[3];
 		get_vec(l->u.id, DOD_MOHAA_ANGLES, v);
-		sp = sinf(v[0] * d); cp = cosf(v[0] * d);
-		sy = sinf(v[1] * d); cy = cosf(v[1] * d);
-		sr = sinf(v[2] * d); cr = cosf(v[2] * d);
-		if (name[0] == 'f') {
-			f[0] = cp * cy; f[1] = cp * sy; f[2] = -sp;
-		} else if (name[0] == 'u') {
-			f[0] = cr * sp * cy + sr * sy; f[1] = cr * sp * sy - sr * cy; f[2] = cr * cp;
-		} else {   /* right; left is its negation */
-			const float k = name[0] == 'l' ? -1.0f : 1.0f;
-			f[0] = k * (-sr * sp * cy + cr * sy); f[1] = k * (-sr * sp * sy - cr * cy); f[2] = k * (-sr * cp);
-		}
+		angle_axes(v, f, left, up);
+		if (name[0] == 'l') memcpy(f, left, sizeof(f));
+		else if (name[0] == 'r') { f[0] = -left[0]; f[1] = -left[1]; f[2] = -left[2]; }
+		else if (name[0] == 'u') memcpy(f, up, sizeof(f));
 		*out = ms_vec(f[0], f[1], f[2]);
 		return 1;
 	}
@@ -1626,7 +1676,40 @@ static int c_glue(ms_call *c)
 	if (p->type != MS_ENTITY || !valid(p->u.id) || p->u.id == id || !(k = cine(id, 1)))
 		return 0;
 	k->glue = p->u.id;
+	k->bind_relative = 0;
 	k->glue_angles = ms_argc(c) > 1 ? ms_arg_int(c, 1) != 0 : 1;
+	if (is_player(id))
+		S.player = id;
+	return 0;
+}
+
+/* Retail bind stores this entity's transform relative to its parent. Unlike
+ * glue, it follows parent rotation without snapping the child to its origin. */
+static int c_bind(ms_call *c)
+{
+	const uint32_t id = target_id(c);
+	const ms_value *p = ms_arg(c, 0);
+	DodCine *k;
+	float child[3], parent[3], angles[3], forward[3], left[3], up[3], delta[3];
+	int i;
+	if (p->type != MS_ENTITY || !valid(id) || !valid(p->u.id) || p->u.id == id)
+		return ms_call_error(c, "bind needs a different parent entity");
+	if (!(k = cine(id, 1)))
+		return ms_call_error(c, "too many bound entities");
+	get_vec(id, DOD_MOHAA_ORIGIN, child);
+	get_vec(p->u.id, DOD_MOHAA_ORIGIN, parent);
+	get_vec(p->u.id, DOD_MOHAA_ANGLES, angles);
+	angle_axes(angles, forward, left, up);
+	for (i = 0; i < 3; i++)
+		delta[i] = child[i] - parent[i];
+	k->bind_offset[0] = dot3(delta, forward);
+	k->bind_offset[1] = dot3(delta, left);
+	k->bind_offset[2] = dot3(delta, up);
+	get_vec(id, DOD_MOHAA_ANGLES, child);
+	relative_angles(angles, child, k->bind_angle_offset);
+	k->glue = p->u.id;
+	k->glue_angles = 1;
+	k->bind_relative = 1;
 	if (is_player(id))
 		S.player = id;
 	return 0;
@@ -1635,8 +1718,10 @@ static int c_glue(ms_call *c)
 static int c_unglue(ms_call *c)
 {
 	DodCine *k = cine(target_id(c), 0);
-	if (k)
+	if (k) {
 		k->glue = 0;
+		k->bind_relative = 0;
+	}
 	return 0;
 }
 
@@ -1779,7 +1864,29 @@ static int c_gettag(ms_call *c)
 	return 0;
 }
 
-/* Once a frame, after the scripts ran: animations that ended, glued entities, the held player and their view. */
+/* Compute the child pose for either a snap-glued or locally bound entity. */
+static void cine_parent_pose(const DodCine *k, float origin[3], float angles[3])
+{
+	float parent_angles[3];
+	int i;
+	get_vec(k->glue, DOD_MOHAA_ORIGIN, origin);
+	if (!k->bind_relative && !k->glue_angles)
+		return;
+	get_vec(k->glue, DOD_MOHAA_ANGLES, parent_angles);
+	if (k->bind_relative) {
+		float forward[3], left[3], up[3];
+		angle_axes(parent_angles, forward, left, up);
+		for (i = 0; i < 3; i++) {
+			origin[i] += k->bind_offset[0] * forward[i] + k->bind_offset[1] * left[i] +
+			             k->bind_offset[2] * up[i];
+		}
+		compose_angles(parent_angles, k->bind_angle_offset, angles);
+	} else {
+		memcpy(angles, parent_angles, sizeof(parent_angles));
+	}
+}
+
+/* Once a frame, after the scripts ran: animations that ended, glued/bound entities, the held player and their view. */
 static void cine_think(void)
 {
 	int i;
@@ -1805,13 +1912,15 @@ static void cine_think(void)
 			continue;
 		if (!valid(k->glue)) {
 			k->glue = 0;
+			k->bind_relative = 0;
 			continue;
 		}
-		get_vec(k->glue, DOD_MOHAA_ORIGIN, v);
-		S.be.set_vec(k->id, DOD_MOHAA_ORIGIN, v);
-		if (k->glue_angles) {
-			get_vec(k->glue, DOD_MOHAA_ANGLES, v);
-			S.be.set_vec(k->id, DOD_MOHAA_ANGLES, v);
+		{
+			float angles[3];
+			cine_parent_pose(k, v, angles);
+			S.be.set_vec(k->id, DOD_MOHAA_ORIGIN, v);
+			if (k->glue_angles)
+				S.be.set_vec(k->id, DOD_MOHAA_ANGLES, angles);
 		}
 	}
 	if (!player || !valid(player)) {
@@ -1829,7 +1938,8 @@ static void cine_think(void)
 			if (S.be.place_player)
 				S.be.place_player(player, v, 1);
 		} else if (pk && pk->glue && valid(pk->glue)) {
-			get_vec(pk->glue, DOD_MOHAA_ORIGIN, v);
+			float a[3];
+			cine_parent_pose(pk, v, a);
 			if (S.be.place_player)
 				S.be.place_player(player, v, 0);
 		}
@@ -2279,7 +2389,7 @@ static void register_commands(ms_vm *vm)
 		   GameCube side yet. Accepted so a mission keeps going; README "Not yet" lists what they would need. */
 		{"american", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"attach", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
-		{"bind", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"bind", MS_ON_ENTITY | MS_ON_THREAD, c_bind},
 		{"forcelegsstate", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"gren_awareness", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"holster", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
@@ -2288,7 +2398,7 @@ static void register_commands(ms_vm *vm)
 		{"scale", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"setplayerusable", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"threatbias", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
-		{"unbind", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"unbind", MS_ON_ENTITY | MS_ON_THREAD, c_unglue},
 		{"turnspeed", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"vehiclespeed", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"burstfiresettings", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
