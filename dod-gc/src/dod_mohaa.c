@@ -704,6 +704,13 @@ static int c_heal(ms_call *c)
 	return 0;
 }
 
+static int c_ammo(ms_call *c)
+{
+	if (S.be.set_ammo && ms_argc(c) >= 2)
+		S.be.set_ammo(target_id(c), ms_arg_string(c, 0), ms_arg_int(c, 1));
+	return 0;
+}
+
 static int c_time(ms_call *c)
 {
 	DodMover *m = mover(target_id(c), 1);
@@ -2422,7 +2429,7 @@ static void register_commands(ms_vm *vm)
 		{"firedelay", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"maxyawoffset", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"pitchcaps", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
-		{"ammo", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"ammo", MS_ON_ENTITY | MS_ON_THREAD, c_ammo},
 		{"heal", MS_ON_ENTITY | MS_ON_THREAD, c_heal},
 		{"item", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"takeall", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},

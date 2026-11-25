@@ -281,6 +281,46 @@ static void M_SetHealth( uint32_t id, float health )
 		e->v.health = health;
 }
 
+static void M_SetAmmo( uint32_t id, const char *category, int amount )
+{
+	static const struct { const char *category; const char *pool; } pools[] = {
+		{ "rifle", "mohaa_rifle" }, { "smg", "mohaa_smg" },
+		{ "pistol", "mohaa_pistol" }, { "mg", "mohaa_mg" },
+		{ "heavy", "mohaa_heavy" }, { "agrenade", "Hand Grenade" },
+		{ "grenade", "Hand Grenade" }
+	};
+	edict_t *e = EdictFor( id );
+	CBasePlayer *player = e ? (CBasePlayer *)CBaseEntity::Instance( e ) : NULL;
+	const char *pool = NULL;
+	int ammo_index, max_ammo = 254;
+	size_t i;
+	if( !player || !player->IsPlayer() || !category )
+		return;
+	for( i = 0; i < sizeof( pools ) / sizeof( pools[0] ); i++ )
+		if( !strcmp( category, pools[i].category ) ) {
+			pool = pools[i].pool;
+			break;
+		}
+	if( !pool )
+		return;
+	ammo_index = player->GetAmmoIndex( pool );
+	if( ammo_index < 0 || ammo_index >= MAX_AMMO_SLOTS )
+		return;
+	/* Keep the retail category's exact pool separate from similarly-caliber DoD weapons. */
+	for( int slot = 0; slot < MAX_ITEM_TYPES; slot++ )
+		for( CBasePlayerItem *item = player->m_rgpPlayerItems[slot]; item; item = item->m_pNext )
+			if( item->pszAmmo1() && !strcmp( item->pszAmmo1(), pool ) &&
+			    item->m_iId >= 0 && item->m_iId < MAX_WEAPONS ) {
+				const int cap = CBasePlayerItem::ItemInfoArray[item->m_iId].iMaxAmmo1;
+				if( cap > 0 && cap < max_ammo )
+					max_ammo = cap;
+			}
+	if( amount < 0 ) amount = 0;
+	if( amount > max_ammo ) amount = max_ammo;
+	player->m_rgAmmo[ammo_index] = amount;
+	player->m_rgAmmoLast[ammo_index] = -1; /* force AmmoX/HUD refresh on next player update */
+}
+
 static const char *M_GetStr( uint32_t id, int what )
 {
 	edict_t *e = EdictFor( id );
@@ -979,6 +1019,7 @@ void DodGC_MohaaLevelInit( void )
 	b.set_vec = M_SetVec;
 	b.get_health = M_GetHealth;
 	b.set_health = M_SetHealth;
+	b.set_ammo = M_SetAmmo;
 	b.get_str = M_GetStr;
 	b.set_targetname = M_SetTargetname;
 	b.set_flag = M_SetFlag;
