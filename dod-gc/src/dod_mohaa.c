@@ -631,11 +631,11 @@ static int c_heal(ms_call *c)
 	ms_value max_value;
 	if (!valid(id) || is_node(id))
 		return 0;
-	if (is_player(id))
-		max_health = 100.0f;
-	else if (ms_get_entity_var(S.vm, id, "maxhealth", &max_value)) {
+	if (ms_get_entity_var(S.vm, id, "maxhealth", &max_value)) {
 		max_health = ms_to_float(&max_value);
 		ms_release(S.vm, max_value);
+	} else if (is_player(id)) {
+		max_health = 100.0f;
 	} else {
 		return ms_call_error(c, "heal target has no maxhealth value");
 	}
