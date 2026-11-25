@@ -24,6 +24,11 @@ int __MsgFunc_DodBoard( const char *pszName, int iSize, void *pbuf )
 	return gHUD.m_Dod.MsgFunc_DodBoard( pszName, iSize, pbuf );
 }
 
+int __MsgFunc_MohaaHint( const char *pszName, int iSize, void *pbuf )
+{
+	return gHUD.m_Dod.MsgFunc_MohaaHint( pszName, iSize, pbuf );
+}
+
 void CHudDod::InitState( void )
 {
 	int i;
@@ -52,6 +57,7 @@ void CHudDod::InitState( void )
 	HOOK_MESSAGE( DodBoard );
 	HOOK_MESSAGE( DodVoice );
 	HOOK_MESSAGE( DodKill );
+	HOOK_MESSAGE( MohaaHint );
 	m_nKills = 0;
 	m_fChatting = 0;
 	m_szVoice[0] = 0;
@@ -61,6 +67,8 @@ void CHudDod::InitState( void )
 	m_szBoard[0] = 0;
 	m_flBoardTime = 0.0f;
 	m_fBoardShown = 0;
+	m_szMohaaHint[0] = 0;
+	m_flMohaaHintTime = 0.0f;
 }
 
 int CHudDod::Init( void )
@@ -125,6 +133,34 @@ int CHudDod::MsgFunc_DodBoard( const char *pszName, int iSize, void *pbuf )
 	m_flBoardTime = gEngfuncs.GetClientTime();
 	m_fBoardShown = show && m_szBoard[0];
 	return 1;
+}
+
+/* MOHAA iprintlnbold: the retail tip sits immediately below the compass and expires after a few seconds. */
+int CHudDod::MsgFunc_MohaaHint( const char *pszName, int iSize, void *pbuf )
+{
+	const char *text;
+	BEGIN_READ( pbuf, iSize );
+	text = READ_STRING();
+	strncpy( m_szMohaaHint, text ? text : "", sizeof( m_szMohaaHint ) - 1 );
+	m_szMohaaHint[sizeof( m_szMohaaHint ) - 1] = 0;
+	m_flMohaaHintTime = gEngfuncs.GetClientTime();
+	return 1;
+}
+
+static void DrawMohaaHint( const char *text )
+{
+	const int w = ScreenWidth > 0 ? ScreenWidth : 640;
+	const int h = ScreenHeight > 0 ? ScreenHeight : 480;
+	const int x = (int)( 8.0f * w / 640.0f + 0.5f );
+	const int y = (int)( 90.0f * h / 480.0f + 0.5f );
+	gHUD.DrawHudString( x, y, w - x, text, 255, 255, 255 );
+}
+
+void CHudDod::DrawMohaa( float flTime )
+{
+	(void)flTime;
+	if( m_szMohaaHint[0] && gEngfuncs.GetClientTime() - m_flMohaaHintTime <= 6.0f )
+		DrawMohaaHint( m_szMohaaHint );
 }
 
 /* The kill feed: killer, victim, weapon; the last five are kept and each shows for 6 seconds. */
@@ -397,6 +433,7 @@ void CHudDod::DrawBoard( void )
 int CHudDod::DrawRetail( float flTime )
 {
 	gEngfuncs.Cvar_SetValue( "gc_hud_retail", 0.0f );
+	DrawMohaa( flTime );
 	DodRetailInput in;
 	DodRetailDraw draws[DOD_RETAIL_MAX_DRAWS];
 	DodRetailText spare;

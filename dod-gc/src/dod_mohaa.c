@@ -363,7 +363,7 @@ static void h_print(void *user, int channel, const char *text)
 	(void)user;
 	switch (channel) {
 	case MS_PRINT_HUD:
-	case MS_PRINT_HUD_BOLD: S.be.print(DOD_MOHAA_PRINT_HUD, text); break;
+	case MS_PRINT_HUD_BOLD: S.be.print(DOD_MOHAA_PRINT_HUD_BOLD, text); break;
 	case MS_PRINT_ERROR:
 		S.be.print(DOD_MOHAA_PRINT_ERROR, text);
 		if (S.vm && strstr(text, "out of memory")) {

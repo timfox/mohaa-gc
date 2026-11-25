@@ -20,6 +20,8 @@ public:
 	int Init( void );
 	int VidInit( void );
 	int Draw( float flTime );
+	/* MOHAA's lean retail HUD is drawn by the engine; this overlays its script tips. */
+	void DrawMohaa( float flTime );
 	/* The retail HUD, for the lean tier's Redraw: returns 1 when it drew and
 	 * the caller should skip its own HUD. */
 	int DrawRetail( float flTime );
@@ -27,6 +29,7 @@ public:
 	int MsgFunc_DodBoard( const char *pszName, int iSize, void *pbuf );
 	int MsgFunc_DodVoice( const char *pszName, int iSize, void *pbuf );
 	int MsgFunc_DodKill( const char *pszName, int iSize, void *pbuf );
+	int MsgFunc_MohaaHint( const char *pszName, int iSize, void *pbuf );
 	/* A modal panel is up (team/class menu, voice menu, scoreboard, chat prompt): the kill feed and chat lines step aside
 	 * so nothing draws over anything else (see dod_hud_geom.h). */
 	int Modal( void );
@@ -46,6 +49,8 @@ private:
 	float m_flBoardTime;	/* client time of the last DodBoard message; the board hides 3 s after it */
 	int m_fBoardShown;
 	int m_fChatting;	/* the chat prompt (on-screen keyboard) is up: set from HUD_ChatInputPosition */
+	char m_szMohaaHint[192];
+	float m_flMohaaHintTime;
 	DodHudState m_state;
 	float m_flLastUpdate;
 	float m_flTimerBase;	/* client time the clock was last set */

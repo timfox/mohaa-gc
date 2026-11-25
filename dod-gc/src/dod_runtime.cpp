@@ -606,7 +606,7 @@ CHalfLifeDoD::CHalfLifeDoD()
 	}
 	DodGrunts_Init();
 	DodFilm_Init();	/* after the country and paratroopers: they pick the actors' bodies */
-	DodGC_MohaaLevelInit();	/* MOHAA maps: run maps/<map>.scr (nothing happens on DoD maps) */
+	/* MOHAA level scripts start from ServerActivate after each map's entities have spawned. */
 	Dod_ClearObjectives();
 	round_seconds = CVAR_GET_FLOAT( "mp_timelimit" ) * 60.0f;
 	if( round_seconds <= 0.0f )

@@ -19,6 +19,7 @@
  * scripts do not fit is refused cleanly at load instead of starving the engine. */
 static cvar_t mohaa_script_kb = { "mohaa_script_kb", "384", FCVAR_SERVER };
 static int g_mohaa_cvar_registered;
+static int g_m1l2a_door_hint_shown;
 
 /* id = edict index (12 bits) | serial number (19 bits): a freed and reused edict does
  * not answer for an old script reference. Bit 31 stays clear: DOD_MOHAA_NODE_ID marks a path node. */
@@ -57,6 +58,20 @@ static void M_Free( char *text )
 
 static void M_Print( int channel, const char *text )
 {
+	/* iprintlnbold is MOHAA's short HUD tip under the compass, not GoldSrc chat. */
+	if( channel == DOD_MOHAA_PRINT_HUD_BOLD )
+	{
+		static int gmsgMohaaHint;
+		if( !gmsgMohaaHint )
+			gmsgMohaaHint = REG_USER_MSG( "MohaaHint", -1 );
+		if( gmsgMohaaHint )
+		{
+			MESSAGE_BEGIN( MSG_ALL, gmsgMohaaHint );
+			WRITE_STRING( text ? text : "" );
+			MESSAGE_END();
+		}
+		return;
+	}
 	switch( channel )
 	{
 	case DOD_MOHAA_PRINT_HUD:
@@ -631,6 +646,7 @@ static size_t M_PoolCarve( size_t want, DodMohaaBackend *b )
 
 void DodGC_MohaaLevelInit( void )
 {
+	g_m1l2a_door_hint_shown = 0;
 	if( !g_mohaa_cvar_registered )
 	{
 		CVAR_REGISTER( &mohaa_script_kb );
@@ -719,6 +735,15 @@ void DodGC_MohaaEntityEvent( edict_t *e, const char *event )
 		ActorDied( e );
 	if( id )
 		Dod_MohaaNotify( id, event );
+	/* The retail m1l2a script defines this tutorial label but does not bind it
+	 * to the locked-door trigger entities in the retail BSP. Show it on the
+	 * first such interaction, matching the retail tutorial prompt. */
+	if( id && !g_m1l2a_door_hint_shown && !strcmp( event, "trigger" ) &&
+		!strcmp( STRING( gpGlobals->mapname ), "m1l2a" ) &&
+		!strcmp( STRING( e->v.targetname ), "door_locked" ) ) {
+		g_m1l2a_door_hint_shown = 1;
+		Dod_MohaaRunThread( "hint_door", id );
+	}
 	/* mohaa-gc's converter puts a MOHAA trigger's setthread label in netname */
 	if( id && !strcmp( event, "trigger" ) && e->v.netname && !strncmp( STRING( e->v.classname ), "trigger_", 8 ) )
 		Dod_MohaaRunThread( STRING( e->v.netname ), id );

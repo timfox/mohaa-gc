@@ -163,7 +163,8 @@ def integrate_gc_hud(client: Path) -> None:
 		'\t\t\tif( menubuf[0] >= \'1\' && menubuf[0] <= \'9\' && menubuf[1] == \'.\'\n'
 		'\t\t\t\t&& menubuf[0] - \'0\' == m_iGCSelectedSlot )\n'
 		'\t\t\t{ draw_r = 96; draw_g = 255; draw_b = 128; }\n'
-		'\t\t\tif( menu_ralign )\n')
+			'\t\t\tif( menu_ralign )\n',
+			'\t\t\tint draw_r = menu_r, draw_g = menu_g, draw_b = menu_b;\n')
 	menu_text = menu_cpp.read_text()
 	menu_text = menu_text.replace(
 		'\t\t\t\tmenu_x = gHUD.DrawHudStringReverse( menu_x, y, 0, menubuf, menu_r, menu_g, menu_b );\n'
@@ -173,8 +174,9 @@ def integrate_gc_hud(client: Path) -> None:
 	# The team/class menu used to sit on the world: draw it on a retail-palette panel (ViewportBG 55 43 29, ClassMenuLight
 	# 175 127 1 border) laid out by dod_hud_geom.h: inside the 5% safe area, under the objective row, above the status
 	# panel, as wide as its widest line. Text is clipped to the screen (it was clipped at x 320).
-	menu_text = menu_text.replace('static int menu_r, menu_g, menu_b, menu_x, menu_ralign;\n',
-		'static int menu_r, menu_g, menu_b, menu_x, menu_ralign;\nstatic int g_iGCMenuLeft = 20, g_iGCMenuBottom = 1 << 20;\n', 1)
+	if 'static int g_iGCMenuLeft = 20, g_iGCMenuBottom = 1 << 20;\n' not in menu_text:
+		menu_text = menu_text.replace('static int menu_r, menu_g, menu_b, menu_x, menu_ralign;\n',
+			'static int menu_r, menu_g, menu_b, menu_x, menu_ralign;\nstatic int g_iGCMenuLeft = 20, g_iGCMenuBottom = 1 << 20;\n', 1)
 	menu_text = menu_text.replace(
 		'\tmenu_r\t\t= 255;\n\tmenu_g\t\t= 255;\n\tmenu_b\t\t= 255;\n',
 		'\t{\n'
@@ -219,6 +221,13 @@ def integrate_gc_hud(client: Path) -> None:
 		'\t\t\tif( menu_ralign )\n\t\t\t\t// IMPORTANT',
 		'\t\t\tif( y + nFontHeight > g_iGCMenuBottom )\n\t\t\t\t;\t// a line that no longer fits the panel is not drawn\n\t\t\telse if( menu_ralign )\n\t\t\t\t// IMPORTANT', 1)
 	menu_cpp.write_text(menu_text)
+
+	# The retail New Game route can render before HUD_Init registers hud_draw.
+	# Keep the GameCube lean HUD path running; only gate the normal HUD list
+	# until its cvar exists.
+	replace_once(client / "hud_redraw.cpp",
+		'\tif( m_pCvarDraw->value )\n',
+		'\tif( m_pCvarDraw && m_pCvarDraw->value )\n')
 
 	# Chat lines and the chat prompt inside the safe area (dod_hud_geom.h): lines bottom-anchored above the status panel,
 	# hidden while a modal panel or the prompt is up, the prompt above the on-screen keyboard.
@@ -358,14 +367,41 @@ def integrate_pm_layout_hook(dlls: Path) -> None:
 
 
 def integrate_precache_bodies_hook(dlls: Path) -> None:
-	"""ServerActivate precaches the map's team bodies (DodGC_PrecacheTeamBodies in dod_runtime.cpp), after the entities spawn."""
+	"""Run per-map MOHAA initialization and precache bodies after the map entities spawn."""
 	client = dlls / "client.cpp"
-	if "DodGC_PrecacheTeamBodies" in client.read_text():
-		return
-	replace_once(client, "void ServerActivate( edict_t *pEdictList, int edictCount, int clientMax )\n{\n",
-		"void DodGC_PrecacheTeamBodies( void );\nvoid ServerActivate( edict_t *pEdictList, int edictCount, int clientMax )\n{\n")
-	replace_once(client, "\tg_serveractive = 1;\n",
-		"\tg_serveractive = 1;\n#ifdef __GAMECUBE__\n\tDodGC_PrecacheTeamBodies();\n#endif\n")
+	mohaa_ents = dlls / "dod_mohaa_ents.cpp"
+	has_mohaa_model_precache = mohaa_ents.is_file() and "DodGC_MohaaPrecacheModels" in mohaa_ents.read_text()
+	text = client.read_text()
+	# The shared HLSDK may carry a ServerActivate hook from a newer MOHAA branch.
+	# Remove that optional call when syncing an older game source without the implementation.
+	if not has_mohaa_model_precache and "DodGC_MohaaPrecacheModels" in text:
+		text = text.replace("void DodGC_MohaaPrecacheModels( void );\n", "")
+		text = text.replace("\tDodGC_MohaaPrecacheModels();\n", "")
+		client.write_text(text)
+	declarations = ""
+	if "void DodGC_PrecacheTeamBodies( void );" not in text:
+		declarations += "void DodGC_PrecacheTeamBodies( void );\n"
+	if "void DodGC_MohaaLevelInit( void );" not in text:
+		declarations += "void DodGC_MohaaLevelInit( void );\n"
+	if declarations:
+		replace_once(client, "void ServerActivate( edict_t *pEdictList, int edictCount, int clientMax )\n{\n",
+			declarations + "void ServerActivate( edict_t *pEdictList, int edictCount, int clientMax )\n{\n")
+	text = client.read_text()
+	if "DodGC_MohaaLevelInit();" not in text:
+		if "DodGC_PrecacheTeamBodies();" in text:
+			replace_once(client, "\tDodGC_PrecacheTeamBodies();\n",
+				"\tDodGC_PrecacheTeamBodies();\n\tDodGC_MohaaLevelInit();\n")
+		else:
+			replace_once(client, "\tg_serveractive = 1;\n",
+				"\tg_serveractive = 1;\n#ifdef __GAMECUBE__\n\tDodGC_PrecacheTeamBodies();\n\tDodGC_MohaaLevelInit();\n#endif\n")
+	text = client.read_text()
+	if "DodGC_PrecacheTeamBodies();" not in text:
+		if "DodGC_MohaaLevelInit();" in text:
+			replace_once(client, "\tDodGC_MohaaLevelInit();\n",
+				"\tDodGC_PrecacheTeamBodies();\n\tDodGC_MohaaLevelInit();\n")
+		else:
+			replace_once(client, "\tg_serveractive = 1;\n",
+				"\tg_serveractive = 1;\n#ifdef __GAMECUBE__\n\tDodGC_PrecacheTeamBodies();\n#endif\n")
 
 
 def integrate_weaponbox_null_check(dlls: Path) -> None:
