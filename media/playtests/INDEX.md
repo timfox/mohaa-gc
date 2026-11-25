@@ -4,6 +4,7 @@ Screenshots: `screenshots/` · Videos: `videos/` · Notes: `notes/`
 
 | Date | File | Route | Duration | Size | Commit |
 |------|------|-------|----------|------|--------|
+| 2026-11-24T19:31:54 | `20261124-193154-m1l1-truck-menu-newgame-hudfix-74b8088bf8.mp4` | m1l1-truck-menu-newgame-hudfix | 22.8s | 0.4 MB | `74b8088bf8` |
 | 2026-11-24T04:44:28 | `videos/20261124-044428-m1l2a-door-hint-trigger-touch-after-engine-fix-silent.mkv` | m1l2a-door-hint-trigger-touch-after-engine-fix (map-load failure) | 39.9s | 0.1 MB | `bd6a4241d7` |
 | 2026-11-24T04:40:01 | `videos/20261124-044001-m1l2a-door-hint-engine-exception-silent.mp4` | m1l2a-door-hint-engine-exception (layout mismatch) | 1.9s | 0.0 MB | `bd6a4241d7` |
 | 2026-11-24T04:27:23 | `videos/20261124-042723-m1l2a-door-hint-trigger-crossing-silent.mp4` | m1l2a-door-hint-trigger-crossing | 39.9s | 0.2 MB | `bd6a4241d7` |
