@@ -331,6 +331,17 @@ static int M_EqualNoCase( const char *a, const char *b )
 	return *a == *b;
 }
 
+static int M_EqualNoCaseN( const char *a, const char *b, size_t n )
+{
+	if( !a || !b ) return 0;
+	while( n-- ) {
+		if( tolower( (unsigned char)*a ) != tolower( (unsigned char)*b ) ) return 0;
+		if( !*a || !*b ) return 0;
+		a++; b++;
+	}
+	return 1;
+}
+
 static const char *M_WeaponClassForTiki( const char *tiki )
 {
 	static const struct { const char *tiki; const char *classname; } items[] = {
@@ -360,7 +371,7 @@ static const char *M_WeaponClassForTiki( const char *tiki )
 		return NULL;
 	for( i = 0; i < sizeof( items ) / sizeof( items[0] ); i++ ) {
 		const size_t item_len = strlen( items[i].tiki );
-		if( len == item_len + 4 && M_EqualNoCase( base, items[i].tiki ) && M_EqualNoCase( base + item_len, ".tik" ) )
+		if( len == item_len + 4 && M_EqualNoCaseN( base, items[i].tiki, item_len ) && M_EqualNoCase( base + item_len, ".tik" ) )
 			return items[i].classname;
 	}
 	return NULL;
