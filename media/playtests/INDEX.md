@@ -4,6 +4,7 @@ Screenshots: `screenshots/` · Videos: `videos/` · Notes: `notes/`
 
 | Date | File | Route | Duration | Size | Commit |
 |------|------|-------|----------|------|--------|
+| 2026-11-24T21:13:18 | `notes/20261124-211326-m1l1-intro-cvar-dumpframes.md` | m1l1-intro-cvar-dumpframes (runtime log only) | 45s | 0.1 MB | `8271b49945` |
 | 2026-11-24T20:35:10 | `videos/20261124-203510-m1l1-packed-mips-silent.mp4` | m1l1-packed-mips | 22.1s | 0.1 MB | `8271b49945` |
 | 2026-11-24T20:29:19 | `videos/20261124-202919-m1l1-hud-arena-silent.mp4` | m1l1-hud-arena | 21.5s | 0.1 MB | `8271b49945` |
 | 2026-11-24T20:24:42 | `videos/20261124-202442-m1l1-hudfallback-xvfb2-silent.mp4` | m1l1-hudfallback-xvfb2 | 21.6s | 0.1 MB | `8271b49945` |
