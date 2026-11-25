@@ -61,6 +61,9 @@ typedef struct DodMohaaBackend {
 	void (*set_health)(uint32_t id, float health);
 	/* Set a retail MOHAA player ammo pool (rifle, smg, pistol, mg, heavy, grenade). */
 	void (*set_ammo)(uint32_t id, const char *category, int amount);
+	void (*give_item)(uint32_t id, const char *tiki);
+	void (*take_all)(uint32_t id);
+	void (*use_weapon_class)(uint32_t id, const char *weapon_class);
 	const char *(*get_str)(uint32_t id, int what);
 	void (*set_targetname)(uint32_t id, const char *name);
 	void (*set_flag)(uint32_t id, int flag, int on);

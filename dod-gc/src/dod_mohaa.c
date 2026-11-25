@@ -711,6 +711,27 @@ static int c_ammo(ms_call *c)
 	return 0;
 }
 
+static int c_item(ms_call *c)
+{
+	if (S.be.give_item && ms_argc(c) >= 1)
+		S.be.give_item(target_id(c), ms_arg_string(c, 0));
+	return 0;
+}
+
+static int c_takeall(ms_call *c)
+{
+	if (S.be.take_all)
+		S.be.take_all(target_id(c));
+	return 0;
+}
+
+static int c_useweaponclass(ms_call *c)
+{
+	if (S.be.use_weapon_class && ms_argc(c) >= 1)
+		S.be.use_weapon_class(target_id(c), ms_arg_string(c, 0));
+	return 0;
+}
+
 static int c_time(ms_call *c)
 {
 	DodMover *m = mover(target_id(c), 1);
@@ -2431,9 +2452,9 @@ static void register_commands(ms_vm *vm)
 		{"pitchcaps", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"ammo", MS_ON_ENTITY | MS_ON_THREAD, c_ammo},
 		{"heal", MS_ON_ENTITY | MS_ON_THREAD, c_heal},
-		{"item", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
-		{"takeall", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
-		{"useweaponclass", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"item", MS_ON_ENTITY | MS_ON_THREAD, c_item},
+		{"takeall", MS_ON_ENTITY | MS_ON_THREAD, c_takeall},
+		{"useweaponclass", MS_ON_ENTITY | MS_ON_THREAD, c_useweaponclass},
 		{"dontdropweapons", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"unholster", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"detach", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},

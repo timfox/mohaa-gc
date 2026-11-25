@@ -321,6 +321,97 @@ static void M_SetAmmo( uint32_t id, const char *category, int amount )
 	player->m_rgAmmoLast[ammo_index] = -1; /* force AmmoX/HUD refresh on next player update */
 }
 
+static int M_EqualNoCase( const char *a, const char *b )
+{
+	if( !a || !b ) return 0;
+	while( *a && *b ) {
+		if( tolower( (unsigned char)*a ) != tolower( (unsigned char)*b ) ) return 0;
+		a++; b++;
+	}
+	return *a == *b;
+}
+
+static const char *M_WeaponClassForTiki( const char *tiki )
+{
+	static const struct { const char *tiki; const char *classname; } items[] = {
+		{ "colt45", "weapon_dod_colt" }, { "silencedpistol", "weapon_dod_colt" },
+		{ "m1_garand", "weapon_dod_garand" }, { "m1garand", "weapon_dod_garand" },
+		{ "m1carbine", "weapon_dod_garand" }, { "springfield", "weapon_dod_spring" },
+		{ "thompsonsmg", "weapon_dod_thompson" }, { "thompson", "weapon_dod_thompson" },
+		{ "mp40", "weapon_dod_mp40" }, { "bar", "weapon_dod_bar" },
+		{ "browning", "weapon_dod_30cal" }, { "mg42", "weapon_dod_mg42" },
+		{ "bazooka", "weapon_dod_bazooka" }, { "panzerschreck", "weapon_dod_pschreck" },
+		{ "mp44", "weapon_dod_stg44" }, { "stg44", "weapon_dod_stg44" },
+		{ "kar98", "weapon_dod_k98" }, { "kar98k", "weapon_dod_k98" },
+		{ "kar98sniper", "weapon_dod_k98s" }, { "luger", "weapon_dod_luger" },
+		{ "shotgun", "weapon_shotgun" },
+		{ "m2frag_grenade_sp_start", "weapon_handgrenade" },
+		{ "m2frag_grenade_sp", "weapon_handgrenade" },
+		{ "steilhandgranate_start", "weapon_handgrenade" },
+		{ "steilhandgranate", "weapon_handgrenade" }
+	};
+	const char *name = tiki, *base;
+	size_t i, len;
+	if( !name || !*name ) return NULL;
+	base = strrchr( name, '/' );
+	base = base ? base + 1 : name;
+	len = strlen( base );
+	if( len > 4 && !M_EqualNoCase( base + len - 4, ".tik" ) )
+		return NULL;
+	for( i = 0; i < sizeof( items ) / sizeof( items[0] ); i++ ) {
+		const size_t item_len = strlen( items[i].tiki );
+		if( len == item_len + 4 && M_EqualNoCase( base, items[i].tiki ) && M_EqualNoCase( base + item_len, ".tik" ) )
+			return items[i].classname;
+	}
+	return NULL;
+}
+
+static void M_GiveItem( uint32_t id, const char *tiki )
+{
+	edict_t *e = EdictFor( id );
+	CBasePlayer *player = e ? (CBasePlayer *)CBaseEntity::Instance( e ) : NULL;
+	const char *classname = M_WeaponClassForTiki( tiki );
+	if( !player || !player->IsPlayer() ) return;
+	if( classname )
+		player->GiveNamedItem( classname );
+	else
+		ALERT( at_console, "MOHAA item: unsupported retail weapon TIKI '%s'\n", tiki ? tiki : "" );
+}
+
+static void M_TakeAll( uint32_t id )
+{
+	edict_t *e = EdictFor( id );
+	CBasePlayer *player = e ? (CBasePlayer *)CBaseEntity::Instance( e ) : NULL;
+	if( player && player->IsPlayer() )
+		player->RemoveAllItems( FALSE );
+}
+
+static const char *M_WeaponPoolForClass( const char *weapon_class )
+{
+	if( M_EqualNoCase( weapon_class, "pistol" ) ) return "mohaa_pistol";
+	if( M_EqualNoCase( weapon_class, "rifle" ) ) return "mohaa_rifle";
+	if( M_EqualNoCase( weapon_class, "smg" ) ) return "mohaa_smg";
+	if( M_EqualNoCase( weapon_class, "mg" ) ) return "mohaa_mg";
+	if( M_EqualNoCase( weapon_class, "heavy" ) ) return "mohaa_heavy";
+	if( M_EqualNoCase( weapon_class, "grenade" ) || M_EqualNoCase( weapon_class, "agrenade" ) ) return "Hand Grenade";
+	if( M_EqualNoCase( weapon_class, "shotgun" ) ) return "buckshot";
+	return NULL;
+}
+
+static void M_UseWeaponClass( uint32_t id, const char *weapon_class )
+{
+	edict_t *e = EdictFor( id );
+	CBasePlayer *player = e ? (CBasePlayer *)CBaseEntity::Instance( e ) : NULL;
+	const char *pool = M_WeaponPoolForClass( weapon_class );
+	if( !player || !player->IsPlayer() || !pool ) return;
+	for( int slot = 0; slot < MAX_ITEM_TYPES; slot++ )
+		for( CBasePlayerItem *item = player->m_rgpPlayerItems[slot]; item; item = item->m_pNext )
+			if( item->pszAmmo1() && M_EqualNoCase( item->pszAmmo1(), pool ) ) {
+				player->SelectItem( STRING( item->pev->classname ) );
+				return;
+			}
+}
+
 static const char *M_GetStr( uint32_t id, int what )
 {
 	edict_t *e = EdictFor( id );
@@ -1020,6 +1111,9 @@ void DodGC_MohaaLevelInit( void )
 	b.get_health = M_GetHealth;
 	b.set_health = M_SetHealth;
 	b.set_ammo = M_SetAmmo;
+	b.give_item = M_GiveItem;
+	b.take_all = M_TakeAll;
+	b.use_weapon_class = M_UseWeaponClass;
 	b.get_str = M_GetStr;
 	b.set_targetname = M_SetTargetname;
 	b.set_flag = M_SetFlag;
