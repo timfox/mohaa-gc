@@ -287,7 +287,7 @@ static void M_SetAmmo( uint32_t id, const char *category, int amount )
 		{ "rifle", "mohaa_rifle" }, { "smg", "mohaa_smg" },
 		{ "pistol", "mohaa_pistol" }, { "mg", "mohaa_mg" },
 		{ "heavy", "mohaa_heavy" }, { "agrenade", "Hand Grenade" },
-		{ "grenade", "Hand Grenade" }
+		{ "grenade", "Hand Grenade" }, { "shotgun", "buckshot" }
 	};
 	edict_t *e = EdictFor( id );
 	CBasePlayer *player = e ? (CBasePlayer *)CBaseEntity::Instance( e ) : NULL;
