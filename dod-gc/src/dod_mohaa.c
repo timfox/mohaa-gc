@@ -963,6 +963,16 @@ static int c_ai_on(ms_call *c) { return actor_order(c, DOD_MOHAA_AI_ON, NULL); }
 static int c_ai_off(ms_call *c) { return actor_order(c, DOD_MOHAA_AI_OFF, NULL); }
 static int c_attackplayer(ms_call *c) { return actor_order(c, DOD_MOHAA_ATTACK, NULL); }
 
+/* Retail forceactivate is used after a mission actor is spawned to wake its AI. */
+static int c_forceactivate(ms_call *c)
+{
+	static const float zero[3] = {0, 0, 0};
+	const uint32_t id = target_id(c);
+	if (S.be.actor && id && valid(id) && !is_node(id))
+		S.be.actor(id, DOD_MOHAA_AI_ON, zero);
+	return 0;
+}
+
 /* ---- routes: a walk/run order over path nodes, one leg at a time; the grunt only ever walks straight ---- */
 
 static int route_slot(uint32_t id, int make)
@@ -2377,7 +2387,7 @@ static void register_commands(ms_vm *vm)
 		{"drawhud", MS_ON_THREAD, c_drawhud},
 		{"radiusdamage", MS_ON_THREAD, c_radiusdamage},
 		{"endpath", MS_ON_ENTITY, c_stopdrive},
-		{"forceactivate", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"forceactivate", MS_ON_ENTITY | MS_ON_THREAD, c_forceactivate},
 		{"setcvar", MS_ON_THREAD, c_setcvar},
 		{"addobjective", MS_ON_THREAD, c_addobjective},
 		{"setcurrentobjective", MS_ON_THREAD, c_setcurrentobjective},
