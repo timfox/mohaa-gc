@@ -163,6 +163,7 @@ typedef struct DodMover {
 
 #define MAX_UNKNOWN 128
 #define MAX_LOOPS 16
+#define MAX_SOUND_DONE 128
 #define MAX_SOUND_MISSES 64
 #define MAX_MOODS 8
 #define DOD_MOHAA_MAX_ROUTES 48	/* one per grunt slot */
@@ -191,6 +192,7 @@ typedef struct DodSound {
 	uint32_t hash;           /* of the alias, lowercase */
 	uint16_t alias, sample;  /* offsets into the text block */
 	float volume, attn;
+	float duration;          /* converted PCM WAV duration; -1 until first needed */
 	uint8_t channel;
 } DodSound;
 
@@ -207,6 +209,7 @@ static struct {
 	int nsounds;
 	const char *sound_text;
 	struct { uint32_t id; const char *sample; } loops[MAX_LOOPS];
+	struct { uint32_t id; float due; } sound_done[MAX_SOUND_DONE];
 	uint32_t sound_misses[MAX_SOUND_MISSES];
 	int nmisses;
 	uint32_t rng;
@@ -1110,6 +1113,7 @@ static void sounds_load(const char *mapname)
 				r->hash = alias_hash(alias);
 				r->volume = vol < 0.0f ? 0.0f : (vol > 1.0f ? 1.0f : vol);
 				r->attn = attn_for(mindist);
+				r->duration = -1.0f;
 				r->channel = (uint8_t)channel_for(chan);
 				r->alias = (uint16_t)o;
 				memcpy(strs + o, alias, strlen(alias) + 1);
@@ -1135,7 +1139,7 @@ static void sounds_load(const char *mapname)
 }
 
 /* A random variant of the alias, or NULL. */
-static const DodSound *sound_pick(const char *alias)
+static DodSound *sound_pick(const char *alias)
 {
 	uint32_t h = alias_hash(alias);
 	int i, n = 0, k;
@@ -1161,14 +1165,103 @@ static const DodSound *sound_pick(const char *alias)
 	return NULL;
 }
 
-static void play(ms_call *c, int loop)
+static uint32_t wav_u32(const unsigned char *p)
+{
+	return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+}
+
+/* Load a sample only when a script actually needs sounddone. Converted MOHAA
+ * audio is PCM WAV, so its data byte count and byte rate give exact duration. */
+static float sound_duration(DodSound *r)
+{
+	const char *sample;
+	int i;
+	char path[160];
+	char *file;
+	unsigned char *data;
+	size_t len = 0, pos, pcm_bytes = 0;
+	uint32_t byte_rate = 0;
+	if (!r)
+		return 0.0f;
+	if (r->duration >= 0.0f)
+		return r->duration;
+	for (i = 0; i < S.nsounds; i++)
+		if (&S.sounds[i] != r && S.sounds[i].sample == r->sample && S.sounds[i].duration >= 0.0f) {
+			r->duration = S.sounds[i].duration;
+			return r->duration;
+		}
+	sample = S.sound_text + r->sample;
+	snprintf(path, sizeof(path), "sound/%s", sample);
+	file = S.be.load_file ? S.be.load_file(path, &len) : NULL;
+	if (!file)
+		return r->duration = 0.0f;
+	data = (unsigned char *)file;
+	if (len >= 12 && !memcmp(data, "RIFF", 4) && !memcmp(data + 8, "WAVE", 4)) {
+		pos = 12;
+		while (pos <= len && len - pos >= 8) {
+			const uint32_t chunk_len = wav_u32(data + pos + 4);
+			const size_t chunk = pos + 8;
+			if ((size_t)chunk_len > len - chunk)
+				break;
+			if (!memcmp(data + pos, "fmt ", 4) && chunk_len >= 12)
+				byte_rate = wav_u32(data + chunk + 8);
+			else if (!memcmp(data + pos, "data", 4))
+				pcm_bytes += chunk_len;
+			pos = chunk + chunk_len + (chunk_len & 1u);
+		}
+	}
+	if (S.be.free_file)
+		S.be.free_file(file);
+	r->duration = byte_rate && pcm_bytes ? (float)((double)pcm_bytes / byte_rate) : 0.0f;
+	return r->duration;
+}
+
+static void sound_done_schedule(uint32_t id, float duration)
+{
+	int i, free_slot = -1;
+	const float due = S.now + (duration > 0.0f ? duration : 0.0f);
+	if (!id)
+		return;
+	for (i = 0; i < MAX_SOUND_DONE; i++) {
+		if (S.sound_done[i].id == id) {
+			/* Retail posts one pending sounddone callback per entity; a new
+			 * playsound ... wait replaces that entity's earlier callback. */
+			S.sound_done[i].due = due;
+			return;
+		}
+		if (!S.sound_done[i].id && free_slot < 0)
+			free_slot = i;
+	}
+	if (free_slot < 0)
+		return;
+	S.sound_done[free_slot].id = id;
+	S.sound_done[free_slot].due = due;
+}
+
+static void sound_done_think(float now)
+{
+	int i;
+	for (i = 0; i < MAX_SOUND_DONE; i++) {
+		const uint32_t id = S.sound_done[i].id;
+		ms_value ent;
+		if (!id || now < S.sound_done[i].due)
+			continue;
+		S.sound_done[i].id = 0;
+		if (!valid(id))
+			continue;
+		ent = ms_entity(id);
+		ms_notify(S.vm, &ent, "sounddone");
+	}
+}
+
+static DodSound *play(ms_call *c, int loop)
 {
 	uint32_t id = target_id(c);
-	const DodSound *r = sound_pick(ms_arg_string(c, 0));
+	DodSound *r = sound_pick(ms_arg_string(c, 0));
 	const char *sample;
 	int i, free_slot = -1;
 	if (!r || !S.be.sound)
-		return;
+		return r;
 	sample = S.sound_text + r->sample;
 	if (loop) {
 		/* one loop per entity: a new loop replaces the old one */
@@ -1182,14 +1275,23 @@ static void play(ms_call *c, int loop)
 				free_slot = i;
 		}
 		if (free_slot < 0)
-			return;
+			return NULL;
 		S.loops[free_slot].id = id;
 		S.loops[free_slot].sample = sample;
 	}
 	S.be.sound(id, sample, loop, r->volume, r->attn, r->channel);
+	return r;
 }
 
-static int c_playsound(ms_call *c) { play(c, 0); return 0; }
+static int c_playsound(ms_call *c)
+{
+	const uint32_t id = target_id(c);
+	DodSound *r = play(c, 0);
+	if (ms_argc(c) > 1 && !strcmp(ms_arg_string(c, 1), "wait"))
+		sound_done_schedule(id, sound_duration(r));
+	return 0;
+}
+
 static int c_loopsound(ms_call *c) { play(c, 1); return 0; }
 static int c_stoploopsound(ms_call *c)
 {
@@ -2634,8 +2736,10 @@ void Dod_MohaaThink(float now)
 		ent = ms_entity(m->id);
 		ms_notify(S.vm, &ent, "movedone");
 	}
-	if (S.vm)
+	if (S.vm) {
+		sound_done_think(now);
 		ms_frame(S.vm, now);
+	}
 	if (S.vm)
 		cine_think();
 }
