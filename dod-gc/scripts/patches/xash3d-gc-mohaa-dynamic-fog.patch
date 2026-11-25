@@ -1,0 +1,115 @@
+diff --git a/ref/gx/r_gx_bloom.c b/ref/gx/r_gx_bloom.c
+index 0f23f0da2..eb6ec3208 100644
+--- a/ref/gx/r_gx_bloom.c
++++ b/ref/gx/r_gx_bloom.c
+@@ -861,7 +861,34 @@ static qboolean gc_fog_on;
+  * nothing past it, which is how its forests stay dense. 0 = none. */
+ static char gc_mapfog_name[64];
+ static float gc_mapfog_end;
++static float gc_mapfog_bsp_end;
+ static GXColor gc_mapfog_col = { 51, 51, 77, 255 };
++static GXColor gc_mapfog_bsp_col = { 51, 51, 77, 255 };
++static CVAR_DEFINE_AUTO( gc_mohaa_farplane_override, "-1", 0, "MOHAA farplane override enable" );
++static CVAR_DEFINE_AUTO( gc_mohaa_farplane, "0", 0, "MOHAA farplane in GameCube map units" );
++static CVAR_DEFINE_AUTO( gc_mohaa_farplane_color_override, "-1", 0, "MOHAA fog colour override enable" );
++static CVAR_DEFINE_AUTO( gc_mohaa_farplane_r, "0", 0, "MOHAA fog red 0..1" );
++static CVAR_DEFINE_AUTO( gc_mohaa_farplane_g, "0", 0, "MOHAA fog green 0..1" );
++static CVAR_DEFINE_AUTO( gc_mohaa_farplane_b, "0", 0, "MOHAA fog blue 0..1" );
++static qboolean gc_mohaa_farplane_cvars_registered;
++
++static void R_GXMapFogRegisterCvars( void )
++{
++	if( gc_mohaa_farplane_cvars_registered )
++		return;
++	gEngfuncs.Cvar_RegisterVariable( &gc_mohaa_farplane_override );
++	gEngfuncs.Cvar_RegisterVariable( &gc_mohaa_farplane );
++	gEngfuncs.Cvar_RegisterVariable( &gc_mohaa_farplane_color_override );
++	gEngfuncs.Cvar_RegisterVariable( &gc_mohaa_farplane_r );
++	gEngfuncs.Cvar_RegisterVariable( &gc_mohaa_farplane_g );
++	gEngfuncs.Cvar_RegisterVariable( &gc_mohaa_farplane_b );
++	gc_mohaa_farplane_cvars_registered = true;
++}
++
++void R_GXMapFogInit( void )
++{
++	R_GXMapFogRegisterCvars();
++}
+ 
+ static const char *R_GXWorldspawnValue( const char *ents, const char *end, const char *key )
+ {
+@@ -883,6 +910,9 @@ static const char *R_GXWorldspawnValue( const char *ents, const char *end, const
+ float R_GXMapFarplane( void )
+ {
+ 	const model_t *world = WORLDMODEL;
++	int k;
++
++	R_GXMapFogRegisterCvars();
+ 
+ 	if( !world || !world->name[0] )
+ 		return 0.0f;
+@@ -893,7 +923,8 @@ float R_GXMapFarplane( void )
+ 		const char *v;
+ 
+ 		Q_strncpy( gc_mapfog_name, world->name, sizeof( gc_mapfog_name ));
+-		gc_mapfog_end = 0.0f;
++		gc_mapfog_bsp_end = 0.0f;
++		gc_mapfog_bsp_col = (GXColor){ 51, 51, 77, 255 };
+ 		if( end && ( v = R_GXWorldspawnValue( ents, end, "farplane" )) != NULL )
+ 		{
+ 			const float fp = (float)strtod( v, NULL );
+@@ -903,7 +934,7 @@ float R_GXMapFarplane( void )
+ 				float rgb[3] = { 0.2f, 0.2f, 0.3f };
+ 				int k;
+ 
+-				gc_mapfog_end = fp;
++				gc_mapfog_bsp_end = fp;
+ 				if(( v = R_GXWorldspawnValue( ents, end, "farplane_color" )) != NULL )
+ 				{
+ 					char *next = (char *)v;
+@@ -911,14 +942,27 @@ float R_GXMapFarplane( void )
+ 					for( k = 0; k < 3; k++ )
+ 						rgb[k] = (float)strtod( next, &next );
+ 				}
+-				gc_mapfog_col.r = (u8)( bound( 0.0f, rgb[0], 1.0f ) * 255.0f + 0.5f );
+-				gc_mapfog_col.g = (u8)( bound( 0.0f, rgb[1], 1.0f ) * 255.0f + 0.5f );
+-				gc_mapfog_col.b = (u8)( bound( 0.0f, rgb[2], 1.0f ) * 255.0f + 0.5f );
++				gc_mapfog_bsp_col.r = (u8)( bound( 0.0f, rgb[0], 1.0f ) * 255.0f + 0.5f );
++				gc_mapfog_bsp_col.g = (u8)( bound( 0.0f, rgb[1], 1.0f ) * 255.0f + 0.5f );
++				gc_mapfog_bsp_col.b = (u8)( bound( 0.0f, rgb[2], 1.0f ) * 255.0f + 0.5f );
+ 				gEngfuncs.Con_Reportf( "Xash3D GameCube: map farplane %.0f colour %u %u %u\n", fp,
+-					gc_mapfog_col.r, gc_mapfog_col.g, gc_mapfog_col.b );
++					gc_mapfog_bsp_col.r, gc_mapfog_bsp_col.g, gc_mapfog_bsp_col.b );
+ 			}
+ 		}
+ 	}
++	/* Rebuild active state from the BSP each frame so clearing a script override restores it,
++	 * including when the same map is restarted without changing the world model name. */
++	gc_mapfog_end = gc_mapfog_bsp_end;
++	gc_mapfog_col = gc_mapfog_bsp_col;
++	if( gc_mohaa_farplane_override.value >= 0.0f )
++		gc_mapfog_end = gc_mohaa_farplane.value;
++	if( gc_mohaa_farplane_color_override.value >= 0.0f )
++	{
++		const float rgb[3] = { gc_mohaa_farplane_r.value, gc_mohaa_farplane_g.value, gc_mohaa_farplane_b.value };
++		u8 *channels[3] = { &gc_mapfog_col.r, &gc_mapfog_col.g, &gc_mapfog_col.b };
++		for( k = 0; k < 3; k++ )
++			*channels[k] = (u8)( bound( 0.0f, rgb[k], 1.0f ) * 255.0f + 0.5f );
++	}
+ 	return gc_mapfog_end;
+ }
+ 
+diff --git a/ref/gx/r_main.c b/ref/gx/r_main.c
+index 4cf4155fd..e0ab9f13a 100644
+--- a/ref/gx/r_main.c
++++ b/ref/gx/r_main.c
+@@ -3149,6 +3149,10 @@ static void R_InitTurb( void )
+ qboolean GAME_EXPORT R_Init( void )
+ {
+ 	qboolean glblit = false;
++	#if XASH_GAMECUBE
++	extern void R_GXMapFogInit( void );
++	R_GXMapFogInit();
++	#endif
+ 
+ 	tr.framecount = 0;
+ 	tr.sample_size = 0;

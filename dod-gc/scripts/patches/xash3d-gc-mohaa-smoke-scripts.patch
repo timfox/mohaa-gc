@@ -1,0 +1,17 @@
+diff --git a/scripts/build-gamecube-disc.py b/scripts/build-gamecube-disc.py
+index 4e143f970..20ebcee3e 100755
+--- a/scripts/build-gamecube-disc.py
++++ b/scripts/build-gamecube-disc.py
+@@ -4195,6 +4195,12 @@ def stage_smoke_data(
+ 	output.mkdir(parents=True, exist_ok=True)
+ 	for relative in SMOKE_CONFIG_FILES:
+ 		copy_if_present(source, output, relative)
++	# MOHAA smoke maps execute their retail map/global scripts at startup.
++	# Without these, map probes silently run with no mission logic (including
++	# scripted world fog, objectives, loadout and cutscene setup).
++	for script_dir in ("maps", "global"):
++		for script in sorted((source / script_dir).glob("*.scr")):
++			copy_if_present(source, output, f"{script_dir}/{script.name}")
+ 	# G296: keep gfx.wad on the smoke ISO so build_iso9660 can extract the
+ 	# retail CREDITSFONT into the tiny bootstrap font. .wad is excluded from
+ 	# the bootstrap archive, so this does not consume the runtime preload pool.
