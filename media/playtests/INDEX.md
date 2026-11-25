@@ -4,9 +4,43 @@ Screenshots: `screenshots/` · Videos: `videos/` · Notes: `notes/`
 
 | Date | File | Route | Duration | Size | Commit |
 |------|------|-------|----------|------|--------|
-| 2026-11-24T19:31:54 | `20261124-193154-m1l1-truck-menu-newgame-hudfix-74b8088bf8.mp4` | m1l1-truck-menu-newgame-hudfix | 22.8s | 0.4 MB | `74b8088bf8` |
-| 2026-11-24T04:44:28 | `videos/20261124-044428-m1l2a-door-hint-trigger-touch-after-engine-fix-silent.mkv` | m1l2a-door-hint-trigger-touch-after-engine-fix (map-load failure) | 39.9s | 0.1 MB | `bd6a4241d7` |
-| 2026-11-24T04:40:01 | `videos/20261124-044001-m1l2a-door-hint-engine-exception-silent.mp4` | m1l2a-door-hint-engine-exception (layout mismatch) | 1.9s | 0.0 MB | `bd6a4241d7` |
+| 2026-11-24T20:35:10 | `videos/20261124-203510-m1l1-packed-mips-silent.mp4` | m1l1-packed-mips | 22.1s | 0.1 MB | `8271b49945` |
+| 2026-11-24T20:29:19 | `videos/20261124-202919-m1l1-hud-arena-silent.mp4` | m1l1-hud-arena | 21.5s | 0.1 MB | `8271b49945` |
+| 2026-11-24T20:24:42 | `videos/20261124-202442-m1l1-hudfallback-xvfb2-silent.mp4` | m1l1-hudfallback-xvfb2 | 21.6s | 0.1 MB | `8271b49945` |
+| 2026-11-24T20:14:46 | `videos/20261124-201446-m1l1-models-sparseheap-silent.mp4` | m1l1-models-sparseheap | 13.2s | 0.3 MB | `8271b49945` |
+| 2026-11-24T20:01:42 | `videos/20261124-200142-m1l1-models-display0-silent.mp4` | m1l1-models-display0 | 23.2s | 0.7 MB | `8271b49945` |
+| 2026-11-24T17:09:06 | `videos/20261124-170906-mohaa-hint-delta-ac418b4166.mp4` | mohaa-hint-delta | 60.3s | 1.6 MB | `ac418b4166` |
+| 2026-11-24T17:02:38 | `videos/20261124-170238-mohaa-retail-hint-ac418b4166.mp4` | mohaa-retail-hint | 45.8s | 1.0 MB | `ac418b4166` |
+| 2026-11-24T16:59:53 | `videos/20261124-165953-mohaa-retail-hint-ac418b4166.mp4` | mohaa-retail-hint | 45.8s | 0.8 MB | `ac418b4166` |
+| 2026-11-24T16:33:31 | `videos/20261124-163331-m1l2a-door-after-intro-silent.mp4` | m1l2a-door-after-intro | 79.5s | 0.3 MB | `599d2faa7c` |
+| 2026-11-24T16:24:37 | `videos/20261124-162437-m1l2a-direct-tas-scriptready-silent.mp4` | m1l2a-direct-tas-scriptready | 60.7s | 1.7 MB | `599d2faa7c` |
+| 2026-11-24T16:21:10 | `videos/20261124-162110-m1l2a-retail-menu-tip-startmap-scriptready-silent.mp4` | m1l2a-retail-menu-tip-startmap-scriptready | 22.7s | 0.3 MB | `599d2faa7c` |
+| 2026-11-24T16:18:53 | `videos/20261124-161853-m1l2a-retail-menu-tip-startmap-claude-work-silent.mp4` | m1l2a-retail-menu-tip-startmap-claude-work | 22.7s | 1.0 MB | `599d2faa7c` |
+| 2026-11-24T16:11:24 | `videos/20261124-161124-m1l2a-retail-menu-tip-startmap-leanhudfix-assets-silent.mp4` | m1l2a-retail-menu-tip-startmap-leanhudfix-assets | 18.2s | 0.9 MB | `599d2faa7c` |
+| 2026-11-24T16:06:27 | `videos/20261124-160627-m1l2a-retail-menu-tip-startmap-leanhudfix-silent.mp4` | m1l2a-retail-menu-tip-startmap-leanhudfix | 23.2s | 0.5 MB | `599d2faa7c` |
+| 2026-11-24T16:00:10 | `videos/20261124-160010-m1l2a-retail-menu-tip-startmap-hudguard-silent.mp4` | m1l2a-retail-menu-tip-startmap-hudguard | 23.7s | 0.4 MB | `599d2faa7c` |
+| 2026-11-24T15:56:53 | `videos/20261124-155653-m1l2a-retail-menu-tip-startmap-silent.mp4` | m1l2a-retail-menu-tip-startmap | 23.2s | 0.5 MB | `599d2faa7c` |
+| 2026-11-24T15:40:52 | `videos/20261124-154052-m1l2a-mission-script-present-door-tip-silent.mp4` | m1l2a-mission-script-present-door-tip | 62.2s | 1.6 MB | `599d2faa7c` |
+| 2026-11-24T15:36:32 | `videos/20261124-153632-m1l2a-serveractivate-lowmem-door-tip-silent.mp4` | m1l2a-serveractivate-lowmem-door-tip | 62.7s | 1.0 MB | `599d2faa7c` |
+| 2026-11-24T15:32:14 | `videos/20261124-153214-m1l2a-serveractivate-direct-door-tip-silent.mp4` | m1l2a-serveractivate-direct-door-tip | 61.7s | 1.3 MB | `599d2faa7c` |
+| 2026-11-24T15:29:45 | `videos/20261124-152945-m1l2a-serveractivate-ready-door-tip-silent.mp4` | m1l2a-serveractivate-ready-door-tip | 59.2s | 0.7 MB | `599d2faa7c` |
+| 2026-11-24T15:26:29 | `videos/20261124-152629-m1l2a-serveractivate-fallback-door-tip-silent.mp4` | m1l2a-serveractivate-fallback-door-tip | 90.7s | 2.0 MB | `599d2faa7c` |
+| 2026-11-24T15:23:25 | `videos/20261124-152325-m1l2a-serveractivate-door-tip-silent.mp4` | m1l2a-serveractivate-door-tip | 91.2s | 2.5 MB | `599d2faa7c` |
+| 2026-11-24T15:01:41 | `videos/20261124-150141-m1l2a-scripted-door-tip-mohaa-c0a0-silent.mp4` | m1l2a-scripted-door-tip-mohaa-c0a0 | 92.7s | 2.6 MB | `599d2faa7c` |
+| 2026-11-24T14:58:50 | `videos/20261124-145850-m1l2a-scripted-door-tip-c0a0-silent.mp4` | m1l2a-scripted-door-tip-c0a0 | 91.2s | 1.9 MB | `599d2faa7c` |
+| 2026-11-24T14:54:19 | `videos/20261124-145419-m1l2a-scripted-door-tip-silent.mp4` | m1l2a-scripted-door-tip | 101.2s | 2.7 MB | `599d2faa7c` |
+| 2026-11-24T14:27:34 | `videos/20261124-142734-m1l2a-door-aabb-silent.mp4` | m1l2a-door-aabb | 19.3s | 0.3 MB | `e2b7286310` |
+| 2026-11-24T14:24:01 | `videos/20261124-142401-m1l2a-door-forward-corrected-silent.mp4` | m1l2a-door-forward-corrected | 55.7s | 0.6 MB | `e2b7286310` |
+| 2026-11-24T14:21:07 | `videos/20261124-142107-m1l2a-door-movefix-silent.mp4` | m1l2a-door-movefix | 55.7s | 0.8 MB | `e2b7286310` |
+| 2026-11-24T14:08:01 | `videos/20261124-140801-m1l2a-door-forward-tas-silent.mp4` | m1l2a-door-forward-tas | 55.7s | 0.7 MB | `e2b7286310` |
+| 2026-11-24T14:05:29 | `videos/20261124-140529-m1l2a-door-tip-tas-silent.mp4` | m1l2a-door-tip-tas | 45.7s | 0.7 MB | `e2b7286310` |
+| 2026-11-24T13:55:43 | `videos/20261124-135543-m1l2a-retailhud-lowmemfix-silent.mp4` | m1l2a-retailhud-lowmemfix | 51.7s | 0.8 MB | `72394218ad` |
+| 2026-11-24T13:51:36 | `videos/20261124-135136-m1l2a-retailhud-silent.mp4` | m1l2a-retailhud | 51.7s | 0.6 MB | `72394218ad` |
+| 2026-11-24T13:44:00 | `videos/20261124-134400-m1l2a-layout-match-silent.mp4` | m1l2a-layout-match | 75.7s | 1.1 MB | `72394218ad` |
+| 2026-11-24T13:35:15 | `videos/20261124-133515-m1l2a-clean-retest-desktop-silent.mp4` | m1l2a-clean-retest-desktop | 75.7s | 0.7 MB | `72394218ad` |
+| 2026-11-24T13:01:38 | `videos/20261124-130138-m1l2a-door-hint-72394218ad.mp4` | m1l2a-door-hint | 75.6s | 0.6 MB | `72394218ad` |
+| 2026-11-24T04:44:28 | `videos/20261124-044428-m1l2a-door-hint-trigger-touch-after-engine-fix-silent.mkv` | m1l2a-door-hint-trigger-touch-after-engine-fix | 39.9s | 0.1 MB | `bd6a4241d7` |
+| 2026-11-24T04:40:01 | `videos/20261124-044001-m1l2a-door-hint-engine-exception-silent.mp4` | m1l2a-door-hint-engine-exception | 1.9s | 0.0 MB | `bd6a4241d7` |
 | 2026-11-24T04:27:23 | `videos/20261124-042723-m1l2a-door-hint-trigger-crossing-silent.mp4` | m1l2a-door-hint-trigger-crossing | 39.9s | 0.2 MB | `bd6a4241d7` |
 | 2026-11-24T04:25:17 | `videos/20261124-042517-m1l2a-door-hint-trigger-touch2-silent.mp4` | m1l2a-door-hint-trigger-touch2 | 40.0s | 0.2 MB | `bd6a4241d7` |
 | 2026-11-24T04:23:51 | `videos/20261124-042351-m1l2a-door-hint-trigger-touch-silent.mp4` | m1l2a-door-hint-trigger-touch | 39.0s | 0.2 MB | `bd6a4241d7` |
@@ -76,6 +110,23 @@ Screenshots: `screenshots/` · Videos: `videos/` · Notes: `notes/`
 | 2026-11-23T21:35:52 | `videos/20261123-213552-m1l1-skybox-runtime-verify-silent.mp4` | m1l1-skybox-runtime-verify | 27.9s | 0.3 MB | `c1064a463f` |
 | 2026-11-23T21:24:46 | `videos/20261123-212446-m1l1-media-capture-check-c1064a463f.mp4` | m1l1-media-capture-check | 28.5s | 0.7 MB | `c1064a463f` |
 | 2026-11-23T20:31:49 | `videos/20261123-203149-m1l1-actor-3ed781eb42.mp4` | m1l1-actor | 60.6s | 1.5 MB | `3ed781eb42` |
+| 2026-11-24T19:31:54 | `screenshots/20261124-193154-m1l1-truck-menu-newgame-hudfix/final.png` | m1l1-truck-menu-newgame-hudfix | still | 0.1 MB | `74b8088bf8` |
+| 2026-11-24T17:43:09 | `screenshots/20261124-174309-mohaa-hint-visible-retry/final.png` | mohaa-hint-visible-retry | still | 0.2 MB | `599d2faa7c` |
+| 2026-11-24T17:42:09 | `screenshots/20261124-174209-mohaa-retail-hint-visible/final.png` | mohaa-retail-hint-visible | still | 0.2 MB | `599d2faa7c` |
+| 2026-11-24T17:40:12 | `screenshots/20261124-174012-mohaa-hint-position3/final.png` | mohaa-hint-position3 | still | 0.2 MB | `599d2faa7c` |
+| 2026-11-24T17:39:16 | `screenshots/20261124-173916-mohaa-hint-position2/final.png` | mohaa-hint-position2 | still | 0.2 MB | `599d2faa7c` |
+| 2026-11-24T17:38:15 | `screenshots/20261124-173815-mohaa-hint-position/final.png` | mohaa-hint-position | still | 0.1 MB | `599d2faa7c` |
+| 2026-11-24T17:37:29 | `screenshots/20261124-173729-mohaa-hint-corrected-diagnostic/final.png` | mohaa-hint-corrected-diagnostic | still | 0.1 MB | `599d2faa7c` |
+| 2026-11-24T17:36:22 | `screenshots/20261124-173622-mohaa-hint-chain-diagnostic/final.png` | mohaa-hint-chain-diagnostic | still | 0.1 MB | `599d2faa7c` |
+| 2026-11-24T17:34:36 | `screenshots/20261124-173436-mohaa-hint-trigger-window/final.png` | mohaa-hint-trigger-window | still | 0.1 MB | `599d2faa7c` |
+| 2026-11-24T17:33:18 | `screenshots/20261124-173318-mohaa-hint-trigger-live/final.png` | mohaa-hint-trigger-live | still | 0.0 MB | `599d2faa7c` |
+| 2026-11-24T17:32:25 | `screenshots/20261124-173225-mohaa-hint-trigger-fast/final.png` | mohaa-hint-trigger-fast | still | 0.1 MB | `599d2faa7c` |
+| 2026-11-24T17:30:39 | `screenshots/20261124-173039-mohaa-hint-trigger-path/final.png` | mohaa-hint-trigger-path | still | 0.2 MB | `599d2faa7c` |
+| 2026-11-24T17:21:55 | `screenshots/20261124-172155-mohaa-door-tip-transient/final.png` | mohaa-door-tip-transient | still | 0.1 MB | `599d2faa7c` |
+| 2026-11-24T17:19:55 | `screenshots/20261124-171955-mohaa-hud-hint-fixed2/final.png` | mohaa-hud-hint-fixed2 | still | 0.1 MB | `599d2faa7c` |
+| 2026-11-24T17:17:21 | `screenshots/20261124-171721-mohaa-hint-fixed-map/final.png` | mohaa-hint-fixed-map | still | 0.0 MB | `599d2faa7c` |
+| 2026-11-24T17:16:21 | `screenshots/20261124-171621-mohaa-hint-fixed/menu.png` | mohaa-hint-fixed | still | 0.0 MB | `599d2faa7c` |
+| 2026-11-24T04:50:55 | `screenshots/20261124-045055-m1l2a-single-load-20261124/final.png` | m1l2a-single-load-20261124 | still | 0.0 MB | `bd6a4241d7` |
 | 2026-11-24T02:49:11 | `screenshots/20261124-024911-m1l1-intro-finalhud-bootcheck/final.png` | m1l1-intro-finalhud-bootcheck | still | 0.0 MB | `43fa234343` |
 | 2026-11-24T02:05:00 | `screenshots/20261124-020500-m1l2a-retail-compass-menu-route/final.png` | retail MOHAA boot to front end with `m1l2a` startmap override; attempt New Game using the GameCube pad FIFO. | still | 0.0 MB | `` |
 | 2026-11-24T01:59:43 | `screenshots/20261124-015943-m1l2a-retail-tip-layout-fullphysics/final.png` | m1l2a-retail-tip-layout-fullphysics | still | 0.1 MB | `8d0887dca6` |
