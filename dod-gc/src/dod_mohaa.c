@@ -489,6 +489,12 @@ static int h_get_field(void *user, const ms_value *l, const char *name, ms_value
 		*out = ms_float(S.be.get_health(l->u.id));
 		return 1;
 	}
+	/* The retail player starts with 100 max health. Campaign scripts use this
+	 * for fractional healing and medic thresholds; no map changes player max. */
+	if (!strcmp(name, "max_health") && is_player(l->u.id)) {
+		*out = ms_float(100.0f);
+		return 1;
+	}
 	if (!strcmp(name, "viewangles")) {
 		const DodCine *k = cine(l->u.id, 0);
 		if (k && k->has_view)
@@ -612,6 +618,36 @@ static int c_angles(ms_call *c)
 static int c_health(ms_call *c)
 {
 	S.be.set_health(target_id(c), ms_arg_float(c, 0));
+	return 0;
+}
+
+/* Retail heal adds a fraction of max_health. Players use the retail default
+ * of 100; friendly AI scripts set their own entity field `maxhealth`. */
+static int c_heal(ms_call *c)
+{
+	const uint32_t id = target_id(c);
+	float health, max_health;
+	float healed;
+	ms_value max_value;
+	if (!valid(id) || is_node(id))
+		return 0;
+	if (is_player(id))
+		max_health = 100.0f;
+	else if (ms_get_entity_var(S.vm, id, "maxhealth", &max_value)) {
+		max_health = ms_to_float(&max_value);
+		ms_release(S.vm, max_value);
+	} else {
+		return ms_call_error(c, "heal target has no maxhealth value");
+	}
+	if (max_health <= 0.0f)
+		return ms_call_error(c, "heal target has invalid maxhealth");
+	health = S.be.get_health(id);
+	if (health <= 0.0f)
+		return ms_call_error(c, "cannot heal dead entities");
+	healed = health + ms_arg_float(c, 0) * max_health;
+	if (healed > max_health)
+		healed = max_health;
+	S.be.set_health(id, healed);
 	return 0;
 }
 
@@ -2165,7 +2201,7 @@ static void register_commands(ms_vm *vm)
 		{"maxyawoffset", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"pitchcaps", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"ammo", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
-		{"heal", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"heal", MS_ON_ENTITY | MS_ON_THREAD, c_heal},
 		{"item", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"takeall", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"useweaponclass", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
