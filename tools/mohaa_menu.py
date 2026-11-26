@@ -59,11 +59,38 @@ def strip_comments(text):
     return re.sub(r"//[^\n]*", "", text)
 
 
+# The resource keys a urc writes; a resource written on one line ("resource Label { rect 0 0 512 512
+# shader x }") is split before each of them so it reads like the usual one key per line.
+URC_KEYS = {"name", "rect", "fgcolor", "bgcolor", "borderstyle", "shader", "hovershader", "selectshader",
+            "clicksound", "stuffcommand", "hovercommand", "enabledcvar", "linkcvar", "linkcvartoshader",
+            "font", "title", "textalign", "ordernumber", "checked_shader", "unchecked_shader"}
+RAW_TOKEN = re.compile(r'"[^"]*"|[{}]|[^\s{}]+')
+
+
+def urc_lines(text):
+    """The urc's lines, with braces on lines of their own and one-line resources split by key."""
+    out = []
+    for line in strip_comments(text).splitlines():
+        cur = []
+        for tok in RAW_TOKEN.findall(line):
+            if tok in ("{", "}") or (cur and tok.lower() in URC_KEYS and not cur[0] in ("menu",)):
+                if cur:
+                    out.append(" ".join(cur))
+                cur = []
+                if tok in ("{", "}"):
+                    out.append(tok)
+                    continue
+            cur.append(tok)
+        if cur:
+            out.append(" ".join(cur))
+    return out
+
+
 def parse_urc(text):
     """(width, height, [resource]) of a urc menu; each resource is {"type": ..., key: [args]}."""
     width, height = SHEET
     items, cur, depth, rtype, pending = [], None, 0, None, False
-    for line in strip_comments(text).splitlines():
+    for line in urc_lines(text):
         t = tokens(line)
         if not t:
             continue
@@ -73,7 +100,7 @@ def parse_urc(text):
                 width, height = int(t[2]), int(t[3])
                 width, height = width + width % 2, height + height % 2
             elif t[0].lower() == "resource":
-                pending, rtype = True, None
+                pending, rtype = True, (t[1] if len(t) > 1 else None)
             elif pending and t[0] != "{":
                 rtype = t[0]
             if pending and "{" in t:

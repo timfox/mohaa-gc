@@ -216,12 +216,7 @@ stuffcommand "set ui_dmmap dm/mohdm1;pushmenu multiplayerstart_ffa"
 }
 """
 
-SERVERBACK = """resource
-Label
-{
-rect 0 0 512 512
-shader "serverback_a"
-}
+SERVERBACK = """resource Label { name "Default" rect 0 0 512 512 fgcolor 0.00 0.00 0.00 1.00 shader "serverback_a" }
 resource
 Label
 {
@@ -455,6 +450,7 @@ class MenuTest(unittest.TestCase):
             make_page_pak(os.path.join(tmp, "pak1.pk3"))
             menu = mohaa_menu.page_menu([tmp], "gametype")
             self.assertEqual(menu["sheet"].getpixel((300, 20)), BLUE)   # serverback.inc's picture
+            self.assertEqual(menu["sheet"].getpixel((100, 400)), BLUE)  # its one-line resource too
             self.assertEqual([a for a, _, _, _ in menu["spots"]], ["ffa", "team"])
             self.assertEqual(menu["buttons"], [])
 
