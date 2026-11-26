@@ -479,10 +479,12 @@ def convert(main_paths, model: str, output: Path, skin_size: int = 256, scale: f
 	if tik.mesh not in files:
 		raise ValueError(f"retail mesh not found: {tik.mesh}")
 	tik_text = read(files[model]).decode("latin-1", "replace")
-	shaders = {}
+	shaders, blends = {}, {}
 	for path, entry in files.items():
 		if path.endswith(".shader"):
-			shaders.update(mohaa_skd.parse_shaders(read(entry).decode("latin-1", "replace")))
+			text = read(entry).decode("latin-1", "replace")
+			shaders.update(mohaa_skd.parse_shaders(text))
+			blends.update(mohaa_skd.parse_shader_blends(text))
 	component_sources = [(tik, tik.mesh)]
 	for component in components or ():
 		if isinstance(component, str):
@@ -555,6 +557,11 @@ def convert(main_paths, model: str, output: Path, skin_size: int = 256, scale: f
 	for surface, owner_tik in zip(skd.surfaces, surface_owners):
 		shader = owner_tik.shaders.get(surface.name.lower(), "")
 		if "nodraw" in shader.lower():
+			continue
+		# Additive light volumes (opellights' headlight beams) brighten what is behind them.
+		# The one-skin MDL draws every surface opaque, so a beam would become a solid
+		# cloudy wedge in front of the truck. Leave them out.
+		if blends.get(shader.lower()) == "add":
 			continue
 		texture = mohaa_skd.surface_texture(owner_tik, surface.name, shaders)
 		if not texture:
