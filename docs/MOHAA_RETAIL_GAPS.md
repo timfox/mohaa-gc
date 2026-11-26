@@ -12,7 +12,7 @@ This is a running list, updated with each PR. Each entry says what retail does t
 - Bound since the last update: `loc_convert_string`, and `getboundkey1`/`getboundkey2` (pad buttons). The m1l2b hint read "NILNOT BOUNDNIL"; it now prints "NOT BOUND" as retail does for keys the pad has no button for.
 
 ## Rendering
-- **The GMC** still shows a flat grey panel near the camera on the ride. The Opel is textured. Check the GMC skin binding (only "studio skinned ... opeltruck" is logged).
+- **The m1l1 ride's grey panel is gone.** It was the following Opel's headlight beams (`opellights`: airdust under an additive blend), drawn as opaque cloudy wedges toward the camera. The TIKI baker now leaves additive light volumes out (`tools/mohaa_tiki_model.py`), which also gives the Opel's skin atlas twice the texels. Still open: the Opel's canvas cover reads as a flat dark box at night.
 - **The m1l1 trucks' skins** now upload as CMPR at gc_quality 0 (2026-11-26). They read dark under the night light grid; compare against retail.
 - **Tag-driven parts are missing:** the truck canopy and tailgate animations (`open_gate`, wheels).
 - **libogc2 builds** run out of MEM1 loading the m1l1 BSP. Classic libogc fits.
