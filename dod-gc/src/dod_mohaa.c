@@ -223,6 +223,9 @@ static struct {
 	int cue_loop;
 	char level_script[128];
 	int started;              /* main has run (it waits for the first frame: entities spawn after the VM) */
+	int compile_pending;      /* the level script did not fit while the map loaded: compile it again from Think */
+	int compile_tries;
+	float compile_retry_at;
 	size_t budget;
 	struct { char text[96]; int status, has_pos; float pos[3]; } objectives[8];
 	int current_objective;
@@ -2518,6 +2521,7 @@ void Dod_MohaaShutdown(void)
 	if (S.vm)
 		ms_destroy(S.vm);
 	S.vm = NULL;
+	S.compile_pending = S.compile_tries = 0;
 	memset(S.movers, 0, sizeof(S.movers));
 	S.nunknown = 0;
 	S.ticks = 0;
@@ -2825,14 +2829,55 @@ int Dod_MohaaLevelInit(const DodMohaaBackend *backend, const char *mapname, floa
 		const int ok = ms_load_text(S.vm, path, text, len);
 		if (S.be.free_file)
 			S.be.free_file(text);
-		if (!ok) {
+		if (!ok && ms_memory_peak(S.vm) + 32u * 1024u >= memory_budget) {
+			/* the script needs more than its budget: refuse it now, as before */
 			S.be.print(DOD_MOHAA_PRINT_ERROR, "mohaa: level script did not start\n");
 			Dod_MohaaShutdown();
 			return 0;
 		}
+		if (!ok) {
+			/* The budget had room, so the allocator ran dry: a big level script (m1l2a.scr is 78 KB) can find no room while the map loads: the load buffers
+			   hold the heap until the world is up. Keep the VM (entities hand it their keys as they spawn)
+			   and compile again from Think once the map has loaded. */
+			S.compile_pending = 1;
+			S.compile_tries = 0;
+			S.compile_retry_at = now;
+			S.be.print(DOD_MOHAA_PRINT_CONSOLE, "mohaa: level script compiles once the map has loaded\n");
+		}
 	}
 	S.started = 0;
 	return 1;
+}
+
+/* Compile a level script deferred by Dod_MohaaLevelInit: 1 when it is ready, 0 while it still waits. */
+static int compile_deferred(float now)
+{
+	size_t len = 0;
+	char *text;
+	int ok;
+	if (!S.compile_pending)
+		return 1;
+	if (now < S.compile_retry_at)
+		return 0;
+	text = S.be.load_file(S.level_script, &len);
+	ok = text && ms_load_text(S.vm, S.level_script, text, len);
+	if (text && S.be.free_file)
+		S.be.free_file(text);
+	if (ok) {
+		char msg[224];
+		snprintf(msg, sizeof(msg), "mohaa: %s compiled after the map loaded (try %d)\n", S.level_script,
+			 S.compile_tries + 1);
+		S.be.print(DOD_MOHAA_PRINT_CONSOLE, msg);
+		S.compile_pending = 0;
+		return 1;
+	}
+	if (++S.compile_tries >= 10) {
+		S.be.print(DOD_MOHAA_PRINT_ERROR, "mohaa: level script did not start\n");
+		Dod_MohaaShutdown();
+		return 0;
+	}
+	S.compile_retry_at = now + 0.5f;
+	return 0;
 }
 
 /* the level script's main, once */
@@ -2853,6 +2898,8 @@ void Dod_MohaaThink(float now)
 		return;
 	S.now = now;
 	level.type = MS_LEVEL;
+	if (!compile_deferred(now))
+		return;
 	start_main();
 	/* MOHAA level scripts wait for these before touching the world */
 	if (S.ticks == 0) {

@@ -175,9 +175,13 @@ static int M_SetModel( uint32_t id, const char *tiki )
 	else
 		snprintf( path, sizeof( path ), "models/%s", tiki );
 	n = strlen( path );
-	if( n < 4 || strcmp( path + n - 4, ".tik" ) )
+	/* a TIKI name maps to its baked .mdl; a model a script already names as .mdl passes too (Codex) */
+	if( n < 4 )
 		return 0;
-	memcpy( path + n - 4, ".mdl", 5 );
+	if( !strcmp( path + n - 4, ".tik" ) )
+		memcpy( path + n - 4, ".mdl", 5 );
+	else if( strcmp( path + n - 4, ".mdl" ) )
+		return 0;
 	for( char *p = path; *p; p++ )
 		*p = (char)tolower( (unsigned char)*p );
 	for( int i = 0; i < g_mohaa_script_model_count; i++ )

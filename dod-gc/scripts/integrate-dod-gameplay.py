@@ -335,7 +335,15 @@ def integrate_film_actors(dlls: Path) -> None:
 	replace_once(dlls / "client.cpp",
 		'\t\t\t// env_sky is visible always\n\t\t\tif( !FClassnameIs( ent, "env_sky" ) )\n',
 		'\t\t\t// env_sky is visible always, and so are film actors (seen from the film camera, not the player)\n'
-		'\t\t\tif( !FClassnameIs( ent, "env_sky" ) && !FClassnameIs( ent, "film_actor" ) )\n')
+		'\t\t\tif( !FClassnameIs( ent, "env_sky" ) && !FClassnameIs( ent, "film_actor" ) )\n',
+		done='// env_sky is visible always, and so are film actors')
+	# MOHAA script models (m1l1's trucks) are moved by the mission every frame and carry placeholder bounds that
+	# link into no leaf the player can see, so the PVS test dropped them and the opening ride showed no trucks.
+	# Send them like film actors; tag carriers have no model and are skipped earlier.
+	replace_once(dlls / "client.cpp",
+		'\t\t\tif( !FClassnameIs( ent, "env_sky" ) && !FClassnameIs( ent, "film_actor" ) )\n',
+		'\t\t\tif( !FClassnameIs( ent, "env_sky" ) && !FClassnameIs( ent, "film_actor" )\n'
+		'\t\t\t\t&& !FClassnameIs( ent, "mohaa_script_model" ) )\n')
 
 
 def integrate_mohaa_trigger_event(dlls: Path) -> None:

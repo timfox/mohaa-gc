@@ -149,7 +149,19 @@ void DodGrunt_Move(DodGruntPool *p, int i, float now, float dt)
 		return;
 	if (p->order[i] != DOD_GRUNT_ORDER_NONE) {
 		const float dx = p->order_x[i] - p->x[i], dy = p->order_y[i] - p->y[i];
-		if (dx * dx + dy * dy <= DOD_GRUNT_ARRIVE * DOD_GRUNT_ARRIVE) {
+		const float dist = sqrtf(dx * dx + dy * dy);
+		/* A scripted walk the world blocks (a truck parked across the line, a wall between it and a tag point)
+		 * would never arrive, and a mission waiting on movedone would hang: m1l1's checkpoint guard walked into the
+		 * Opel for good. MOHAA's actors path around such things; this one gives up after DOD_GRUNT_ORDER_STALL
+		 * seconds without getting nearer and takes its place at the point. */
+		if (p->order_stall_at[i] < 0.0f || dist < p->order_best[i] - 8.0f) {
+			p->order_best[i] = dist;
+			p->order_stall_at[i] = now + DOD_GRUNT_ORDER_STALL;
+		} else if (now >= p->order_stall_at[i]) {
+			p->x[i] = p->order_x[i];
+			p->y[i] = p->order_y[i];
+		}
+		if (dist <= DOD_GRUNT_ARRIVE || now >= p->order_stall_at[i]) {
 			p->order[i] = DOD_GRUNT_ORDER_NONE;
 			p->order_done[i] = 1;
 			p->state[i] = DOD_GRUNT_HOLD;
@@ -350,6 +362,7 @@ void DodGrunt_OrderMove(DodGruntPool *p, int i, float x, float y, int run)
 	p->order_x[i] = x;
 	p->order_y[i] = y;
 	p->order_done[i] = 0;
+	p->order_stall_at[i] = -1.0f;	/* the first Move after the order starts the clock */
 	p->target[i] = 0;
 	p->blocked[i] = 0;
 	p->state[i] = run ? DOD_GRUNT_ADVANCE : DOD_GRUNT_WANDER;
