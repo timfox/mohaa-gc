@@ -31,7 +31,8 @@
  * drawing function that is not listed here and covered in tests/dod_hud_geom_test.c ("covers: <name>"), so a new draw
  * path cannot slip past the overlap model. Draws outside this repo must be gated on the gc_hud_retail cvar. */
 #define DOD_HUD_DRAW_FUNCTIONS \
-	"CHudDod::DrawKills", "CHudDod::DrawVoice", "CHudDod::DrawBoard", "CHudDod::DrawRetail"
+	"CHudDod::DrawKills", "CHudDod::DrawVoice", "CHudDod::DrawBoard", "CHudDod::DrawRetail", \
+	"CHudDod::DrawMohaa", "CHudDod::DrawMohaaVitals"
 
 typedef struct DodRect {
 	int x, y, w, h;

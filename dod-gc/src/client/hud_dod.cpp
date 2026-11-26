@@ -51,6 +51,8 @@ void CHudDod::InitState( void )
 	m_mohaaCompassTried = 0;
 	m_flMohaaHintUntil = 0.0f;
 	m_hMohaaCompassBack = m_hMohaaCompassFace = m_hMohaaCompassNeedle = m_hMohaaCompassObjective = 0;
+	memset( m_hMohaaVitals, 0, sizeof( m_hMohaaVitals ) );
+	m_mohaaVitalsTried = 0;
 	memset( m_szMohaaHudShader, 0, sizeof( m_szMohaaHudShader ) );
 	m_flLastUpdate = 0.0f;
 	m_flTimerBase = 0.0f;
@@ -111,6 +113,8 @@ int CHudDod::VidInit( void )
 	m_fSheetTried = 0;
 	m_mohaaCompassTried = 0;
 	m_hMohaaCompassBack = m_hMohaaCompassFace = m_hMohaaCompassNeedle = m_hMohaaCompassObjective = 0;
+	memset( m_hMohaaVitals, 0, sizeof( m_hMohaaVitals ) );
+	m_mohaaVitalsTried = 0;
 	memset( m_hMohaaHudShader, 0, sizeof( m_hMohaaHudShader ) );
 	memset( m_mohaaHudShaderTried, 0, sizeof( m_mohaaHudShaderTried ) );
 	return 1;
@@ -892,6 +896,101 @@ int CHudDod::DrawMohaa( float flTime )
 		}
 		if( i == DOD_MOHAA_HUD_HINT_INDEX )
 			gEngfuncs.Cvar_SetValue( "gc_mohaa_hint_draw", 0.0f );
+	}
+	return 1;
+}
+
+/* The retail MOHAA health and ammo HUD, drawn from the converted textures/hud
+ * sprites (tools/mohaa_hud.py). Layout follows the m1l1 GameCube captures:
+ * health meter bottom-left, ammo arm bottom-right, crosshair centred. Sizes are
+ * the sprites' own pixels scaled from a 640x480 virtual screen. Returns 1 when
+ * the health art is resident. */
+enum { MOHAA_HEALTHBACK, MOHAA_HEALTHMETER, MOHAA_HEALTHNEEDLE, MOHAA_AMMOTOP, MOHAA_AMMOBOT, MOHAA_AMMOBAR, MOHAA_CROSSHAIR };
+static const char *const s_mohaaVitalSprites[7] = {
+	"sprites/mohaa/healthback.spr", "sprites/mohaa/healthmeter.spr", "sprites/mohaa/healthneedle.spr",
+	"sprites/mohaa/ammotoparm.spr", "sprites/mohaa/ammobotmarm.spr", "sprites/mohaa/ammotoparmbar.spr",
+	"sprites/mohaa/crosshair.spr",
+};
+
+static void mohaa_draw_sprite_part( HSPRITE sprite, int x, int y, int top, float scale )
+{
+	wrect_t rc;
+	int sw, sh;
+	if( !sprite )
+		return;
+	sw = SPR_Width( sprite, 0 );
+	sh = SPR_Height( sprite, 0 );
+	if( sw <= 0 || sh <= 0 || top >= sh )
+		return;
+	if( top < 0 )
+		top = 0;
+	rc.left = 0; rc.right = sw; rc.top = top; rc.bottom = sh;
+	SPR_Set( sprite, 255, 255, 255 );
+	gEngfuncs.pfnSPR_DrawGeneric( 0, x, y + (int)( top * scale + 0.5f ), &rc, 0, 0,
+		(int)( sw * scale + 0.5f ), (int)( ( sh - top ) * scale + 0.5f ));
+}
+
+int CHudDod::DrawMohaaVitals( int health, int clip )
+{
+	const int screen_w = ScreenWidth > 0 ? ScreenWidth : 320;
+	const int screen_h = ScreenHeight > 0 ? ScreenHeight : 240;
+	const float scale = screen_h / 480.0f;
+	int i;
+	if( !HUD_IsGame( "mohaa" ) )
+		return 0;
+	if( !m_mohaaVitalsTried )
+	{
+		m_mohaaVitalsTried = 1;
+		for( i = 0; i < 7; i++ )
+			m_hMohaaVitals[i] = SPR_Load( s_mohaaVitalSprites[i] );
+	}
+	if( !m_hMohaaVitals[MOHAA_HEALTHBACK] )
+		return 0;
+	if( gHUD.m_iHideHUDDisplay & ( HIDEHUD_ALL | HIDEHUD_HEALTH ) )
+		return 1;
+	{
+		HSPRITE back = m_hMohaaVitals[MOHAA_HEALTHBACK];
+		const int bh = (int)( SPR_Height( back, 0 ) * scale + 0.5f );
+		const int x = (int)( 44.0f * screen_w / 640.0f + 0.5f );
+		const int y = screen_h - (int)( 16.0f * scale + 0.5f ) - bh;
+		float frac = health > 0 ? health / 100.0f : 0.0f;
+		if( frac > 1.0f )
+			frac = 1.0f;
+		mohaa_draw_sprite_part( back, x, y, 0, scale );
+		if( m_hMohaaVitals[MOHAA_HEALTHMETER] )
+		{
+			const int mh = SPR_Height( m_hMohaaVitals[MOHAA_HEALTHMETER], 0 );
+			const int top = (int)( mh * ( 1.0f - frac ) + 0.5f );
+			mohaa_draw_sprite_part( m_hMohaaVitals[MOHAA_HEALTHMETER], x, y, top, scale );
+			if( m_hMohaaVitals[MOHAA_HEALTHNEEDLE] )
+				mohaa_draw_sprite_part( m_hMohaaVitals[MOHAA_HEALTHNEEDLE], x,
+					y + (int)( top * scale + 0.5f ) - (int)( SPR_Height( m_hMohaaVitals[MOHAA_HEALTHNEEDLE], 0 ) * scale * 0.5f ), 0, scale );
+		}
+	}
+	if( clip >= 0 && !( gHUD.m_iHideHUDDisplay & HIDEHUD_WEAPONS ) && m_hMohaaVitals[MOHAA_AMMOTOP] )
+	{
+		HSPRITE top = m_hMohaaVitals[MOHAA_AMMOTOP], bot = m_hMohaaVitals[MOHAA_AMMOBOT];
+		const int tw = (int)( SPR_Width( top, 0 ) * scale + 0.5f );
+		const int th = (int)( SPR_Height( top, 0 ) * scale + 0.5f );
+		const int bh = bot ? (int)( SPR_Height( bot, 0 ) * scale + 0.5f ) : 0;
+		const int x = screen_w - (int)( 50.0f * screen_w / 640.0f + 0.5f ) - tw;
+		const int y = screen_h - bh - th;
+		char text[16];
+		mohaa_draw_sprite_part( top, x, y, 0, scale );
+		if( bot )
+			mohaa_draw_sprite_part( bot, x, y + th, 0, scale );
+		if( m_hMohaaVitals[MOHAA_AMMOBAR] )
+			mohaa_draw_sprite_part( m_hMohaaVitals[MOHAA_AMMOBAR],
+				x - (int)( SPR_Width( m_hMohaaVitals[MOHAA_AMMOBAR], 0 ) * scale + 0.5f ) - (int)( 16.0f * scale ), y, 0, scale );
+		snprintf( text, sizeof( text ), "%d", clip );
+		gEngfuncs.pfnDrawSetTextColor( 0.9f, 0.85f, 0.7f );
+		gEngfuncs.pfnDrawConsoleString( x + tw / 3, y + th / 3, text );
+	}
+	if( m_hMohaaVitals[MOHAA_CROSSHAIR] && !( gHUD.m_iHideHUDDisplay & HIDEHUD_WEAPONS ) )
+	{
+		HSPRITE ch = m_hMohaaVitals[MOHAA_CROSSHAIR];
+		const int cw = (int)( SPR_Width( ch, 0 ) * scale + 0.5f ), chh = (int)( SPR_Height( ch, 0 ) * scale + 0.5f );
+		mohaa_draw_sprite_part( ch, ( screen_w - cw ) / 2, ( screen_h - chh ) / 2, 0, scale );
 	}
 	return 1;
 }

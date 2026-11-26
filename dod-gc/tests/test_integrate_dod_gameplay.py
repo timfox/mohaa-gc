@@ -456,10 +456,14 @@ class HudIntegrationTest(unittest.TestCase):
 	HUD_H = ("class CHudAmmo\n{\npublic:\n"
 		"\tint GetLeanClip( void ) const { return m_pWeapon ? m_pWeapon->iClip : -1; }\n};\n"
 		"class CHudMenu\n{\n};\n\nclass CHud\n{\npublic:\n\tCHudMenu\t\tm_Menu;\n};\n")
-	HUD_CPP = ('void CHud::Init( void )\n{\n#ifdef __GAMECUBE__\n'
+	HUD_CPP = ('static int GC_HudQuality( void )\n{\n'
+		'\tcvar_t *quality = gEngfuncs.pfnGetCvarPointer( "gc_quality" );\n'
+		'\tint value = quality ? quality->value : 1;\n\treturn value;\n}\n'
+		'void CHud::Init( void )\n{\n#ifdef __GAMECUBE__\n'
 		'\tgEngfuncs.Con_Printf( "Xash3D GameCube: CHud::Init begin quality=%d\\n", quality );\n#endif\n'
 		'\tm_Menu.Init();\n}\nvoid CHud::VidInit( void )\n{\n\tm_Menu.VidInit();\n}\n')
-	REDRAW = ('\t\t\tif( m_iGcLeanHudLog == 0 )\n'
+	REDRAW = ('\t\tconst int q = quality ? (int)quality->value : 1;\n'
+		'\t\t\tif( m_iGcLeanHudLog == 0 )\n'
 		'\t\t\t\tgEngfuncs.Con_Printf( "Xash3D GameCube: lean HUD scrInfo %dx%d\\n",\n'
 		'\t\t\t\t\tm_scrinfo.iWidth, m_scrinfo.iHeight );\n'
 		"\t\t\tif( m_Menu.m_fMenuDisplayed )\n\t\t\t\tm_Menu.Draw( flTime );\n")
@@ -493,6 +497,14 @@ class HudIntegrationTest(unittest.TestCase):
 		self.assertIn("if( m_Dod.DrawRetail( flTime ) )", files["hud_redraw.cpp"])
 		self.assertLess(files["hud_redraw.cpp"].index("lean HUD scrInfo"),
 			files["hud_redraw.cpp"].index("m_Dod.DrawRetail( flTime )"))
+		# MOHAA draws its own HUD (vitals, compass, tips) first, without needing an SDK-side hook
+		redraw = files["hud_redraw.cpp"]
+		self.assertNotIn("GC_DrawMohaaHud", redraw)
+		self.assertLess(redraw.index("m_Dod.DrawMohaaVitals("), redraw.index("m_Dod.DrawRetail( flTime )"))
+		self.assertLess(redraw.index("m_Dod.DrawMohaaVitals("), redraw.index("m_Dod.DrawMohaa( flTime );"))
+		# and always takes the lean tier
+		self.assertIn('HUD_IsGame( "mohaa" ) ? 0', files["hud.cpp"])
+		self.assertIn('HUD_IsGame( "mohaa" ) ? 0', redraw)
 
 	def test_state_is_set_up_before_the_lean_branch(self):
 		# the lean (quality 0) path never runs m_Menu.Init(), so InitState runs first

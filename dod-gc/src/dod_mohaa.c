@@ -2159,9 +2159,12 @@ static int c_huddraw(ms_call *c)
 			if (d->r > 1.0f || d->g > 1.0f || d->b > 1.0f) {
 				d->r /= 255.0f; d->g /= 255.0f; d->b /= 255.0f;
 			}
-			if (d->r < 0.0f) d->r = 0.0f; if (d->r > 1.0f) d->r = 1.0f;
-			if (d->g < 0.0f) d->g = 0.0f; if (d->g > 1.0f) d->g = 1.0f;
-			if (d->b < 0.0f) d->b = 0.0f; if (d->b > 1.0f) d->b = 1.0f;
+			if (d->r < 0.0f) d->r = 0.0f;
+			if (d->r > 1.0f) d->r = 1.0f;
+			if (d->g < 0.0f) d->g = 0.0f;
+			if (d->g > 1.0f) d->g = 1.0f;
+			if (d->b < 0.0f) d->b = 0.0f;
+			if (d->b > 1.0f) d->b = 1.0f;
 		}
 	} else if (!strcmp(op, "huddraw_alpha")) {
 		d->a = ms_arg_float(c, 1);
@@ -2741,7 +2744,7 @@ void Dod_MohaaPrecacheModels(void)
 	if (S.be.free_file)
 		S.be.free_file(text);
 	if (loaded) {
-		char msg[128];
+		char msg[256];
 		snprintf(msg, sizeof(msg), "mohaa: pre-cached %d scripted models from %s\n", loaded, path);
 		S.be.print(DOD_MOHAA_PRINT_CONSOLE, msg);
 	}

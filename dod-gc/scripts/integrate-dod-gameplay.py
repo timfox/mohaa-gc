@@ -816,15 +816,32 @@ def integrate_dod_hud(client: Path) -> None:
 		'\t\t\t\tif( m_Menu.m_fMenuDisplayed )\n'
 		'\t\t\t\t\tm_Menu.Draw( flTime );\n'
 		'\t\t\t\treturn 1;\n'
-		'\t\t\t}\n')
-	# Keep the scripted MOHAA compass/tip renderer in the lean HUD path too;
-	# the retail HUD art returns early before CHud::Redraw's regular HUD list.
+		'\t\t\t}\n',
+		done='\t\t\tif( m_Dod.DrawRetail( flTime ) )\n')
+	# MOHAA always runs the lean HUD tier: the stock full HUD's battery and
+	# sprite sheets are not on a MOHAA card (the old route crashed in CHudBattery::Draw).
+	replace_once(client / "hud.cpp",
+		'\tint value = quality ? quality->value : 1;\n',
+		'\tint value = HUD_IsGame( "mohaa" ) ? 0 : ( quality ? quality->value : 1 );\n')
 	replace_once(client / "hud_redraw.cpp",
-		'\t\t\tif( GC_DrawMohaaHud( m_Health.m_iHealth, m_Ammo.GetLeanClip() ) )\n'
-		'\t\t\t{\n',
-		'\t\t\tif( GC_DrawMohaaHud( m_Health.m_iHealth, m_Ammo.GetLeanClip() ) )\n'
+		'\t\tconst int q = quality ? (int)quality->value : 1;\n',
+		'\t\tconst int q = HUD_IsGame( "mohaa" ) ? 0 : ( quality ? (int)quality->value : 1 );\n')
+	# MOHAA's lean HUD: the retail health meter, ammo arm and crosshair
+	# (CHudDod::DrawMohaaVitals) plus the scripted compass and tips (DrawMohaa),
+	# drawn before the DoD retail HUD and returning before the HL sprite list.
+	# The published SDK has no MOHAA hook, so the whole block is added here.
+	replace_once(client / "hud_redraw.cpp",
+		'\t\t\t/* Day of Defeat: the retail HUD replaces the HL lean sprites. */\n',
+		'\t\t\t/* MOHAA draws its own retail HUD art, compass and script tips. */\n'
+		'\t\t\tif( m_Dod.DrawMohaaVitals( m_Health.m_iHealth, m_Ammo.GetLeanClip() ) )\n'
 		'\t\t\t{\n'
-		'\t\t\t\tm_Dod.DrawMohaa( flTime );\n')
+		'\t\t\t\tm_Dod.DrawMohaa( flTime );\n'
+		'\t\t\t\tif( m_Menu.m_fMenuDisplayed )\n'
+		'\t\t\t\t\tm_Menu.Draw( flTime );\n'
+		'\t\t\t\treturn 1;\n'
+		'\t\t\t}\n'
+		'\n'
+		'\t\t\t/* Day of Defeat: the retail HUD replaces the HL lean sprites. */\n')
 
 
 def integrate_spectator_camera(client: Path) -> None:
