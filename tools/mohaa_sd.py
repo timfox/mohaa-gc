@@ -195,7 +195,7 @@ def stage_menu(sources, game_root, maps, work):
     menu = mohaa_menu.room_menu(sources)
     if menu:   # the retail menu's hotspots, sign, Quit and click sounds (resource/gc_menu/mohaa_main.txt)
         written += mohaa_menu.write_room_menu(menu, game_root)
-    for page in mohaa_menu.PAGES:   # the options desk and the game type cards (resource/gc_menu/mohaa_<page>.txt)
+    for page in mohaa_menu.PAGES:   # the options desk, the game type cards and the Create Server form (resource/gc_menu/mohaa_<page>.txt)
         pm = mohaa_menu.page_menu(sources, page)
         if pm:
             written += mohaa_menu.write_page(pm, game_root, page)
