@@ -1204,6 +1204,24 @@ def main() -> int:
 		'\tif( !stricmp( gameleaf, "dod" ) && gpGlobals->deathmatch )\n',
 		'\tif(( !stricmp( gameleaf, "dod" ) || !stricmp( gameleaf, "mohaa" )) && gpGlobals->deathmatch )\n',
 	)
+	# MOHAA's campaign is single player (the menu's New Game sets deathmatch 0), so its levels run under
+	# CHalfLifeRules. Start and think the MOHAA level there too: the mission script, its soldiers and the
+	# m1l1 opening ride (DodGC_SinglePlayerLevelInit / DodGC_SinglePlayerThink do nothing outside mohaa).
+	replace_once(
+		dlls / "singleplay_gamerules.cpp",
+		'#include\t"items.h"\n',
+		'#include\t"items.h"\n#include\t"dod_runtime.h"\n',
+	)
+	replace_once(
+		dlls / "singleplay_gamerules.cpp",
+		'\tSERVER_COMMAND( "exec spserver.cfg\\n" );\n\tRefreshSkillData();\n}\n',
+		'\tSERVER_COMMAND( "exec spserver.cfg\\n" );\n\tRefreshSkillData();\n\tDodGC_SinglePlayerLevelInit();\n}\n',
+	)
+	replace_once(
+		dlls / "singleplay_gamerules.cpp",
+		'void CHalfLifeRules::Think( void )\n{\n}\n',
+		'void CHalfLifeRules::Think( void )\n{\n\tDodGC_SinglePlayerThink();\n}\n',
+	)
 	# Mounted guns (func_tank): the stock Half-Life tank aims at and fires on the first client in its view with no team check
 	# (CFuncTank::FindTarget returns the player), so an active func_tank killed the Axis bots at their own spawn on avalanche
 	# (an Axis MG at 508,2099,387, spawnflags 1). A DoD mounted gun fires for the player on it, not on its own.

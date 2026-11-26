@@ -563,6 +563,38 @@ void DodGC_RegisterPmLayout( void )
 	CVAR_REGISTER( &gc_pm_layout_dll );
 }
 
+/* MOHAA's campaign is single player: the menu's New Game sets deathmatch 0, so InstallGameRules builds
+ * CHalfLifeRules and the DoD rules below never start the level. Without this the mission script
+ * (maps/<map>.scr), the soldiers it places (mohaa_actor, the grunt pool) and m1l1's opening ride never ran:
+ * the player stood where the map put them and every map soldier failed to spawn, since the grunt bodies
+ * come from the side body cvars the DoD rules register. The single-player rules call these two. */
+static int DodGC_IsMohaaGame( void )
+{
+	const char *gamedir = CVAR_GET_STRING( "gamedir" );
+	return gamedir && !strcmp( gamedir, "mohaa" );
+}
+
+void DodGC_SinglePlayerLevelInit( void )
+{
+	if( !DodGC_IsMohaaGame() )
+		return;
+	Dod_CvarRegisterKeep( &dod_allies_body );
+	Dod_CvarRegisterKeep( &dod_axis_body );
+	Dod_GameInit();
+	Dod_SetAlliesCountry( Dod_AlliesCountryForMap( STRING( gpGlobals->mapname ) ) );
+	DodGrunts_Init();
+	DodGC_MohaaLevelInit();
+	ALERT( at_console, "mohaa: single-player level start on %s\n", STRING( gpGlobals->mapname ) );
+}
+
+void DodGC_SinglePlayerThink( void )
+{
+	if( !DodGC_IsMohaaGame() )
+		return;
+	DodGrunts_Think();
+	DodGC_MohaaThink();
+}
+
 CHalfLifeDoD::CHalfLifeDoD()
 {
 	DodBots_Init();
