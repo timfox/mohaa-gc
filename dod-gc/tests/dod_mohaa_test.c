@@ -528,8 +528,8 @@ static void test_music(void)
 	files[2][0] = "music/other.mood";
 	files[2][1] = "normal mohaa/music/other.wav 1.00 1 0.0\n";
 	assert(Dod_MohaaLevelInit(&b, "m", 0, 0));
-	/* the map's own soundtrack starts on normal */
-	assert(!strncmp(log_buf, "<music sound/mohaa/music/calm.wav | sound/mohaa/music/calm.wav>\n", 62));
+	/* the map's own soundtrack starts on normal (after any path-node notice for this node-less test map) */
+	assert(strstr(log_buf, "<music sound/mohaa/music/calm.wav | sound/mohaa/music/calm.wav>\n"));
 	run(0.05f, 0.3f);
 	assert(strstr(log_buf,
 		"<music sound/mohaa/music/fight.wav | sound/mohaa/music/calm.wav>\n"	/* once, then back to normal */

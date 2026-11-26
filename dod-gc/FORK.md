@@ -35,3 +35,8 @@ MOHAA changes since the fork:
   valve.avi). The converter's movie stage writes the player's intro to
   `sd:/xash3d/mohaa/media/mohaa_intro.gcvid` + `.gcpcm`. A, B or Start skips it; with no movie on the
   card the menu opens straight away.
+- MOHAA lean HUD without an SDK hook: `integrate-dod-gameplay.py` adds the whole MOHAA block to
+  hlsdk-portable's lean `CHud::Redraw` (retail health/ammo/crosshair in `CHudDod::DrawMohaaVitals`,
+  compass and tips in `DrawMohaa`) and makes `gc_quality` read 0 for the mohaa game, so a fresh
+  checkout builds against the pinned SDK. Codex's local SDK had a `GC_DrawMohaaHud` hook that was
+  never published.

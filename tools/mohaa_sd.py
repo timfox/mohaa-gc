@@ -100,6 +100,11 @@ def find_cab_set(dirs):
     return found
 
 
+def cd_done_key():
+    """What <work>/cd/.done holds after a complete unpack with the current file groups."""
+    return "unshield-lowercase-groups-v3\n" + "\n".join(sorted(CD_GROUPS)) + "\n"
+
+
 def unpack_cds(dirs, work, log=print):
     """Unpack the media groups and every pk3 from the CDs' cabinets into <work>/cd/main; returns that folder."""
     out = os.path.join(work, "cd", "main")
@@ -107,7 +112,7 @@ def unpack_cds(dirs, work, log=print):
     # unshield -L lowercases group-directory names and replaces spaces with underscores
     # ("Sound AmbStereo Files" -> "sound_ambstereo_files"). Version the cache
     # so prior extracts without the complete sound groups are unpacked again.
-    groups_key = "unshield-lowercase-groups-v3\n" + "\n".join(sorted(CD_GROUPS)) + "\n"
+    groups_key = cd_done_key()
     if os.path.exists(done):
         with open(done) as fh:
             if fh.read() == groups_key:
@@ -535,7 +540,12 @@ def stage_maps(sources, game_root, maps, work):
         source_bsp = read(known[m])
         with open(src, "wb") as fh:
             fh.write(source_bsp)
-        skyname, sky_files = mohaa_sky.stage_map_sky(sources, m, source_bsp, game_root)
+        try:
+            skyname, sky_files = mohaa_sky.stage_map_sky(sources, m, source_bsp, game_root)
+        except mohaa_sky.b19.BspError as exc:
+            # The sky is optional: an unreadable shader lump must not stop the map itself.
+            print("   %s: skybox skipped (%s)" % (m, exc))
+            skyname, sky_files = None, []
         if skyname:
             print("   %s: skybox %s (%d new CMPR faces)" % (m, skyname, len(sky_files)))
         else:

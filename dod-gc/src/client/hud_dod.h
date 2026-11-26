@@ -25,6 +25,8 @@ public:
 	 * the caller should skip its own HUD. */
 	int DrawRetail( float flTime );
 	int DrawMohaa( float flTime );
+	/* Retail health meter, ammo arm and crosshair from the converted textures/hud art. */
+	int DrawMohaaVitals( int health, int clip );
 	int MsgFunc_DodHud( const char *pszName, int iSize, void *pbuf );
 	int MsgFunc_DodBoard( const char *pszName, int iSize, void *pbuf );
 	int MsgFunc_DodVoice( const char *pszName, int iSize, void *pbuf );
@@ -61,6 +63,8 @@ private:
 	unsigned m_fSheetTried;	/* on-use sheets already attempted (bit per sheet) */
 	DodMohaaHudDraw m_mohaaHud[DOD_MOHAA_HUD_DRAW_COUNT];
 	HSPRITE m_hMohaaCompassBack, m_hMohaaCompassFace, m_hMohaaCompassNeedle, m_hMohaaCompassObjective;
+	HSPRITE m_hMohaaVitals[7];
+	int m_mohaaVitalsTried;
 	HSPRITE m_hMohaaHudShader[DOD_MOHAA_HUD_DRAW_COUNT];
 	unsigned char m_mohaaHudShaderTried[DOD_MOHAA_HUD_DRAW_COUNT];
 	float m_mohaaCompassTarget[3];
