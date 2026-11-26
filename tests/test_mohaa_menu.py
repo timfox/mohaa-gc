@@ -448,7 +448,7 @@ class MenuTest(unittest.TestCase):
             with open(os.path.join(gc, "bg_options_1_1.cmp"), "rb") as f:
                 data = f.read()
             self.assertEqual((data[:4], len(data)), (b"GCMP", 32 + 320 * 240 // 2))
-            self.assertEqual(Image.open(os.path.join(gc, "bg_options_0_0.tga")).size, (160, 120))
+            self.assertEqual(Image.open(os.path.join(gc, "bg_options_0_0.tga")).size, (64, 48))
 
     def test_gametype_page_reads_its_include(self):
         with tempfile.TemporaryDirectory() as tmp:

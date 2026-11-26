@@ -345,6 +345,7 @@ PAGES = {
         (re.compile(r"popmenu", re.I), "back"),
     )),
 }
+PAGE_STANDIN = (64, 48)   # a page quadrant's .tga stand-in for its 320x240 .cmp
 PAGE_SIGN = re.compile(r"set\s+ui_\w*shader\s+(\S+)", re.I)
 ADDITIVE = ("alphaadd", "add", "gl_one gl_one", "gl_src_alpha gl_one")
 
@@ -486,7 +487,7 @@ def page_menu(inputs, page):
 
 def write_page(menu, game_root, page):
     """Write a retail page under game_root: its picture as four quadrants (resource/gc_menu/bg_<page>_<r>_<c>
-    .tga at 160x120 plus the 320x240 GX CMPR .cmp the GameCube draws), its parts under
+    .cmp, 320x240 GX CMPR, which the GameCube draws, and a 64x48 .tga stand-in), its parts under
     resource/gc_menu/mohaa/<page>/ and resource/gc_menu/mohaa_<page>.txt; returns the written paths."""
     from PIL import Image
     import numpy as np
@@ -510,7 +511,10 @@ def write_page(menu, game_root, page):
             name = "bg_%s_%d_%d" % (page, row, col)
             quad = sheet.crop((col * fw, row * fh, (col + 1) * fw, (row + 1) * fh))
             p = os.path.join(out, name + ".tga")
-            quad.resize((fw // 2, fh // 2), Image.LANCZOS).save(p, format="TGA")
+            # The GameCube draws the .cmp; this .tga only stands in for it (and shows if the .cmp
+            # cannot load). Kept small: a 160x120 quadrant took a 75 KiB decode buffer from the
+            # 131 KiB image pool, and a second page's quadrants no longer fit.
+            quad.resize(PAGE_STANDIN, Image.LANCZOS).save(p, format="TGA")
             written.append(p)
             p = os.path.join(out, name + ".cmp")
             with open(p, "wb") as fh_out:
