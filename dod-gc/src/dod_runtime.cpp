@@ -591,6 +591,14 @@ void DodGC_SinglePlayerThink( void )
 {
 	if( !DodGC_IsMohaaGame() )
 		return;
+	/* DoD's player movement clamps to pev->maxspeed, which only the DoD rules' class pick sets: on the
+	 * single-player rules it stayed 0 and the campaign player could not walk (the stick reached the usercmd,
+	 * the server moved nothing). Give a player with none the DoD rifleman's speed, as the bots get. */
+	for( int i = 1; i <= gpGlobals->maxClients; i++ ) {
+		CBaseEntity *pe = UTIL_PlayerByIndex( i );
+		if( pe && pe->IsPlayer() && pe->pev->maxspeed <= 0.0f )
+			pe->pev->maxspeed = 220.0f;
+	}
 	DodGrunts_Think();
 	DodGC_MohaaThink();
 }

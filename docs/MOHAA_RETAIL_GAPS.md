@@ -3,7 +3,8 @@
 This is a running list, updated with each PR. Each entry says what retail does that the port doesn't yet, and where it shows. Newest changes are at the top of each section.
 
 ## Missions and scripts
-- **m1l2a door hint is unverified in Dolphin.** MOHAA USE now reaches trigger_use/trigger_multiple through the game's PlayerUse (2026-11-26). But the probe's synthetic pad doesn't move the player on the menu New Game route: the TAS buttons arrive, while the stick input leaves the player in place. Needs: a probe input route that moves the player, or a hardware/pad test.
+- **The campaign player can walk** (2026-11-26, xash3d-gc claude/mohaa-probe-sticks). The HL1 intro-tram code had pinned the player to m1l2a's *12 brush, and single-slot world-render boots skipped server PM_Move. The player's maxspeed is also set to 220 when nothing else has set it.
+- **m1l2a door hint: the logic works, but it doesn't show on screen.** In Dolphin, USE reaches `door_locked` (80 units away), the trigger fires, the retail locked-door rattle plays, and the hint thread runs `iprintlnbold` (traced with debug printlns). The text never appears on the 160x120 world-render HUD, so the MOHAA tip draw at that screen size is the next thing to fix.
 - **m1l1 2nd-ranger truck animations** (`truck_idle_captain` and the like) can't be applied. Mission actors wear DoD player bodies, not TIKI skeletons, so the passengers stand in their idle pose.
 - **Path nodes on large maps.** m1l2a's 1104 path nodes (46 KB) fail to allocate at map load, so its walks go in straight lines.
 - **Music** needs the CD-sourced loose music (`--cd`) or `--music-source`. A Paks-only install has none.
