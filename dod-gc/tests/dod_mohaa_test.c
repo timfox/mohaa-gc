@@ -172,7 +172,7 @@ static void m_fade(float t, float r, float g, float b, float a, int out)
 static int m_actor(uint32_t id, int order, const float pos[3])
 {
 	static const char *names[] = {"ai_on", "ai_off", "attack", "walkto", "runto", "turnto", "stop",
-		"sight", "hearing", "fov", "leash", "tether", "mindist", "maxdist", "gun", "style"};
+		"sight", "hearing", "fov", "leash", "tether", "mindist", "maxdist", "gun", "style", "patrolto"};
 	char line[96];
 	Ent *e = ent(id);
 	if (!e || strcmp(e->classname, "actor"))
@@ -393,6 +393,45 @@ static void test_actor_weapons(void)
 	assert(strstr(log_buf, "<guy gun 8.0"));	/* DOD_WEAPON_K98 */
 	assert(strstr(log_buf, "<guy style 1.0") && strstr(log_buf, "<guy style 0.0"));
 	assert(!strstr(log_buf, "not bound yet") && !strstr(log_buf, "not an actor"));
+}
+
+/* patrol: type_idle patrol + patrolpath walks the info_waypoint chain target by target; an alerted soldier stops,
+   runs its alarmthread and heads for its alarmnode */
+static void test_patrol_and_alarm(void)
+{
+	DodMohaaBackend b = backend();
+	int guy, wp1, wp2, wp3, post;
+	reset();
+	guy = add("guy", "actor", 0, 0, 0);
+	wp1 = add("wp1", "info_target", 94, 0, 0);
+	wp2 = add("wp2", "info_target", 94, 94, 0);
+	wp3 = add("wp3", "info_target", 0, 94, 0);
+	post = add("post", "info_target", 188, 188, 0);
+	snprintf(ents[wp1].target, sizeof(ents[wp1].target), "wp2");
+	snprintf(ents[wp2].target, sizeof(ents[wp2].target), "wp3");
+	(void)wp3; (void)post;
+	files[0][0] = "maps/p.scr";
+	files[0][1] =
+		"main:\n"
+		"\t$guy type_idle \"patrol\"\n"
+		"\t$guy patrolpath $wp1\n"
+		"\t$guy alarmthread alarmed\n"
+		"\t$guy alarmnode $post\n"
+		"end\n"
+		"alarmed:\n"
+		"\tprintln \"alarm raised\"\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "p", 0, 0));
+	run(0.05f, 0.2f);
+	assert(strstr(log_buf, "<guy patrolto 94.0 0.0"));	/* wp1 (GoldSrc units, as the backend gives them) */
+	Dod_MohaaNotify(make_id(guy), "movedone");
+	run(0.25f, 0.4f);
+	assert(strstr(log_buf, "<guy patrolto 94.0 94.0"));	/* wp2 */
+	Dod_MohaaActorAlerted(make_id(guy));
+	run(0.45f, 0.6f);
+	assert(strstr(log_buf, "<guy runto 188.0 188.0"));	/* its alarmnode */
+	assert(strstr(log_buf, "alarm raised"));
+	assert(!strstr(log_buf, "not bound yet"));
 }
 
 static void test_level_flow_and_movers(void)
@@ -1230,6 +1269,7 @@ int main(void)
 	RUN(test_actor_settings);
 	RUN(test_cover_spot);
 	RUN(test_actor_weapons);
+	RUN(test_patrol_and_alarm);
 	RUN(test_level_flow_and_movers);
 	RUN(test_waittill_trigger_and_freed);
 	RUN(test_budget_refuses_cleanly);

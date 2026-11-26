@@ -116,6 +116,12 @@ void DodGrunt_Looked(DodGruntPool *p, int i, float now, int visible, int target,
 	if (p->script[i]) {
 		/* A script actor: off means blind, a move order wins over fighting, and it holds instead of wandering. */
 		const int attack = (p->script[i] & DOD_GRUNT_ATTACK) != 0;
+		if (visible && (p->script[i] & DOD_GRUNT_SOFT_ORDER) && p->order[i] != DOD_GRUNT_ORDER_NONE
+			&& !(p->script[i] & DOD_GRUNT_AI_OFF)) {
+			/* a patrol walk ends when an enemy comes into sight */
+			p->order[i] = DOD_GRUNT_ORDER_NONE;
+			p->script[i] &= (unsigned char)~DOD_GRUNT_SOFT_ORDER;
+		}
 		if ((p->script[i] & DOD_GRUNT_AI_OFF) || p->order[i] != DOD_GRUNT_ORDER_NONE) {
 			p->target[i] = 0;
 			return;
@@ -455,6 +461,7 @@ void DodGrunt_OrderMove(DodGruntPool *p, int i, float x, float y, int run)
 {
 	if (!alive(p, i))
 		return;
+	p->script[i] &= (unsigned char)~DOD_GRUNT_SOFT_ORDER;	/* a script order is not a patrol walk */
 	p->order[i] = (unsigned char)(run ? DOD_GRUNT_ORDER_RUN : DOD_GRUNT_ORDER_WALK);
 	p->order_x[i] = x;
 	p->order_y[i] = y;

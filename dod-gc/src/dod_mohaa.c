@@ -254,6 +254,19 @@ static int is_player(uint32_t id);
 /* helpers                                                              */
 /* ------------------------------------------------------------------ */
 
+/* soldiers on patrol or with an alarm (type_idle, patrolpath, alarmnode, alarmthread): one row each */
+#define DOD_MOHAA_PATROLS 32
+typedef struct {
+	uint32_t id;           /* the actor */
+	uint32_t waypoint;     /* the patrol point it walks to now (an info_waypoint entity), 0 none */
+	uint32_t alarm_node;   /* where it runs when it is alerted, 0 none */
+	char alarm_thread[48]; /* the label it runs when alerted */
+	unsigned char patrol;  /* type_idle patrol */
+	unsigned char walking; /* a patrol walk order is out */
+	unsigned char alerted; /* it has seen an enemy: patrol over */
+} DodPatrol;
+static DodPatrol g_patrols[DOD_MOHAA_PATROLS];
+
 /* cover nodes soldiers have taken (Dod_MohaaCoverSpot): node + 1, the soldier, until when */
 #define DOD_MOHAA_COVER_CLAIMS 48
 static struct { int node, key; float until; } g_cover_claims[DOD_MOHAA_COVER_CLAIMS];
@@ -1079,6 +1092,203 @@ static int c_firing(ms_call *c)
 	pos[0] = ms_call_name(c)[2] == 'a' ? 1.0f : 0.0f;	/* stArtfiring / stOpfiring */
 	S.be.actor(id, DOD_MOHAA_ATTACK_STYLE, pos);
 	return 0;
+}
+
+static DodPatrol *patrol_for(uint32_t id, int make)
+{
+	int k, free_row = -1;
+	for (k = 0; k < DOD_MOHAA_PATROLS; k++) {
+		if (g_patrols[k].id == id)
+			return &g_patrols[k];
+		if (free_row < 0 && (!g_patrols[k].id || !valid(g_patrols[k].id)))
+			free_row = k;
+	}
+	if (!make || free_row < 0)
+		return NULL;
+	memset(&g_patrols[free_row], 0, sizeof(g_patrols[free_row]));
+	g_patrols[free_row].id = id;
+	return &g_patrols[free_row];
+}
+
+/* an entity by name: "$name" or "name" */
+static uint32_t entity_named(const ms_value *v)
+{
+	char buf[96];
+	const char *name;
+	uint32_t id = 0;
+	if (v->type == MS_ENTITY)
+		return valid(v->u.id) ? v->u.id : 0;
+	name = ms_tostring(v, buf, sizeof(buf));
+	if (name && name[0] == '$')
+		name++;
+	if (!name || !*name || S.be.find(name, &id, 1) < 1 || !valid(id))
+		return 0;
+	return id;
+}
+
+static int is_actor_id(uint32_t id)
+{
+	const char *cls = id && valid(id) && !is_node(id) && S.be.get_str ? S.be.get_str(id, DOD_MOHAA_CLASSNAME) : NULL;
+	return cls && (!strcmp(cls, "dod_grunt") || !strcmp(cls, "actor"));
+}
+
+/* "type_idle patrol|idle|alarm|..." */
+static void set_type_idle(uint32_t id, const char *type)
+{
+	DodPatrol *p;
+	if (!is_actor_id(id))
+		return;
+	p = patrol_for(id, type && !strcmp(type, "patrol"));
+	if (p)
+		p->patrol = type && !strcmp(type, "patrol");
+}
+static int c_type_idle(ms_call *c)
+{
+	set_type_idle(target_id(c), ms_arg_string(c, 0));
+	return 0;
+}
+
+/* "patrolpath <first info_waypoint>": with type_idle patrol it walks the waypoint chain (target to target) */
+static void set_patrolpath(uint32_t id, const ms_value *path)
+{
+	DodPatrol *p;
+	uint32_t first = entity_named(path);
+	if (!is_actor_id(id) || !first || !(p = patrol_for(id, 1)))
+		return;
+	p->waypoint = first;
+	p->walking = 0;
+}
+static int c_patrolpath(ms_call *c)
+{
+	set_patrolpath(target_id(c), ms_arg(c, 0));
+	return 0;
+}
+
+/* "alarmnode <node>" / "alarmthread <label>": where an alerted soldier runs, and the thread it starts */
+static int c_alarmnode(ms_call *c)
+{
+	DodPatrol *p;
+	uint32_t node = entity_named(ms_arg(c, 0));
+	if (!is_actor_id(target_id(c)) || !(p = patrol_for(target_id(c), 1)))
+		return 0;
+	p->alarm_node = node;
+	return 0;
+}
+static int c_alarmthread(ms_call *c)
+{
+	DodPatrol *p;
+	const char *label = ms_arg_string(c, 0);
+	if (!is_actor_id(target_id(c)) || !(p = patrol_for(target_id(c), 1)))
+		return 0;
+	snprintf(p->alarm_thread, sizeof(p->alarm_thread), "%s", label ? label : "");
+	return 0;
+}
+
+/* once a frame: a patrolling soldier with no walk order out walks to its waypoint */
+static void patrols_think(void)
+{
+	int k;
+	for (k = 0; k < DOD_MOHAA_PATROLS; k++) {
+		DodPatrol *p = &g_patrols[k];
+		float pos[3];
+		if (!p->id || !p->patrol || p->alerted || p->walking || !p->waypoint)
+			continue;
+		if (!valid(p->id) || !valid(p->waypoint)) {
+			p->waypoint = 0;
+			continue;
+		}
+		get_vec(p->waypoint, DOD_MOHAA_ORIGIN, pos);
+		if (S.be.actor && S.be.actor(p->id, DOD_MOHAA_PATROLTO, pos)) {
+			static int logs;
+			p->walking = 1;
+			if (logs < 12) {
+				char msg[160];
+				const char *who = S.be.get_str(p->id, DOD_MOHAA_TARGETNAME);
+				const char *to = S.be.get_str(p->waypoint, DOD_MOHAA_TARGETNAME);
+				logs++;
+				snprintf(msg, sizeof(msg), "mohaa: %s patrols to %s\n", who && *who ? who : "?", to && *to ? to : "?");
+				S.be.print(DOD_MOHAA_PRINT_CONSOLE, msg);
+			}
+		}
+	}
+}
+
+/* a patrolling soldier reached its waypoint: on to the next one (its target) */
+static int patrol_arrived(uint32_t id)
+{
+	DodPatrol *p = patrol_for(id, 0);
+	const char *next;
+	uint32_t nid = 0;
+	if (!p || !p->walking)
+		return 0;
+	p->walking = 0;
+	next = p->waypoint && valid(p->waypoint) && S.be.get_str ? S.be.get_str(p->waypoint, DOD_MOHAA_TARGET) : NULL;
+	if (next && *next && S.be.find(next, &nid, 1) >= 1 && valid(nid))
+		p->waypoint = nid;
+	else
+		p->waypoint = 0;	/* the end of the path: it stays */
+	return 1;
+}
+
+/* The backend: a soldier saw an enemy for the first time. Its patrol ends; an alarmthread runs and it heads for its
+   alarmnode. */
+void Dod_MohaaActorAlerted(uint32_t id)
+{
+	DodPatrol *p;
+	if (!S.vm || !(p = patrol_for(id, 0)) || p->alerted)
+		return;
+	p->alerted = 1;
+	p->walking = 0;
+	{
+		char msg[160];
+		const char *who = S.be.get_str(id, DOD_MOHAA_TARGETNAME);
+		snprintf(msg, sizeof(msg), "mohaa: %s is alerted%s%s\n", who && *who ? who : "?",
+			 p->alarm_thread[0] ? ", alarm thread " : "", p->alarm_thread);
+		S.be.print(DOD_MOHAA_PRINT_CONSOLE, msg);
+	}
+	if (p->alarm_node && valid(p->alarm_node) && S.be.actor) {
+		float pos[3];
+		get_vec(p->alarm_node, DOD_MOHAA_ORIGIN, pos);
+		S.be.actor(id, DOD_MOHAA_RUNTO, pos);
+	} else if (p->patrol && S.be.actor) {
+		static const float zero[3] = {0, 0, 0};
+		S.be.actor(id, DOD_MOHAA_STOP, zero);	/* stop walking the path and fight */
+	}
+	if (p->alarm_thread[0])
+		Dod_MohaaRunThread(p->alarm_thread, id);
+}
+
+/* MOHAA spawn keys that are actor commands ("spawn ... type_idle patrol patrolpath p02 sight 1024") */
+static void spawn_actor_keys(uint32_t id, const char *const *keys, const char *const *vals, int n)
+{
+	int i;
+	if (!is_actor_id(id))
+		return;
+	for (i = 0; i < n; i++) {
+		const float f = (float)atof(vals[i]);
+		float pos[3] = {0, 0, 0};
+		int order = -1;
+		if (!strcmp(keys[i], "type_idle"))
+			set_type_idle(id, vals[i]);
+		else if (!strcmp(keys[i], "patrolpath")) {
+			ms_value name = ms_string(S.vm, vals[i]);
+			set_patrolpath(id, &name);
+			ms_release(S.vm, name);
+		} else if (!strcmp(keys[i], "sight"))
+			order = DOD_MOHAA_SIGHT;
+		else if (!strcmp(keys[i], "hearing"))
+			order = DOD_MOHAA_HEARING;
+		else if (!strcmp(keys[i], "leash"))
+			order = DOD_MOHAA_LEASH;
+		else if (!strcmp(keys[i], "mindist"))
+			order = DOD_MOHAA_MINDIST;
+		else if (!strcmp(keys[i], "maxdist"))
+			order = DOD_MOHAA_MAXDIST;
+		if (order >= 0 && S.be.actor) {
+			pos[0] = f * DOD_MOHAA_SCALE;
+			S.be.actor(id, order, pos);
+		}
+	}
 }
 
 /* "fixedleash 1": the leash stays where it was set (as it already does here) */
@@ -2431,6 +2641,7 @@ static int c_spawn(ms_call *c)
 	for (i = 0; i < n; i++)
 		if (keys[i][0] == '#')
 			Dod_MohaaEntityKey(id, keys[i], vals[i]);
+	spawn_actor_keys(id, keys, vals, n);
 	ms_return_entity(c, id);
 	return 0;
 }
@@ -2522,6 +2733,10 @@ static void register_commands(ms_vm *vm)
 		{"mindist", MS_ON_ENTITY, c_mindist},
 		{"maxdist", MS_ON_ENTITY, c_maxdist},
 		{"gun", MS_ON_ENTITY, c_gun},
+		{"type_idle", MS_ON_ENTITY, c_type_idle},
+		{"patrolpath", MS_ON_ENTITY, c_patrolpath},
+		{"alarmnode", MS_ON_ENTITY, c_alarmnode},
+		{"alarmthread", MS_ON_ENTITY, c_alarmthread},
 		{"type_attack", MS_ON_ENTITY, c_type_attack},
 		{"startfiring", MS_ON_ENTITY, c_firing},
 		{"stopfiring", MS_ON_ENTITY, c_firing},
@@ -2668,6 +2883,7 @@ void Dod_MohaaShutdown(void)
 	S.vm = NULL;
 	S.compile_pending = S.compile_tries = 0;
 	memset(g_cover_claims, 0, sizeof(g_cover_claims));
+	memset(g_patrols, 0, sizeof(g_patrols));
 	memset(S.movers, 0, sizeof(S.movers));
 	S.nunknown = 0;
 	S.ticks = 0;
@@ -3047,6 +3263,7 @@ void Dod_MohaaThink(float now)
 	if (!compile_deferred(now))
 		return;
 	start_main();
+	patrols_think();
 	/* MOHAA level scripts wait for these before touching the world */
 	if (S.ticks == 0) {
 		S.be.print(DOD_MOHAA_PRINT_CONSOLE, "mohaa: signal prespawn\n");
@@ -3095,6 +3312,8 @@ void Dod_MohaaNotify(uint32_t id, const char *event)
 		return;
 	if (!strcmp(event, "movedone") && route_arrived(id))
 		return;	/* a node on the way, not the goal */
+	if (!strcmp(event, "movedone") && patrol_arrived(id))
+		return;	/* its patrol's own walk, not one the script waits for */
 	if (!strcmp(event, "death"))
 		forget(id);
 	ms_notify(S.vm, &ent, event);

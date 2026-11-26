@@ -1243,6 +1243,13 @@ int DodGC_MohaaPlayerUse( CBasePlayer *player )
 	return 1;
 }
 
+void DodGC_MohaaActorAlerted( edict_t *e )
+{
+	const uint32_t id = IdFor( e );
+	if( id )
+		Dod_MohaaActorAlerted( id );
+}
+
 void DodGC_MohaaPrecacheModels( void )
 {
 	Dod_MohaaPrecacheModels();

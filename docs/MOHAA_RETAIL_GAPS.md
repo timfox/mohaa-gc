@@ -24,7 +24,8 @@ This is a running list, updated with each PR. Each entry says what retail does t
 - **The campaign player had no side** (fixed 2026-11-26). On the single-player rules the player joins no team, so grunts never treated them as an enemy. They now count as Allies in MOHAA's campaign.
 - **Soldiers don't fight each other.** Grunts only target players, so the Allied friendlies and the Germans ignore one another.
 - **Weapons and attack styles** (2026-11-26): `gun` and the `.weapon` field pick the DoD weapon a soldier fires, by MOHAA name; `"none"` leaves it unarmed, and an unknown name falls back to its side's rifle. `type_attack runandshoot` charges; `cover`, `turret` and the other styles fight from cover. `startfiring` and `stopfiring` toggle charging on actors and are ignored on turrets. Still missing: turret behaviour itself (manning an MG42), the MG42 entities, and burst-fire settings.
-- **Alarm and patrol:** `type_idle` alarm and patrol, `alarmnode`, `alarmthread` and `patrolpath`.
+- **Patrol and alarm** (2026-11-26): `type_idle patrol` plus `patrolpath` walks the info_waypoint chain, following each waypoint's target, and also works as spawn keys. An enemy in sight ends the walk. On a soldier's first sight of an enemy, its `alarmthread` runs and it runs to its `alarmnode`. Seen in Dolphin on m1l2b: patroller02 walks patrolpath02, t329, t327 and on, and loops. Still missing: alerting nearby soldiers (`enemysharerange`), and retail's alarm-type idle behaviour (running to an alarm and raising it).
+- **More unbound commands seen on m1l2b:** `nottriggerable`, `triggerable`, `setcollisionentity`, `german`, `immune`, `flypath`.
 - **Disguise:** `type_disguise` and the `disguise_*` settings, used by m1l2a/m1l3.
 - **Grenades:** throwing them, and reacting to them.
 

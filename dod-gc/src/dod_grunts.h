@@ -47,7 +47,8 @@ typedef enum {
 enum {
 	DOD_GRUNT_SCRIPTED = 1 << 0,	/* owned by a script */
 	DOD_GRUNT_AI_OFF = 1 << 1,	/* ignores what it sees: no targets, no shooting, no wandering */
-	DOD_GRUNT_ATTACK = 1 << 2	/* runs at what it sees (MOHAA attackplayer) instead of holding */
+	DOD_GRUNT_ATTACK = 1 << 2,	/* runs at what it sees (MOHAA attackplayer) instead of holding */
+	DOD_GRUNT_SOFT_ORDER = 1 << 3	/* its move order is a patrol walk: an enemy in sight ends it */
 };
 enum { DOD_GRUNT_ORDER_NONE = 0, DOD_GRUNT_ORDER_WALK, DOD_GRUNT_ORDER_RUN };
 /* A fighting script actor runs to a cover path node (its own move, not the script's: no movedone), then fights
