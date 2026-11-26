@@ -464,6 +464,33 @@ static void test_disguise(void)
 	assert(!strstr(log_buf, "not bound yet"));
 }
 
+/* "$name thread label" on a name several entities share: each runs it (m1l2a's door hint watches every
+   door_locked trigger, and the second one fired the hint) */
+static void test_thread_on_shared_name(void)
+{
+	DodMohaaBackend b = backend();
+	int d1, d2;
+	reset();
+	d1 = add("door", "trigger_multiple", 0, 0, 0);
+	d2 = add("door", "trigger_multiple", 100, 0, 0);
+	(void)d1;
+	files[0][0] = "maps/t2.scr";
+	files[0][1] =
+		"main:\n"
+		"\t$door thread watch\n"
+		"end\n"
+		"watch:\n"
+		"\tself waittill trigger\n"
+		"\tprintln \"door hit\"\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "t2", 0, 0));
+	run(0.05f, 0.2f);
+	Dod_MohaaNotify(make_id(d2), "trigger");
+	run(0.25f, 0.4f);
+	if (!strstr(log_buf, "door hit")) fprintf(stderr, "LOG:\n%s\n", log_buf);
+	assert(strstr(log_buf, "door hit"));
+}
+
 static void test_level_flow_and_movers(void)
 {
 	DodMohaaBackend b = backend();
@@ -1301,6 +1328,7 @@ int main(void)
 	RUN(test_actor_weapons);
 	RUN(test_patrol_and_alarm);
 	RUN(test_disguise);
+	RUN(test_thread_on_shared_name);
 	RUN(test_level_flow_and_movers);
 	RUN(test_waittill_trigger_and_freed);
 	RUN(test_budget_refuses_cleanly);
