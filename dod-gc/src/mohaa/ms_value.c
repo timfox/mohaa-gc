@@ -762,6 +762,19 @@ int ms_get_entity_var(ms_vm *vm, uint32_t id, const char *name, ms_value *out)
     return 1;
 }
 
+int ms_get_level_var(ms_vm *vm, const char *name, ms_value *out)
+{
+    ms_value *v;
+    if (!vm || !name || !out)
+        return 0;
+    v = ms_table_get(&vm->level_vars, ms_intern(vm, name, strlen(name)));
+    if (!v)
+        return 0;
+    ms_retain(*v);
+    *out = *v;
+    return 1;
+}
+
 int ms_set_parm(ms_vm *vm, const char *name, const ms_value *v)
 {
     ms_value *slot = ms_table_slot(vm, &vm->parm_vars, ms_intern(vm, name, strlen(name)));

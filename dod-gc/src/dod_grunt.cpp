@@ -315,6 +315,15 @@ static int ScriptSlot( edict_t *ed )
 	return i;
 }
 
+int DodGrunts_ScriptAccuracy( edict_t *ed, float accuracy )
+{
+	const int i = ScriptSlot( ed );
+	if( i < 0 )
+		return 0;
+	DodGrunt_SetAccuracy( &g_pool, i, accuracy );
+	return 1;
+}
+
 int DodGrunts_ScriptRemove( edict_t *ed )
 {
 	const int i = ScriptSlot( ed );
@@ -406,7 +415,8 @@ static void GruntLook( int i, int rush )
 	CDodGrunt *e = g_ents[i];
 	const Vector eye( g_pool.x[i], g_pool.y[i], g_pool.z[i] + 24.0f );
 	int best = 0;
-	float best_d2 = DOD_GRUNT_SIGHT * DOD_GRUNT_SIGHT;
+	float best_d2 = 0.0f;
+	float best_bias = 0.0f;
 	Vector best_pos;
 	const float fwd = g_pool.yaw[i] * 0.017453293f;
 	for( int k = 1; k <= gpGlobals->maxClients; k++ ) {
@@ -418,13 +428,18 @@ static void GruntLook( int i, int rush )
 			continue;
 		const Vector d = pl->pev->origin - eye;
 		const float d2 = d.x * d.x + d.y * d.y + d.z * d.z;
-		if( d2 >= best_d2 )
+		if( d2 >= DOD_GRUNT_SIGHT * DOD_GRUNT_SIGHT )
 			continue;
 		/* in front: within about 70 degrees, or close (they hear him) */
 		const float dot = ( d.x * cosf( fwd ) + d.y * sinf( fwd ) );
 		if( d2 > 300.0f * 300.0f && dot < 0.34f * sqrtf( d2 ) )
 			continue;
+		const float bias = pl->pev->fuser3;
+		if( !DodGrunt_BetterTarget( pl->pev->fuser2 != 0.0f, bias, d2,
+			best != 0, best_bias, best_d2 ) )
+			continue;
 		best = k;
+		best_bias = bias;
 		best_d2 = d2;
 		best_pos = pl->pev->origin;
 	}
@@ -455,7 +470,11 @@ static void GruntShoot( int i )
 	const DodWeaponDef *gun = Dod_ClassWeaponDef( (DodTeam)g_pool.team[i], DOD_CLASS_RIFLEMAN );
 	if( gun && gun->fire_sound && gun->fire_sound[0] )
 		EMIT_SOUND_DYN( e->edict(), CHAN_WEAPON, gun->fire_sound, 1.0f, ATTN_NORM, 0, 100 );
-	if( !DodGrunt_ShotHits( dist, skill, DodGrunt_Rand( &g_pool ) ) )
+	const float roll = DodGrunt_Rand( &g_pool );
+	const int hit = (g_pool.script[i] & DOD_GRUNT_SCRIPTED)
+		? DodGrunt_ShotHitsWithAccuracy( dist, skill, g_pool.accuracy[i], roll )
+		: DodGrunt_ShotHits( dist, skill, roll );
+	if( !hit )
 		return;
 	TraceResult tr;
 	UTIL_TraceLine( from, aim + dir * 8.0f, dont_ignore_monsters, e->edict(), &tr );

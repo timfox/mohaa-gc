@@ -153,6 +153,9 @@ static void test_shooting(void)
 	assert(DodGrunt_HitChance(500, 3) > DodGrunt_HitChance(500, 0));
 	assert(DodGrunt_HitChance(100000, 0) >= 0.05f && DodGrunt_HitChance(0, 3) <= 0.95f);
 	assert(DodGrunt_ShotHits(100, 0, 0.1f) && !DodGrunt_ShotHits(1700, 0, 0.5f));
+	assert(!DodGrunt_ShotHitsWithAccuracy(100, 1, 0.0f, 0.0f));
+	assert(DodGrunt_ShotHitsWithAccuracy(500, 1, 100.0f, 0.5f) == DodGrunt_ShotHits(500, 1, 0.5f));
+	assert(DodGrunt_ShotHitsWithAccuracy(500, 1, 300.0f, 0.90f));
 }
 
 static void test_rand_range(void)
@@ -173,6 +176,11 @@ static void test_script_actor(void)
 	assert(i == DOD_GRUNT_MAX - 1);
 	DodGrunt_SpawnScripted(&p, i, DOD_TEAM_AXIS, 0, 0, 0, 0, 0.0f);
 	assert(p.state[i] == DOD_GRUNT_HOLD && p.script[i] == DOD_GRUNT_SCRIPTED);
+	assert(p.accuracy[i] == 100.0f);
+	DodGrunt_SetAccuracy(&p, i, 200.0f);
+	assert(p.accuracy[i] == 200.0f);
+	DodGrunt_SetAccuracy(&p, i, 500.0f);
+	assert(p.accuracy[i] == 300.0f);
 	assert(DodGrunt_FreeScriptSlot(&p) == DOD_GRUNT_MAX - 2);
 	/* holding: a far enemy turns it but does not make it wander; a close one makes it shoot */
 	DodGrunt_Looked(&p, i, 0.1f, 1, 2, 0, 1000, 1000, 0);
@@ -220,6 +228,16 @@ static void test_script_actor(void)
 	assert(DodGrunt_Hurt(&p, 0, 1000, 0.0f) && DodGrunt_RespawnDue(&p, 0, DOD_GRUNT_RESPAWN));
 }
 
+static void test_threat_priority(void)
+{
+	/* Numeric threat bias outranks geometric distance; distance breaks equal-bias ties. */
+	assert(DodGrunt_BetterTarget(0, 50000.0f, 900000.0f, 0, 0.0f, 10000.0f));
+	assert(!DodGrunt_BetterTarget(0, -500.0f, 40000.0f, 1, 0.0f, 90000.0f));
+	assert(DodGrunt_BetterTarget(0, 0.0f, 8000.0f, 1, 0.0f, 9000.0f));
+	assert(!DodGrunt_BetterTarget(0, 0.0f, 10000.0f, 1, 0.0f, 9000.0f));
+	assert(!DodGrunt_BetterTarget(1, 100000.0f, 1.0f, 0, 0.0f, 0.0f));
+}
+
 int main(void)
 {
 	test_count();
@@ -234,6 +252,7 @@ int main(void)
 	test_shooting();
 	test_rand_range();
 	test_script_actor();
+	test_threat_priority();
 	printf("dod_grunts_test: ok (row %d bytes, pool %d bytes)\n", DodGrunt_RowBytes(), (int)sizeof(DodGruntPool));
 	return 0;
 }

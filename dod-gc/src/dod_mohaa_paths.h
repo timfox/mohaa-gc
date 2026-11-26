@@ -34,6 +34,7 @@ typedef struct MohaaPaths {
 } MohaaPaths;
 
 typedef int (*MohaaPathWalkable)(void *ctx, const float a[3], const float b[3]);
+typedef int (*MohaaPathEdgeBlocked)(void *ctx, const float a[3], const float b[3]);
 
 /* ---- path nodes ---- */
 
@@ -313,7 +314,7 @@ static void path_heap_down(MohaaPaths *g, int size, int target)
 
 #define PATH_CLOSED 0xFFFE
 
-static int MohaaPaths_NextHop(MohaaPaths *g, int from, int to)
+static int MohaaPaths_NextHop(MohaaPaths *g, int from, int to, MohaaPathEdgeBlocked blocked, void *ctx)
 {
 	int size = 0, i;
 	if (from < 0 || to < 0 || from >= g->count || to >= g->count)
@@ -338,6 +339,8 @@ static int MohaaPaths_NextHop(MohaaPaths *g, int from, int to)
 		for (i = 0; i < MOHAA_PATH_LINKS && g->link[n][i] != MOHAA_PATH_NONE; i++) {
 			const int m = g->link[n][i];
 			const float c = g->cost[n] + sqrtf(path_dist2(g->pos[n], g->pos[m]));
+			if (blocked && blocked(ctx, g->pos[n], g->pos[m]))
+				continue;
 			if (g->slot[m] == PATH_CLOSED)
 				continue;
 			if (g->slot[m] == MOHAA_PATH_NONE) {

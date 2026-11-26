@@ -143,6 +143,15 @@ def _animation_data(aliases, files, skd, unit_scale, visible_by_alias, default_v
 	return ([(n, -1 if not parents[n.lower()] or parents[n.lower()] == "worldbone" else index[parents[n.lower()]]) for n in skd.bones], base, scales, seqs, (lo, hi))
 
 
+def _require_animation_sequences(animation, requested, model):
+	"""Fail an explicit bake recipe when any retail alias was not exported."""
+	wanted = {name.lower() for name in requested}
+	found = {sequence[0].lower() for sequence in animation[3]} if animation else set()
+	missing = sorted(wanted - found)
+	if missing:
+		raise ValueError(f"{model}: requested animation aliases were not exported: {', '.join(missing)}")
+
+
 def _tiki_visibility(text):
 	"""Return the init hidden-surface set and each animation's absolute hidden set."""
 	text = re.sub(r"/\*.*?\*/|//[^\n]*", " ", text, flags=re.S)
@@ -242,13 +251,62 @@ def _tiki_animation_aliases(files, root_path: str):
 
 
 def _rle(values):
-	"""Encode one Studio animation channel as one or more bounded RLE runs."""
+	"""Encode one Studio channel losslessly, collapsing consecutive equal values."""
 	out = bytearray()
-	for start in range(0, len(values), 255):
-		chunk = values[start:start + 255]
+	start = 0
+	while start < len(values):
+		end = start + 1
+		while end < len(values) and values[end] == values[start] and end - start < 255:
+			end += 1
+		if end - start > 1:
+			out += struct.pack("<BBh", 1, end - start, values[start])
+			start = end
+			continue
+		end = start + 1
+		while end < len(values) and end - start < 255:
+			run_end = end + 1
+			while run_end < len(values) and values[run_end] == values[end] and run_end - end < 2:
+				run_end += 1
+			if run_end - end > 1:
+				break
+			end += 1
+		chunk = values[start:end]
 		out += struct.pack("<BB", len(chunk), len(chunk))
 		out += struct.pack("<" + "h" * len(chunk), *chunk)
+		start = end
 	return bytes(out)
+
+
+def _prune_skd_to_weighted_bones(skd):
+	"""Keep mesh-influencing bones and their ancestors, dropping unrelated rig branches."""
+	index = {name.lower(): i for i, name in enumerate(skd.bones)}
+	parents = [(name or "").lower() for name in skd.bone_parents]
+	needed = {bone for surface in skd.surfaces for weights in surface.weights
+	          for bone, weight, _offset in weights if weight > 0}
+	if not needed:
+		return skd
+	stack = list(needed)
+	while stack:
+		bone = stack.pop()
+		if bone < 0 or bone >= len(skd.bones):
+			raise ValueError(f"{skd.name}: vertex references missing bone {bone}")
+		parent = parents[bone]
+		if parent and parent != "worldbone":
+			if parent not in index:
+				raise ValueError(f"{skd.name}: missing parent bone {parent}")
+			parent_index = index[parent]
+			if parent_index not in needed:
+				needed.add(parent_index)
+				stack.append(parent_index)
+	keep = [bone for bone in range(len(skd.bones)) if bone in needed]
+	remap = {old: new for new, old in enumerate(keep)}
+	skd.bones = [skd.bones[bone] for bone in keep]
+	skd.bone_parents = [skd.bone_parents[bone] for bone in keep]
+	skd.num_bones = len(keep)
+	for surface in skd.surfaces:
+		surface.weights = [[(remap[bone], weight, offset) for bone, weight, offset in weights]
+		                   for weights in surface.weights]
+	return skd
 
 
 def _name(value: str, size: int) -> bytes:
@@ -466,7 +524,7 @@ def _static_mdl(name: str, parts, skin: bytes, width: int, height: int, texture_
 
 
 def convert(main_paths, model: str, output: Path, skin_size: int = 256, scale: float | None = None,
-            animation_names=None, components=None):
+            animation_names=None, components=None, animation_overrides=None):
 	files = collect(main_paths, (".tik", ".skd", ".skb", ".skc", ".shader", ".tga", ".jpg", ".png", ".bmp"))
 	model = mohaa_skd.norm(model)
 	if not model.startswith("models/"):
@@ -506,6 +564,8 @@ def convert(main_paths, model: str, output: Path, skin_size: int = 256, scale: f
 	component_skds = [(component_tik, mesh_path,
 	                   mohaa_skd.parse_skd(read(files[mesh_path]), mesh_path))
 	                  for component_tik, mesh_path in component_sources]
+	for _component_tik, _mesh_path, source_skd in component_skds:
+		_prune_skd_to_weighted_bones(source_skd)
 	# Meshes authored as separate TIKI parts share a named rig. Union that rig by
 	# bone name, then remap each component's influences before animation baking.
 	merged_bones, merged_parents, merged_index = [], [], {}
@@ -535,6 +595,12 @@ def convert(main_paths, model: str, output: Path, skin_size: int = 256, scale: f
 			surface_owners.append(component_tik)
 	skd = composite
 	animation_aliases = _tiki_animation_aliases(files, model)
+	if animation_overrides:
+		overrides = {name.lower(): path for name, path in animation_overrides.items()}
+		by_alias = {alias.lower(): (alias, path) for alias, path in animation_aliases}
+		for alias, path in overrides.items():
+			by_alias[alias] = (alias, path)
+		animation_aliases = list(by_alias.values())
 	if animation_names:
 		wanted = {name.lower() for name in animation_names}
 		animation_aliases = [item for item in animation_aliases if item[0].lower() in wanted]
@@ -584,6 +650,8 @@ def convert(main_paths, model: str, output: Path, skin_size: int = 256, scale: f
 			    for bone, _weight, _offset in ws)
 			for surface in skd.surfaces for ws in surface.weights)):
 		animation = None
+	if animation_names:
+		_require_animation_sequences(animation, animation_names, model)
 	use_blend_weights = animation is not None and any(
 		sum(float(weight) > 0.0 for _bone, weight, _offset in weights) > 1
 		for surface in skd.surfaces for weights in surface.weights)

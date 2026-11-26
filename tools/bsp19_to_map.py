@@ -786,6 +786,28 @@ def path_nodes(bsp, scale):
 	return "\n".join(lines) + "\n", len(lines) - 1
 
 
+def write_path_nodes(path, text):
+	"""Keep large waypoint sidecars readable in small chunks on fragmented GameCube MEM1."""
+	data = text.encode("utf-8")
+	chunk_size = 4096
+	threshold = 8192
+	for stale in path.parent.glob(path.name + ".[0-9][0-9][0-9]"):
+		stale.unlink()
+	if len(data) <= threshold:
+		path.write_bytes(data)
+		return 0
+	parts = []
+	start = 0
+	while start < len(data):
+		end = min(start + chunk_size, len(data))
+		parts.append(data[start:end])
+		start = end
+	path.write_bytes(b"MNOD" + struct.pack("<IIII", 1, len(data), chunk_size, len(parts)))
+	for i, part in enumerate(parts):
+		path.with_name(f"{path.name}.{i:03d}").write_bytes(part)
+	return len(parts)
+
+
 def static_props(bsp, scale):
 	"""Static models (trees, rocks, crates: LUMP_STATICMODELDEF) for the <map>.props sidecar, one line
 	each, origin and model scale converted. They cost no edict and no model slot: the engine draws
@@ -1496,8 +1518,9 @@ def main(argv=None) -> int:
 	ntext, nnodes = path_nodes(bsp, args.scale)
 	if nnodes:
 		npath = args.out.with_suffix(".nodes")
-		npath.write_text(ntext)
-		print(f"{name}: wrote {npath} ({nnodes} path nodes)")
+		pieces = write_path_nodes(npath, ntext)
+		storage = f", {pieces} chunks" if pieces else ""
+		print(f"{name}: wrote {npath} ({nnodes} path nodes{storage})")
 	ptext, nprops = static_props(bsp, args.scale)
 	if nprops:
 		ppath = args.out.with_suffix(".props")

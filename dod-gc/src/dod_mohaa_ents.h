@@ -10,10 +10,15 @@ void DodGC_MohaaRegisterHudMessages( void );
 void DodGC_MohaaThink( void );
 /* An entity event a script can wait for, e.g. ("trigger") from a trigger firing. */
 void DodGC_MohaaEntityEvent( edict_t *e, const char *event );
+/* The VM's generation-safe id for a live edict (0 for a stale/null edict). */
+uint32_t DodGC_MohaaEntityId( edict_t *e );
 
 /* A trigger fired, set off by activator (may be NULL): the script sees the activator as parm.other. */
 void DodGC_MohaaTrigger( edict_t *e, edict_t *activator );
 /* DispatchKeyValue: a key starting with '#' (MOHAA "#set", "#group") is for scripts only. */
 void DodGC_MohaaEntityKey( edict_t *e, const char *key, const char *value );
+
+/* Set a MOHAA mission actor accuracy value; false when ed is not a scripted grunt. */
+int DodGrunts_ScriptAccuracy( edict_t *ed, float accuracy );
 
 #endif

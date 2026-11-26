@@ -67,6 +67,7 @@ void DodGrunt_Spawn(DodGruntPool *p, int i, int team, float x, float y, float z,
 	p->respawn_at[i] = 0.0f;
 	p->target_seen[i] = -1000.0f;
 	p->hp[i] = DOD_GRUNT_HEALTH;
+	p->accuracy[i] = 100.0f;
 	p->target[i] = 0;
 	p->team[i] = (unsigned char)team;
 	p->blocked[i] = 0;
@@ -280,6 +281,25 @@ int DodGrunt_ShotHits(float dist, int skill, float roll)
 	return roll < DodGrunt_HitChance(dist, skill);
 }
 
+int DodGrunt_ShotHitsWithAccuracy(float dist, int skill, float accuracy, float roll)
+{
+	float chance = DodGrunt_HitChance(dist, skill) * (accuracy / 100.0f);
+	if (accuracy <= 0.0f)
+		return 0;
+	if (chance < 0.05f)
+		chance = 0.05f;
+	if (chance > 0.95f)
+		chance = 0.95f;
+	return roll < chance;
+}
+
+int DodGrunt_BetterTarget(int candidate_ignored, float candidate_bias, float candidate_dist2,
+	int have_best, float best_bias, float best_dist2)
+{
+	return !candidate_ignored && (!have_best || candidate_bias > best_bias
+		|| (candidate_bias == best_bias && candidate_dist2 < best_dist2));
+}
+
 int DodGrunt_Hurt(DodGruntPool *p, int i, int damage, float now)
 {
 	if (!alive(p, i))
@@ -331,6 +351,17 @@ void DodGrunt_SetAI(DodGruntPool *p, int i, int on)
 	p->target[i] = 0;
 	if (alive(p, i) && p->order[i] == DOD_GRUNT_ORDER_NONE)
 		p->state[i] = DOD_GRUNT_HOLD;
+}
+
+void DodGrunt_SetAccuracy(DodGruntPool *p, int i, float accuracy)
+{
+	if (!p || i < 0 || i >= DOD_GRUNT_MAX || !(p->script[i] & DOD_GRUNT_SCRIPTED))
+		return;
+	if (accuracy < 0.0f)
+		accuracy = 0.0f;
+	if (accuracy > 300.0f)
+		accuracy = 300.0f;
+	p->accuracy[i] = accuracy;
 }
 
 void DodGrunt_SetAttack(DodGruntPool *p, int i, int on)

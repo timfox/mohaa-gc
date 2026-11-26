@@ -21,9 +21,13 @@
 /* Script memory cap in KiB. MEM1 is tight on GameCube (see docs/MEMORY.md); a level whose
  * scripts do not fit is refused cleanly at load instead of starving the engine. */
 static cvar_t mohaa_script_kb = { "mohaa_script_kb", "384", FCVAR_SERVER };
+static cvar_t mohaa_skill = { "skill", "1", FCVAR_SERVER };
 static int g_mohaa_cvar_registered;
 static int gmsgMohaaHudDraw;
 static int gmsgMohaaCompass;
+
+/* Entity IDs reserve zero for NULL and bit 31 for virtual path nodes. */
+static const uint32_t DOD_MOHAA_WORLD_ID = 0x7FFFFFFFu;
 
 void DodGC_MohaaRegisterHudMessages( void )
 {
@@ -37,11 +41,23 @@ static uint32_t IdFor( edict_t *e )
 {
 	if( !e || e->free )
 		return 0;
+	if( ENTINDEX( e ) == 0 )
+		return DOD_MOHAA_WORLD_ID;
 	return (uint32_t)ENTINDEX( e ) | ( (uint32_t)( e->serialnumber & 0x7FFFF ) << 12 );
+}
+
+uint32_t DodGC_MohaaEntityId( edict_t *e )
+{
+	return IdFor( e );
 }
 
 static edict_t *EdictFor( uint32_t id )
 {
+	if( id == DOD_MOHAA_WORLD_ID )
+	{
+		edict_t *world = INDEXENT( 0 );
+		return world && !world->free ? world : NULL;
+	}
 	int index = (int)( id & 0xFFF );
 	if( !id || index <= 0 || index >= gpGlobals->maxEntities )
 		return NULL;
@@ -88,6 +104,12 @@ static void M_Print( int channel, const char *text )
 static int M_Find( const char *name, uint32_t *ids, int max )
 {
 	int n = 0;
+	if( name && !stricmp( name, "world" ) )
+	{
+		if( max > 0 )
+			ids[0] = DOD_MOHAA_WORLD_ID;
+		return 1;
+	}
 	edict_t *e = NULL;
 	while( !FNullEnt( e = FIND_ENTITY_BY_TARGETNAME( e, name ) ) )
 	{
@@ -120,6 +142,29 @@ static void M_GetVec( uint32_t id, int what, float out[3] )
 	out[0] = v.x;
 	out[1] = v.y;
 	out[2] = v.z;
+}
+
+static int M_CanSee( uint32_t from, uint32_t to )
+{
+	edict_t *observer = EdictFor( from );
+	edict_t *target = EdictFor( to );
+	TraceResult tr;
+	if( !observer || !target )
+		return 0;
+	Vector start = observer->v.origin + ( observer->v.flags & FL_CLIENT ? observer->v.view_ofs : Vector( 0, 0, 36 ) );
+	Vector end = target->v.origin + ( target->v.flags & FL_CLIENT ? target->v.view_ofs * 0.5f : Vector( 0, 0, 36 ) );
+	UTIL_TraceLine( start, end, dont_ignore_monsters, observer, &tr );
+	return tr.flFraction >= 1.0f || tr.pHit == target;
+}
+
+static int M_GetBounds( uint32_t id, float mins[3], float maxs[3] )
+{
+	edict_t *e = EdictFor( id );
+	if( !e )
+		return 0;
+	mins[0] = e->v.absmin.x; mins[1] = e->v.absmin.y; mins[2] = e->v.absmin.z;
+	maxs[0] = e->v.absmax.x; maxs[1] = e->v.absmax.y; maxs[2] = e->v.absmax.z;
+	return 1;
 }
 
 static void M_SetVec( uint32_t id, int what, const float v[3] )
@@ -175,9 +220,12 @@ static int M_SetModel( uint32_t id, const char *tiki )
 	else
 		snprintf( path, sizeof( path ), "models/%s", tiki );
 	n = strlen( path );
-	if( n < 4 || strcmp( path + n - 4, ".tik" ) )
+	if( n < 4 )
 		return 0;
-	memcpy( path + n - 4, ".mdl", 5 );
+	if( !strcmp( path + n - 4, ".tik" ) )
+		memcpy( path + n - 4, ".mdl", 5 );
+	else if( strcmp( path + n - 4, ".mdl" ) )
+		return 0;
 	for( char *p = path; *p; p++ )
 		*p = (char)tolower( (unsigned char)*p );
 	for( int i = 0; i < g_mohaa_script_model_count; i++ )
@@ -198,6 +246,14 @@ static int M_SetModel( uint32_t id, const char *tiki )
 			return 1;
 		}
 	return 0; /* tag-carrier TIKIs have no drawable MDL in the manifest */
+}
+
+static void M_SetScale( uint32_t id, float scale )
+{
+	edict_t *e = EdictFor( id );
+	CBaseEntity *ent = e ? CBaseEntity::Instance( e ) : NULL;
+	if( ent )
+		ent->pev->scale = scale;
 }
 
 class CMohaaScriptModel : public CBaseAnimating
@@ -475,6 +531,8 @@ static void M_SetFlag( uint32_t id, int flag, int on )
 
 static void M_Remove( uint32_t id )
 {
+	if( id == DOD_MOHAA_WORLD_ID )
+		return; /* worldspawn is a stable script target, never a removable entity */
 	edict_t *e = EdictFor( id );
 	if( e && DodGrunts_ScriptRemove( e ) )
 		return;	/* an actor: its grunt slot goes with it */
@@ -740,7 +798,15 @@ static int M_Walkable( const float a[3], const float b[3] )
 {
 	TraceResult tr;
 	UTIL_TraceHull( Vector( a[0], a[1], a[2] + 37.0f ), Vector( b[0], b[1], b[2] + 37.0f ), ignore_monsters, head_hull, NULL, &tr );
-	return !tr.fStartSolid && tr.flFraction >= 1.0f;
+	if( tr.fStartSolid )
+		return 0;
+	if( tr.flFraction >= 1.0f )
+		return 1;
+	/* Keep a path edge that only a named brush entity blocks. Its closed bounds are
+	 * registered with the VM so connect_paths can enable the edge after it moves. */
+	if( tr.pHit && !tr.pHit->free && tr.pHit->v.solid == SOLID_BSP && !FStringNull( tr.pHit->v.targetname ) )
+		return Dod_MohaaPathBlocker( IdFor( tr.pHit ), 1 );
+	return 0;
 }
 
 static const char *M_GetCvar( const char *name )
@@ -764,14 +830,65 @@ static void M_Fade( float seconds, float r, float g, float b, float alpha, int o
 
 static uint32_t g_locked_player;	/* held by physics_off / freezeplayer: no walking, no firing */
 static int g_saved_movetype;
-static string_t g_saved_viewmodel;	/* the weapon model, put away while the HUD's weapon part is hidden */
 static int g_hud_hide;
+static struct {
+	uint32_t id;
+	string_t viewmodel;
+	int hud_hidden;
+	int script_holstered;
+} g_weapon_state[8];
 
 static CBasePlayer *PlayerFor( uint32_t id )
 {
 	edict_t *e = EdictFor( id );
 	CBaseEntity *ent = e ? CBaseEntity::Instance( e ) : NULL;
 	return ent && ent->IsPlayer() ? (CBasePlayer *)ent : NULL;
+}
+
+static int PlayerSlot( uint32_t id )
+{
+	const int index = (int)( id & 0xFFF );
+	return index > 0 && index < (int)( sizeof( g_weapon_state ) / sizeof( g_weapon_state[0] ) ) ? index : -1;
+}
+
+static void ApplyPlayerWeaponModel( CBasePlayer *pl, uint32_t id )
+{
+	const int slot = PlayerSlot( id );
+	if( !pl || slot < 0 )
+		return;
+	if( g_weapon_state[slot].id != id )
+	{
+		memset( &g_weapon_state[slot], 0, sizeof( g_weapon_state[slot] ) );
+		g_weapon_state[slot].id = id;
+	}
+	if( g_weapon_state[slot].hud_hidden || g_weapon_state[slot].script_holstered )
+	{
+		if( pl->pev->viewmodel )
+		{
+			g_weapon_state[slot].viewmodel = pl->pev->viewmodel;
+			pl->pev->viewmodel = 0;
+		}
+	}
+	else if( g_weapon_state[slot].viewmodel && !pl->pev->viewmodel )
+	{
+		pl->pev->viewmodel = g_weapon_state[slot].viewmodel;
+		g_weapon_state[slot].viewmodel = 0;
+	}
+}
+
+static void M_PlayerWeapon( uint32_t id, int visible )
+{
+	CBasePlayer *pl = PlayerFor( id );
+	const int slot = PlayerSlot( id );
+	if( !pl || slot < 0 )
+		return;
+	if( g_weapon_state[slot].id != id )
+	{
+		memset( &g_weapon_state[slot], 0, sizeof( g_weapon_state[slot] ) );
+		g_weapon_state[slot].id = id;
+	}
+	g_weapon_state[slot].script_holstered = !visible;
+	ApplyPlayerWeaponModel( pl, id );
 }
 
 static void M_PlayerLock( uint32_t id, int locked )
@@ -798,8 +915,30 @@ static void M_PlayerLock( uint32_t id, int locked )
 	}
 }
 
+static void M_PlayerStance( uint32_t id, int stance )
+{
+	CBasePlayer *pl = PlayerFor( id );
+	if( !pl )
+		return;
+	if( stance == DOD_MOHAA_STANCE_CROUCH )
+	{
+		pl->pev->flags |= FL_DUCKING;
+		pl->pev->view_ofs = VEC_DUCK_VIEW;
+		UTIL_SetSize( pl->pev, VEC_DUCK_HULL_MIN, VEC_DUCK_HULL_MAX );
+	}
+	else
+	{
+		pl->pev->flags &= ~FL_DUCKING;
+		pl->pev->view_ofs = VEC_VIEW;
+		UTIL_SetSize( pl->pev, VEC_HULL_MIN, VEC_HULL_MAX );
+	}
+	/* SetAnimation derives the player gait from FL_DUCKING and preserves the proper crouch-idle loop. */
+	pl->SetAnimation( PLAYER_IDLE );
+}
+
 static void M_PlacePlayer( uint32_t id, const float pos[3], int eye )
 {
+	static int placement_logs;
 	CBasePlayer *pl = PlayerFor( id );
 	if( !pl )
 		return;
@@ -808,6 +947,13 @@ static void M_PlacePlayer( uint32_t id, const float pos[3], int eye )
 	p = eye ? p - pl->pev->view_ofs : p - Vector( 0, 0, pl->pev->mins.z );
 	UTIL_SetOrigin( pl->pev, p );
 	pl->pev->velocity = g_vecZero;
+	if( placement_logs < 16 )
+	{
+		placement_logs++;
+		ALERT( at_console, "Xash3D MOHAA player place id=%u eye=%d target=(%.1f %.1f %.1f) origin=(%.1f %.1f %.1f) view=(%.1f %.1f %.1f) mins.z=%.1f\n",
+			(unsigned)id, eye, pos[0], pos[1], pos[2], pl->pev->origin.x, pl->pev->origin.y,
+			pl->pev->origin.z, pl->pev->view_ofs.x, pl->pev->view_ofs.y, pl->pev->view_ofs.z, pl->pev->mins.z );
+	}
 }
 
 static void M_View( uint32_t id, const float a[3], int add )
@@ -834,24 +980,25 @@ static void M_Hud( int hide )
 		CBasePlayer *pl = (CBasePlayer *)UTIL_PlayerByIndex( i );
 		if( !pl )
 			continue;
+		const uint32_t id = IdFor( pl->edict() );
+		const int slot = PlayerSlot( id );
+		if( slot < 0 )
+			continue;
+		if( g_weapon_state[slot].id != id )
+		{
+			memset( &g_weapon_state[slot], 0, sizeof( g_weapon_state[slot] ) );
+			g_weapon_state[slot].id = id;
+		}
 		pl->m_iHideHUD &= ~( HIDEHUD_ALL | HIDEHUD_WEAPONS | HIDEHUD_FLASHLIGHT );
 		if( hide & DOD_MOHAA_HUD_ALL )
 			pl->m_iHideHUD |= HIDEHUD_ALL;
 		if( hide & DOD_MOHAA_HUD_WEAPON )
 			pl->m_iHideHUD |= HIDEHUD_WEAPONS | HIDEHUD_FLASHLIGHT;
 		if( hide & ( DOD_MOHAA_HUD_ALL | DOD_MOHAA_HUD_WEAPON ) )
-		{
-			if( pl->pev->viewmodel )
-			{
-				g_saved_viewmodel = pl->pev->viewmodel;
-				pl->pev->viewmodel = 0;
-			}
-		}
-		else if( g_saved_viewmodel && !pl->pev->viewmodel )
-		{
-			pl->pev->viewmodel = g_saved_viewmodel;
-			g_saved_viewmodel = 0;
-		}
+			g_weapon_state[slot].hud_hidden = 1;
+		else
+			g_weapon_state[slot].hud_hidden = 0;
+		ApplyPlayerWeaponModel( pl, id );
 	}
 }
 
@@ -899,7 +1046,7 @@ static void CutsceneThink( void )
 	}
 	if( g_hud_hide && pl && pl->pev->viewmodel )
 	{
-		g_saved_viewmodel = pl->pev->viewmodel;	/* a weapon deployed meanwhile stays put away */
+		ApplyPlayerWeaponModel( pl, IdFor( pl->edict() ) );	/* a weapon deployed meanwhile stays put away */
 		pl->pev->viewmodel = 0;
 	}
 }
@@ -936,6 +1083,24 @@ static void M_DamageAt( uint32_t attacker, const float point[3], float radius, f
 			t->SUB_UseTargets( who, USE_TOGGLE, 0 );
 		DodGC_MohaaTrigger( e, by );
 	}
+}
+
+static int M_ActorAccuracy( uint32_t id, float accuracy )
+{
+	edict_t *e = EdictFor( id );
+	return e ? DodGrunts_ScriptAccuracy( e, accuracy ) : 0;
+}
+
+static int M_SetThreatBias( uint32_t id, float bias, int ignoreme )
+{
+	edict_t *e = EdictFor( id );
+	if( !e )
+		return 0;
+	/* fuser2/fuser3 are unused by this game DLL. Keep the script value on the entity
+	 * so co-op actors can rank the same candidates without a stale index table. */
+	e->v.fuser2 = ignoreme ? 1.0f : 0.0f;
+	e->v.fuser3 = bias;
+	return 1;
 }
 
 static int M_Actor( uint32_t id, int order, const float pos[3] )
@@ -1105,6 +1270,9 @@ static size_t M_PoolCarve( size_t want, DodMohaaBackend *b )
 void DodGC_MohaaLevelInit( void )
 {
 	DodGC_MohaaRegisterHudMessages();
+	/* A map's BSP owns the defaults; script overrides expire with that map. */
+	M_SetCvar( "gc_mohaa_farplane_override", "-1" );
+	M_SetCvar( "gc_mohaa_farplane_color_override", "-1" );
 	if( !g_mohaa_cvar_registered )
 	{
 		CVAR_REGISTER( &mohaa_script_kb );
@@ -1136,16 +1304,23 @@ void DodGC_MohaaLevelInit( void )
 	b.precache_sound = M_Precache;
 	b.precache_model = M_PrecacheModel;
 	b.set_model = M_SetModel;
+	b.set_scale = M_SetScale;
 	b.set_animation = M_SetAnimation;
 	b.actor = M_Actor;
+	b.actor_accuracy = M_ActorAccuracy;
+	b.can_see = M_CanSee;
+	b.set_threatbias = M_SetThreatBias;
 	b.music = M_Music;
 	if( g_music_intro[0] )
 		M_Music( NULL, NULL );	/* the last map's music stops unless this map starts its own */
 	b.walkable = M_Walkable;
+	b.get_bounds = M_GetBounds;
 	b.get_cvar = M_GetCvar;
 	b.fade = M_Fade;
 	b.set_cvar = M_SetCvar;
 	b.player_lock = M_PlayerLock;
+	b.player_weapon = M_PlayerWeapon;
+	b.player_stance = M_PlayerStance;
 	b.place_player = M_PlacePlayer;
 	b.view = M_View;
 	b.hud = M_Hud;
@@ -1153,7 +1328,16 @@ void DodGC_MohaaLevelInit( void )
 	b.compass_target = M_CompassTarget;
 	b.damage_at = M_DamageAt;
 	g_locked_player = 0;	/* a new map starts everyone free (the last map's VM let go in its shutdown) */
-	g_saved_viewmodel = 0;
+	for( int i = 1; i <= gpGlobals->maxClients; ++i )
+	{
+		edict_t *player = INDEXENT( i );
+		if( player && !player->free )
+		{
+			player->v.fuser2 = 0.0f;
+			player->v.fuser3 = 0.0f;
+		}
+	}
+	memset( g_weapon_state, 0, sizeof( g_weapon_state ) );
 	g_hud_hide = 0;
 	g_nwaiting = 0;	/* the last map's waiting soldiers went with it */
 	g_mohaa_script_model_count = 0;
@@ -1220,5 +1404,7 @@ void DodGC_MohaaEntityEvent( edict_t *e, const char *event )
 		Dod_MohaaNotify( id, event );
 	/* mohaa-gc's converter puts a MOHAA trigger's setthread label in netname */
 	if( id && !strcmp( event, "trigger" ) && e->v.netname && !strncmp( STRING( e->v.classname ), "trigger_", 8 ) )
+	{
 		Dod_MohaaRunThread( STRING( e->v.netname ), id );
+	}
 }

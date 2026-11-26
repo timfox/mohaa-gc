@@ -759,7 +759,7 @@ int CHudDod::DrawMohaa( float flTime )
 	while( yaw < 0.0f ) yaw += 360.0f;
 	while( yaw >= 360.0f ) yaw -= 360.0f;
 	{
-		const int x = -(int)( 24.0f * screen_w / 320.0f + 0.5f );
+		const int x = (int)( 4.0f * screen_w / 320.0f + 0.5f );
 		const int y = (int)( 3.0f * screen_h / 240.0f + 0.5f );
 		const int width = (int)( 55.0f * screen_w / 320.0f + 0.5f );
 		const int height = (int)( 55.0f * screen_h / 240.0f + 0.5f );
@@ -893,6 +893,8 @@ int CHudDod::DrawMohaa( float flTime )
 		if( i == DOD_MOHAA_HUD_HINT_INDEX )
 			gEngfuncs.Cvar_SetValue( "gc_mohaa_hint_draw", 0.0f );
 	}
+	/* Quality 0 bypasses CHud's HUD-element list; keep native HudText visible. */
+	gHUD.m_Message.Draw( flTime );
 	return 1;
 }
 

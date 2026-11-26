@@ -13,6 +13,7 @@ typedef struct Ent {
 	int alive;
 	char targetname[32], classname[32], target[32];
 	float origin[3], angles[3], vel[3], avel[3];
+	float mins[3], maxs[3];
 	float health;
 	int hidden, notsolid, used, serial;
 	char sound[64];
@@ -20,6 +21,16 @@ typedef struct Ent {
 
 #define NENTS 16
 static Ent ents[NENTS];
+static int render_flag_calls, render_flag_last[4];
+static int accuracy_calls;
+static uint32_t accuracy_id;
+static float accuracy_value;
+static int threatbias_calls, threatbias_ignoreme;
+static uint32_t threatbias_id;
+static float threatbias_value;
+static float threatbias_history[4];
+static int threatbias_ignore_history[4];
+static int can_see_result = 1, can_see_calls;
 static const char *files[8][2];
 static size_t file_len[8];	/* nonzero: a binary file of this many bytes (it may hold NULs) */
 static char log_buf[4096];
@@ -79,6 +90,14 @@ static int m_find(const char *name, uint32_t *ids, int max)
 }
 static int m_valid(uint32_t id) { return ent(id) != NULL; }
 static void m_get_vec(uint32_t id, int what, float out[3]) { memcpy(out, what ? ent(id)->angles : ent(id)->origin, 12); }
+static int m_get_bounds(uint32_t id, float mins[3], float maxs[3])
+{
+	Ent *e = ent(id);
+	if (!e) return 0;
+	memcpy(mins, e->mins, sizeof(e->mins));
+	memcpy(maxs, e->maxs, sizeof(e->maxs));
+	return 1;
+}
 static void m_set_vec(uint32_t id, int what, const float v[3]) { memcpy(what ? ent(id)->angles : ent(id)->origin, v, 12); }
 static float m_get_health(uint32_t id) { return ent(id)->health; }
 static void m_set_health(uint32_t id, float h) { ent(id)->health = h; }
@@ -87,7 +106,14 @@ static const char *m_get_str(uint32_t id, int what)
 	return what == DOD_MOHAA_TARGETNAME ? ent(id)->targetname : what == DOD_MOHAA_TARGET ? ent(id)->target : ent(id)->classname;
 }
 static void m_set_tn(uint32_t id, const char *n) { snprintf(ent(id)->targetname, 32, "%s", n); }
-static void m_set_flag(uint32_t id, int f, int on) { if (f == DOD_MOHAA_HIDDEN) ent(id)->hidden = on; else ent(id)->notsolid = on; }
+static void m_set_flag(uint32_t id, int f, int on)
+{
+	if (f == DOD_MOHAA_HIDDEN) {
+		ent(id)->hidden = on;
+		if (render_flag_calls < 4) render_flag_last[render_flag_calls] = on;
+		render_flag_calls++;
+	} else ent(id)->notsolid = on;
+}
 static void m_remove(uint32_t id) { ent(id)->alive = 0; }
 static void m_set_vel(uint32_t id, const float v[3], const float a[3]) { memcpy(ent(id)->vel, v, 12); memcpy(ent(id)->avel, a, 12); }
 static void m_use(const char *tn)
@@ -111,6 +137,8 @@ static int add(const char *tn, const char *cls, float x, float y, float z)
 			ents[i].origin[0] = x;
 			ents[i].origin[1] = y;
 			ents[i].origin[2] = z;
+			ents[i].mins[0] = x - 16; ents[i].mins[1] = y - 16; ents[i].mins[2] = z - 36;
+			ents[i].maxs[0] = x + 16; ents[i].maxs[1] = y + 16; ents[i].maxs[2] = z + 36;
 			ents[i].health = 100;
 			return i;
 		}
@@ -160,13 +188,46 @@ static int m_walkable(const float a[3], const float b[3])
 static const char *m_get_cvar(const char *name) { return strcmp(name, "skill") ? "" : "2"; }
 
 static char cvar_set[64];
-static void m_set_cvar(const char *name, const char *value) { snprintf(cvar_set, sizeof(cvar_set), "%s=%s", name, value); }
+static char cvar_history[16][2][64];
+static int cvar_calls;
+static void m_set_cvar(const char *name, const char *value)
+{
+	snprintf(cvar_set, sizeof(cvar_set), "%s=%s", name, value);
+	if (cvar_calls < 16) {
+		snprintf(cvar_history[cvar_calls][0], sizeof(cvar_history[0][0]), "%s", name);
+		snprintf(cvar_history[cvar_calls][1], sizeof(cvar_history[0][1]), "%s", value);
+	}
+	cvar_calls++;
+}
 
 static void m_fade(float t, float r, float g, float b, float a, int out)
 {
 	char line[96];
 	snprintf(line, sizeof(line), "<fade%s %.1f %.1f %.1f %.1f %.1f>\n", out ? "out" : "in", t, r, g, b, a);
 	logf_(line);
+}
+
+static int m_actor_accuracy(uint32_t id, float accuracy)
+{
+	if (!ent(id) || strcmp(ent(id)->classname, "actor")) return 0;
+	accuracy_calls++;
+	accuracy_id = id;
+	accuracy_value = accuracy;
+	return 1;
+}
+
+static int m_set_threatbias(uint32_t id, float bias, int ignoreme)
+{
+	if (!ent(id)) return 0;
+	threatbias_calls++;
+	threatbias_id = id;
+	threatbias_value = bias;
+	threatbias_ignoreme = ignoreme;
+	if (threatbias_calls <= 4) {
+		threatbias_history[threatbias_calls - 1] = bias;
+		threatbias_ignore_history[threatbias_calls - 1] = ignoreme;
+	}
+	return 1;
 }
 
 static int m_actor(uint32_t id, int order, const float pos[3])
@@ -206,6 +267,12 @@ static void m_view(uint32_t id, const float a[3], int add)
 		memcpy(view_abs, a, 12);
 }
 static void m_hud(int bits) { hud_bits = bits; }
+static int m_can_see(uint32_t from, uint32_t to)
+{
+	assert(ent(from) && ent(to));
+	can_see_calls++;
+	return can_see_calls == 2 ? 0 : can_see_result;
+}
 static void m_damage_at(uint32_t attacker, const float p[3], float radius, float dmg)
 {
 	char line[128];
@@ -224,6 +291,7 @@ static DodMohaaBackend backend(void)
 	b.find = m_find;
 	b.valid = m_valid;
 	b.get_vec = m_get_vec;
+	b.get_bounds = m_get_bounds;
 	b.set_vec = m_set_vec;
 	b.get_health = m_get_health;
 	b.set_health = m_set_health;
@@ -236,6 +304,9 @@ static DodMohaaBackend backend(void)
 	b.spawn = m_spawn;
 	b.sound = m_sound;
 	b.actor = m_actor;
+	b.actor_accuracy = m_actor_accuracy;
+	b.can_see = m_can_see;
+	b.set_threatbias = m_set_threatbias;
 	b.walkable = m_walkable;
 	b.get_cvar = m_get_cvar;
 	b.fade = m_fade;
@@ -257,7 +328,23 @@ static void reset(void)
 	memset(files, 0, sizeof(files));
 	memset(file_len, 0, sizeof(file_len));
 	log_buf[0] = 0;
+	cvar_set[0] = 0;
+	memset(cvar_history, 0, sizeof(cvar_history));
+	cvar_calls = 0;
 	precached[0] = 0;
+	render_flag_calls = 0;
+	memset(render_flag_last, 0, sizeof(render_flag_last));
+	accuracy_calls = 0;
+	accuracy_id = 0;
+	accuracy_value = 0.0f;
+	threatbias_calls = 0;
+	threatbias_id = 0;
+	threatbias_value = 0.0f;
+	threatbias_ignoreme = 0;
+	memset(threatbias_history, 0, sizeof(threatbias_history));
+	memset(threatbias_ignore_history, 0, sizeof(threatbias_ignore_history));
+	can_see_result = 1;
+	can_see_calls = 0;
 }
 
 static int near(float a, float b) { return fabsf(a - b) < 0.01f; }
@@ -426,6 +513,11 @@ static void test_actors(void)
 		"\t$guy runto $nowhere\n"
 		"\t$guy ai_on\n"
 		"\t$guy attackplayer\n"
+		"\t$guy accuracy 200\n"
+		"\t$guy accuracy 301\n"
+		"\t$guy threatbias 50000\n"
+		"\t$guy threatbias IgNoReMe\n"
+		"\t$guy threatbias 1.5\n"
 		"\t$guy waittill death\n"
 		"\tprintln \"guy died\"\n"
 		"\t$crate ai_on\n"
@@ -439,6 +531,13 @@ static void test_actors(void)
 	assert(strstr(log_buf, "arrived\n<guy walkto 72.0 0.0 0.0>\n<guy walkto 0.0 72.0 0.0>\n<guy turnto 0.0 0.0 0.0>\n"
 		"<guy runto 10.0 20.0 30.0>\n<guy walkto 10.0 20.0 30.0>\n"));
 	assert(strstr(log_buf, "<guy ai_on 0.0 0.0 0.0>\n<guy attack 0.0 0.0 0.0>\n"));
+	assert(accuracy_calls == 1 && accuracy_id == make_id(guy) && accuracy_value == 200.0f);
+	assert(strstr(log_buf, "accuracy must be between 0 and 300"));
+	assert(threatbias_calls == 2 && threatbias_id == make_id(guy));
+	assert(threatbias_value == 0.0f && threatbias_ignoreme == 1);
+	assert(threatbias_history[0] == 50000.0f && !threatbias_ignore_history[0]);
+	assert(threatbias_history[1] == 0.0f && threatbias_ignore_history[1]);
+	assert(strstr(log_buf, "threatbias expects an integer or ignoreme"));
 	assert(strstr(log_buf, "(13.056 26.111 39.167)\n"));	/* $path7.origin, back in MOHAA units */
 	assert(strstr(log_buf, "runto needs a vector, an entity or a node name"));	/* $nowhere */
 	Dod_MohaaNotify(make_id(guy), "death");
@@ -529,7 +628,7 @@ static void test_music(void)
 	files[2][1] = "normal mohaa/music/other.wav 1.00 1 0.0\n";
 	assert(Dod_MohaaLevelInit(&b, "m", 0, 0));
 	/* the map's own soundtrack starts on normal */
-	assert(!strncmp(log_buf, "<music sound/mohaa/music/calm.wav | sound/mohaa/music/calm.wav>\n", 62));
+	assert(strstr(log_buf, "<music sound/mohaa/music/calm.wav | sound/mohaa/music/calm.wav>\n"));
 	run(0.05f, 0.3f);
 	assert(strstr(log_buf,
 		"<music sound/mohaa/music/fight.wav | sound/mohaa/music/calm.wav>\n"	/* once, then back to normal */
@@ -601,6 +700,151 @@ static void test_routes(void)
 	}
 }
 
+static void test_path_blockers(void)
+{
+	DodMohaaBackend b = backend();
+	int guy, gate;
+	uint32_t gate_id;
+	reset();
+	guy = add("guy", "actor", 0, 0, 36);
+	gate = add("gate", "func_wall", 100, 0, 36);
+	add("goal", "info_target", 200, 0, 0);
+	ents[gate].mins[0] = 95; ents[gate].maxs[0] = 105;
+	ents[gate].mins[1] = -12; ents[gate].maxs[1] = 12;
+	ents[gate].mins[2] = 0; ents[gate].maxs[2] = 72;
+	gate_id = make_id(gate);
+	files[0][0] = "maps/block.scr";
+	files[0][1] =
+		"main:\n"
+		"\t$gate disconnect_paths\n"
+		"\t$guy runto $goal\n"
+		"\t$guy waittill movedone\n"
+		"end\n"
+		"open_gate:\n"
+		"\t$gate connect_paths\n"
+		"end\n";
+	files[1][0] = "maps/block.nodes";
+	files[1][1] =
+		"# x y z grav spawnflags targetname\n"
+		"0 0 0 0 0 start\n"
+		"100 100 0 0 0 alternate\n"
+		"200 0 0 0 0 finish\n";
+	assert(Dod_MohaaLevelInit(&b, "block", 0, 0));
+	assert(Dod_MohaaPathBlocker(gate_id, 1)); /* mirrors a named brush hit while graph edges are linked */
+	run(0.05f, 0.2f);
+	assert(strstr(log_buf, "<guy runto 0.0 0.0 0.0>\nmohaa: runto over 3 path nodes\n"));
+	Dod_MohaaRunThread("open_gate", gate_id);
+	Dod_MohaaNotify(make_id(guy), "movedone");
+	assert(strstr(log_buf, "<guy runto 200.0 0.0 0.0>\n"));
+	assert(!strstr(log_buf, "<guy runto 100.0 100.0 0.0>\n"));
+	Dod_MohaaShutdown();
+
+	/* When every graph edge is blocked, do not fall back to a straight walk through the gate. */
+	reset();
+	guy = add("guy", "actor", 0, 0, 36);
+	gate = add("gate", "func_wall", 100, 0, 36);
+	add("goal", "info_target", 200, 0, 0);
+	ents[gate].mins[0] = -20; ents[gate].maxs[0] = 220;
+	ents[gate].mins[1] = -20; ents[gate].maxs[1] = 120;
+	ents[gate].mins[2] = -20; ents[gate].maxs[2] = 100;
+	files[0][0] = "maps/block.scr";
+	files[0][1] = "main:\n\t$gate disconnect_paths\n\t$guy runto $goal\nend\n";
+	files[1][0] = "maps/block.nodes";
+	files[1][1] =
+		"# x y z grav spawnflags targetname\n"
+		"0 0 0 0 0 start\n"
+		"100 100 0 0 0 alternate\n"
+		"200 0 0 0 0 finish\n";
+	assert(Dod_MohaaLevelInit(&b, "block", 0, 0));
+	run(0.05f, 0.2f);
+	assert(strstr(log_buf, "no connected path to destination"));
+	assert(!strstr(log_buf, "<guy runto "));
+	Dod_MohaaShutdown();
+
+	/* Removing the blocker frees its route filter; serial-safe stale IDs do not keep a gate closed. */
+	reset();
+	guy = add("guy", "actor", 0, 0, 36);
+	gate = add("gate", "func_wall", 100, 0, 36);
+	add("goal", "info_target", 200, 0, 0);
+	ents[gate].mins[0] = 95; ents[gate].maxs[0] = 105;
+	ents[gate].mins[1] = -12; ents[gate].maxs[1] = 12;
+	ents[gate].mins[2] = 0; ents[gate].maxs[2] = 72;
+	gate_id = make_id(gate);
+	files[0][0] = "maps/block.scr";
+	files[0][1] =
+		"main:\n"
+		"\t$gate disconnect_paths\n"
+		"end\n"
+		"go:\n"
+		"\t$guy runto $goal\n"
+		"end\n";
+	files[1][0] = "maps/block.nodes";
+	files[1][1] =
+		"# x y z grav spawnflags targetname\n"
+		"0 0 0 0 0 start\n"
+		"100 100 0 0 0 alternate\n"
+		"200 0 0 0 0 finish\n";
+	assert(Dod_MohaaLevelInit(&b, "block", 0, 0));
+	run(0.05f, 0.2f);
+	ents[gate].alive = 0;
+	Dod_MohaaEntityFreed(gate_id);
+	Dod_MohaaRunThread("go", 0);
+	assert(strstr(log_buf, "<guy runto 0.0 0.0 0.0>\n"));
+	Dod_MohaaNotify(make_id(guy), "movedone");
+	assert(strstr(log_buf, "<guy runto 200.0 0.0 0.0>\n"));
+}
+
+static void test_rendereffects_dontdraw(void)
+{
+	DodMohaaBackend b = backend();
+	int prop;
+	reset();
+	prop = add("prop", "script_model", 0, 0, 0);
+	files[0][0] = "maps/effects.scr";
+	files[0][1] =
+		"main:\n"
+		"\t$prop rendereffects \"+dontdraw\"\n"
+		"\t$prop rendereffects \"-dontdraw\"\n"
+		"\t$prop rendereffects \"-shadow\"\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "effects", 0, 0));
+	run(0.05f, 0.2f);
+	assert(render_flag_calls == 2);
+	assert(render_flag_last[0] == 1 && render_flag_last[1] == 0);
+	assert(!ents[prop].hidden);
+	assert(!strstr(log_buf, "unknown command 'rendereffects'"));
+}
+
+static void test_dynamic_farplane_and_color(void)
+{
+	DodMohaaBackend b = backend();
+	reset();
+	add("world", "worldspawn", 0, 0, 0);
+	files[0][0] = "maps/fog.scr";
+	files[0][1] =
+		"main:\n"
+		"\t$world farplane 2000\n"
+		"\t$world farplane_color (0.2 0.4 0.6)\n"
+		"\t$world farplane 0\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "fog", 0, 0));
+	run(0.05f, 0.2f);
+	assert(cvar_calls == 8);
+	assert(!strcmp(cvar_history[0][0], "gc_mohaa_farplane_override"));
+	assert(!strcmp(cvar_history[0][1], "1"));
+	assert(!strcmp(cvar_history[1][0], "gc_mohaa_farplane"));
+	assert(!strcmp(cvar_history[1][1], "1500.000"));
+	assert(!strcmp(cvar_history[2][0], "gc_mohaa_farplane_r"));
+	assert(!strcmp(cvar_history[2][1], "0.2000"));
+	assert(!strcmp(cvar_history[3][0], "gc_mohaa_farplane_g"));
+	assert(!strcmp(cvar_history[4][0], "gc_mohaa_farplane_b"));
+	assert(!strcmp(cvar_history[5][0], "gc_mohaa_farplane_color_override"));
+	assert(!strcmp(cvar_history[6][0], "gc_mohaa_farplane_override"));
+	assert(!strcmp(cvar_history[7][0], "gc_mohaa_farplane"));
+	assert(!strcmp(cvar_history[7][1], "0.000"));
+	assert(!strstr(log_buf, "unknown command 'farplane"));
+}
+
 static void test_setthread_and_quiet_commands(void)
 {
 	DodMohaaBackend b = backend();
@@ -628,6 +872,11 @@ static void test_setthread_and_quiet_commands(void)
 		"\tprintln (\"spawned set \" + local.d.set)\n"
 		"\tlocal.gun = $t_gate queryturretslotentity 0\n"
 		"\tlocal.gun setaimtarget $t_gate\n"
+		"\tprintln (\"aim target is gate: \" + (local.gun.setaimtarget == $t_gate))\n"
+		"\tlocal.gun setaimtarget (10 20 30)\n"
+		"\tprintln (\"aim point is vector: \" + (local.gun.setaimtarget == (10 20 30)))\n"
+		"\tlocal.gun setaimtarget NULL\n"
+		"\tprintln (\"aim target cleared: \" + (local.gun.setaimtarget == NULL))\n"
 		"\tprintln (\"turret \" + local.gun.targetname)\n"
 		"\tlocal.p = $t_gate.forwardvector * 128 + $t_gate.origin\n"
 		"\tprintln (\"ahead \" + local.p)\n"
@@ -666,7 +915,64 @@ static void test_setthread_and_quiet_commands(void)
 	assert(strstr(log_buf, "set 4 group left side\n"));
 	assert(strstr(log_buf, "spawned set 4\n"));
 	assert(strstr(log_buf, "turret t_gate\n"));
+	assert(strstr(log_buf, "aim target is gate: 1\n"));
+	assert(strstr(log_buf, "aim point is vector: 1\n"));
+	assert(strstr(log_buf, "aim target cleared: 1\n"));
 	assert(strstr(log_buf, "left (-1.000 ") && strstr(log_buf, " up (0.000 0.000 1.000)") );
+}
+
+static void test_cansee_fov_range_and_los(void)
+{
+	DodMohaaBackend b = backend();
+	int observer, ahead, behind;
+	reset();
+	observer = add("observer", "actor", 0, 0, 0);
+	ahead = add("ahead", "actor", 100, 0, 0);
+	behind = add("behind", "actor", -100, 0, 0);
+	files[0][0] = "maps/see.scr";
+	files[0][1] =
+		"main:\n"
+		"\tprintln (\"clear LOS: \" + ($observer cansee $ahead))\n"
+		"\tprintln (\"blocked LOS: \" + ($observer cansee $ahead))\n"
+		"\tprintln (\"outside FOV: \" + ($observer cansee $behind 90))\n"
+		"\tprintln (\"outside range: \" + ($observer cansee $ahead 360 100))\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "see", 0, 0));
+	can_see_result = 1;
+	run(0.05f, 0.05f);
+	assert(strstr(log_buf, "clear LOS: 1\n"));
+	assert(strstr(log_buf, "blocked LOS: 0\n"));
+	assert(strstr(log_buf, "outside FOV: 0\n"));
+	assert(strstr(log_buf, "outside range: 0\n"));
+	assert(can_see_calls == 2);
+	(void)observer; (void)ahead; (void)behind;
+}
+
+static void test_dontdropweapons_entity_and_level(void)
+{
+	DodMohaaBackend b = backend();
+	int player;
+	reset();
+	player = add("player", "player", 0, 0, 0);
+	files[0][0] = "maps/drop.scr";
+	files[0][1] =
+		"main:\n"
+		"\t$player dontdropweapons\n"
+		"\twait 0.1\n"
+		"\tlevel.dontdropweapons = 1\n"
+		"\twait 0.1\n"
+		"\tlevel.dontdropweapons = 0\n"
+		"\t$player dontdropweapons 0\n"
+		"end\n";
+	assert(!Dod_MohaaNoDropWeapons(make_id(player)));
+	assert(Dod_MohaaLevelInit(&b, "drop", 0, 0));
+	run(0.05f, 0.05f);
+	assert(Dod_MohaaNoDropWeapons(make_id(player))); /* entity setter */
+	run(0.15f, 0.15f);
+	assert(Dod_MohaaNoDropWeapons(make_id(player))); /* level flag */
+	run(0.25f, 0.25f);
+	assert(!Dod_MohaaNoDropWeapons(make_id(player))); /* both explicitly cleared */
+	Dod_MohaaShutdown();
 }
 
 /* main waits for the first frame (the map's entities spawn after the VM, during level load); a placeholder's
@@ -1118,7 +1424,12 @@ int main(void)
 	RUN(test_sounds);
 	RUN(test_music);
 	RUN(test_routes);
+	RUN(test_path_blockers);
+	RUN(test_rendereffects_dontdraw);
+	RUN(test_dynamic_farplane_and_color);
 	RUN(test_setthread_and_quiet_commands);
+	RUN(test_cansee_fov_range_and_los);
+	RUN(test_dontdropweapons_entity_and_level);
 	RUN(test_late_entities_and_moved_keys);
 	RUN(test_pool_allocator);
 	RUN(test_pool_backend);

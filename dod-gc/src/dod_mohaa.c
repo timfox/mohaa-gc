@@ -169,6 +169,7 @@ typedef struct DodMover {
 #define DOD_MOHAA_MAX_ROUTES 48	/* one per grunt slot */
 #define MUSIC_PATH 80
 #define DOD_MOHAA_MAX_CINE 64
+#define DOD_MOHAA_MAX_PATH_BLOCKERS 32
 #define DOD_MOHAA_ANIM_DEFAULT 1.0f	/* seconds an animation with no baked length plays before "animdone" */
 
 /* An entity a cutscene drives: its MOHAA model and animation (for tags and animdone), what it is glued to, where an
@@ -184,6 +185,9 @@ typedef struct DodCine {
 	int bind_relative;       /* bind preserves the child's local position and angles */
 	float bind_offset[3];
 	float bind_angle_offset[3];
+	int tag_attached;         /* attach follows an animated parent TIKI tag */
+	uint32_t attach_tag;      /* hashed tag name from maps/<map>.tags */
+	float attach_offset[3];   /* MOHAA units, transformed by the tag orientation */
 	int has_aim;
 	uint32_t aim_id;
 	float aim[3];            /* GoldSrc units, when aim_id is 0 */
@@ -230,6 +234,7 @@ static struct {
 	/* path nodes, and the soldiers walking them: a route is the goal plus the node it heads for now */
 	MohaaPaths paths;
 	int path_links;
+	struct { uint32_t id; float mins[3], maxs[3]; } path_blockers[DOD_MOHAA_MAX_PATH_BLOCKERS];
 	struct { uint32_t id; int order; float goal[3]; unsigned short node, goal_node; } routes[DOD_MOHAA_MAX_ROUTES];
 	/* cutscenes: maps/<map>.tags, the entities they drive, the player's state */
 	MohaaTags tags;
@@ -237,11 +242,36 @@ static struct {
 	uint32_t player;          /* the player a cutscene holds (locked, glued or riding), 0 none */
 	int player_locked;
 	uint32_t ride;            /* the turret the player rides ("doUse $player"): their eyes follow it */
+	uint32_t pending_ride;     /* early map scripts can call doUse before GoldSrc spawns the local player */
+	uint32_t pending_player_glue; /* early "$player glue $parent" before the local player exists */
+	int pending_player_glue_valid;
+	int pending_player_glue_angles;
+	int pending_player_lock_valid;
+	int pending_player_locked;
 	int ride_fresh;           /* the ride just began: set the view, then follow its turns */
 	float ride_yaw;
 	int drawhud_off;          /* "drawhud 0" */
 	int hud_sent;             /* DOD_MOHAA_HUD_* bits last given to the backend, -1 none yet */
 } S;
+
+#define MAX_PENDING_ENTITY_KEYS 256
+#define MAX_PENDING_ENTITY_KEY 64
+#define MAX_PENDING_ENTITY_VALUE 128
+
+/* Map #keys are dispatched before ServerActivate creates the script VM. Keep only
+ * script-only keys until then; edict serials prevent applying them to a reused slot. */
+static struct {
+	uint32_t id;
+	char key[MAX_PENDING_ENTITY_KEY];
+	char value[MAX_PENDING_ENTITY_VALUE];
+} g_pending_entity_keys[MAX_PENDING_ENTITY_KEYS];
+static int g_pending_entity_key_count;
+
+static void clear_pending_entity_keys(void)
+{
+	memset(g_pending_entity_keys, 0, sizeof(g_pending_entity_keys));
+	g_pending_entity_key_count = 0;
+}
 
 static DodCine *cine(uint32_t id, int create);
 static int is_player(uint32_t id);
@@ -298,11 +328,20 @@ static void forget(uint32_t id)
 	for (i = 0; i < DOD_MOHAA_MAX_ROUTES; i++)
 		if (S.routes[i].id == id)
 			S.routes[i].id = 0;
+	for (i = 0; i < DOD_MOHAA_MAX_PATH_BLOCKERS; i++)
+		if (S.path_blockers[i].id == id)
+			S.path_blockers[i].id = 0;
 	for (i = 0; i < DOD_MOHAA_MAX_CINE; i++)
 		if (S.cine[i].id == id)
 			memset(&S.cine[i], 0, sizeof(S.cine[i]));
 	if (S.ride == id)
 		S.ride = 0;
+	if (S.pending_ride == id)
+		S.pending_ride = 0;
+	if (S.pending_player_glue == id) {
+		S.pending_player_glue = 0;
+		S.pending_player_glue_valid = 0;
+	}
 }
 
 /* destination argument: a vector in MOHAA units, or an entity to move onto */
@@ -641,6 +680,51 @@ static int c_notsolid(ms_call *c) { S.be.set_flag(target_id(c), DOD_MOHAA_NOTSOL
 static int c_solid(ms_call *c) { S.be.set_flag(target_id(c), DOD_MOHAA_NOTSOLID, 0); return 0; }
 static int c_nodamage(ms_call *c) { S.be.set_flag(target_id(c), DOD_MOHAA_TAKEDAMAGE, 0); return 0; }
 static int c_takedamage(ms_call *c) { S.be.set_flag(target_id(c), DOD_MOHAA_TAKEDAMAGE, 1); return 0; }
+static int render_flag_equal(const char *a, const char *b)
+{
+	for (; *a && *b; a++, b++) {
+		char ca = *a, cb = *b;
+		if (ca >= 'A' && ca <= 'Z') ca = (char)(ca + ('a' - 'A'));
+		if (cb >= 'A' && cb <= 'Z') cb = (char)(cb + ('a' - 'A'));
+		if (ca != cb) return 0;
+	}
+	return *a == *b;
+}
+
+/* Retail rendereffects toggles bit flags such as +dontdraw and -dontdraw. The GX
+ * path has no dynamic shadow renderer, but dontdraw maps directly to GoldSrc visibility. */
+static int c_rendereffects(ms_call *c)
+{
+	const uint32_t id = target_id(c);
+	const char *effects = ms_arg_string(c, 0);
+	const char *p = effects;
+	if (!valid(id) || !S.be.set_flag || !effects)
+		return 0;
+	while (*p) {
+		char flag[32];
+		size_t n = 0;
+		int on;
+		while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n' || *p == ',' || *p == ';') p++;
+		if (!*p) break;
+		on = *p == '+';
+		if (*p == '+' || *p == '-') p++;
+		while ((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') || *p == '_') {
+			if (n + 1 < sizeof(flag)) flag[n++] = *p;
+			p++;
+		}
+		flag[n] = 0;
+		if (!render_flag_equal(flag, "dontdraw")) {
+			if (*p == 0) break;
+			/* Ignore punctuation after an unknown flag. Without advancing, a trailing
+			 * newline (or other non-delimiter byte) would repeat this token forever. */
+			if (*p != '+' && *p != '-' && *p != ' ' && *p != '\t' && *p != '\r' && *p != '\n' && *p != ',' && *p != ';')
+				p++;
+			continue;
+		}
+		S.be.set_flag(id, DOD_MOHAA_HIDDEN, on);
+	}
+	return 0;
+}
 
 static int c_remove(ms_call *c)
 {
@@ -990,6 +1074,146 @@ static int actor_order(ms_call *c, int order, const float pos[3])
 static int c_ai_on(ms_call *c) { return actor_order(c, DOD_MOHAA_AI_ON, NULL); }
 static int c_ai_off(ms_call *c) { return actor_order(c, DOD_MOHAA_AI_OFF, NULL); }
 static int c_attackplayer(ms_call *c) { return actor_order(c, DOD_MOHAA_ATTACK, NULL); }
+/* Retail accuracy is a per-actor tuning value; 100 preserves the default shot curve. */
+static int c_accuracy(ms_call *c)
+{
+	const uint32_t id = target_id(c);
+	const float accuracy = ms_arg_float(c, 0);
+	if (accuracy < 0.0f || accuracy > 300.0f)
+		return ms_call_error(c, "accuracy must be between 0 and 300");
+	if (!valid(id) || !S.be.actor_accuracy || !S.be.actor_accuracy(id, accuracy))
+		return not_actor(c, id);
+	return 0;
+}
+
+static int text_equal_ci(const char *a, const char *b)
+{
+	while (*a && *b) {
+		unsigned char x = (unsigned char)*a++, y = (unsigned char)*b++;
+		if (x >= 'A' && x <= 'Z') x = (unsigned char)(x + ('a' - 'A'));
+		if (y >= 'A' && y <= 'Z') y = (unsigned char)(y + ('a' - 'A'));
+		if (x != y) return 0;
+	}
+	return *a == *b;
+}
+
+/* Retail scripts use the sentinel `ignoreme` as well as integer threat priorities. */
+static int c_threatbias(ms_call *c)
+{
+	const uint32_t id = target_id(c);
+	const char *value = ms_arg_string(c, 0);
+	const int ignoreme = value && text_equal_ci(value, "ignoreme");
+	const ms_value *arg = ms_arg(c, 0);
+	if (!ignoreme && arg->type != MS_INT && arg->type != MS_FLOAT)
+		return ms_call_error(c, "threatbias expects an integer or ignoreme");
+	const float parsed = ignoreme ? 0.0f : ms_arg_float(c, 0);
+	if (parsed < -100000.0f || parsed > 100000.0f)
+		return ms_call_error(c, "threatbias must be between -100000 and 100000");
+	const int raw_bias = ignoreme ? 0 : ms_arg_int(c, 0);
+	const float bias = (float)raw_bias;
+	if (!ignoreme && parsed != bias)
+		return ms_call_error(c, "threatbias expects an integer or ignoreme");
+	if (!valid(id) || !S.be.set_threatbias || !S.be.set_threatbias(id, bias, ignoreme))
+		return ms_call_error(c, "threatbias requires a valid entity");
+	return 0;
+}
+
+static int segment_hits_box(const float a[3], const float b[3], const float mins[3], const float maxs[3])
+{
+	float tmin = 0.0f, tmax = 1.0f;
+	int axis;
+	for (axis = 0; axis < 3; axis++) {
+		const float delta = b[axis] - a[axis];
+		if (fabsf(delta) < 0.0001f) {
+			if (a[axis] < mins[axis] || a[axis] > maxs[axis])
+				return 0;
+		} else {
+			float lo = (mins[axis] - a[axis]) / delta;
+			float hi = (maxs[axis] - a[axis]) / delta;
+			if (lo > hi) {
+				const float swap = lo;
+				lo = hi;
+				hi = swap;
+			}
+			if (lo > tmin) tmin = lo;
+			if (hi < tmax) tmax = hi;
+			if (tmin > tmax)
+				return 0;
+		}
+	}
+	return 1;
+}
+
+/* Route points are at the actor's feet. Test the actor's center line against the blocker
+   expanded by the standing hull, so a path parallel to a closed gate cannot clip its edge. */
+static int path_edge_blocked(void *ctx, const float a[3], const float b[3])
+{
+	int i;
+	(void)ctx;
+	for (i = 0; i < DOD_MOHAA_MAX_PATH_BLOCKERS; i++) {
+		const float *raw_min = S.path_blockers[i].mins;
+		const float *raw_max = S.path_blockers[i].maxs;
+		float mins[3], maxs[3], center_a[3], center_b[3];
+		int axis;
+		if (!S.path_blockers[i].id)
+			continue;
+		for (axis = 0; axis < 3; axis++) {
+			const float pad = axis == 2 ? 36.0f : 16.0f;
+			mins[axis] = raw_min[axis] - pad;
+			maxs[axis] = raw_max[axis] + pad;
+		}
+		memcpy(center_a, a, sizeof(center_a));
+		memcpy(center_b, b, sizeof(center_b));
+		center_a[2] += 36.0f;
+		center_b[2] += 36.0f;
+		if (segment_hits_box(center_a, center_b, mins, maxs))
+			return 1;
+	}
+	return 0;
+}
+
+static int set_path_blocker(uint32_t id, int blocked)
+{
+	int i, free_slot = -1;
+	if (!valid(id) || is_node(id))
+		return 0;
+	if (blocked && !S.be.get_bounds)
+		return 0;
+	for (i = 0; i < DOD_MOHAA_MAX_PATH_BLOCKERS; i++) {
+		if (S.path_blockers[i].id == id) {
+			if (!blocked) S.path_blockers[i].id = 0;
+			else if (!S.be.get_bounds(id, S.path_blockers[i].mins, S.path_blockers[i].maxs))
+				S.path_blockers[i].id = 0;
+			return 1;
+		}
+		if (!S.path_blockers[i].id && free_slot < 0)
+			free_slot = i;
+	}
+	if (!blocked)
+		return 1;
+	if (free_slot < 0)
+		return 0;
+	if (!S.be.get_bounds(id, S.path_blockers[free_slot].mins, S.path_blockers[free_slot].maxs))
+		return 0;
+	S.path_blockers[free_slot].id = id;
+	return 1;
+}
+
+int Dod_MohaaPathBlocker(uint32_t id, int blocked)
+{
+	return set_path_blocker(id, blocked);
+}
+
+static int path_block(ms_call *c, int blocked)
+{
+	const uint32_t id = target_id(c);
+	if (!set_path_blocker(id, blocked))
+		return ms_call_error(c, "%s requires an entity with world bounds and an available blocker slot", ms_call_name(c));
+	return 0;
+}
+
+static int c_disconnect_paths(ms_call *c) { return path_block(c, 1); }
+static int c_connect_paths(ms_call *c) { return path_block(c, 0); }
 
 /* Retail forceactivate is used after a mission actor is spawned to wake its AI. */
 static int c_forceactivate(ms_call *c)
@@ -1032,8 +1256,10 @@ static int route_plan(uint32_t id, int order, const float from[3], const float g
 		const float to_goal = (goal[0] - from[0]) * (goal[0] - from[0]) + (goal[1] - from[1]) * (goal[1] - from[1]);
 		const float to_node = (sp[0] - from[0]) * (sp[0] - from[0]) + (sp[1] - from[1]) * (sp[1] - from[1]);
 		/* nodes only when the goal is past the first node and the two ends are joined */
-		if (s == g || to_goal <= to_node || MohaaPaths_NextHop(&S.paths, s, g) < 0)
+		if (s == g || to_goal <= to_node)
 			return 0;
+		if (MohaaPaths_NextHop(&S.paths, s, g, path_edge_blocked, NULL) < 0)
+			return -1;
 	}
 	k = route_slot(id, 1);
 	if (k < 0)
@@ -1045,7 +1271,7 @@ static int route_plan(uint32_t id, int order, const float from[3], const float g
 	S.routes[k].goal_node = (unsigned short)g;
 	memcpy(leg, S.paths.pos[s], sizeof(float) * 3);
 	for (n = s; n != g && hops < S.paths.count; hops++)
-		n = MohaaPaths_NextHop(&S.paths, n, g);
+		n = MohaaPaths_NextHop(&S.paths, n, g, path_edge_blocked, NULL);
 	return hops + 1;
 }
 
@@ -1064,7 +1290,7 @@ static int route_arrived(uint32_t id)
 			S.be.actor(id, S.routes[k].order, S.routes[k].goal);
 		return 1;
 	}
-	h = MohaaPaths_NextHop(&S.paths, S.routes[k].node, S.routes[k].goal_node);
+	h = MohaaPaths_NextHop(&S.paths, S.routes[k].node, S.routes[k].goal_node, path_edge_blocked, NULL);
 	if (h < 0) {
 		S.routes[k].id = 0;
 		if (S.be.actor)
@@ -1091,6 +1317,11 @@ static int c_goto(ms_call *c)
 	get_vec(id, DOD_MOHAA_ORIGIN, from);
 	from[2] -= 36.0f;	/* a grunt's origin is its body centre; nodes are at the feet */
 	nodes = route_plan(id, order, from, pos, leg);
+	if (nodes < 0) {
+		if (S.be.actor)
+			S.be.actor(id, DOD_MOHAA_STOP, from);
+		return ms_call_error(c, "no connected path to destination");
+	}
 	if (!S.be.actor(id, order, leg)) {
 		forget(id);
 		return not_actor(c, id);
@@ -1639,6 +1870,19 @@ static int c_model(ms_call *c)
 	return 0;
 }
 
+/* "$entity scale <positive multiplier>" */
+static int c_scale(ms_call *c)
+{
+	const uint32_t id = target_id(c);
+	const float scale = ms_arg_float(c, 0);
+	if (!valid(id) || !S.be.set_scale)
+		return 0;
+	if (!(scale > 0.0f) || scale > 16.0f)
+		return ms_call_error(c, "scale must be greater than 0 and at most 16");
+	S.be.set_scale(id, scale);
+	return 0;
+}
+
 /* "$e anim <name>" (and anim_scripted, anim_noclip): animdone when it would have ended */
 static int c_anim(ms_call *c)
 {
@@ -1679,8 +1923,12 @@ static void apply_hud(void)
 
 static void lock_player(uint32_t id, int on)
 {
-	if (!id)
+	if (!id) {
+		/* freezeplayer/releaseplayer can run before the listen-server join creates $player. */
+		S.pending_player_lock_valid = 1;
+		S.pending_player_locked = on;
 		return;
+	}
 	if (on)
 		S.player = id;
 	S.player_locked = on;
@@ -1695,6 +1943,10 @@ static int c_physics(ms_call *c)
 	const uint32_t id = target_id(c);
 	if (is_player(id))
 		lock_player(id, strstr(ms_call_name(c), "off") != NULL);
+	else if (!id && ms_call_target(c)->type == MS_NULL) {
+		uint32_t player = the_player();
+		lock_player(player, strstr(ms_call_name(c), "off") != NULL);
+	}
 	return 0;
 }
 
@@ -1705,19 +1957,96 @@ static int c_freezeplayer(ms_call *c)
 	return 0;
 }
 
+static int ascii_equal(const char *a, const char *b)
+{
+	for (; *a && *b; a++, b++) {
+		char ca = *a, cb = *b;
+		if (ca >= 'A' && ca <= 'Z') ca = (char)(ca + ('a' - 'A'));
+		if (cb >= 'A' && cb <= 'Z') cb = (char)(cb + ('a' - 'A'));
+		if (ca != cb)
+			return 0;
+	}
+	return *a == *b;
+}
+
+/* Retail cutscenes force the player's legs into a crouched or standing loop. */
+static int c_forcelegsstate(ms_call *c)
+{
+	const uint32_t id = target_id(c);
+	const char *state = ms_arg_string(c, 0);
+	if (!is_player(id) || !S.be.player_stance)
+		return 0;
+	if (ascii_equal(state, "CROUCH_IDLE"))
+		S.be.player_stance(id, DOD_MOHAA_STANCE_CROUCH);
+	else if (ascii_equal(state, "STAND"))
+		S.be.player_stance(id, DOD_MOHAA_STANCE_STAND);
+	else
+		return ms_call_error(c, "unsupported forcelegsstate '%s'", state);
+	return 0;
+}
+
 /* "$e glue $parent [angles]": follow parent's origin (and angles unless 0) until unglued */
 static int c_glue(ms_call *c)
 {
-	const uint32_t id = target_id(c);
+	uint32_t id = target_id(c);
+	const ms_value *target = ms_call_target(c);
 	const ms_value *p = ms_arg(c, 0);
 	DodCine *k;
+	if (!id && target->type == MS_NULL) {
+		id = the_player();
+		if (!id && p->type == MS_ENTITY && valid(p->u.id)) {
+			/* Preserve the retail playerstuck sequence when glue is issued before auto-join. */
+			S.pending_player_glue = p->u.id;
+			S.pending_player_glue_valid = 1;
+			S.pending_player_glue_angles = ms_argc(c) > 1 ? ms_arg_int(c, 1) != 0 : 1;
+			return 0;
+		}
+	}
 	if (p->type != MS_ENTITY || !valid(p->u.id) || p->u.id == id || !(k = cine(id, 1)))
 		return 0;
 	k->glue = p->u.id;
 	k->bind_relative = 0;
+	k->tag_attached = 0;
+	k->attach_tag = 0;
 	k->glue_angles = ms_argc(c) > 1 ? ms_arg_int(c, 1) != 0 : 1;
 	if (is_player(id))
 		S.player = id;
+	if (S.be.get_str && !strcmp(S.be.get_str(p->u.id, DOD_MOHAA_TARGETNAME), "truckorg")) {
+		char msg[160];
+		snprintf(msg, sizeof(msg), "Xash3D MOHAA truck camera glue child=%u parent=%u angles=%d\n",
+			(unsigned)id, (unsigned)p->u.id, k->glue_angles);
+		S.be.print(DOD_MOHAA_PRINT_CONSOLE, msg);
+	}
+	return 0;
+}
+
+/* "$child attach $parent <tag> [use_angles] [offset]": follow an animated TIKI tag.
+ * MOHAA's shared spotlight scripts use this for the searchlight flare. */
+static int c_attach(ms_call *c)
+{
+	const uint32_t id = target_id(c);
+	const ms_value *parent = ms_arg(c, 0);
+	const ms_value *tag = ms_arg(c, 1);
+	char tag_name[96];
+	DodCine *k;
+	float offset[3] = {0.0f, 0.0f, 0.0f};
+	if (parent->type != MS_ENTITY || !valid(id) || !valid(parent->u.id) || parent->u.id == id)
+		return ms_call_error(c, "attach needs a different parent entity");
+	if (tag->type != MS_STRING)
+		return ms_call_error(c, "attach needs a tag name");
+	ms_tostring(tag, tag_name, sizeof(tag_name));
+	if (!tag_name[0])
+		return ms_call_error(c, "attach needs a tag name");
+	if (ms_argc(c) > 3 && ms_arg(c, 3)->type == MS_VECTOR)
+		memcpy(offset, ms_arg(c, 3)->u.v, sizeof(offset));
+	if (!(k = cine(id, 1)))
+		return ms_call_error(c, "too many attached entities");
+	k->glue = parent->u.id;
+	k->bind_relative = 0;
+	k->tag_attached = 1;
+	k->attach_tag = MohaaTags_Hash(tag_name);
+	memcpy(k->attach_offset, offset, sizeof(k->attach_offset));
+	k->glue_angles = ms_argc(c) > 2 ? ms_arg_int(c, 2) != 0 : 1;
 	return 0;
 }
 
@@ -1748,6 +2077,8 @@ static int c_bind(ms_call *c)
 	k->glue = p->u.id;
 	k->glue_angles = 1;
 	k->bind_relative = 1;
+	k->tag_attached = 0;
+	k->attach_tag = 0;
 	if (is_player(id))
 		S.player = id;
 	return 0;
@@ -1759,6 +2090,8 @@ static int c_unglue(ms_call *c)
 	if (k) {
 		k->glue = 0;
 		k->bind_relative = 0;
+		k->tag_attached = 0;
+		k->attach_tag = 0;
 	}
 	return 0;
 }
@@ -1767,16 +2100,33 @@ static int c_unglue(ms_call *c)
    "douse" (put out a fire), which names no player and stays a no-op. */
 static int c_douse(ms_call *c)
 {
+	static int ride_logs;
 	const uint32_t id = target_id(c);
 	const ms_value *p = ms_arg(c, 0);
-	if (p->type != MS_ENTITY || !is_player(p->u.id))
+	if (p->type != MS_ENTITY && p->type != MS_NULL)
 		return 0;
-	if (S.ride == id) {
+	if (p->type == MS_ENTITY && !is_player(p->u.id))
+		return 0;
+	if (S.ride == id || S.pending_ride == id) {
 		S.ride = 0;
+		S.pending_ride = 0;
 	} else {
-		S.ride = id;
-		S.ride_fresh = 1;
-		S.player = p->u.id;
+		if (!valid(id))
+			return 0;
+		if (p->type == MS_NULL || !p->u.id) {
+			S.pending_ride = id;
+		} else {
+			S.ride = id;
+			S.ride_fresh = 1;
+			S.player = p->u.id;
+		}
+	}
+	if (ride_logs < 8) {
+		char msg[128];
+		snprintf(msg, sizeof(msg), "Xash3D MOHAA ride toggle entity=%u ride=%u pending=%u player=%u\n",
+			(unsigned)id, (unsigned)S.ride, (unsigned)S.pending_ride, (unsigned)S.player);
+		S.be.print(DOD_MOHAA_PRINT_CONSOLE, msg);
+		ride_logs++;
 	}
 	apply_hud();
 	return 0;
@@ -1787,6 +2137,22 @@ static int c_drawhud(ms_call *c)
 {
 	S.drawhud_off = ms_arg_int(c, 0) == 0;
 	apply_hud();
+	return 0;
+}
+
+static int c_holster(ms_call *c)
+{
+	const uint32_t id = target_id(c);
+	if (is_player(id) && S.be.player_weapon)
+		S.be.player_weapon(id, 0);
+	return 0;
+}
+
+static int c_unholster(ms_call *c)
+{
+	const uint32_t id = target_id(c);
+	if (is_player(id) && S.be.player_weapon)
+		S.be.player_weapon(id, 1);
 	return 0;
 }
 
@@ -1807,6 +2173,55 @@ static int c_aimat(ms_call *c)
 		scale_in(t->u.v, k->aim);
 	}
 	return 0;
+}
+
+/* Retail MG42/flak scripts poll self.setaimtarget, compare it with the last
+ * target, and run isalive on entity targets. Tank scripts also pass a vector
+ * target point. Preserve either value; NULL and invalid entities clear it. */
+static int c_setaimtarget(ms_call *c)
+{
+	const uint32_t id = target_id(c);
+	const ms_value *target = ms_arg(c, 0);
+	ms_value value;
+	if (!valid(id))
+		return 0;
+	if (target->type == MS_ENTITY && valid(target->u.id))
+		value = ms_entity(target->u.id);
+	else if (target->type == MS_VECTOR)
+		value = *target;
+	else {
+		value = ms_nil();
+		value.type = MS_NULL;
+	}
+	ms_set_entity_var(S.vm, id, "setaimtarget", &value);
+	return 0;
+}
+
+/* Retail Sentient::EventDontDropWeapons defaults to true and accepts an optional boolean. */
+static int c_dontdropweapons(ms_call *c)
+{
+	const uint32_t id = target_id(c);
+	ms_value enabled = ms_int(ms_argc(c) > 0 ? ms_truthy(S.vm, ms_arg(c, 0)) : 1);
+	if (valid(id))
+		ms_set_entity_var(S.vm, id, "dontdropweapons", &enabled);
+	return 0;
+}
+
+int Dod_MohaaNoDropWeapons(uint32_t id)
+{
+	ms_value value;
+	int no_drop = 0;
+	if (!S.vm)
+		return 0;
+	if (id && ms_get_entity_var(S.vm, id, "dontdropweapons", &value)) {
+		no_drop = ms_truthy(S.vm, &value);
+		ms_release(S.vm, value);
+	}
+	if (ms_get_level_var(S.vm, "dontdropweapons", &value)) {
+		no_drop = no_drop || ms_truthy(S.vm, &value);
+		ms_release(S.vm, value);
+	}
+	return no_drop;
 }
 
 #define DOD_MOHAA_SHOT_RADIUS 48.0f	/* GoldSrc units round a scripted shot's aim point that it hurts */
@@ -1845,7 +2260,7 @@ static int c_radiusdamage(ms_call *c)
 }
 
 /* A tag of the entity's model now, in MOHAA world units and angles. 0 when it has no such baked tag. */
-static int tag_now(uint32_t id, const char *tag, float pos[3], float ang[3])
+static int tag_now_hash(uint32_t id, uint32_t tag_hash, float pos[3], float ang[3])
 {
 	const DodCine *k = cine(id, 0);
 	const MohaaTagModel *m;
@@ -1854,7 +2269,7 @@ static int tag_now(uint32_t id, const char *tag, float pos[3], float ang[3])
 	if (!k || k->model < 0 || k->model >= S.tags.nmodels)
 		return 0;
 	m = &S.tags.models[k->model];
-	t = MohaaTags_Tag(m, MohaaTags_Hash(tag));
+	t = MohaaTags_Tag(m, tag_hash);
 	if (t < 0 || !m->nanims)
 		return 0;
 	an = k->anim ? MohaaTags_Anim(m, k->anim) : -1;
@@ -1875,6 +2290,11 @@ static int tag_now(uint32_t id, const char *tag, float pos[3], float ang[3])
 	}
 	MohaaTags_MatrixAngles(wm, ang);
 	return 1;
+}
+
+static int tag_now(uint32_t id, const char *tag, float pos[3], float ang[3])
+{
+	return tag_now_hash(id, MohaaTags_Hash(tag), pos, ang);
 }
 
 /* "$e gettagposition <tag>" / "gettagangles": the baked tag when there is one; otherwise the tag sits at the
@@ -1929,6 +2349,36 @@ static void cine_think(void)
 {
 	int i;
 	uint32_t player = S.player;
+	if (S.pending_ride || S.pending_player_glue_valid || S.pending_player_lock_valid)
+		player = the_player();
+	if (player && S.pending_player_glue_valid && valid(S.pending_player_glue)) {
+		DodCine *pk = cine(player, 1);
+		if (pk) {
+			pk->glue = S.pending_player_glue;
+			pk->bind_relative = 0;
+			pk->tag_attached = 0;
+			pk->attach_tag = 0;
+			pk->glue_angles = S.pending_player_glue_angles;
+			S.pending_player_glue = 0;
+			S.pending_player_glue_valid = 0;
+			S.player = player;
+		}
+	}
+	if (player && S.pending_player_lock_valid) {
+		const int locked = S.pending_player_locked;
+		S.pending_player_lock_valid = 0;
+		S.pending_player_locked = 0;
+		lock_player(player, locked);
+	}
+	if (S.pending_ride) {
+		if (player) {
+			S.ride = S.pending_ride;
+			S.pending_ride = 0;
+			S.ride_fresh = 1;
+			S.player = player;
+			apply_hud();
+		}
+	}
 	for (i = 0; i < DOD_MOHAA_MAX_CINE && S.vm; i++) {
 		DodCine *k = &S.cine[i];
 		if (!k->id)
@@ -1951,11 +2401,29 @@ static void cine_think(void)
 		if (!valid(k->glue)) {
 			k->glue = 0;
 			k->bind_relative = 0;
+			k->tag_attached = 0;
+			k->attach_tag = 0;
 			continue;
 		}
 		{
 			float angles[3];
-			cine_parent_pose(k, v, angles);
+			if (k->tag_attached) {
+				float pos[3], forward[3], left[3], up[3];
+				int axis;
+				if (!tag_now_hash(k->glue, k->attach_tag, pos, angles)) {
+					get_vec(k->glue, DOD_MOHAA_ORIGIN, v);
+					scale_out(v, pos);
+					get_vec(k->glue, DOD_MOHAA_ANGLES, angles);
+				}
+				angle_axes(angles, forward, left, up);
+				for (axis = 0; axis < 3; axis++)
+					pos[axis] += k->attach_offset[0] * forward[axis] +
+					             k->attach_offset[1] * left[axis] +
+					             k->attach_offset[2] * up[axis];
+				scale_in(pos, v);
+			} else {
+				cine_parent_pose(k, v, angles);
+			}
 			S.be.set_vec(k->id, DOD_MOHAA_ORIGIN, v);
 			if (k->glue_angles)
 				S.be.set_vec(k->id, DOD_MOHAA_ANGLES, angles);
@@ -1973,11 +2441,36 @@ static void cine_think(void)
 		if (S.ride) {
 			/* the turret's view position is its origin: the player's eyes go there */
 			get_vec(S.ride, DOD_MOHAA_ORIGIN, v);
+			{
+				static float last_log;
+				if (S.now - last_log >= 2.0f && last_log < 14.0f) {
+					char msg[160];
+					const DodCine *ride_cine = cine(S.ride, 0);
+					float parent[3] = {0, 0, 0};
+					if (ride_cine && ride_cine->glue)
+						get_vec(ride_cine->glue, DOD_MOHAA_ORIGIN, parent);
+					snprintf(msg, sizeof(msg), "Xash3D MOHAA ride follow id=%u parent=%u time=%.1f pos=(%.1f %.1f %.1f) parentpos=(%.1f %.1f %.1f)\n",
+						(unsigned)S.ride, (unsigned)(ride_cine ? ride_cine->glue : 0), S.now,
+						v[0], v[1], v[2], parent[0], parent[1], parent[2]);
+					S.be.print(DOD_MOHAA_PRINT_CONSOLE, msg);
+					last_log = S.now;
+				}
+			}
 			if (S.be.place_player)
 				S.be.place_player(player, v, 1);
 		} else if (pk && pk->glue && valid(pk->glue)) {
 			float a[3];
 			cine_parent_pose(pk, v, a);
+			{
+				static int glue_logs;
+				if (glue_logs < 4) {
+					char msg[144];
+					snprintf(msg, sizeof(msg), "Xash3D MOHAA player glue follow parent=%u time=%.1f pos=(%.1f %.1f %.1f)\n",
+						(unsigned)pk->glue, S.now, v[0], v[1], v[2]);
+					S.be.print(DOD_MOHAA_PRINT_CONSOLE, msg);
+					glue_logs++;
+				}
+			}
 			if (S.be.place_player)
 				S.be.place_player(player, v, 0);
 		}
@@ -2026,6 +2519,50 @@ static int c_setcvar(ms_call *c)
 {
 	if (S.be.set_cvar && ms_argc(c) >= 2)
 		S.be.set_cvar(ms_arg_string(c, 0), ms_arg_string(c, 1));
+	return 0;
+}
+
+/* Dynamic MOHAA world fog. The BSP converter scales retail map distances by 0.75. */
+static int c_farplane(ms_call *c)
+{
+	char value[32];
+	const ms_value *arg = ms_arg(c, 0);
+	const float retail = ms_arg_float(c, 0);
+	if (!S.be.set_cvar)
+		return 0;
+	if (arg->type != MS_INT && arg->type != MS_FLOAT)
+		return ms_call_error(c, "farplane expects a numeric distance");
+	if (!isfinite(retail) || retail < 0.0f || retail > 1000000.0f)
+		return ms_call_error(c, "farplane must be a finite distance from 0 to 1000000");
+	snprintf(value, sizeof(value), "%.3f", retail * 0.75f);
+	S.be.set_cvar("gc_mohaa_farplane_override", "1");
+	S.be.set_cvar("gc_mohaa_farplane", value);
+	return 0;
+}
+
+static int c_farplane_color(ms_call *c)
+{
+	static const char *const names[] = {
+		"gc_mohaa_farplane_r", "gc_mohaa_farplane_g", "gc_mohaa_farplane_b"
+	};
+	float rgb[3];
+	int i;
+	const ms_value *arg = ms_arg(c, 0);
+	if (!S.be.set_cvar)
+		return 0;
+	if (arg->type != MS_VECTOR && arg->type != MS_STRING)
+		return ms_call_error(c, "farplane_color expects an RGB vector");
+	ms_arg_vector(c, 0, rgb);
+	for (i = 0; i < 3; i++) {
+		char value[24];
+		if (!isfinite(rgb[i]))
+			return ms_call_error(c, "farplane_color components must be finite");
+		if (rgb[i] < 0.0f) rgb[i] = 0.0f;
+		if (rgb[i] > 1.0f) rgb[i] = 1.0f;
+		snprintf(value, sizeof(value), "%.4f", rgb[i]);
+		S.be.set_cvar(names[i], value);
+	}
+	S.be.set_cvar("gc_mohaa_farplane_color_override", "1");
 	return 0;
 }
 
@@ -2159,9 +2696,12 @@ static int c_huddraw(ms_call *c)
 			if (d->r > 1.0f || d->g > 1.0f || d->b > 1.0f) {
 				d->r /= 255.0f; d->g /= 255.0f; d->b /= 255.0f;
 			}
-			if (d->r < 0.0f) d->r = 0.0f; if (d->r > 1.0f) d->r = 1.0f;
-			if (d->g < 0.0f) d->g = 0.0f; if (d->g > 1.0f) d->g = 1.0f;
-			if (d->b < 0.0f) d->b = 0.0f; if (d->b > 1.0f) d->b = 1.0f;
+			if (d->r < 0.0f) d->r = 0.0f;
+			if (d->r > 1.0f) d->r = 1.0f;
+			if (d->g < 0.0f) d->g = 0.0f;
+			if (d->g > 1.0f) d->g = 1.0f;
+			if (d->b < 0.0f) d->b = 0.0f;
+			if (d->b > 1.0f) d->b = 1.0f;
 		}
 	} else if (!strcmp(op, "huddraw_alpha")) {
 		d->a = ms_arg_float(c, 1);
@@ -2186,6 +2726,41 @@ static int c_isalive(ms_call *c)
 }
 
 /* "getcvar <name>": the cvar's string ("" when unknown) */
+/* "$observer cansee $target [fov_degrees] [max_distance]". A missing backend
+ * trace means geometry is unknown, so native host-only harnesses stay permissive. */
+static int c_cansee(ms_call *c)
+{
+	const ms_value *target = ms_arg(c, 0);
+	const uint32_t observer_id = target_id(c);
+	float observer[3], target_pos[3], angles[3], delta[3], forward[3], left[3], up[3];
+	float distance, fov, max_distance, dot;
+	int visible = 0;
+	int i;
+	if (target->type != MS_ENTITY || !valid(observer_id) || !valid(target->u.id) ||
+	    is_node(observer_id) || is_node(target->u.id))
+		goto done;
+	get_vec(observer_id, DOD_MOHAA_ORIGIN, observer);
+	get_vec(target->u.id, DOD_MOHAA_ORIGIN, target_pos);
+	for (i = 0; i < 3; i++) delta[i] = target_pos[i] - observer[i];
+	distance = sqrtf(dot3(delta, delta));
+	fov = ms_argc(c) > 1 ? ms_arg_float(c, 1) : 360.0f;
+	max_distance = ms_argc(c) > 2 ? ms_arg_float(c, 2) * DOD_MOHAA_SCALE : 0.0f;
+	if (max_distance > 0.0f && distance > max_distance)
+		goto done;
+	if (fov > 0.0f && fov < 360.0f && distance > 0.001f) {
+		get_vec(observer_id, DOD_MOHAA_ANGLES, angles);
+		angle_axes(angles, forward, left, up);
+		dot = dot3(forward, delta) / distance;
+		if (dot < cosf(fov * 0.00872664626f))
+			goto done;
+	}
+	visible = !S.be.can_see || S.be.can_see(observer_id, target->u.id);
+done:
+	ms_return_int(c, visible);
+	return 0;
+}
+
+/* "getcvar <name>": the cvar's string, "" when unknown */
 static int c_getcvar(ms_call *c)
 {
 	const char *v = S.be.get_cvar ? S.be.get_cvar(ms_arg_string(c, 0)) : NULL;
@@ -2245,18 +2820,44 @@ static ms_value key_value(const char *value)
 void Dod_MohaaEntityKey(uint32_t id, const char *key, const char *value)
 {
 	ms_value v;
-	if (!S.vm || !id || !key || !value)
+	int i;
+	if (!id || !key || !value)
 		return;
+	if (!S.vm) {
+		if (g_pending_entity_key_count >= MAX_PENDING_ENTITY_KEYS)
+			return;
+		i = g_pending_entity_key_count++;
+		g_pending_entity_keys[i].id = id;
+		snprintf(g_pending_entity_keys[i].key, sizeof(g_pending_entity_keys[i].key), "%s", key);
+		snprintf(g_pending_entity_keys[i].value, sizeof(g_pending_entity_keys[i].value), "%s", value);
+		return;
+	}
 	v = key_value(value);
 	/* MOHAA's '#' marks a key as a script variable; the variable's name has none (#set -> $ent.set) */
 	ms_set_entity_var(S.vm, id, key[0] == '#' ? key + 1 : key, &v);
 	ms_release(S.vm, v);
 }
 
+static void replay_pending_entity_keys(void)
+{
+	int i;
+	for (i = 0; i < g_pending_entity_key_count; i++)
+		Dod_MohaaEntityKey(g_pending_entity_keys[i].id, g_pending_entity_keys[i].key, g_pending_entity_keys[i].value);
+	clear_pending_entity_keys();
+}
+
 void Dod_MohaaEntityMoved(uint32_t from, uint32_t to)
 {
-	if (S.vm && from && to)
-		ms_move_entity_vars(S.vm, from, to);
+	int i;
+	if (!from || !to)
+		return;
+	if (!S.vm) {
+		for (i = 0; i < g_pending_entity_key_count; i++)
+			if (g_pending_entity_keys[i].id == from)
+				g_pending_entity_keys[i].id = to;
+		return;
+	}
+	ms_move_entity_vars(S.vm, from, to);
 }
 
 void Dod_MohaaSetOther(uint32_t id)
@@ -2300,7 +2901,7 @@ static int c_spawn(ms_call *c)
 }
 
 /* A vehicle's turret: there are no separate turret entities yet, so the vehicle answers for its turrets and the
-   turret commands (setaimtarget, ...) are no-ops on it, instead of every one failing on NIL. */
+   turret commands are accepted on it, instead of every one failing on NIL. */
 static int c_queryturretslotentity(ms_call *c)
 {
 	ms_return(c, ms_call_target(c));
@@ -2385,6 +2986,7 @@ static void register_commands(ms_vm *vm)
 		{"soundtrack", MS_ON_THREAD | MS_ON_ENTITY, c_soundtrack},
 		{"forcemusic", MS_ON_THREAD | MS_ON_ENTITY, c_forcemusic},
 		{"isalive", MS_ON_THREAD, c_isalive},
+		{"cansee", MS_ON_ENTITY, c_cansee},
 		{"gettagposition", MS_ON_ENTITY, c_gettag},
 		{"gettagangles", MS_ON_ENTITY, c_gettag},
 		{"velocity", MS_ON_ENTITY, c_velocity},
@@ -2417,35 +3019,36 @@ static void register_commands(ms_vm *vm)
 		{"endpath", MS_ON_ENTITY, c_stopdrive},
 		{"forceactivate", MS_ON_ENTITY | MS_ON_THREAD, c_forceactivate},
 		{"setcvar", MS_ON_THREAD, c_setcvar},
+		{"farplane", MS_ON_ENTITY | MS_ON_THREAD, c_farplane},
+		{"farplane_color", MS_ON_ENTITY | MS_ON_THREAD, c_farplane_color},
 		{"addobjective", MS_ON_THREAD, c_addobjective},
 		{"setcurrentobjective", MS_ON_THREAD, c_setcurrentobjective},
 		{"set_objective_pos", MS_ON_THREAD | MS_ON_ENTITY, c_set_objective_pos},
 		{"clear_objective_pos", MS_ON_THREAD, c_clear_objective_pos},
 		{"lighton", MS_ON_ENTITY, c_ignored},
 		{"light", MS_ON_ENTITY, c_ignored},
-		/* animation, TIKI models, attachment, vehicles and turrets, weapons and inventory: none of it exists on the
-		   GameCube side yet. Accepted so a mission keeps going; README "Not yet" lists what they would need. */
+		/* Remaining behavior intentionally accepted without rendering/AI effects. */
 		{"american", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
-		{"attach", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"attach", MS_ON_ENTITY | MS_ON_THREAD, c_attach},
 		{"bind", MS_ON_ENTITY | MS_ON_THREAD, c_bind},
-		{"forcelegsstate", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"forcelegsstate", MS_ON_ENTITY | MS_ON_THREAD, c_forcelegsstate},
 		{"gren_awareness", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
-		{"holster", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"holster", MS_ON_ENTITY | MS_ON_THREAD, c_holster},
 		{"nodamage", MS_ON_ENTITY | MS_ON_THREAD, c_nodamage},
 		{"takedamage", MS_ON_ENTITY | MS_ON_THREAD, c_takedamage},
-		{"scale", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"scale", MS_ON_ENTITY | MS_ON_THREAD, c_scale},
 		{"setplayerusable", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
-		{"threatbias", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"threatbias", MS_ON_ENTITY | MS_ON_THREAD, c_threatbias},
 		{"unbind", MS_ON_ENTITY | MS_ON_THREAD, c_unglue},
 		{"turnspeed", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"vehiclespeed", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"burstfiresettings", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"removeondeath", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
-		{"rendereffects", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"rendereffects", MS_ON_ENTITY | MS_ON_THREAD, c_rendereffects},
 		{"tracerfrequency", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"triggereffect", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
-		{"setaimtarget", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
-		{"accuracy", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"setaimtarget", MS_ON_ENTITY | MS_ON_THREAD, c_setaimtarget},
+		{"accuracy", MS_ON_ENTITY | MS_ON_THREAD, c_accuracy},
 		{"bulletdamage", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"firedelay", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"maxyawoffset", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
@@ -2455,9 +3058,9 @@ static void register_commands(ms_vm *vm)
 		{"item", MS_ON_ENTITY | MS_ON_THREAD, c_item},
 		{"takeall", MS_ON_ENTITY | MS_ON_THREAD, c_takeall},
 		{"useweaponclass", MS_ON_ENTITY | MS_ON_THREAD, c_useweaponclass},
-		{"dontdropweapons", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
-		{"unholster", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
-		{"detach", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"dontdropweapons", MS_ON_ENTITY | MS_ON_THREAD, c_dontdropweapons},
+		{"unholster", MS_ON_ENTITY | MS_ON_THREAD, c_unholster},
+		{"detach", MS_ON_ENTITY | MS_ON_THREAD, c_unglue},
 		/* scripted HUD elements (hints, compass overlays and the m6l1a mg42 overlay) */
 		{"huddraw_shader", MS_ON_THREAD, c_huddraw},
 		{"huddraw_align", MS_ON_THREAD, c_huddraw},
@@ -2470,8 +3073,8 @@ static void register_commands(ms_vm *vm)
 		{"lightoff", MS_ON_ENTITY, c_ignored},
 		{"lightradius", MS_ON_ENTITY, c_ignored},
 		{"lightcolor", MS_ON_ENTITY, c_ignored},
-		{"disconnect_paths", MS_ON_ENTITY, c_ignored},
-		{"connect_paths", MS_ON_ENTITY, c_ignored},
+		{"disconnect_paths", MS_ON_ENTITY, c_disconnect_paths},
+		{"connect_paths", MS_ON_ENTITY, c_connect_paths},
 		{"getcvar", MS_ON_THREAD, c_getcvar},
 		{"fadeout", MS_ON_THREAD, c_fade},
 		{"fadein", MS_ON_THREAD, c_fade},
@@ -2529,12 +3132,16 @@ void Dod_MohaaShutdown(void)
 	memset(S.hud_draw, 0, sizeof(S.hud_draw));
 	MohaaPaths_Free(&S.paths);
 	S.path_links = 0;
+	memset(S.path_blockers, 0, sizeof(S.path_blockers));
 	memset(S.routes, 0, sizeof(S.routes));
 	MohaaTags_Free(&S.tags, S.be.alloc);
 	memset(S.cine, 0, sizeof(S.cine));
 	if (S.player_locked && S.be.player_lock && S.player)
 		S.be.player_lock(S.player, 0);	/* a level that ends mid-cutscene must not leave the player stuck */
-	S.player = S.ride = 0;
+	S.player = S.ride = S.pending_ride = 0;
+	S.pending_player_glue = 0;
+	S.pending_player_glue_valid = S.pending_player_glue_angles = 0;
+	S.pending_player_lock_valid = S.pending_player_locked = 0;
 	S.player_locked = S.ride_fresh = S.drawhud_off = 0;
 	if (S.hud_sent > 0 && S.be.hud)
 		S.be.hud(0);
@@ -2647,7 +3254,7 @@ static void nodes_load(const char *mapname)
 	char path[128], msg[256];
 	size_t len = 0;
 	char *text;
-	int i, k, traces = 0, loaded;
+	int i, k, traces = 0, loaded, arena_text = 0;
 	snprintf(path, sizeof(path), "maps/%s.nodes", mapname);
 	text = S.be.load_file(path, &len);
 	if (!text) {
@@ -2655,10 +3262,56 @@ static void nodes_load(const char *mapname)
 		S.be.print(DOD_MOHAA_PRINT_CONSOLE, msg);
 		return;
 	}
+	/* The engine heap can be too fragmented for a complete m1l1 node file. Large converted
+	 * sidecars use an MNOD manifest and small parts; assemble those in the script pool. */
+	if (len >= 20 && !memcmp(text, "MNOD", 4)) {
+		const unsigned char *h = (const unsigned char *)text;
+		uint32_t version = (uint32_t)h[4] | ((uint32_t)h[5] << 8) | ((uint32_t)h[6] << 16) | ((uint32_t)h[7] << 24);
+		uint32_t total = (uint32_t)h[8] | ((uint32_t)h[9] << 8) | ((uint32_t)h[10] << 16) | ((uint32_t)h[11] << 24);
+		uint32_t chunk = (uint32_t)h[12] | ((uint32_t)h[13] << 8) | ((uint32_t)h[14] << 16) | ((uint32_t)h[15] << 24);
+		uint32_t count = (uint32_t)h[16] | ((uint32_t)h[17] << 8) | ((uint32_t)h[18] << 16) | ((uint32_t)h[19] << 24);
+		char *manifest = text, *assembled = NULL;
+		int ok = version == 1 && total > 0 && total <= 1024u * 1024u && chunk >= 512 && chunk <= 16384 &&
+			count == (total + chunk - 1) / chunk;
+		if (ok)
+			assembled = (char *)S.be.alloc(NULL, 0, total + 1u);
+		if (!assembled)
+			ok = 0;
+		if (ok) {
+			uint32_t offset = 0;
+			for (uint32_t part_index = 0; part_index < count; part_index++) {
+				char part_path[160];
+				size_t part_len = 0;
+				char *part;
+				snprintf(part_path, sizeof(part_path), "maps/%s.nodes.%03u", mapname, (unsigned)part_index);
+				part = S.be.load_file(part_path, &part_len);
+				if (!part || part_len != (size_t)((total - offset) < chunk ? total - offset : chunk)) {
+					ok = 0;
+					if (part && S.be.free_file) S.be.free_file(part);
+					break;
+				}
+				memcpy(assembled + offset, part, part_len);
+				offset += (uint32_t)part_len;
+				if (S.be.free_file) S.be.free_file(part);
+			}
+		}
+		if (S.be.free_file) S.be.free_file(manifest);
+		if (!ok) {
+			if (assembled) S.be.alloc(assembled, total + 1u, 0);
+			S.be.print(DOD_MOHAA_PRINT_CONSOLE, "mohaa: path-node chunks are incomplete or out of memory\n");
+			return;
+		}
+		assembled[total] = 0;
+		text = assembled;
+		len = total;
+		arena_text = 1;
+	}
 	loaded = MohaaPaths_Load(&S.paths, text, len, S.be.alloc);
 	if (loaded > 0)
 		MohaaPaths_Keys(text, len, S.paths.count, node_key, NULL);
-	if (S.be.free_file)
+	if (arena_text)
+		S.be.alloc(text, len + 1u, 0);
+	else if (S.be.free_file)
 		S.be.free_file(text);
 	if (loaded < 0) {
 		const size_t per_node = sizeof(float) * 4 + sizeof(uint32_t) +
@@ -2742,7 +3395,7 @@ void Dod_MohaaPrecacheModels(void)
 		S.be.free_file(text);
 	if (loaded) {
 		char msg[128];
-		snprintf(msg, sizeof(msg), "mohaa: pre-cached %d scripted models from %s\n", loaded, path);
+		snprintf(msg, sizeof(msg), "mohaa: pre-cached %d scripted models from %.80s\n", loaded, path);
 		S.be.print(DOD_MOHAA_PRINT_CONSOLE, msg);
 	}
 }
@@ -2781,8 +3434,10 @@ int Dod_MohaaLevelInit(const DodMohaaBackend *backend, const char *mapname, floa
 	snprintf(path, sizeof(path), "maps/%s.scr", mapname);
 	snprintf(S.level_script, sizeof(S.level_script), "%s", path);
 	text = S.be.load_file(path, &len);
-	if (!text)
+	if (!text) {
+		clear_pending_entity_keys();
 		return 0;   /* not a MOHAA map: no VM, no cost */
+	}
 
 	memset(&host, 0, sizeof(host));
 	host.alloc = h_alloc;
@@ -2804,8 +3459,10 @@ int Dod_MohaaLevelInit(const DodMohaaBackend *backend, const char *mapname, floa
 		if (S.be.free_file)
 			S.be.free_file(text);
 		S.be.print(DOD_MOHAA_PRINT_ERROR, "mohaa: cannot create the script VM\n");
+		clear_pending_entity_keys();
 		return 0;
 	}
+	replay_pending_entity_keys();
 	register_commands(S.vm);
 	S.rng = 0x2545F491u ^ (uint32_t)(now * 1000.0f);   /* variants differ from run to run */
 	sounds_load(mapname);
@@ -2918,7 +3575,16 @@ void Dod_MohaaRunThread(const char *label, uint32_t self)
 
 void Dod_MohaaEntityFreed(uint32_t id)
 {
-	if (!S.vm || !id)
+	int i, out = 0;
+	if (!id)
+		return;
+	for (i = 0; i < g_pending_entity_key_count; i++)
+		if (g_pending_entity_keys[i].id != id)
+			g_pending_entity_keys[out++] = g_pending_entity_keys[i];
+	for (i = out; i < g_pending_entity_key_count; i++)
+		memset(&g_pending_entity_keys[i], 0, sizeof(g_pending_entity_keys[i]));
+	g_pending_entity_key_count = out;
+	if (!S.vm)
 		return;
 	forget(id);
 	ms_entity_removed(S.vm, id);

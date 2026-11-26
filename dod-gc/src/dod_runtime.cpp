@@ -16,6 +16,7 @@
 #include "dod_bot.h"
 #include "dod_bots.h"
 #include "dod_mohaa_ents.h"
+#include "dod_mohaa.h"
 #include "animation.h"
 #include "pm_defs.h"
 
@@ -606,7 +607,6 @@ CHalfLifeDoD::CHalfLifeDoD()
 	}
 	DodGrunts_Init();
 	DodFilm_Init();	/* after the country and paratroopers: they pick the actors' bodies */
-	DodGC_MohaaLevelInit();	/* MOHAA maps: run maps/<map>.scr (nothing happens on DoD maps) */
 	Dod_ClearObjectives();
 	round_seconds = CVAR_GET_FLOAT( "mp_timelimit" ) * 60.0f;
 	if( round_seconds <= 0.0f )
@@ -1660,6 +1660,8 @@ int CHalfLifeDoD::DeadPlayerWeapons( CBasePlayer *pPlayer )
 {
 	if( CVAR_GET_FLOAT( "dod_gc_boxstress" ) > 0.0f )
 		return GR_PLR_DROP_GUN_ACTIVE;
+	if( pPlayer && Dod_MohaaNoDropWeapons( DodGC_MohaaEntityId( pPlayer->edict() ) ) )
+		return GR_PLR_DROP_GUN_NO;
 	if( gpGlobals->maxEntities - g_engfuncs.pfnNumberOfEntities() < DOD_DROP_EDICT_MARGIN || DodGC_CountBoxes() >= DOD_MAX_BOXES )
 		return GR_PLR_DROP_GUN_NO;
 	return GR_PLR_DROP_GUN_ACTIVE;

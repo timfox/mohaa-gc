@@ -44,6 +44,114 @@ def run(argv):
 
 
 class MohaaSdTest(unittest.TestCase):
+    def test_studio_animation_rle_is_lossless_and_bone_pruning_keeps_ancestors(self):
+        import mohaa_tiki_model
+        from types import SimpleNamespace
+
+        values = [0] * 300 + [1, 3, -2, 5] + [5] * 512 + [-7, 9] * 128
+        encoded = mohaa_tiki_model._rle(values)
+        decoded, offset = [], 0
+        while len(decoded) < len(values):
+            valid, total = encoded[offset], encoded[offset + 1]
+            self.assertGreater(valid, 0)
+            self.assertGreaterEqual(total, valid)
+            samples = struct.unpack_from("<" + "h" * valid, encoded, offset + 2)
+            decoded.extend(samples)
+            decoded.extend([samples[-1]] * (total - valid))
+            offset += 2 + 2 * valid
+        self.assertEqual(decoded, values)
+        self.assertLess(len(encoded), len(values) * 2)
+
+        surface = SimpleNamespace(weights=[[(2, 1.0, (0.0, 0.0, 0.0))]])
+        skd = SimpleNamespace(
+            name="fixture", bones=["root", "torso", "hand", "unused"],
+            bone_parents=["WorldBone", "root", "torso", "root"],
+            num_bones=4, surfaces=[surface])
+        mohaa_tiki_model._prune_skd_to_weighted_bones(skd)
+        self.assertEqual(skd.bones, ["root", "torso", "hand"])
+        self.assertEqual(surface.weights[0][0][0], 2)
+        with self.assertRaisesRegex(ValueError, "missing_alias"):
+            mohaa_tiki_model._require_animation_sequences(
+                (["root"], [], [], [("idle", 0.1, [], 0)], ((0, 0, 0), (1, 1, 1))),
+                ("idle", "missing_alias"), "fixture")
+
+    def test_script_tiki_refs_normalize_bsp_entity_paths(self):
+        import mohaa_bsp19
+        entities = b'{ "classname" "ai_german_soldier" "model" "human//German_Private.tik" }\n'
+        directory_bytes = 12 + 8 * mohaa_bsp19.HEADER_LUMPS
+        header = mohaa_bsp19.BSP_IDENT + struct.pack("<ii", 19, 0)
+        directory = bytearray(8 * mohaa_bsp19.HEADER_LUMPS)
+        struct.pack_into("<ii", directory, 8 * mohaa_bsp19.LUMP_ENTITIES, directory_bytes, len(entities))
+        bsp = header + directory + entities
+        refs = mohaa_sd._script_tiki_refs(bsp, "t1", [
+            "spawn script_model\nself model fx/flare.tik\n$door model human/german_private.tik\n"
+            "player item weapons/mp40.tik\n// self model fx/commented.tik\n"
+        ])
+        self.assertEqual(refs, ["fx/flare.tik", "human/german_private.tik"])
+
+    def test_m1l2a_german_actor_recipe_uses_canonical_model_path(self):
+        refs = {"human/german_afrika_private.tik"}
+        tiki = mohaa_sd.SCRIPT_TIKI_MAP_MODELS["m1l2a"][0]
+        self.assertIn(tiki, refs)
+        output_rel = "models/" + tiki[:-4] + ".mdl"
+        self.assertEqual(output_rel, "models/human/german_afrika_private.mdl")
+        aliases = mohaa_sd.SCRIPT_TIKI_ANIMATIONS[tiki]
+        self.assertEqual(len(aliases), 20)
+        self.assertEqual(len(aliases), len(set(aliases)))
+        self.assertTrue({"opel_driver", "idle", "death_generic1", "German_hit_1"}.issubset(set(aliases)))
+        self.assertNotIn("walk", aliases)
+        self.assertNotIn("run", aliases)
+        self.assertNotIn("fire", aliases)
+        self.assertEqual(mohaa_sd.SCRIPT_TIKI_ANIMATION_OVERRIDES[tiki]["idle"],
+                         "models/human/animation/idle/generic_idle_a01(loop).skc")
+        self.assertIn(tiki, mohaa_sd._script_tiki_recipes("m1l2a", refs))
+        self.assertEqual(mohaa_sd._script_tiki_recipes("m1l1", refs), [tiki])
+
+    def test_m1l1_recipe_includes_allied_truck_cast_models_and_aliases(self):
+        refs = {
+            "vehicles/gmctruck_opening.tik", "vehicles/opeltruck.tik",
+            "human/german_afrika_private.tik", "human/2nd-ranger_captain.tik",
+            "human/2nd-ranger_private.tik", "human/german_afrika_grenadier.tik",
+        }
+        recipes = mohaa_sd._script_tiki_recipes("M1L1", refs)
+        self.assertEqual(recipes, [
+            "vehicles/gmctruck_opening.tik", "vehicles/opeltruck.tik",
+            "human/german_afrika_private.tik", "human/2nd-ranger_captain.tik",
+            "human/2nd-ranger_private.tik",
+        ])
+        for tiki in ("human/2nd-ranger_captain.tik", "human/2nd-ranger_private.tik"):
+            self.assertEqual(mohaa_sd.SCRIPT_TIKI_ANIMATIONS[tiki],
+                             mohaa_sd.M1L1_TRUCK_ACTOR_ANIMATIONS)
+        self.assertEqual("models/human/2nd-ranger_captain.mdl",
+                         "models/" + "human/2nd-ranger_captain.tik"[:-4] + ".mdl")
+        self.assertEqual("models/human/2nd-ranger_private.mdl",
+                         "models/" + "human/2nd-ranger_private.tik"[:-4] + ".mdl")
+        required = {
+            "truck_watch_captain", "truck_shot_captain", "truck_idle_captain",
+            "truck_twitch_captain", "truck_rock_captain", "truck_out_captain",
+            "truck_react_guy01", "truck_twitch2_guy02", "truck_idle2_guy03",
+            "fullbody_m1l1_101",
+        }
+        self.assertTrue(required.issubset(set(mohaa_sd.M1L1_TRUCK_ACTOR_ANIMATIONS)))
+        self.assertEqual(mohaa_sd.SCRIPT_TIKI_ANIMATION_PACKS["human/2nd-ranger_captain.tik"],
+                         mohaa_sd.SCRIPT_TIKI_ANIMATION_PACKS["human/2nd-ranger_private.tik"])
+
+    def test_shared_shepherd_recipe_is_selected_for_every_referencing_map(self):
+        tiki = "animal/german_shepherd.tik"
+        for mapname in ("m1l1", "m1l2a", "m1l3a", "m6l2b"):
+            self.assertIn(tiki, mohaa_sd._script_tiki_recipes(mapname, {tiki}))
+        self.assertNotIn(tiki, mohaa_sd._script_tiki_recipes("m1l2b", set()))
+        aliases = mohaa_sd.SCRIPT_TIKI_ANIMATIONS[tiki]
+        self.assertEqual(len(aliases), 29)
+        self.assertEqual(len(aliases), len(set(aliases)))
+        self.assertIn("dog_run", aliases)
+        self.assertIn("dog_bite_face", aliases)
+        self.assertTrue(mohaa_sd.SCRIPT_TIKI_ANIMATION_PACKS[tiki].endswith("german_shepherd_%s.gca"))
+        overrides = mohaa_sd.SCRIPT_TIKI_ANIMATION_OVERRIDES[tiki]
+        self.assertEqual(set(overrides), set(aliases))
+        self.assertTrue(all(path.startswith("models/human/animation/dog_animation/")
+                            for path in overrides.values()))
+
     def test_install_to_sd_layout(self):
         with tempfile.TemporaryDirectory() as tmp:
             game, sd = os.path.join(tmp, "MOHAA"), os.path.join(tmp, "sd")

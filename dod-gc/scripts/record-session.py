@@ -145,31 +145,38 @@ def cmd_record(args: argparse.Namespace) -> int:
 	mkv = Path(str(base) + ".mkv")
 	log = Path(str(base) + ".ffmpeg.log")
 
-	ff = subprocess.Popen(
-		[
-			"ffmpeg",
-			"-hide_banner",
-			"-loglevel",
-			"error",
-			"-y",
-			"-thread_queue_size",
-			"512",
-			"-f",
-			"x11grab",
-			"-draw_mouse",
-			"0",
-			"-framerate",
-			str(args.fps),
-			"-window_id",
-			win,
-			"-i",
-			os.environ.get("DISPLAY", ":0"),
+	ff_args = [
+		"ffmpeg",
+		"-hide_banner",
+		"-loglevel",
+		"error",
+		"-y",
+		"-thread_queue_size",
+		"512",
+		"-f",
+		"x11grab",
+		"-draw_mouse",
+		"0",
+		"-framerate",
+		str(args.fps),
+		"-window_id",
+		win,
+		"-i",
+		os.environ.get("DISPLAY", ":0"),
+	]
+	if not args.no_audio:
+		ff_args.extend(
+			[
 			"-thread_queue_size",
 			"512",
 			"-f",
 			"pulse",
 			"-i",
 			f"{args.sink}.monitor",
+			]
+		)
+	ff_args.extend(
+		[
 			"-vf",
 			"pad=ceil(iw/2)*2:ceil(ih/2)*2",
 			"-c:v",
@@ -182,14 +189,19 @@ def cmd_record(args: argparse.Namespace) -> int:
 			"yuv420p",
 			"-g",
 			str(args.fps * 2),
-			"-c:a",
-			"aac",
-			"-b:a",
-			"96k",
+		]
+	)
+	if not args.no_audio:
+		ff_args.extend(["-c:a", "aac", "-b:a", "96k"])
+	ff_args.extend(
+		[
 			"-f",
 			"matroska",
 			str(mkv),
-		],
+		]
+	)
+	ff = subprocess.Popen(
+		ff_args,
 		stdin=subprocess.PIPE,
 		stderr=open(log, "w", encoding="utf-8"),
 	)
@@ -274,7 +286,8 @@ def main() -> int:
 
 	p_rec = sub.add_parser("record")
 	p_rec.add_argument("--pid", type=int, required=True)
-	p_rec.add_argument("--sink", required=True)
+	p_rec.add_argument("--sink", default="")
+	p_rec.add_argument("--no-audio", action="store_true", help="capture video without PulseAudio")
 	p_rec.add_argument("--route", default="play")
 	p_rec.add_argument("--disc", default="")
 	p_rec.add_argument("--fps", type=int, default=30)
@@ -283,6 +296,8 @@ def main() -> int:
 	sub.add_parser("index")
 
 	args = parser.parse_args()
+	if args.cmd == "record" and (args.no_audio == bool(args.sink)):
+		parser.error("record needs exactly one of --sink or --no-audio")
 	if args.cmd == "sink-create":
 		print(sink_create(args.name))
 		return 0

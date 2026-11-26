@@ -16,6 +16,7 @@ usage: scripts/probe-playtest.sh [options] [ISO]
   --note TEXT        note body (default: auto summary from log)
   --skip-video       screenshots + note only
   --ready-regex RE   stop early once OSReport matches (default: menu ready)
+  --capture-regex RE capture one named screenshot when the OSReport log matches
   -h, --help
 
 Artifacts land under playtests/{screenshots,videos,notes}/ — never HL1 .ai/.
@@ -26,6 +27,8 @@ ROUTE="probe"
 DURATION=45
 NOTE=""
 RECORD=1
+CAPTURE_RE=""
+CAPTURED_MATCH=0
 # Menu/hand-off markers only — do NOT include CopyDisp (fires during intro AVI).
 READY_RE='gc_menu_ready set 1|retail menu (steam )?background ready|FATAL|MISSING GAME DATA'
 ISO="$DODGC_ISO"
@@ -37,6 +40,7 @@ while [[ $# -gt 0 ]]; do
 		--note) NOTE="${2:-}"; shift ;;
 		--skip-video) RECORD=0 ;;
 		--ready-regex) READY_RE="${2:-}"; shift ;;
+		--capture-regex) CAPTURE_RE="${2:-}"; shift ;;
 		-h|--help) usage; exit 0 ;;
 		-*) echo "unknown option: $1" >&2; usage >&2; exit 2 ;;
 		*) ISO="$(readlink -f "$1")" ;;
@@ -68,6 +72,20 @@ SHOT_DIR="$DODGC_SHOTS/${STAMP}-${SAFE_ROUTE}"
 USER_DIR="${XDG_RUNTIME_DIR:-/tmp}/dodgc-probe-${STAMP}"
 LOG="/tmp/dodgc-probe-${STAMP}.log"
 mkdir -p "$SHOT_DIR" "$USER_DIR/Config" "$DODGC_VIDEOS" "$DODGC_NOTES"
+
+# Dolphin's Flatpak X11 proxy reports _NET_WM_PID=2, so PID/argv matching cannot
+# associate its render window with this isolated profile. Snapshot guest-sized
+# XIDs before launch and capture only a newly-created guest window.
+python3 - "$USER_DIR/windows-before.txt" <<'PY'
+import re, subprocess, sys
+tree = subprocess.run(["xwininfo", "-root", "-tree"], text=True, capture_output=True).stdout
+with open(sys.argv[1], "w") as f:
+    for line in tree.splitlines():
+        if "640x480" in line or "854x480" in line:
+            m = re.match(r"\s*(0x[0-9a-fA-F]+)", line)
+            if m:
+                f.write(m.group(1).lower() + "\n")
+PY
 
 # Prefer isolated DoD Dolphin profile; seed pads from HL1 once.
 PROFILE="${XDG_DATA_HOME:-$HOME/.local/share}/dod-gc/dolphin"
@@ -125,8 +143,14 @@ ShowFPS = True
 EOF
 fi
 
-export EGL_PLATFORM=x11 QT_QPA_PLATFORM=xcb
-unset WAYLAND_DISPLAY
+export EGL_PLATFORM="${DODGC_EGL_PLATFORM:-x11}"
+export QT_QPA_PLATFORM="${DODGC_QT_QPA_PLATFORM:-xcb}"
+if [[ "$QT_QPA_PLATFORM" == wayland ]]; then
+	: "${WAYLAND_DISPLAY:=wayland-0}"
+	export WAYLAND_DISPLAY
+else
+	unset WAYLAND_DISPLAY
+fi
 : "${DISPLAY:=:0}"
 export DISPLAY
 
@@ -145,9 +169,9 @@ cleanup() {
 trap cleanup EXIT
 
 rm -f "$LOG"
-if (( RECORD )) && command -v ffmpeg >/dev/null 2>&1 && command -v pactl >/dev/null 2>&1; then
+if (( RECORD )) && command -v ffmpeg >/dev/null 2>&1; then
 	SINK="dodgcprobe$$"
-	if SINK_MOD="$(python3 "$REC_PY" sink-create "$SINK")"; then
+	if command -v pactl >/dev/null 2>&1 && SINK_MOD="$(python3 "$REC_PY" sink-create "$SINK")"; then
 		export PULSE_SINK="$SINK"
 	else
 		SINK=; SINK_MOD=
@@ -158,10 +182,17 @@ echo "==> probe $ISO route=$SAFE_ROUTE duration=${DURATION}s"
 "$DOLPHIN" -u "$USER_DIR" -e "$ISO" >"$LOG" 2>&1 &
 DPID=$!
 
-if [[ -n "$SINK_MOD" ]]; then
-	python3 "$REC_PY" record \
-		--pid "$DPID" --sink "$SINK" --route "$SAFE_ROUTE" --disc "$ISO" \
-		--window-timeout 90 &
+if (( RECORD )) && command -v ffmpeg >/dev/null 2>&1; then
+	if [[ -n "$SINK_MOD" ]]; then
+		python3 "$REC_PY" record \
+			--pid "$DPID" --sink "$SINK" --route "$SAFE_ROUTE" --disc "$ISO" \
+			--window-timeout 90 &
+	else
+		echo "==> PulseAudio unavailable; recording silent video"
+		python3 "$REC_PY" record \
+			--pid "$DPID" --no-audio --route "$SAFE_ROUTE" --disc "$ISO" \
+			--window-timeout 90 &
+	fi
 	REC_PID=$!
 fi
 
@@ -169,30 +200,26 @@ grab() {
 	local name=$1
 	local win=""
 	win="$(python3 - "$USER_DIR" <<'PY'
-import subprocess, sys
+import re, subprocess, sys
 user_dir = sys.argv[1]
+try:
+    before = set(open(user_dir + "/windows-before.txt").read().split())
+except OSError:
+    before = set()
 tree = subprocess.run(["xwininfo", "-root", "-tree"], text=True, capture_output=True).stdout
 candidates = []
 for line in tree.splitlines():
-    if '("dolphin-emu" "GameCube")' not in line and '("xash-gc-dolphin" "GameCube")' not in line:
-        continue
-    parts = line.split()
-    if not parts or not parts[0].startswith("0x"):
-        continue
     if "640x480" not in line and "854x480" not in line:
         continue
-    wid = int(parts[0], 16)
-    prop = subprocess.run(["xprop", "-id", hex(wid), "_NET_WM_PID"], text=True, capture_output=True).stdout
-    try:
-        owner = int(prop.split("=", 1)[1].strip())
-    except (IndexError, ValueError):
+    m = re.match(r"\s*(0x[0-9a-fA-F]+)", line)
+    if not m:
         continue
-    args = subprocess.run(["ps", "-p", str(owner), "-o", "args="], text=True,
-                          capture_output=True).stdout
-    if user_dir in args:
-        candidates.append(wid)
+    wid = m.group(1).lower()
+    if wid in before:
+        continue
+    candidates.append(wid)
 if candidates:
-    print(hex(candidates[-1]))
+    print(candidates[-1])
 PY
 	)"
 	if [[ -n "${win:-}" ]] && command -v import >/dev/null 2>&1; then
@@ -226,6 +253,12 @@ while kill -0 "$DPID" 2>/dev/null; do
 		grab menu-2
 		MENU_SHOT=1
 		echo "==> shot menu"
+	fi
+	if [[ -n "$CAPTURE_RE" ]] && (( ! CAPTURED_MATCH )) && rg -a -q "$CAPTURE_RE" "$LOG" 2>/dev/null; then
+		sleep 0.25
+		grab matched
+		CAPTURED_MATCH=1
+		echo "==> shot matched log marker"
 	fi
 	if (( ! READY )) && rg -a -q "$READY_RE" "$LOG" 2>/dev/null; then
 		READY=1

@@ -126,6 +126,8 @@ void ms_notify(ms_vm *vm, const ms_value *listener, const char *name);
 int ms_set_entity_var(ms_vm *vm, uint32_t id, const char *name, const ms_value *v);
 /* Copy an entity script variable to out and retain any referenced value. */
 int ms_get_entity_var(ms_vm *vm, uint32_t id, const char *name, ms_value *out);
+/* Copy a level script variable to out and retain any referenced value. */
+int ms_get_level_var(ms_vm *vm, const char *name, ms_value *out);
 
 /* Hand an entity's script variables to another id (the host replaced the entity: a placeholder became the real
    thing). Variables the new id already has win. */

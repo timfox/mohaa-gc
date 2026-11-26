@@ -384,10 +384,12 @@ def integrate_pm_layout_hook(dlls: Path) -> None:
 
 
 def integrate_precache_bodies_hook(dlls: Path) -> None:
-	"""ServerActivate precaches DoD bodies and MOHAA script models after map entities spawn."""
+	"""ServerActivate initializes MOHAA scripts and precaches models after map entities spawn."""
 	client = dlls / "client.cpp"
 	text = client.read_text()
 	decls = []
+	if "DodGC_MohaaLevelInit" not in text:
+		decls.append("void DodGC_MohaaLevelInit( void );")
 	if "DodGC_PrecacheTeamBodies" not in text:
 		decls.append("void DodGC_PrecacheTeamBodies( void );")
 	if "DodGC_MohaaPrecacheModels" not in text:
@@ -397,12 +399,14 @@ def integrate_precache_bodies_hook(dlls: Path) -> None:
 			"\n".join(decls) + "\nvoid ServerActivate( edict_t *pEdictList, int edictCount, int clientMax )\n{\n")
 	text = client.read_text()
 	call = "\tg_serveractive = 1;\n#ifdef __GAMECUBE__\n"
+	if "DodGC_MohaaLevelInit();" not in text:
+		call += "\tDodGC_MohaaLevelInit();\n"
 	if "DodGC_PrecacheTeamBodies();" not in text:
 		call += "\tDodGC_PrecacheTeamBodies();\n"
 	if "DodGC_MohaaPrecacheModels();" not in text:
 		call += "\tDodGC_MohaaPrecacheModels();\n"
 	call += "#endif\n"
-	if "DodGC_PrecacheTeamBodies();" not in text or "DodGC_MohaaPrecacheModels();" not in text:
+	if "DodGC_MohaaLevelInit();" not in text or "DodGC_PrecacheTeamBodies();" not in text or "DodGC_MohaaPrecacheModels();" not in text:
 		replace_once(client, "\tg_serveractive = 1;\n", call)
 
 
@@ -816,15 +820,84 @@ def integrate_dod_hud(client: Path) -> None:
 		'\t\t\t\tif( m_Menu.m_fMenuDisplayed )\n'
 		'\t\t\t\t\tm_Menu.Draw( flTime );\n'
 		'\t\t\t\treturn 1;\n'
+		'\t\t\t}\n'
+		'\t\t\t/* MOHAA owns its HUD too; skip the unrelated HL lean sheets. */\n'
+		'\t\t\tif( HUD_IsGame( "mohaa" ) )\n'
+		'\t\t\t{\n'
+		'\t\t\t\tm_Dod.DrawMohaa( flTime );\n'
+		'\t\t\t\tif( m_Menu.m_fMenuDisplayed )\n'
+		'\t\t\t\t\tm_Menu.Draw( flTime );\n'
+		'\t\t\t\treturn 1;\n'
 		'\t\t\t}\n')
+	# Xash3D-GC returns a bare gamefolder (for example "mohaa"). The SDK's
+	# COM_FileBase scans past the start of a slash-free string, so compare a
+	# safely extracted basename before any retail HUD routing.
+	hud_cpp = client / "hud.cpp"
+	replace_once(hud_cpp,
+		'\t\tCOM_FileBase( gamedir, gd );\n',
+		'\t\tconst char *base = gamedir;\n'
+		"\t\tconst char *slash = strrchr( gamedir, '/' );\n"
+			"\t\tconst char *backslash = strrchr( gamedir, '\\\\' );\n"
+		'\t\tif( slash && ( !backslash || slash > backslash ) ) base = slash + 1;\n'
+		'\t\telse if( backslash ) base = backslash + 1;\n'
+		'\t\tstrncpy( gd, base, sizeof( gd ) - 1 );\n'
+		"\t\tgd[ sizeof( gd ) - 1 ] = 0;\n",
+		done='const char *base = gamedir;')
+	# Quality 0 bypasses the stock HUD element Init list. Route MOHAA's text and
+	# team messages directly to the existing parsers so retail scripts still work.
+	replace_once(hud_cpp,
+		'void CHud::Init( void )\n{\n',
+		'#ifdef __GAMECUBE__\n'
+		'static int GC_MsgFunc_HudText( const char *name, int size, void *data )\n'
+		'{ return gHUD.m_Message.MsgFunc_HudText( name, size, data ); }\n'
+		'#if !USE_VGUI || USE_NOVGUI_SCOREBOARD\n'
+		'static int GC_MsgFunc_TeamInfo( const char *name, int size, void *data )\n'
+		'{ return gHUD.m_Scoreboard.MsgFunc_TeamInfo( name, size, data ); }\n'
+		'#else\n'
+		'static int GC_MsgFunc_TeamInfo( const char *name, int size, void *data )\n'
+		'{ return __MsgFunc_TeamInfo( name, size, data ); }\n'
+		'#endif\n'
+		'#endif\n'
+		'void CHud::Init( void )\n{\n',
+		done='GC_MsgFunc_HudText')
+	replace_once(hud_cpp,
+		'\t\tHOOK_MESSAGE( StatusValue );\n',
+		'\t\tHOOK_MESSAGE( StatusValue );\n'
+		'\t\tif( HUD_IsGame( "mohaa" ) )\n'
+		'\t\t{\n'
+		'\t\t\tgEngfuncs.pfnHookUserMsg( "HudText", GC_MsgFunc_HudText );\n'
+		'\t\t\tgEngfuncs.pfnHookUserMsg( "TeamInfo", GC_MsgFunc_TeamInfo );\n'
+		'\t\t}\n')
 	# Keep the scripted MOHAA compass/tip renderer in the lean HUD path too;
 	# the retail HUD art returns early before CHud::Redraw's regular HUD list.
+	hud_redraw = client / "hud_redraw.cpp"
+	hud_redraw_text = hud_redraw.read_text()
+	# Some supported SDK revisions already route the lean HUD through m_Dod.Draw,
+	# while older local trees have the direct GC_DrawMohaaHud branch. Only patch
+	# that branch when the function actually exists in the selected source tree.
+	if "GC_DrawMohaaHud(" in hud_redraw_text:
+		replace_once(hud_redraw,
+			'\t\t\tif( GC_DrawMohaaHud( m_Health.m_iHealth, m_Ammo.GetLeanClip() ) )\n'
+			'\t\t\t{\n',
+			'\t\t\tif( GC_DrawMohaaHud( m_Health.m_iHealth, m_Ammo.GetLeanClip() ) )\n'
+			'\t\t\t{\n'
+			'\t\t\t\tm_Dod.DrawMohaa( flTime );\n')
+
+	# Retail quality uses the normal HUD path, whose Half-Life battery/sprite
+	# list is not valid for MOHAA. Take over before that list at every quality.
 	replace_once(client / "hud_redraw.cpp",
-		'\t\t\tif( GC_DrawMohaaHud( m_Health.m_iHealth, m_Ammo.GetLeanClip() ) )\n'
-		'\t\t\t{\n',
-		'\t\t\tif( GC_DrawMohaaHud( m_Health.m_iHealth, m_Ammo.GetLeanClip() ) )\n'
-		'\t\t\t{\n'
-		'\t\t\t\tm_Dod.DrawMohaa( flTime );\n')
+		'\tif( m_pCvarDraw->value )\n',
+		'#ifdef __GAMECUBE__\n'
+		'\t/* MOHAA has its own retail Pak1 HUD; never fall through to HL sprites. */\n'
+		'\tif( HUD_IsGame( "mohaa" ) )\n'
+		'\t{\n'
+		'\t\tm_Dod.DrawMohaa( flTime );\n'
+		'\t\tif( m_Menu.m_fMenuDisplayed ) m_Menu.Draw( flTime );\n'
+		'\t\treturn 1;\n'
+		'\t}\n'
+		'#endif\n'
+		'\tif( m_pCvarDraw->value )\n',
+		done='MOHAA has its own retail Pak1 HUD; never fall through to HL sprites.')
 
 
 def integrate_spectator_camera(client: Path) -> None:

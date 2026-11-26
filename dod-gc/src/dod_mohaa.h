@@ -43,6 +43,7 @@ enum {
 /* HUD parts a cutscene hides: ALL is MOHAA's "drawhud 0"; WEAPON (crosshair, ammo, view model) goes while the
    player is locked into a scripted ride. */
 enum { DOD_MOHAA_HUD_ALL = 1, DOD_MOHAA_HUD_WEAPON = 2 };
+enum { DOD_MOHAA_STANCE_STAND = 0, DOD_MOHAA_STANCE_CROUCH = 1 };
 enum { DOD_MOHAA_PRINT_CONSOLE = 0, DOD_MOHAA_PRINT_HUD = 1, DOD_MOHAA_PRINT_CENTER = 2, DOD_MOHAA_PRINT_ERROR = 3 };
 
 /* Entity ids are opaque to this file: the backend packs edict index and serial so a
@@ -82,15 +83,26 @@ typedef struct DodMohaaBackend {
 	/* Set a script_model/script_object to its already-preloaded GoldSrc model. 0 when this TIKI was
 	   not baked/staged for the map; tag sampling still works without a drawable mesh. */
 	int (*set_model)(uint32_t id, const char *tiki);
+	/* Apply a MOHAA entity's model scale (positive multiplier). */
+	void (*set_scale)(uint32_t id, float scale);
 	/* Select a named exported sequence on an already-bound script model. */
 	int (*set_animation)(uint32_t id, const char *alias);
 	/* An order to an actor; returns 0 when id is not one. The game sends "movedone" when a walk/run
 	   order arrives and "death" when the actor dies, through Dod_MohaaNotify. NULL: no actors. */
 	int (*actor)(uint32_t id, int order, const float pos[3]);
+	/* Set a MOHAA mission actor accuracy value (0..300); default 100. */
+	int (*actor_accuracy)(uint32_t id, float accuracy);
+	/* World line-of-sight test between entity eye points; optional range/FOV are handled by the VM. */
+	int (*can_see)(uint32_t from, uint32_t to);
+	/* Set a script target's threat priority; ignoreme removes it from grunt acquisition. */
+	int (*set_threatbias)(uint32_t id, float bias, int ignoreme);
 	/* Path nodes (maps/<map>.nodes, see dod_mohaa_paths.h) are linked at level start where this says a soldier can walk
-	   from a to b (feet origins). A script sees a node as an entity with id DOD_MOHAA_NODE_ID | index, which the
-	   backend never hands out. NULL: nodes are loaded for names but not linked, so move orders go straight. */
+	   from a to b (feet origins). A trace blocked by a named solid brush can be retained as a closed edge by calling
+	   Dod_MohaaPathBlocker for the hit entity. A script sees a node as id DOD_MOHAA_NODE_ID | index, never from backend.
+	   NULL: nodes are loaded for names but not linked, so move orders go straight. */
 	int (*walkable)(const float a[3], const float b[3]);
+	/* World bounds of an entity, for retail connect_paths / disconnect_paths route blockers. */
+	int (*get_bounds)(uint32_t id, float mins[3], float maxs[3]);
 	/* getcvar: a cvar's string, "" when unknown. NULL: always "". */
 	const char *(*get_cvar)(const char *name);
 	/* setcvar: set a cvar. NULL: ignored. */
@@ -105,6 +117,10 @@ typedef struct DodMohaaBackend {
 	   with the player free. */
 	/* physics_off / freezeplayer: the player stops moving under their own control (they can still look) */
 	void (*player_lock)(uint32_t id, int locked);
+	/* Holster/unholster the local first-person weapon model without hiding ammo or other HUD elements. */
+	void (*player_weapon)(uint32_t id, int visible);
+	/* forcelegsstate: apply the retail standing or crouch-idle player stance, including hull and eye height. */
+	void (*player_stance)(uint32_t id, int stance);
 	/* Put the player at pos (GoldSrc units): pos is where their eyes go when eye is 1, their feet when 0. */
 	void (*place_player)(uint32_t id, const float pos[3], int eye);
 	/* Turn the player's view: to angles when add is 0, by angles[1] degrees of yaw when 1 (their own look stays). */
@@ -150,6 +166,8 @@ void Dod_MohaaEntityKey(uint32_t id, const char *key, const char *value);
 /* The backend replaced entity from with to (a mohaa_actor placeholder became a grunt): to keeps from's script
  * variables, map keys included. from may be an id no entity has, to park them meanwhile. */
 void Dod_MohaaEntityMoved(uint32_t from, uint32_t to);
+/* Retail level/entity dontdropweapons state, queried by game rules on player death. */
+int Dod_MohaaNoDropWeapons(uint32_t id);
 /* Who set off the event about to be notified (a trigger's activator): scripts read it as parm.other. 0: NULL. */
 void Dod_MohaaSetOther(uint32_t id);
 /* The backend's pool region is being taken back (GameCube: the map arena resets at map change): stop the
@@ -163,6 +181,8 @@ void Dod_MohaaRunThread(const char *label, uint32_t self);
 void Dod_MohaaGetStats(DodMohaaStats *out);
 /* Path nodes this level loaded and linked (0 when none). */
 int Dod_MohaaPathNodes(int *links);
+/* During graph construction, a named solid brush can be retained as a closed route blocker. */
+int Dod_MohaaPathBlocker(uint32_t id, int blocked);
 
 #ifdef __cplusplus
 }

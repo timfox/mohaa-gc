@@ -85,6 +85,7 @@ typedef struct DodGruntPool {
 	unsigned char order[DOD_GRUNT_MAX];	/* DOD_GRUNT_ORDER_* */
 	unsigned char order_done[DOD_GRUNT_MAX];	/* set on arrival, cleared by DodGrunt_TakeOrderDone */
 	float order_x[DOD_GRUNT_MAX], order_y[DOD_GRUNT_MAX];
+	float accuracy[DOD_GRUNT_MAX];	/* MOHAA script accuracy, 100 = unchanged skill curve */
 	unsigned rng;
 	int look_cursor;	/* where the look scheduler resumes, so no slot is starved */
 	DodGruntStats stats;
@@ -131,6 +132,11 @@ int DodGrunt_ShotDue(DodGruntPool *p, int i, float now, int skill);
 float DodGrunt_HitChance(float dist, int skill);
 /* One shot's outcome from a random draw in [0, 1). */
 int DodGrunt_ShotHits(float dist, int skill, float roll);
+/* accuracy is a MOHAA script value; 100 keeps the normal global-skill hit chance. */
+int DodGrunt_ShotHitsWithAccuracy(float dist, int skill, float accuracy, float roll);
+/* MOHAA threatbias is an integer priority: higher bias wins; distance breaks ties. */
+int DodGrunt_BetterTarget(int candidate_ignored, float candidate_bias, float candidate_dist2,
+	int have_best, float best_bias, float best_dist2);
 
 /* Damage taken. Returns 1 when this killed it. Dead grunts lie there DOD_GRUNT_RESPAWN seconds. */
 int DodGrunt_Hurt(DodGruntPool *p, int i, int damage, float now);
@@ -146,6 +152,8 @@ void DodGrunt_SpawnScripted(DodGruntPool *p, int i, int team, float x, float y, 
 void DodGrunt_SetAI(DodGruntPool *p, int i, int on);
 /* attackplayer: AI on, and run at what it sees instead of holding. */
 void DodGrunt_SetAttack(DodGruntPool *p, int i, int on);
+/* Set the script-owned actor's MOHAA accuracy value (0..300). */
+void DodGrunt_SetAccuracy(DodGruntPool *p, int i, float accuracy);
 /* walkto / runto: head for (x, y) ignoring what it sees; on arrival it holds and order_done is set. */
 void DodGrunt_OrderMove(DodGruntPool *p, int i, float x, float y, int run);
 /* Drop a move order without the done event; the grunt holds where it is. */

@@ -1,4 +1,4 @@
-# Probe m1l1-truck-menu-newgame-hudfix — 20261124-193154
+# MOHAA Probe m1l1-truck-menu-newgame-hudfix — 20261124-193154
 
 - ISO: `/tmp/mohaa-m1l1-menu-newgame-hudfix.iso`
 - Route: `m1l1-truck-menu-newgame-hudfix`
@@ -85,3 +85,5 @@ menu.png: (640, 480) black=8.1% mean=(126, 127, 118)
 - Local SDK commit: `c66834d` (`Guard optional MOHAA suit HUD sprites`).
 - DOL SHA-256: `987c9f8e621f5c7db4d449e96e563a2520d3596bb0d9a5bdb451edc08cd50dd1`.
 - ISO SHA-256: `8f2f6287b785de7217a385c47586f9148015c1a6f234af690d0b67d37a23e06d`.
+
+- Full Dolphin log: `media/playtests/screenshots/20261124-193154-m1l1-truck-menu-newgame-hudfix/dolphin.log.gz`

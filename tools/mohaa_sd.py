@@ -34,7 +34,7 @@ Stages run in this order (--stages picks some; by default every one whose tools 
   music     soundtracks and tracks                         needs ffmpeg
   sounds    per-map sound tables and samples
   scripts   level scripts and the global/ libraries
-  scriptmodels static Studio models for m1l1's scripted actors and trucks (needs Pillow + DoD-GC splitter)
+  scriptmodels static Studio models referenced by each selected map's retail BSP (needs Pillow + DoD-GC splitter)
   tags      cutscene model tags and animation durations
   maps      maps/<map>.bsp with MOHAA's textures and skybox (+ .mcol collision, .nodes, media/lg_<map>.gcg light grid)
                                                            needs the patched SDHLT: built once (git, cmake, C++)
@@ -261,10 +261,22 @@ def stage_tags(sources, game_root, maps, work):
 
 
 SCRIPT_TIKI_MODELS = {
-    # The visible m1l1 trucks. The gmctruckpath/truck2path TIKIs are tag carriers with helper triangles.
+    # The visible m1l1 trucks and the two Allied actors the retail intro animates.
+    # The gmctruckpath/truck2path TIKIs are tag carriers with helper triangles.
     "m1l1": ("vehicles/gmctruck_opening.tik", "vehicles/opeltruck.tik",
-             "human/german_afrika_private.tik"),
+             "human/german_afrika_private.tik", "human/2nd-ranger_captain.tik",
+             "human/2nd-ranger_private.tik"),
 }
+
+SCRIPT_TIKI_MAP_MODELS = {
+    # m1l2a and m1l1 use the same retail TIKI/MDL path. Bake the union of
+    # their bounded aliases once; emitting two variants would overwrite that path.
+    "m1l2a": ("human/german_afrika_private.tik",),
+}
+
+# Bake broadly reused actor TIKIs once per stage run and reference them from
+# each map where the retail BSP/script closure names them.
+SCRIPT_TIKI_SHARED_MODELS = ("animal/german_shepherd.tik",)
 
 # The retail German private is a composite TIKI: its body, head and equipment use
 # separate SKDs. The mission's default KAR 98K loadout is baked into one Studio rig.
@@ -277,7 +289,34 @@ SCRIPT_TIKI_COMPONENTS = {
         {"mesh": "models/gear/dak/dakloadout.skd", "surfaces": {"dakloadout": "german_gear"}},
         {"mesh": "models/gear/dak/dakkarclip.skd", "surfaces": {"dakkarclip": "german_riflebelt"}},
     ),
+    # m1l1 retail loadouts. The exporter prunes bones not used by these meshes
+    # and losslessly RLE-compresses static animation spans so hands fit the MDL.
+    "human/2nd-ranger_captain.tik": (
+        {"mesh": "models/human/heads/head1.skd", "surfaces": {"head": "us_bob"}},
+        {"mesh": "models/human/hands/hand.skd", "surfaces": {"hand": "handsnew"}},
+        {"mesh": "models/equipment/usgear/helmets/us_helmet.skd", "surfaces": {"us_helmet": "us-helmet_captain"}},
+        {"mesh": "models/gear/us/rangertommybelt.skd", "surfaces": {"tommybelt": "tommybelt"}},
+    ),
+    "human/2nd-ranger_private.tik": (
+        {"mesh": "models/human/heads/head1.skd", "surfaces": {"head": "us_north"}},
+        {"mesh": "models/human/hands/hand.skd", "surfaces": {"hand": "handsnew"}},
+        {"mesh": "models/equipment/usgear/helmets/us_helmet.skd", "surfaces": {"us_helmet": "us-helmet_private"}},
+        {"mesh": "models/gear/us/haversack.skd", "surfaces": {"haversack": "usequip"}},
+        {"mesh": "models/gear/us/garandbelt.skd", "surfaces": {"garandbelt": "usammobelt"}},
+    ),
 }
+
+M1L1_TRUCK_ACTOR_ANIMATIONS = (
+    "fullbody_m1l1_101", "truck_idle2_guy03",
+    "truck_idle_captain", "truck_idle_guy01", "truck_idle_guy02", "truck_idle_guy03",
+    "truck_out_captain", "truck_out_guy01", "truck_out_guy02", "truck_out_guy03",
+    "truck_react_guy01", "truck_react_guy02", "truck_react_guy03",
+    "truck_rock_captain", "truck_rock_guy01", "truck_rock_guy02", "truck_rock_guy03",
+    "truck_shot_captain", "truck_shot_guy01", "truck_shot_guy02", "truck_shot_guy03",
+    "truck_twitch2_guy02", "truck_twitch2_guy03",
+    "truck_twitch_captain", "truck_twitch_guy01", "truck_twitch_guy02", "truck_twitch_guy03",
+    "truck_watch_captain", "truck_watch_guy01", "truck_watch_guy02", "truck_watch_guy03",
+)
 
 SCRIPT_TIKI_ANIMATIONS = {
     "human/german_afrika_private.tik": (
@@ -285,19 +324,113 @@ SCRIPT_TIKI_ANIMATIONS = {
         "driver_killvisa", "passenger_killvisa", "guard_killvisa",
         "driver_getvisa", "passenger_getvisa", "guard_getvisa",
         "driver_idlevisa", "passenger_idlevisa", "guard_idlevisa",
+        "idle", "death_generic1",
+        "pain_generic1", "pain_generic2", "pain_generic3",
+        "guard_1", "German_hit_idle", "German_hit_1", "German_hit_2", "German_hit_3",
+    ),
+    "human/2nd-ranger_captain.tik": M1L1_TRUCK_ACTOR_ANIMATIONS,
+    "human/2nd-ranger_private.tik": M1L1_TRUCK_ACTOR_ANIMATIONS,
+    "animal/german_shepherd.tik": (
+        "idle", "death", "dog_bark", "dog_bite_face", "dog_bite_leg",
+        "dog_death", "dog_death2", "dog_death_run", "dog_discipline",
+        "dog_land", "dog_leap", "dog_pain_back", "dog_pain_front",
+        "dog_pain_head", "dog_rest", "dog_run", "dog_sniff",
+        "dog_sniff_turn_left", "dog_sniff_turn_right", "dog_stand_curious",
+        "dog_stand_idle", "dog_stand_turn_left", "dog_stand_turn_right",
+        "dog_standup", "dog_leash_stop", "dog_turn_left", "dog_turn_right",
+        "dog_walk_leash", "dog_walk_bored",
     ),
 }
 
 # Keep the complete retail actor animation set, but move it out of the core
 # Studio MDL. Xash3D-GC streams these native packs from ARAM one sequence at a
 # time, which keeps the model header/mesh below the lean per-file MEM1 limit.
+SCRIPT_TIKI_ANIMATION_OVERRIDES = {
+    "human/german_afrika_private.tik": {
+        "idle": "models/human/animation/idle/generic_idle_a01(loop).skc",
+    },
+    # The dog TIKI declares its animation directory with setup.path; resolve its
+    # aliases into that retail animation tree instead of the mesh directory.
+    "animal/german_shepherd.tik": {
+        "idle": "models/human/animation/dog_animation/dog_stand_idle.skc",
+        "death": "models/human/animation/dog_animation/dog_death.skc",
+        "dog_bark": "models/human/animation/dog_animation/dog_bark.skc",
+        "dog_bite_face": "models/human/animation/dog_animation/dog_bite_face.skc",
+        "dog_bite_leg": "models/human/animation/dog_animation/dog_bite_leg.skc",
+        "dog_death": "models/human/animation/dog_animation/dog_death.skc",
+        "dog_death2": "models/human/animation/dog_animation/dog_death2.skc",
+        "dog_death_run": "models/human/animation/dog_animation/dog_death_run.skc",
+        "dog_discipline": "models/human/animation/dog_animation/dog_discipline.skc",
+        "dog_land": "models/human/animation/dog_animation/dog_land.skc",
+        "dog_leap": "models/human/animation/dog_animation/dog_leap.skc",
+        "dog_pain_back": "models/human/animation/dog_animation/dog_pain_back.skc",
+        "dog_pain_front": "models/human/animation/dog_animation/dog_pain_front.skc",
+        "dog_pain_head": "models/human/animation/dog_animation/dog_pain_head.skc",
+        "dog_rest": "models/human/animation/dog_animation/dog_rest.skc",
+        "dog_run": "models/human/animation/dog_animation/dog_run.skc",
+        "dog_sniff": "models/human/animation/dog_animation/dog_sniff.skc",
+        "dog_sniff_turn_left": "models/human/animation/dog_animation/dog_sniff_turn_left.skc",
+        "dog_sniff_turn_right": "models/human/animation/dog_animation/dog_sniff_turn_right.skc",
+        "dog_stand_curious": "models/human/animation/dog_animation/dog_stand_curious.skc",
+        "dog_stand_idle": "models/human/animation/dog_animation/dog_stand_idle.skc",
+        "dog_stand_turn_left": "models/human/animation/dog_animation/dog_stand_turn_left.skc",
+        "dog_stand_turn_right": "models/human/animation/dog_animation/dog_stand_turn_right.skc",
+        "dog_standup": "models/human/animation/dog_animation/dog_standup.skc",
+        "dog_leash_stop": "models/human/animation/dog_animation/dog_leash_stop.skc",
+        "dog_turn_left": "models/human/animation/dog_animation/dog_walk_turn_left.skc",
+        "dog_turn_right": "models/human/animation/dog_animation/dog_walk_turn_right.skc",
+        "dog_walk_leash": "models/human/animation/dog_animation/dog_walk_leash.skc",
+        "dog_walk_bored": "models/human/animation/dog_animation/dog_walk_bored.skc",
+    },
+}
+
 SCRIPT_TIKI_ANIMATION_PACKS = {
     "human/german_afrika_private.tik": "models/human/german_afrika_private_%s.gca",
+    # The actors share aliases but have different pruned rigs, so each gets its own pack hash.
+    "human/2nd-ranger_captain.tik": "models/human/2nd-ranger_anim_%s.gca",
+    "human/2nd-ranger_private.tik": "models/human/2nd-ranger_anim_%s.gca",
+    "animal/german_shepherd.tik": "models/animal/german_shepherd_%s.gca",
 }
 
 
+def _script_tiki_recipes(mapname, refs):
+    """Return configured TIKIs present in this map's BSP/script reference set."""
+    mapname = mapname.lower()
+    ref_set = set(refs)
+    tikis = [tiki for tiki in SCRIPT_TIKI_MODELS.get(mapname, ()) if tiki in ref_set]
+    tikis.extend(tiki for tiki in SCRIPT_TIKI_SHARED_MODELS
+                 if tiki in ref_set and tiki not in tikis)
+    for tiki in SCRIPT_TIKI_MAP_MODELS.get(mapname, ()):
+        if tiki in ref_set and tiki not in tikis:
+            tikis.append(tiki)
+    return tikis
+
+
+def _script_tiki_refs(bsp_data, mapname, script_texts=()):
+    """Drawable TIKI models named by BSP actors/entities and map/global script model commands."""
+    import mohaa_bsp19
+    import re
+
+    bsp = mohaa_bsp19.load_bytes(bsp_data, "maps/%s.bsp" % mapname)
+    refs = set()
+    for entity in bsp.entities:
+        classname = entity.get("classname", "").strip().lower()
+        raw = entity.get("model", "").strip().replace(chr(92), "/").lower()
+        model = "/".join(part for part in raw.split("/") if part)
+        if model.endswith(".tik") and (classname.startswith("ai_") or classname in ("ai_actor", "script_model", "script_object")):
+            refs.add(model[7:] if model.startswith("models/") else model)
+    for text in script_texts:
+        text = re.sub(r"/\*.*?\*/", " ", text, flags=re.S)
+        text = re.sub(r"//[^\n]*", "", text)
+        # Explicit model commands, including `$entity model`, `local.entity model`, and `self model`.
+        refs.update(m.group(1).replace(chr(92), "/").lower().lstrip("/") for m in re.finditer(r"(?im)\bmodel\s+([\w./-]+\.tik)\b", text))
+        # Actor classes can be spawned without a .tik suffix; the model command above may set it later.
+        refs.update(m.group(1).replace(chr(92), "/").lower().lstrip("/") + (".tik" if not m.group(1).lower().endswith(".tik") else "") for m in re.finditer(r"(?im)(?:^|[;\s])spawn\s+((?:human|animal|vehicles|miscobj|furniture|statweapons|animate|emitters|fx|items)/[\w./-]+)", text))
+    return sorted("/".join(part for part in path.split("/") if part) for path in refs)
+
+
 def stage_script_models(sources, game_root, maps, work):
-    """Bake the supported scripted TIKI meshes and a map-local precache manifest."""
+    """Bake supported BSP-referenced TIKIs and write a map-local precache manifest."""
     from pathlib import Path
     import importlib.util
     import mohaa_tiki_model
@@ -309,23 +442,46 @@ def stage_script_models(sources, game_root, maps, work):
     split_studio_mdl = importlib.util.module_from_spec(split_spec)
     split_spec.loader.exec_module(split_studio_mdl)
 
-    selected = maps or sorted(map_sources(sources))
+    known_maps = map_sources(sources)
+    selected = maps or sorted(known_maps)
+    missing = [name for name in selected if name not in known_maps]
+    if missing:
+        raise SystemExit("no maps/%s.bsp in the sources" % ".bsp, maps/".join(missing))
     before = _snapshot(game_root)
+    baked = set()
+    import ubersound
+    import stage_scripts as script_stager
+    script_files = ubersound.collect(sources, (".scr",))
     for mapname in selected:
-        tikis = SCRIPT_TIKI_MODELS.get(mapname.lower(), ())
+        script_paths, missing_scripts = script_stager.closure(script_files, mapname)
+        script_texts = [ubersound.read(script_files[path]).decode("latin-1") for path in script_paths]
+        if missing_scripts:
+            print("MOHAA script models %s: script closure has missing files: %s" % (mapname, ", ".join(missing_scripts)))
+        refs = _script_tiki_refs(ubersound.read(known_maps[mapname]), mapname, script_texts)
+        # The shared German private composite serves both m1l1 and m1l2a; its
+        # animation list is the union needed by both scripts at the same retail MDL path.
+        tikis = _script_tiki_recipes(mapname, refs)
+        if refs:
+            print("MOHAA script models %s: %d drawable model references, %d configured bake recipes" % (mapname, len(refs), len(tikis)))
         if not tikis:
             continue
         model_paths = []
         for tiki in tikis:
-            rel = "models/" + tiki[:-4] + ".mdl"
+            base_tiki = tiki
+            model_stem = base_tiki[:-4]
+            rel = "models/" + model_stem + ".mdl"
             output = os.path.join(game_root, rel)
+            if tiki in baked:
+                model_paths.append(rel)
+                continue
             parts, verts, tris, textures, scale, idle = mohaa_tiki_model.convert(
-                sources, tiki, Path(output),
-                animation_names=SCRIPT_TIKI_ANIMATIONS.get(tiki, None),
-                components=SCRIPT_TIKI_COMPONENTS.get(tiki, ()))
+                sources, base_tiki, Path(output),
+                animation_names=SCRIPT_TIKI_ANIMATIONS.get(tiki, SCRIPT_TIKI_ANIMATIONS.get(base_tiki, None)),
+                components=SCRIPT_TIKI_COMPONENTS.get(tiki, SCRIPT_TIKI_COMPONENTS.get(base_tiki, ())),
+                animation_overrides=SCRIPT_TIKI_ANIMATION_OVERRIDES.get(tiki, {}))
             print("MOHAA script model %s: %d bodygroups, %d triangles, %d bodygroup verts, scale %.5f, idle %s" %
                   (tiki, parts, tris, verts, scale, idle or "-"))
-            pack_path = SCRIPT_TIKI_ANIMATION_PACKS.get(tiki)
+            pack_path = SCRIPT_TIKI_ANIMATION_PACKS.get(tiki, SCRIPT_TIKI_ANIMATION_PACKS.get(base_tiki))
             if pack_path:
                 model_name = os.path.splitext(os.path.basename(output))[0]
                 split_files, _ = split_studio_mdl.split(
@@ -341,6 +497,7 @@ def stage_script_models(sources, game_root, maps, work):
                     len(split_files[model_name + ".mdl"]),
                     len(split_files[model_name + "T.mdl"])))
             model_paths.append(rel)
+            baked.add(tiki)
         manifest = os.path.join(game_root, "maps", mapname.lower() + ".models")
         os.makedirs(os.path.dirname(manifest), exist_ok=True)
         with open(manifest, "w", newline="\n") as fh:
