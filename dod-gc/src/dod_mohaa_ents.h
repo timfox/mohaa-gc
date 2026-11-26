@@ -16,4 +16,9 @@ void DodGC_MohaaTrigger( edict_t *e, edict_t *activator );
 /* DispatchKeyValue: a key starting with '#' (MOHAA "#set", "#group") is for scripts only. */
 void DodGC_MohaaEntityKey( edict_t *e, const char *key, const char *value );
 
+/* CBasePlayer::PlayerUse, on a fresh USE press: a MOHAA trigger_use (Use) or trigger_multiple (Touch) brush within
+ * reach of the player fires. 1 when one did, so the stock door/button search is skipped this press. */
+class CBasePlayer;
+int DodGC_MohaaPlayerUse( CBasePlayer *player );
+
 #endif

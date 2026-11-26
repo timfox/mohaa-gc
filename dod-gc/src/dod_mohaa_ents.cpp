@@ -1189,6 +1189,60 @@ void DodGC_MohaaLevelInit( void )
 	}
 }
 
+/* MOHAA's "press USE here" triggers (the m1l2a locked gate's door_locked, mission objectives) are trigger_use brushes,
+ * which mohaa-gc's converter writes as trigger_use or trigger_multiple. Stock GoldSrc USE only reaches entities with
+ * FCAP_IMPULSE_USE, so a real controller press never fired them. The nearest one within reach of the player, measured
+ * to the nearest point of the brush (door triggers are long and thin), takes the press. */
+#define MOHAA_USE_REACH 128.0f
+
+static float MohaaUseDistance( CBaseEntity *ent, const Vector &at )
+{
+	Vector closest;
+	for( int axis = 0; axis < 3; axis++ )
+	{
+		float v = at[axis];
+		if( v < ent->pev->absmin[axis] ) v = ent->pev->absmin[axis];
+		if( v > ent->pev->absmax[axis] ) v = ent->pev->absmax[axis];
+		closest[axis] = v;
+	}
+	return ( closest - at ).Length();
+}
+
+int DodGC_MohaaPlayerUse( CBasePlayer *player )
+{
+	static const char *const classes[] = { "trigger_use", "trigger_multiple" };
+	CBaseEntity *best = NULL;
+	float best_dist = MOHAA_USE_REACH;
+	const char *gamedir = CVAR_GET_STRING( "gamedir" );
+	if( !player || !gamedir || strcmp( gamedir, "mohaa" ) || !( player->m_afButtonPressed & IN_USE ) )
+		return 0;
+	for( int k = 0; k < 2; k++ )
+	{
+		edict_t *e = NULL;
+		while( !FNullEnt( e = FIND_ENTITY_BY_CLASSNAME( e, classes[k] ) ) )
+		{
+			CBaseEntity *ent = CBaseEntity::Instance( e );
+			if( !ent )
+				continue;
+			const float d = MohaaUseDistance( ent, player->pev->origin + player->pev->view_ofs * 0.5f );
+			if( d < best_dist )
+			{
+				best = ent;
+				best_dist = d;
+			}
+		}
+	}
+	if( !best )
+		return 0;
+	ALERT( at_console, "mohaa: USE %s %s at %.0f units\n", STRING( best->pev->classname ),
+		best->pev->targetname ? STRING( best->pev->targetname ) : "", best_dist );
+	if( FClassnameIs( best->pev, "trigger_use" ) )
+		best->Use( player, player, USE_TOGGLE, 0 );
+	else
+		best->Touch( player );
+	return 1;
+}
+
 void DodGC_MohaaPrecacheModels( void )
 {
 	Dod_MohaaPrecacheModels();

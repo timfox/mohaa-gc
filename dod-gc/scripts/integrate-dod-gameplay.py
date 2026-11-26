@@ -1212,6 +1212,17 @@ def main() -> int:
 		'\tif( !stricmp( gameleaf, "dod" ) && gpGlobals->deathmatch )\n',
 		'\tif(( !stricmp( gameleaf, "dod" ) || !stricmp( gameleaf, "mohaa" )) && gpGlobals->deathmatch )\n',
 	)
+	# MOHAA "press USE here" triggers: a fresh USE press reaches the nearest trigger_use / trigger_multiple brush
+	# (DodGC_MohaaPlayerUse; nothing outside the mohaa game folder).
+	player_cpp = dlls / "player.cpp"
+	if '#include "dod_mohaa_ents.h"' not in player_cpp.read_text():
+		replace_once(player_cpp, '#include "gamerules.h"\n', '#include "gamerules.h"\n#include "dod_mohaa_ents.h"\n')
+	replace_once(
+		dlls / "player.cpp",
+		'\t// Was use pressed or released?\n\tif( !( ( pev->button | m_afButtonPressed | m_afButtonReleased) & IN_USE ) )\n\t\treturn;\n',
+		'\t// Was use pressed or released?\n\tif( !( ( pev->button | m_afButtonPressed | m_afButtonReleased) & IN_USE ) )\n\t\treturn;\n'
+		'\tif( DodGC_MohaaPlayerUse( this ) )\n\t\treturn;\n',
+	)
 	# MOHAA's campaign is single player (the menu's New Game sets deathmatch 0), so its levels run under
 	# CHalfLifeRules. Start and think the MOHAA level there too: the mission script, its soldiers and the
 	# m1l1 opening ride (DodGC_SinglePlayerLevelInit / DodGC_SinglePlayerThink do nothing outside mohaa).

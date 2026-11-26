@@ -1889,7 +1889,7 @@ static int c_gettag(ms_call *c)
 	const uint32_t id = target_id(c);
 	const int angles = strstr(ms_call_name(c), "angles") != NULL;
 	if (!valid(id)) {
-		ms_return(c, NULL);
+		{ const ms_value nil = ms_nil(); ms_return(c, &nil); }
 		return 0;
 	}
 	if (!is_node(id) && tag_now(id, anim_name(c, 0, buf, sizeof(buf)), out, ang)) {
@@ -2199,6 +2199,37 @@ static int c_getcvar(ms_call *c)
 	return 0;
 }
 
+/* "loc_convert_string <s>": the GameCube build has one language, so the text is its own translation */
+static int c_loc_convert_string(ms_call *c)
+{
+	ms_return_string(c, ms_arg_string(c, 0));
+	return 0;
+}
+
+/* "getboundkey1 <command>" / "getboundkey2": the GameCube pad button bound to a command (docs/GAMECUBE_CONTROLS.md
+   in the engine), or NIL when the pad has none, as retail returns for an unbound key. The level scripts then print
+   their own "NOT BOUND". The pad has one button per command, so getboundkey2 is always NIL. */
+static int c_getboundkey(ms_call *c)
+{
+	static const struct { const char *cmd, *button; } pad[] = {
+		{"+attack", "R"}, {"+attack2", "L"}, {"+use", "B"}, {"+jump", "A"}, {"+duck", "Z"},
+		{"+reload", "X"}, {"+moveup", "A"}, {"+movedown", "Z"},
+	};
+	const char *cmd = ms_arg_string(c, 0);
+	size_t i;
+	if (ms_call_name(c)[11] == '2') {
+		{ const ms_value nil = ms_nil(); ms_return(c, &nil); }
+		return 0;
+	}
+	for (i = 0; i < sizeof(pad) / sizeof(pad[0]); i++)
+		if (cmd && !strcmp(cmd, pad[i].cmd)) {
+			ms_return_string(c, pad[i].button);
+			return 0;
+		}
+	{ const ms_value nil = ms_nil(); ms_return(c, &nil); }
+	return 0;
+}
+
 /* "fadeout <time> <r> <g> <b> <alpha> [mode]" / "fadein ...": a screen fade for every player */
 static int c_fade(ms_call *c)
 {
@@ -2479,6 +2510,9 @@ static void register_commands(ms_vm *vm)
 		{"disconnect_paths", MS_ON_ENTITY, c_ignored},
 		{"connect_paths", MS_ON_ENTITY, c_ignored},
 		{"getcvar", MS_ON_THREAD, c_getcvar},
+		{"loc_convert_string", MS_ON_THREAD, c_loc_convert_string},
+		{"getboundkey1", MS_ON_THREAD, c_getboundkey},
+		{"getboundkey2", MS_ON_THREAD, c_getboundkey},
 		{"fadeout", MS_ON_THREAD, c_fade},
 		{"fadein", MS_ON_THREAD, c_fade},
 		{"trigger", MS_ON_THREAD, c_trigger},
