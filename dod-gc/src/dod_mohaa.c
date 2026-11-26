@@ -253,6 +253,10 @@ static int is_player(uint32_t id);
 /* helpers                                                              */
 /* ------------------------------------------------------------------ */
 
+/* cover nodes soldiers have taken (Dod_MohaaCoverSpot): node + 1, the soldier, until when */
+#define DOD_MOHAA_COVER_CLAIMS 48
+static struct { int node, key; float until; } g_cover_claims[DOD_MOHAA_COVER_CLAIMS];
+
 static void scale_in(const float in[3], float out[3])
 {
 	out[0] = in[0] * DOD_MOHAA_SCALE;
@@ -2590,6 +2594,7 @@ void Dod_MohaaShutdown(void)
 		ms_destroy(S.vm);
 	S.vm = NULL;
 	S.compile_pending = S.compile_tries = 0;
+	memset(g_cover_claims, 0, sizeof(g_cover_claims));
 	memset(S.movers, 0, sizeof(S.movers));
 	S.nunknown = 0;
 	S.ticks = 0;
@@ -3032,6 +3037,78 @@ void Dod_MohaaRunThread(const char *label, uint32_t self)
 		snprintf(msg, sizeof(msg), "mohaa: setthread %s: no such label in %s\n", label, S.level_script);
 		S.be.print(DOD_MOHAA_PRINT_ERROR, msg);
 	}
+}
+
+/* ---- cover: MOHAA soldiers fight from path nodes flagged cover/duck/crate/concealment ---- */
+#define DOD_MOHAA_COVER_REACH 520.0f	/* how far a soldier runs for cover (GoldSrc units) */
+
+static int cover_claimed(int node, int key)
+{
+	int c;
+	for (c = 0; c < DOD_MOHAA_COVER_CLAIMS; c++)
+		if (g_cover_claims[c].node == node + 1 && g_cover_claims[c].key != key && g_cover_claims[c].until > S.now)
+			return 1;
+	return 0;
+}
+
+static void cover_claim(int node, int key)
+{
+	int c, slot = 0;
+	float oldest = 1e30f;
+	for (c = 0; c < DOD_MOHAA_COVER_CLAIMS; c++) {
+		if (g_cover_claims[c].key == key || g_cover_claims[c].until <= S.now) {
+			slot = c;
+			break;
+		}
+		if (g_cover_claims[c].until < oldest) {
+			oldest = g_cover_claims[c].until;
+			slot = c;
+		}
+	}
+	g_cover_claims[slot].node = node + 1;
+	g_cover_claims[slot].key = key;
+	g_cover_claims[slot].until = S.now + 20.0f;
+}
+
+/* The cover node a soldier at from should take against an enemy at enemy, or 0: the nearest unclaimed cover node
+   within DOD_MOHAA_COVER_REACH that keeps the soldier at least as far from the enemy as a fight needs (200 units)
+   without falling back more than 300. key names the soldier, so two do not pick the same node. */
+int Dod_MohaaCoverSpot(int key, const float from[3], const float enemy[3], float out[3])
+{
+	int k, best = -1;
+	float best_d2 = DOD_MOHAA_COVER_REACH * DOD_MOHAA_COVER_REACH;
+	const float ex = enemy[0] - from[0], ey = enemy[1] - from[1];
+	const float enemy_d = sqrtf(ex * ex + ey * ey);
+	if (!S.vm || !S.paths.count || !S.paths.flags)
+		return 0;
+	for (k = 0; k < S.paths.count; k++) {
+		const float *p = S.paths.pos[k];
+		float dx, dy, dz, d2, nx, ny, nd;
+		if (!(S.paths.flags[k] & MOHAA_PATH_COVER_ANY))
+			continue;
+		dx = p[0] - from[0];
+		dy = p[1] - from[1];
+		dz = p[2] - from[2];
+		if (dz > 96.0f || dz < -96.0f)
+			continue;
+		d2 = dx * dx + dy * dy;
+		if (d2 >= best_d2)
+			continue;
+		nx = enemy[0] - p[0];
+		ny = enemy[1] - p[1];
+		nd = sqrtf(nx * nx + ny * ny);
+		if (nd < 200.0f || nd > enemy_d + 300.0f)
+			continue;
+		if (cover_claimed(k, key))
+			continue;
+		best = k;
+		best_d2 = d2;
+	}
+	if (best < 0)
+		return 0;
+	cover_claim(best, key);
+	memcpy(out, S.paths.pos[best], sizeof(float) * 3);
+	return 1;
 }
 
 void Dod_MohaaEntityFreed(uint32_t id)

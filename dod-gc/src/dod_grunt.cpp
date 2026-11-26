@@ -336,8 +336,8 @@ int DodGrunts_ScriptOrder( edict_t *ed, int order, const float pos[3] )
 	case DOD_MOHAA_AI_ON: DodGrunt_SetAI( &g_pool, i, 1 ); break;
 	case DOD_MOHAA_AI_OFF: DodGrunt_SetAI( &g_pool, i, 0 ); break;
 	case DOD_MOHAA_ATTACK: DodGrunt_SetAttack( &g_pool, i, 1 ); break;
-	case DOD_MOHAA_WALKTO: DodGrunt_OrderMove( &g_pool, i, pos[0], pos[1], 0 ); break;
-	case DOD_MOHAA_RUNTO: DodGrunt_OrderMove( &g_pool, i, pos[0], pos[1], 1 ); break;
+	case DOD_MOHAA_WALKTO: g_pool.cover[i] = DOD_GRUNT_COVER_NONE; DodGrunt_OrderMove( &g_pool, i, pos[0], pos[1], 0 ); break;
+	case DOD_MOHAA_RUNTO: g_pool.cover[i] = DOD_GRUNT_COVER_NONE; DodGrunt_OrderMove( &g_pool, i, pos[0], pos[1], 1 ); break;
 	case DOD_MOHAA_TURNTO: DodGrunt_Face( &g_pool, i, pos[0], pos[1] ); break;
 	case DOD_MOHAA_SIGHT: DodGrunt_SetParam( &g_pool, i, DOD_GRUNT_SIGHT_RANGE, pos[0], 0, 0 ); break;
 	case DOD_MOHAA_HEARING: DodGrunt_SetParam( &g_pool, i, DOD_GRUNT_HEARING, pos[0], 0, 0 ); break;
@@ -408,6 +408,12 @@ static bool GruntSpawn( int i, int team )
 }
 
 /* A look: the nearest living player of the other side that is in front of the grunt and in plain sight. */
+static int GruntMohaaCampaign( void )
+{
+	const char *gamedir = CVAR_GET_STRING( "gamedir" );
+	return gamedir && !strcmp( gamedir, "mohaa" ) && !g_pGameRules->IsMultiplayer();
+}
+
 static void GruntLook( int i, int rush )
 {
 	CDodGrunt *e = g_ents[i];
@@ -423,7 +429,11 @@ static void GruntLook( int i, int rush )
 		CBasePlayer *pl = GruntPlayer( k );
 		if( !pl )
 			continue;
-		const int t = DodGC_PlayerTeam( pl );
+		int t = DodGC_PlayerTeam( pl );
+		/* MOHAA's campaign runs on the single-player rules, where the player joins no side: they are always the
+		 * Allies, so the mission's Germans fight them (before this no soldier ever fired on m1l1) */
+		if( t != DOD_TEAM_ALLIES && t != DOD_TEAM_AXIS && GruntMohaaCampaign() )
+			t = DOD_TEAM_ALLIES;
 		if( ( t != DOD_TEAM_ALLIES && t != DOD_TEAM_AXIS ) || t == (int)g_pool.team[i] )
 			continue;
 		const Vector d = pl->pev->origin - eye;
@@ -447,6 +457,39 @@ static void GruntLook( int i, int rush )
 	UTIL_TraceLine( eye, pl->pev->origin + pl->pev->view_ofs * 0.5f, ignore_monsters, e->edict(), &tr );
 	const int visible = tr.flFraction >= 1.0f || tr.pHit == pl->edict();
 	DodGrunt_Looked( &g_pool, i, gpGlobals->time, visible, best, best_pos.x, best_pos.y, sqrtf( best_d2 ), rush );
+}
+
+/* A MOHAA soldier in a fight takes cover: every few seconds, one with AI on, an enemy seen in the last few seconds
+ * and no order of its own runs to the nearest free cover path node (Dod_MohaaCoverSpot) and fights from there.
+ * attackplayer soldiers charge instead, as in retail. */
+static void GruntCover( int i, float now )
+{
+	const unsigned char s = g_pool.script[i];
+	float from[3], enemy[3], spot[3];
+	if( !s || ( s & ( DOD_GRUNT_AI_OFF | DOD_GRUNT_ATTACK ) ) || g_pool.state[i] == DOD_GRUNT_DEAD )
+		return;
+	if( g_pool.order[i] != DOD_GRUNT_ORDER_NONE || now < g_pool.turn_at[i] )
+		return;
+	if( now - g_pool.target_seen[i] > 3.0f ) {
+		g_pool.cover[i] = DOD_GRUNT_COVER_NONE;	/* the fight moved on: pick fresh cover next time */
+		return;
+	}
+	g_pool.turn_at[i] = now + 8.0f;
+	if( g_pool.cover[i] == DOD_GRUNT_COVER_HELD ) {
+		const float dx = g_pool.target_x[i] - g_pool.x[i], dy = g_pool.target_y[i] - g_pool.y[i];
+		if( dx * dx + dy * dy > 200.0f * 200.0f )
+			return;	/* still a good spot */
+	}
+	from[0] = g_pool.x[i]; from[1] = g_pool.y[i]; from[2] = g_pool.z[i] - 36.0f;
+	enemy[0] = g_pool.target_x[i]; enemy[1] = g_pool.target_y[i]; enemy[2] = from[2];
+	if( !Dod_MohaaCoverSpot( i + 1, from, enemy, spot ) ) {
+		g_pool.turn_at[i] = now + 4.0f;
+		return;
+	}
+	DodGrunt_OrderMove( &g_pool, i, spot[0], spot[1], 1 );
+	g_pool.cover[i] = DOD_GRUNT_COVER_MOVING;
+	if( CVAR_GET_FLOAT( "dod_grunt_log" ) > 0.0f )
+		ALERT( at_console, "GRUNT %d takes cover at %.0f %.0f\n", i, spot[0], spot[1] );
 }
 
 static void GruntShoot( int i )
@@ -586,9 +629,14 @@ void DodGrunts_Think( void )
 			continue;
 		}
 		live++;
+		GruntCover( i, now );
 		DodGrunt_Move( &g_pool, i, now, dt );
-		if( DodGrunt_TakeOrderDone( &g_pool, i ) )
-			DodGC_MohaaEntityEvent( e->edict(), "movedone" );	/* "$guy waittill movedone" */
+		if( DodGrunt_TakeOrderDone( &g_pool, i ) ) {
+			if( g_pool.cover[i] == DOD_GRUNT_COVER_MOVING )
+				g_pool.cover[i] = DOD_GRUNT_COVER_HELD;	/* its own move: the script did not ask */
+			else
+				DodGC_MohaaEntityEvent( e->edict(), "movedone" );	/* "$guy waittill movedone" */
+		}
 		if( DodGrunt_CheckDue( &g_pool, i, now ) )
 			GruntCheck( i );
 		if( DodGrunt_ShotDue( &g_pool, i, now, (int)CVAR_GET_FLOAT( "dod_grunt_skill" ) ) )

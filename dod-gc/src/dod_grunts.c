@@ -78,6 +78,7 @@ void DodGrunt_Spawn(DodGruntPool *p, int i, int team, float x, float y, float z,
 	p->sight[i] = p->hearing[i] = p->leash_r[i] = p->mindist[i] = p->maxdist[i] = 0;
 	p->leash_x[i] = p->leash_y[i] = 0;
 	p->fov[i] = 0;
+	p->cover[i] = DOD_GRUNT_COVER_NONE;
 	p->state[i] = rush ? DOD_GRUNT_ADVANCE : DOD_GRUNT_WANDER;
 	if (i >= p->cap)
 		p->cap = i + 1;

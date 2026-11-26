@@ -19,7 +19,10 @@ This is a running list, updated with each PR. Each entry says what retail does t
 ## AI (see MOHAA_AI_ASSESSMENT_2026-11-26.md)
 - **Perception:** `sight`, `hearing` and `fov` are bound now (2026-11-26): per-grunt sight range, hearing radius and field of view in GruntLook. Still missing: `noticescale`, `enemysharerange` (alerting nearby allies), and a curious state that turns toward a noise before it attacks.
 - **Zones:** `leash`, `tether`, `mindist` and `maxdist` are bound (2026-11-26). An actor stops at its leash edge, fights from `maxdist`, and backs off inside `mindist`. `fixedleash` is accepted, since the leash centre is already fixed. Still missing: `tether` only centres the leash where the entity was when the command ran; it doesn't follow a moving entity.
-- **Attack styles:** `type_attack` cover and turret behaviour, plus `gun`, `startfiring` and `stopfiring`.
+- **Cover** (2026-11-26): a fighting actor runs to the nearest free cover path node (MOHAA flags DUCK, COVER, CRATE or CONCEALMENT) within 520 units and fights from there; `attackplayer` actors charge instead. This isn't seen in Dolphin yet. On m1l1 the idle probe player dies in the truck ambush before any soldier takes cover (health 100, then 49, then dead within about 10 s; the source isn't identified yet, and the grunts logged no shots).
+- **The campaign player had no side** (fixed 2026-11-26). On the single-player rules the player joins no team, so grunts never treated them as an enemy. They now count as Allies in MOHAA's campaign.
+- **Soldiers don't fight each other.** Grunts only target players, so the Allied friendlies and the Germans ignore one another.
+- **Attack styles:** `type_attack` turret behaviour, plus `gun`, `startfiring` and `stopfiring`.
 - **Alarm and patrol:** `type_idle` alarm and patrol, `alarmnode`, `alarmthread` and `patrolpath`.
 - **Disguise:** `type_disguise` and the `disguise_*` settings, used by m1l2a/m1l3.
 - **Grenades:** throwing them, and reacting to them.

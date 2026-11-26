@@ -50,6 +50,9 @@ enum {
 	DOD_GRUNT_ATTACK = 1 << 2	/* runs at what it sees (MOHAA attackplayer) instead of holding */
 };
 enum { DOD_GRUNT_ORDER_NONE = 0, DOD_GRUNT_ORDER_WALK, DOD_GRUNT_ORDER_RUN };
+/* A fighting script actor runs to a cover path node (its own move, not the script's: no movedone), then fights
+ * from there. */
+enum { DOD_GRUNT_COVER_NONE = 0, DOD_GRUNT_COVER_MOVING, DOD_GRUNT_COVER_HELD };
 #define DOD_GRUNT_ARRIVE 32.0f		/* a move order is done this near its point */
 #define DOD_GRUNT_ORDER_STALL 4.0f	/* a move order that gets no nearer for this long arrives anyway */
 
@@ -94,6 +97,7 @@ typedef struct DodGruntPool {
 	short mindist[DOD_GRUNT_MAX];		/* backs away from a nearer enemy */
 	short maxdist[DOD_GRUNT_MAX];		/* stops closing in at this range and fights */
 	unsigned char fov[DOD_GRUNT_MAX];	/* field of view in degrees / 2 (0: default 140) */
+	unsigned char cover[DOD_GRUNT_MAX];	/* DOD_GRUNT_COVER_*: a script actor taking or holding cover */
 	float order_best[DOD_GRUNT_MAX];	/* nearest it has come to the order point */
 	float order_stall_at[DOD_GRUNT_MAX];	/* when a stalled order gives up and arrives; < 0 not started */
 	unsigned rng;

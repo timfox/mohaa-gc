@@ -160,6 +160,9 @@ void Dod_MohaaSetOther(uint32_t id);
 void Dod_MohaaDropPool(void);
 /* Game events: Dod_MohaaNotify(id, "trigger") wakes "$t waittill trigger". */
 void Dod_MohaaNotify(uint32_t id, const char *event);
+/* Cover for a MOHAA soldier (a path node flagged cover, duck, crate or concealment): fills out and returns 1, else 0.
+   key names the soldier, so two soldiers do not pick the same node. Coordinates in GoldSrc units. */
+int Dod_MohaaCoverSpot(int key, const float from[3], const float enemy[3], float out[3]);
 void Dod_MohaaEntityFreed(uint32_t id);
 /* A trigger with MOHAA's setthread fired: run that label of the level script with self = the trigger. */
 void Dod_MohaaRunThread(const char *label, uint32_t self);
