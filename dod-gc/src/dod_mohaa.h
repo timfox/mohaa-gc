@@ -38,7 +38,10 @@ enum { DOD_MOHAA_CHAN_AUTO = 0, DOD_MOHAA_CHAN_VOICE, DOD_MOHAA_CHAN_ITEM, DOD_M
 /* Orders to a script actor (a MOHAA AI soldier, played by a grunt). pos is in GoldSrc units. */
 enum {
 	DOD_MOHAA_AI_ON = 0, DOD_MOHAA_AI_OFF, DOD_MOHAA_ATTACK,	/* attackplayer */
-	DOD_MOHAA_WALKTO, DOD_MOHAA_RUNTO, DOD_MOHAA_TURNTO, DOD_MOHAA_STOP
+	DOD_MOHAA_WALKTO, DOD_MOHAA_RUNTO, DOD_MOHAA_TURNTO, DOD_MOHAA_STOP,
+	/* actor settings: pos[0] is the value (GoldSrc units; degrees for FOV), TETHER's pos is the point */
+	DOD_MOHAA_SIGHT, DOD_MOHAA_HEARING, DOD_MOHAA_FOV, DOD_MOHAA_LEASH, DOD_MOHAA_TETHER,
+	DOD_MOHAA_MINDIST, DOD_MOHAA_MAXDIST
 };
 /* HUD parts a cutscene hides: ALL is MOHAA's "drawhud 0"; WEAPON (crosshair, ammo, view model) goes while the
    player is locked into a scripted ride. */

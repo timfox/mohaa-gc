@@ -13,6 +13,8 @@ static float wrap180(float a)
 	return a;
 }
 
+static int in_leash(const DodGruntPool *p, int i, float nx, float ny);
+
 int DodGrunt_RowBytes(void)
 {
 	const DodGruntPool *p = 0;
@@ -73,6 +75,9 @@ void DodGrunt_Spawn(DodGruntPool *p, int i, int team, float x, float y, float z,
 	p->script[i] = 0;
 	p->order[i] = DOD_GRUNT_ORDER_NONE;
 	p->order_done[i] = 0;
+	p->sight[i] = p->hearing[i] = p->leash_r[i] = p->mindist[i] = p->maxdist[i] = 0;
+	p->leash_x[i] = p->leash_y[i] = 0;
+	p->fov[i] = 0;
 	p->state[i] = rush ? DOD_GRUNT_ADVANCE : DOD_GRUNT_WANDER;
 	if (i >= p->cap)
 		p->cap = i + 1;
@@ -118,7 +123,14 @@ void DodGrunt_Looked(DodGruntPool *p, int i, float now, int visible, int target,
 			p->target_x[i] = tx;
 			p->target_y[i] = ty;
 			p->target_seen[i] = now;
-			p->state[i] = (dist <= DOD_GRUNT_CLOSE * 3.0f) ? DOD_GRUNT_SHOOT : (attack ? DOD_GRUNT_ADVANCE : DOD_GRUNT_HOLD);
+			{
+				/* MOHAA maxdist: the range it fights from; mindist: nearer than this it backs off first */
+				const float fight = p->maxdist[i] ? (float)p->maxdist[i] : DOD_GRUNT_CLOSE * 3.0f;
+				if (attack && p->mindist[i] && dist < (float)p->mindist[i])
+					p->state[i] = DOD_GRUNT_ADVANCE;	/* the advance step backs it off */
+				else
+					p->state[i] = (dist <= fight) ? DOD_GRUNT_SHOOT : (attack ? DOD_GRUNT_ADVANCE : DOD_GRUNT_HOLD);
+			}
 			if (p->state[i] == DOD_GRUNT_HOLD)
 				p->heading[i] = DodGrunt_YawTo(p->x[i], p->y[i], tx, ty);
 			return;
@@ -189,7 +201,16 @@ void DodGrunt_Move(DodGruntPool *p, int i, float now, float dt)
 	case DOD_GRUNT_ADVANCE:
 		if (remembers) {
 			const float dx = p->target_x[i] - p->x[i], dy = p->target_y[i] - p->y[i];
-			if (dx * dx + dy * dy > DOD_GRUNT_CLOSE * DOD_GRUNT_CLOSE) {
+			const float d2 = dx * dx + dy * dy;
+			const float close = p->maxdist[i] ? (float)p->maxdist[i] : DOD_GRUNT_CLOSE;
+			if (p->mindist[i] && d2 < (float)p->mindist[i] * (float)p->mindist[i]) {
+				/* too near (MOHAA mindist): back off, still facing the enemy */
+				p->heading[i] = wrap180(DodGrunt_YawTo(p->x[i], p->y[i], p->target_x[i], p->target_y[i]) + 180.0f);
+				speed = DOD_GRUNT_WALK;
+				want_yaw = wrap180(p->heading[i] + 180.0f);
+				goto turn_and_step;
+			}
+			if (d2 > close * close) {
 				p->heading[i] = DodGrunt_YawTo(p->x[i], p->y[i], p->target_x[i], p->target_y[i]);
 				speed = DOD_GRUNT_RUN;
 			}
@@ -215,6 +236,14 @@ turn_and_step:
 	{
 		const float step = 360.0f * dt;
 		p->yaw[i] = wrap180(p->yaw[i] + (d > step ? step : (d < -step ? -step : d)));
+	}
+	if (speed > 0.0f) {
+		const float r = p->heading[i] * 0.017453293f;
+		/* a leashed actor stops at the edge of its leash (a script order may still take it out) */
+		if (p->order[i] == DOD_GRUNT_ORDER_NONE
+			&& !in_leash(p, i, p->x[i] + cosf(r) * speed * dt, p->y[i] + sinf(r) * speed * dt)
+			&& in_leash(p, i, p->x[i], p->y[i]))
+			speed = 0.0f;
 	}
 	if (speed > 0.0f) {
 		const float r = p->heading[i] * 0.017453293f;
@@ -343,6 +372,66 @@ void DodGrunt_SetAI(DodGruntPool *p, int i, int on)
 	p->target[i] = 0;
 	if (alive(p, i) && p->order[i] == DOD_GRUNT_ORDER_NONE)
 		p->state[i] = DOD_GRUNT_HOLD;
+}
+
+static short clamp_short(float v)
+{
+	return (short)(v > 32767.0f ? 32767 : (v < -32767.0f ? -32767 : (int)v));
+}
+
+void DodGrunt_SetParam(DodGruntPool *p, int i, int param, float value, float x, float y)
+{
+	if (value < 0.0f)
+		value = 0.0f;
+	switch (param) {
+	case DOD_GRUNT_SIGHT_RANGE: p->sight[i] = clamp_short(value); break;
+	case DOD_GRUNT_HEARING: p->hearing[i] = clamp_short(value); break;
+	case DOD_GRUNT_FOV: p->fov[i] = (unsigned char)(value >= 360.0f ? 180 : value * 0.5f); break;
+	case DOD_GRUNT_LEASH:
+	case DOD_GRUNT_TETHER:
+		if (param == DOD_GRUNT_LEASH)
+			p->leash_r[i] = clamp_short(value);
+		else if (!p->leash_r[i])
+			p->leash_r[i] = 256;	/* MOHAA's default leash */
+		if (param == DOD_GRUNT_LEASH && x == 0.0f && y == 0.0f) {
+			x = p->x[i];
+			y = p->y[i];
+		}
+		p->leash_x[i] = clamp_short(x);
+		p->leash_y[i] = clamp_short(y);
+		break;
+	case DOD_GRUNT_MINDIST: p->mindist[i] = clamp_short(value); break;
+	case DOD_GRUNT_MAXDIST: p->maxdist[i] = clamp_short(value); break;
+	default: break;
+	}
+}
+
+float DodGrunt_SightRange(const DodGruntPool *p, int i)
+{
+	return p->sight[i] > 0 ? (float)p->sight[i] : DOD_GRUNT_SIGHT;
+}
+
+float DodGrunt_HearingRange(const DodGruntPool *p, int i)
+{
+	return p->hearing[i] > 0 ? (float)p->hearing[i] : 300.0f;
+}
+
+float DodGrunt_FovCos(const DodGruntPool *p, int i)
+{
+	/* default about 70 degrees each side, as the grunts always looked */
+	return p->fov[i] ? cosf((float)p->fov[i] * 0.017453293f) : 0.34f;
+}
+
+/* Inside the leash after a step to (nx, ny)? No leash: always. */
+static int in_leash(const DodGruntPool *p, int i, float nx, float ny)
+{
+	float dx, dy, r;
+	if (!p->leash_r[i])
+		return 1;
+	dx = nx - p->leash_x[i];
+	dy = ny - p->leash_y[i];
+	r = p->leash_r[i];
+	return dx * dx + dy * dy <= r * r;
 }
 
 void DodGrunt_SetAttack(DodGruntPool *p, int i, int on)

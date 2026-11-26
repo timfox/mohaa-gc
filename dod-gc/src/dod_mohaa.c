@@ -994,6 +994,32 @@ static int c_ai_on(ms_call *c) { return actor_order(c, DOD_MOHAA_AI_ON, NULL); }
 static int c_ai_off(ms_call *c) { return actor_order(c, DOD_MOHAA_AI_OFF, NULL); }
 static int c_attackplayer(ms_call *c) { return actor_order(c, DOD_MOHAA_ATTACK, NULL); }
 
+/* "$actor sight 1500", "hearing", "leash", "mindist", "maxdist" (MOHAA units), "fov 90" (degrees),
+   "tether $ent" (stays within its leash of that entity). The grunt pool keeps them per actor (dod_grunts.c). */
+static int actor_setting(ms_call *c, int order, int distance)
+{
+	float pos[3] = {0, 0, 0};
+	pos[0] = ms_arg_float(c, 0) * (distance ? DOD_MOHAA_SCALE : 1.0f);
+	return actor_order(c, order, pos);
+}
+static int c_sight(ms_call *c) { return actor_setting(c, DOD_MOHAA_SIGHT, 1); }
+static int c_hearing(ms_call *c) { return actor_setting(c, DOD_MOHAA_HEARING, 1); }
+static int c_fov(ms_call *c) { return actor_setting(c, DOD_MOHAA_FOV, 0); }
+static int c_leash(ms_call *c) { return actor_setting(c, DOD_MOHAA_LEASH, 1); }
+static int c_mindist(ms_call *c) { return actor_setting(c, DOD_MOHAA_MINDIST, 1); }
+static int c_maxdist(ms_call *c) { return actor_setting(c, DOD_MOHAA_MAXDIST, 1); }
+/* "fixedleash 1": the leash stays where it was set (as it already does here) */
+static int c_fixedleash(ms_call *c) { (void)c; return 0; }
+static int c_tether(ms_call *c)
+{
+	const ms_value *t = ms_arg(c, 0);
+	float pos[3] = {0, 0, 0};
+	if (t->type != MS_ENTITY || !valid(t->u.id))
+		return 0;	/* "tether NIL" lets it go: retail keeps the last leash, so does this */
+	get_vec(t->u.id, DOD_MOHAA_ORIGIN, pos);
+	return actor_order(c, DOD_MOHAA_TETHER, pos);
+}
+
 /* Retail forceactivate is used after a mission actor is spawned to wake its AI. */
 static int c_forceactivate(ms_call *c)
 {
@@ -2414,6 +2440,14 @@ static void register_commands(ms_vm *vm)
 		{"ai_on", MS_ON_ENTITY, c_ai_on},
 		{"ai_off", MS_ON_ENTITY, c_ai_off},
 		{"attackplayer", MS_ON_ENTITY, c_attackplayer},
+		{"sight", MS_ON_ENTITY, c_sight},
+		{"hearing", MS_ON_ENTITY, c_hearing},
+		{"fov", MS_ON_ENTITY, c_fov},
+		{"leash", MS_ON_ENTITY, c_leash},
+		{"fixedleash", MS_ON_ENTITY, c_fixedleash},
+		{"tether", MS_ON_ENTITY, c_tether},
+		{"mindist", MS_ON_ENTITY, c_mindist},
+		{"maxdist", MS_ON_ENTITY, c_maxdist},
 		{"runto", MS_ON_ENTITY, c_goto},
 		{"walkto", MS_ON_ENTITY, c_goto},
 		{"turnto", MS_ON_ENTITY, c_turnto},

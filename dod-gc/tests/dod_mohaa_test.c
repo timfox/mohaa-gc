@@ -171,7 +171,8 @@ static void m_fade(float t, float r, float g, float b, float a, int out)
 
 static int m_actor(uint32_t id, int order, const float pos[3])
 {
-	static const char *names[] = {"ai_on", "ai_off", "attack", "walkto", "runto", "turnto", "stop"};
+	static const char *names[] = {"ai_on", "ai_off", "attack", "walkto", "runto", "turnto", "stop",
+		"sight", "hearing", "fov", "leash", "tether", "mindist", "maxdist"};
 	char line[96];
 	Ent *e = ent(id);
 	if (!e || strcmp(e->classname, "actor"))
@@ -302,6 +303,38 @@ static void test_bound_keys_and_loc_strings(void)
 	assert(strstr(log_buf, "Press ( NOT BOUND ) now"));
 	assert(strstr(log_buf, "use=B"));
 	assert(strstr(log_buf, "second none"));
+	assert(!strstr(log_buf, "not bound yet"));
+}
+
+/* the actor settings reach the backend in GoldSrc units (fov in degrees, tether as the entity's spot) */
+static void test_actor_settings(void)
+{
+	DodMohaaBackend b = backend();
+	int guy, post;
+	reset();
+	guy = add("guy", "actor", 0, 0, 0);
+	post = add("post", "info_target", 940, 0, 0);
+	(void)guy; (void)post;
+	files[0][0] = "maps/ai.scr";
+	files[0][1] =
+		"main:\n"
+		"\t$guy sight 1880\n"
+		"\t$guy hearing 940\n"
+		"\t$guy fov 90\n"
+		"\t$guy leash 470\n"
+		"\t$guy fixedleash 1\n"
+		"\t$guy tether $post\n"
+		"\t$guy mindist 128\n"
+		"\t$guy maxdist 1024\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "ai", 0, 0));
+	run(0.05f, 0.2f);
+	assert(strstr(log_buf, "<guy sight 1440.0"));
+	assert(strstr(log_buf, "<guy hearing 720.0"));
+	assert(strstr(log_buf, "<guy fov 90.0"));
+	assert(strstr(log_buf, "<guy leash 360.0"));
+	assert(strstr(log_buf, "<guy tether 940.0"));
+	assert(strstr(log_buf, "<guy maxdist 784.3"));
 	assert(!strstr(log_buf, "not bound yet"));
 }
 
@@ -1137,6 +1170,7 @@ int main(void)
 {
 	RUN(test_no_script_no_vm);
 	RUN(test_bound_keys_and_loc_strings);
+	RUN(test_actor_settings);
 	RUN(test_level_flow_and_movers);
 	RUN(test_waittill_trigger_and_freed);
 	RUN(test_budget_refuses_cleanly);
