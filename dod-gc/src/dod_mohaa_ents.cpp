@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include "dod_grunts.h"
 
 /* Script memory cap in KiB. MEM1 is tight on GameCube (see docs/MEMORY.md); a level whose
  * scripts do not fit is refused cleanly at load instead of starving the engine. */
@@ -630,7 +631,7 @@ static uint32_t SpawnActor( const char *classname, const char *const *keys, cons
 	return IdFor( SpawnActorAt( team, origin, yaw, targetname, tik, 1 ) );
 }
 
-/* Soldiers that found the grunt pool full (MOHAA maps place more than its 48 slots: m1l1 has 54). They wait here
+/* Soldiers that found the grunt pool full (MOHAA maps can place more than its DOD_GRUNT_MAX slots). They wait here
  * and come in near a player as slots free up; a soldier dead for MOHAA_CORPSE_SECONDS gives its slot back while
  * any wait. */
 #define MOHAA_WAITING_MAX 64
@@ -648,7 +649,7 @@ static uint32_t ParkId( void )
 		g_park_serial = 1;
 	return g_park_serial << 12;
 }
-static struct { uint32_t id; float at; } g_dead[48];
+static struct { uint32_t id; float at; } g_dead[DOD_GRUNT_MAX];
 static float g_next_waiting_check;
 
 /* keys: the entity whose script variables go with the soldier (0: none) */
@@ -674,7 +675,7 @@ static void ActorWait( int team, const Vector &origin, float yaw, const char *na
 static void ActorDied( edict_t *e )
 {
 	const uint32_t id = IdFor( e );
-	for( int k = 0; k < 48; k++ )
+	for( int k = 0; k < DOD_GRUNT_MAX; k++ )
 		if( !g_dead[k].id || !EdictFor( g_dead[k].id ) ) {
 			g_dead[k].id = id;
 			g_dead[k].at = gpGlobals->time;
@@ -688,7 +689,7 @@ static void ActorsWaitingThink( void )
 	if( !g_nwaiting || gpGlobals->time < g_next_waiting_check )
 		return;
 	g_next_waiting_check = gpGlobals->time + 0.5f;
-	for( int k = 0; k < 48; k++ ) {
+	for( int k = 0; k < DOD_GRUNT_MAX; k++ ) {
 		edict_t *e = g_dead[k].id ? EdictFor( g_dead[k].id ) : NULL;
 		if( !e ) {
 			g_dead[k].id = 0;
