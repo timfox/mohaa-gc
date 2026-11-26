@@ -181,7 +181,7 @@ INCLUDE = re.compile(r'^[ \t]*include[ \t]+"?([^"\s]+)"?[ \t]*$', re.I | re.M)
 
 def urc_text(files, urc, depth=0):
     """A urc's text with its include "ui/x.inc" lines replaced by those files (ui/serverback.inc)."""
-    text = read(files[urc]).decode("latin-1")
+    text = read(files[urc]).decode("latin-1").replace("\r\n", "\n").replace("\r", "\n")   # retail urcs are CRLF
     if depth > 4:
         return text
 

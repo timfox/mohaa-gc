@@ -286,7 +286,7 @@ def make_pak(path):
 def make_page_pak(path):
     with zipfile.ZipFile(path, "w") as z:
         z.writestr("ui/options_main.urc", OPTIONS_URC)
-        z.writestr("ui/multiplayerstart.urc", GAMETYPE_URC)
+        z.writestr("ui/multiplayerstart.urc", GAMETYPE_URC.replace("\n", "\r\n"))   # retail urcs are CRLF
         z.writestr("ui/serverback.inc", SERVERBACK)
         z.writestr("scripts/mohmenu.shader", SHADER + PAGE_SHADER)
         z.writestr("textures/mohmenu/options_a.tga", tga((100, 50, 0), (512, 512)))
