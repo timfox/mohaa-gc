@@ -346,6 +346,10 @@ int DodGrunts_ScriptOrder( edict_t *ed, int order, const float pos[3] )
 	case DOD_MOHAA_TETHER: DodGrunt_SetParam( &g_pool, i, DOD_GRUNT_TETHER, 0, pos[0], pos[1] ); break;
 	case DOD_MOHAA_MINDIST: DodGrunt_SetParam( &g_pool, i, DOD_GRUNT_MINDIST, pos[0], 0, 0 ); break;
 	case DOD_MOHAA_MAXDIST: DodGrunt_SetParam( &g_pool, i, DOD_GRUNT_MAXDIST, pos[0], 0, 0 ); break;
+	case DOD_MOHAA_GUN:
+		g_pool.gun[i] = pos[0] < 0.0f ? DOD_GRUNT_GUN_NONE : (unsigned char)( (int)pos[0] > 0 ? (int)pos[0] + 1 : 0 );
+		break;
+	case DOD_MOHAA_ATTACK_STYLE: DodGrunt_SetAttack( &g_pool, i, pos[0] > 0.0f ); break;
 	default: DodGrunt_OrderStop( &g_pool, i ); break;
 	}
 	return 1;
@@ -505,11 +509,22 @@ static void GruntShoot( int i )
 	const Vector aim = pl->pev->origin + pl->pev->view_ofs * 0.5f;
 	const Vector dir = ( aim - from ).Normalize();
 	const float dist = ( aim - from ).Length();
-	const DodWeaponDef *gun = Dod_ClassWeaponDef( (DodTeam)g_pool.team[i], DOD_CLASS_RIFLEMAN );
+	if( g_pool.gun[i] == DOD_GRUNT_GUN_NONE )
+		return;	/* MOHAA "gun none": an unarmed prisoner or friend */
+	const DodWeaponDef *gun = g_pool.gun[i] ? Dod_GetWeaponDef( (DodWeaponId)( g_pool.gun[i] - 1 ) )
+		: Dod_ClassWeaponDef( (DodTeam)g_pool.team[i], DOD_CLASS_RIFLEMAN );
+	if( !gun )
+		gun = Dod_ClassWeaponDef( (DodTeam)g_pool.team[i], DOD_CLASS_RIFLEMAN );
 	if( gun && gun->fire_sound && gun->fire_sound[0] )
 		EMIT_SOUND_DYN( e->edict(), CHAN_WEAPON, gun->fire_sound, 1.0f, ATTN_NORM, 0, 100 );
-	if( !DodGrunt_ShotHits( dist, skill, DodGrunt_Rand( &g_pool ) ) )
-		return;
+	{
+		float roll = DodGrunt_Rand( &g_pool );
+		/* MOHAA's campaign: soldiers miss more, by difficulty (one hit a second killed an idle player) */
+		if( GruntMohaaCampaign() )
+			roll /= DodGrunt_CampaignHitScale( (int)CVAR_GET_FLOAT( "skill" ) );
+		if( !DodGrunt_ShotHits( dist, skill, roll ) )
+			return;
+	}
 	TraceResult tr;
 	UTIL_TraceLine( from, aim + dir * 8.0f, dont_ignore_monsters, e->edict(), &tr );
 	if( tr.pHit != pl->edict() ) {

@@ -5,6 +5,7 @@
 #include "dod_mohaa_paths.h"
 #include "dod_mohaa_pool.h"
 #include "dod_mohaa_tags.h"
+#include "dod_weapons.h"
 
 static MohaaPool g_pool;  /* used when the backend gives a region (DodMohaaBackend.pool) */
 
@@ -582,6 +583,8 @@ static int h_get_field(void *user, const ms_value *l, const char *name, ms_value
 	return 0;
 }
 
+static int mohaa_gun_id(const char *name);
+
 static int h_set_field(void *user, const ms_value *l, const char *name, const ms_value *val)
 {
 	float v[3];
@@ -596,6 +599,12 @@ static int h_set_field(void *user, const ms_value *l, const char *name, const ms
 	if (!strcmp(name, "angles") && val->type == MS_VECTOR) {
 		S.be.set_vec(l->u.id, DOD_MOHAA_ANGLES, val->u.v);
 		return 1;
+	}
+	if (!strcmp(name, "weapon") && val->type == MS_STRING && S.be.actor) {
+		float pos[3] = {0, 0, 0};
+		pos[0] = (float)mohaa_gun_id(ms_string_text(val));
+		if (S.be.actor(l->u.id, DOD_MOHAA_GUN, pos))
+			return 1;
 	}
 	if (!strcmp(name, "health")) {
 		S.be.set_health(l->u.id, ms_to_float(val));
@@ -1012,6 +1021,66 @@ static int c_fov(ms_call *c) { return actor_setting(c, DOD_MOHAA_FOV, 0); }
 static int c_leash(ms_call *c) { return actor_setting(c, DOD_MOHAA_LEASH, 1); }
 static int c_mindist(ms_call *c) { return actor_setting(c, DOD_MOHAA_MINDIST, 1); }
 static int c_maxdist(ms_call *c) { return actor_setting(c, DOD_MOHAA_MAXDIST, 1); }
+/* a MOHAA weapon name ("gun", ".weapon") to the DoD weapon a grunt fires: DodWeaponId, 0 its side's rifle (a name
+   the port has no gun for), -1 none */
+static int mohaa_gun_id(const char *name)
+{
+	static const struct { const char *name; int id; } guns[] = {
+		{"mauser kar 98k", DOD_WEAPON_K98}, {"kar98", DOD_WEAPON_K98}, {"kar98k", DOD_WEAPON_K98},
+		{"kar98 - sniper", DOD_WEAPON_K98_SCOPED}, {"mauser kar 98d sniper", DOD_WEAPON_K98_SCOPED},
+		{"mp40", DOD_WEAPON_MP40}, {"stg 44", DOD_WEAPON_STG44}, {"stg44", DOD_WEAPON_STG44},
+		{"m1 garand", DOD_WEAPON_GARAND}, {"thompson", DOD_WEAPON_THOMPSON}, {"thompson smg", DOD_WEAPON_THOMPSON},
+		{"bar", DOD_WEAPON_BAR}, {"springfield '03 sniper", DOD_WEAPON_SPRINGFIELD},
+		{"colt 45", DOD_WEAPON_COLT}, {"walther p38", DOD_WEAPON_LUGER}, {"high standard", DOD_WEAPON_COLT},
+		{"panzerschrek", DOD_WEAPON_PSCHRECK}, {"panzerschreck", DOD_WEAPON_PSCHRECK},
+		{"bazooka", DOD_WEAPON_BAZOOKA}, {"mg42", DOD_WEAPON_MG42},
+	};
+	char low[48];
+	size_t i, n;
+	if (!name || !*name)
+		return 0;
+	for (n = 0; name[n] && n + 1 < sizeof(low); n++)
+		low[n] = (char)(name[n] >= 'A' && name[n] <= 'Z' ? name[n] - 'A' + 'a' : name[n]);
+	low[n] = 0;
+	if (!strcmp(low, "none"))
+		return -1;
+	for (i = 0; i < sizeof(guns) / sizeof(guns[0]); i++)
+		if (!strcmp(low, guns[i].name))
+			return guns[i].id;
+	return 0;
+}
+
+/* "$actor gun "MP40"": the soldier fires that weapon ("none": unarmed) */
+static int c_gun(ms_call *c)
+{
+	float pos[3] = {0, 0, 0};
+	pos[0] = (float)mohaa_gun_id(ms_arg_string(c, 0));
+	return actor_order(c, DOD_MOHAA_GUN, pos);
+}
+
+/* "$actor type_attack cover|turret|alarm|runandshoot|...": runandshoot charges, the rest fight from cover (turret and
+   alarm behaviours are not in the port yet: they fight from cover) */
+static int c_type_attack(ms_call *c)
+{
+	float pos[3] = {0, 0, 0};
+	const char *style = ms_arg_string(c, 0);
+	pos[0] = style && (!strcmp(style, "runandshoot") || !strcmp(style, "runandshoot_attack")) ? 1.0f : 0.0f;
+	return actor_order(c, DOD_MOHAA_ATTACK_STYLE, pos);
+}
+
+/* "startfiring" / "stopfiring": an actor opens fire at what it sees / stops pressing; a turret (no turret
+   entities in the port) ignores them */
+static int c_firing(ms_call *c)
+{
+	float pos[3] = {0, 0, 0};
+	const uint32_t id = target_id(c);
+	if (!S.be.actor || !valid(id) || is_node(id))
+		return 0;
+	pos[0] = ms_call_name(c)[2] == 'a' ? 1.0f : 0.0f;	/* stArtfiring / stOpfiring */
+	S.be.actor(id, DOD_MOHAA_ATTACK_STYLE, pos);
+	return 0;
+}
+
 /* "fixedleash 1": the leash stays where it was set (as it already does here) */
 static int c_fixedleash(ms_call *c) { (void)c; return 0; }
 static int c_tether(ms_call *c)
@@ -2452,6 +2521,10 @@ static void register_commands(ms_vm *vm)
 		{"tether", MS_ON_ENTITY, c_tether},
 		{"mindist", MS_ON_ENTITY, c_mindist},
 		{"maxdist", MS_ON_ENTITY, c_maxdist},
+		{"gun", MS_ON_ENTITY, c_gun},
+		{"type_attack", MS_ON_ENTITY, c_type_attack},
+		{"startfiring", MS_ON_ENTITY, c_firing},
+		{"stopfiring", MS_ON_ENTITY, c_firing},
 		{"runto", MS_ON_ENTITY, c_goto},
 		{"walkto", MS_ON_ENTITY, c_goto},
 		{"turnto", MS_ON_ENTITY, c_turnto},

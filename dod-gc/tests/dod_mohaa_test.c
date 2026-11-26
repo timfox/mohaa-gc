@@ -172,7 +172,7 @@ static void m_fade(float t, float r, float g, float b, float a, int out)
 static int m_actor(uint32_t id, int order, const float pos[3])
 {
 	static const char *names[] = {"ai_on", "ai_off", "attack", "walkto", "runto", "turnto", "stop",
-		"sight", "hearing", "fov", "leash", "tether", "mindist", "maxdist"};
+		"sight", "hearing", "fov", "leash", "tether", "mindist", "maxdist", "gun", "style"};
 	char line[96];
 	Ent *e = ent(id);
 	if (!e || strcmp(e->classname, "actor"))
@@ -362,6 +362,37 @@ static void test_cover_spot(void)
 	assert(Dod_MohaaCoverSpot(2, from, enemy, out) && out[0] == 300.0f);	/* the first is taken */
 	assert(Dod_MohaaCoverSpot(1, from, enemy, out) && out[0] == 150.0f);	/* its own claim is still its */
 	assert(!Dod_MohaaCoverSpot(3, from, enemy, out));
+}
+
+/* gun names map to DoD weapons (none: unarmed), type_attack runandshoot charges, startfiring/stopfiring flip it,
+   and ".weapon =" picks the gun too */
+static void test_actor_weapons(void)
+{
+	DodMohaaBackend b = backend();
+	reset();
+	add("guy", "actor", 0, 0, 0);
+	add("mg", "func_wall", 0, 0, 0);
+	files[0][0] = "maps/w.scr";
+	files[0][1] =
+		"main:\n"
+		"\t$guy gun \"MP40\"\n"
+		"\t$guy gun \"none\"\n"
+		"\t$guy gun \"Flamethrower\"\n"
+		"\t$guy.weapon = \"Mauser KAR 98K\"\n"
+		"\t$guy type_attack \"runandshoot\"\n"
+		"\t$guy type_attack \"turret\"\n"
+		"\t$guy startFiring\n"
+		"\t$guy stopfiring\n"
+		"\t$mg startfiring\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "w", 0, 0));
+	run(0.05f, 0.2f);
+	assert(strstr(log_buf, "<guy gun 10.0"));	/* DOD_WEAPON_MP40 */
+	assert(strstr(log_buf, "<guy gun -1.0"));
+	assert(strstr(log_buf, "<guy gun 0.0"));
+	assert(strstr(log_buf, "<guy gun 8.0"));	/* DOD_WEAPON_K98 */
+	assert(strstr(log_buf, "<guy style 1.0") && strstr(log_buf, "<guy style 0.0"));
+	assert(!strstr(log_buf, "not bound yet") && !strstr(log_buf, "not an actor"));
 }
 
 static void test_level_flow_and_movers(void)
@@ -1198,6 +1229,7 @@ int main(void)
 	RUN(test_bound_keys_and_loc_strings);
 	RUN(test_actor_settings);
 	RUN(test_cover_spot);
+	RUN(test_actor_weapons);
 	RUN(test_level_flow_and_movers);
 	RUN(test_waittill_trigger_and_freed);
 	RUN(test_budget_refuses_cleanly);
