@@ -338,6 +338,32 @@ static void test_actor_settings(void)
 	assert(!strstr(log_buf, "not bound yet"));
 }
 
+/* cover: the nearest free node flagged cover/duck/crate/concealment that keeps a fighting distance from the enemy,
+   one soldier per node */
+static void test_cover_spot(void)
+{
+	DodMohaaBackend b = backend();
+	float from[3] = {0, 0, 0}, enemy[3] = {1000, 0, 0}, out[3];
+	b.walkable = NULL;
+	reset();
+	files[1][0] = "maps/c.nodes";
+	files[1][1] = "# x y z grav spawnflags targetname\n"
+		"100 0 0 0 0 -\n"		/* plain node: no cover */
+		"150 40 0 0 4 -\n"		/* cover, nearest */
+		"300 -60 0 0 32 -\n"		/* crate */
+		"900 0 0 0 4 -\n"		/* cover, but on top of the enemy */
+		"-700 0 0 0 4 -\n"		/* cover, too far back */
+		"120 0 300 0 4 -\n";		/* cover, a floor up */
+	files[0][0] = "maps/c.scr";
+	files[0][1] = "main:\nend\n";
+	assert(Dod_MohaaLevelInit(&b, "c", 0, 0));
+	run(0.05f, 0.1f);
+	assert(Dod_MohaaCoverSpot(1, from, enemy, out) && out[0] == 150.0f && out[1] == 40.0f);
+	assert(Dod_MohaaCoverSpot(2, from, enemy, out) && out[0] == 300.0f);	/* the first is taken */
+	assert(Dod_MohaaCoverSpot(1, from, enemy, out) && out[0] == 150.0f);	/* its own claim is still its */
+	assert(!Dod_MohaaCoverSpot(3, from, enemy, out));
+}
+
 static void test_level_flow_and_movers(void)
 {
 	DodMohaaBackend b = backend();
@@ -1171,6 +1197,7 @@ int main(void)
 	RUN(test_no_script_no_vm);
 	RUN(test_bound_keys_and_loc_strings);
 	RUN(test_actor_settings);
+	RUN(test_cover_spot);
 	RUN(test_level_flow_and_movers);
 	RUN(test_waittill_trigger_and_freed);
 	RUN(test_budget_refuses_cleanly);
