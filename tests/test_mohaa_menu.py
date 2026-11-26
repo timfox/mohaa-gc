@@ -142,6 +142,117 @@ menu_button_trans
 }
 """
 
+# A made-up options desk and game type page in the retail shape: a glow button added at a constant
+# alpha, a plain hover image, a sign label and Back; the game type page pulls its picture from an include.
+OPTIONS_URC = """menu "options_main" 640 480 NONE 0
+resource
+Label
+{
+rect 0 0 512 512
+shader "desk_a"
+}
+resource
+Label
+{
+rect 480 0 256 512
+shader "desk_a"
+}
+resource
+Button
+{
+name "video button"
+rect 400 300 100 50
+shader "menu_button_trans"
+hovershader "menu_button_glow"
+stuffcommand "pushmenu video_options"
+hovercommand "set ui_optionshader video_sign"
+}
+resource
+Button
+{
+name "advanced options"
+rect 200 40 100 50
+shader "menu_button_trans"
+hovershader "textures/mohmenu/options_h"
+stuffcommand "pushmenu advancedoptions"
+}
+resource
+Label
+{
+rect 98 52 128 32
+linkcvar "ui_optionshader"
+linkcvartoshader
+}
+resource
+Button
+{
+name "back"
+rect 8 448 96 24
+shader "textures/mohmenu/back"
+hovershader "textures/mohmenu/back_h"
+stuffcommand "popmenu 0"
+}
+"""
+
+GAMETYPE_URC = """menu "multiplayerstart" 640 479 NONE 0
+include "ui/serverback.inc"
+resource
+Button
+{
+name "Team-Match"
+rect 192 192 256 64
+shader "menu_button_trans"
+hovershader "textures/mohmenu/options_h"
+stuffcommand "set ui_dmmap dm/mohdm1;pushmenu multiplayerstart_team"
+}
+resource
+Button
+{
+name "Free-For-All"
+rect 192 112 256 64
+shader "menu_button_trans"
+hovershader "textures/mohmenu/options_h"
+stuffcommand "set ui_dmmap dm/mohdm1;pushmenu multiplayerstart_ffa"
+}
+"""
+
+SERVERBACK = """resource Label { name "Default" rect 0 0 512 512 fgcolor 0.00 0.00 0.00 1.00 shader "serverback_a" }
+resource
+Label
+{
+rect 384 0 256 512
+shader "serverback_a"
+}
+"""
+
+PAGE_SHADER = """desk_a
+{
+	{
+	clampMap textures/mohmenu/options_a.tga
+	}
+}
+serverback_a
+{
+	{
+	clampMap textures/mohmenu/serverback_a.tga
+	}
+}
+video_sign
+{
+	{
+	clampMap textures/mohmenu/video_sign.tga
+	}
+}
+menu_button_glow
+{
+	{
+		map $whiteimage
+		blendfunc alphaadd
+		alphagen constant 0.2
+	}
+}
+"""
+
 RED, BLUE, GREEN, WHITE = (200, 0, 0), (0, 0, 200), (0, 200, 0), (255, 255, 255)
 
 
@@ -170,6 +281,20 @@ def make_pak(path):
             w.writeframes(bytes(4 * 441))
         z.writestr("sound/menu/back.wav", b.getvalue())
         z.writestr("textures/mohmenu/voodoo/main_a.tga", tga(WHITE, (256, 256)))
+
+
+def make_page_pak(path):
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr("ui/options_main.urc", OPTIONS_URC)
+        z.writestr("ui/multiplayerstart.urc", GAMETYPE_URC.replace("\n", "\r\n"))   # retail urcs are CRLF
+        z.writestr("ui/serverback.inc", SERVERBACK)
+        z.writestr("scripts/mohmenu.shader", SHADER + PAGE_SHADER)
+        z.writestr("textures/mohmenu/options_a.tga", tga((100, 50, 0), (512, 512)))
+        z.writestr("textures/mohmenu/serverback_a.tga", tga(BLUE, (512, 512)))
+        z.writestr("textures/mohmenu/options_h.tga", tga(WHITE, (128, 128)))
+        z.writestr("textures/mohmenu/video_sign.tga", tga(GREEN, (128, 32)))
+        z.writestr("textures/mohmenu/back.tga", tga(RED, (128, 32)))
+        z.writestr("textures/mohmenu/back_h.tga", tga(GREEN, (128, 32)))
 
 
 @unittest.skipIf(np is None, "needs Pillow and numpy")
@@ -283,6 +408,56 @@ class MenuTest(unittest.TestCase):
             self.assertTrue(os.path.isfile(os.path.join(sd, "xash3d", "mohaa", "resource", "gc_menu", "bg_1_1.cmp")))
             self.assertTrue(os.path.isfile(os.path.join(sd, "xash3d", "mohaa", "resource", "gc_menu", "mohaa_main.txt")))
             self.assertIn("== menu: 18 files", log.getvalue())
+
+    def test_options_page(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            make_page_pak(os.path.join(tmp, "pak1.pk3"))
+            menu = mohaa_menu.page_menu([tmp], "options")
+            self.assertEqual(menu["sheet"].size, (640, 480))     # "640 480" is the size, not inclusive extents
+            self.assertEqual(menu["sheet"].getpixel((10, 10)), (100, 50, 0))
+            self.assertEqual(menu["sign"], (98, 52, 128, 32))
+            # top to bottom: advanced, then video; Back is a picture button
+            self.assertEqual([(a, r) for a, r, _, _ in menu["spots"]],
+                             [("advanced", (200, 40, 100, 50)), ("video", (400, 300, 100, 50))])
+            glow = menu["spots"][1][2].getpixel((5, 5))           # white added at 0.2 over (100, 50, 0)
+            self.assertEqual(glow, (151, 101, 51))
+            self.assertEqual(menu["spots"][0][2].getpixel((5, 5)), WHITE)   # plain hover art drawn over
+            self.assertEqual(menu["spots"][1][3].getpixel((5, 5)), GREEN)
+            self.assertIsNone(menu["spots"][0][3])
+            self.assertEqual([(a, r) for a, r, _, _ in menu["buttons"]], [("back", (8, 448, 96, 24))])
+            out = os.path.join(tmp, "out")
+            written = mohaa_menu.write_page(menu, out, "options")
+            for p in written:
+                self.assertTrue(os.path.isfile(p), p)
+            gc = os.path.join(out, "resource", "gc_menu")
+            with open(os.path.join(gc, "mohaa_options.txt")) as f:
+                lines = [l.split() for l in f if not l.startswith("//")]
+            self.assertEqual(lines[:3], [
+                ["screen", "640", "480"],
+                ["background"] + ["resource/gc_menu/bg_options_%d_%d.tga" % (r, c) for r in range(2) for c in range(2)],
+                ["sign", "98", "52", "128", "32"]])
+            self.assertEqual(lines[3][:6], ["spot", "advanced", "200", "40", "100", "50"])
+            self.assertEqual(lines[-1], ["button", "back", "8", "448", "96", "24",
+                                         "resource/gc_menu/mohaa/options/back.tga",
+                                         "resource/gc_menu/mohaa/options/back_h.tga"])
+            with open(os.path.join(gc, "bg_options_1_1.cmp"), "rb") as f:
+                data = f.read()
+            self.assertEqual((data[:4], len(data)), (b"GCMP", 32 + 320 * 240 // 2))
+            self.assertEqual(Image.open(os.path.join(gc, "bg_options_0_0.tga")).size, (64, 48))
+
+    def test_gametype_page_reads_its_include(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            make_page_pak(os.path.join(tmp, "pak1.pk3"))
+            menu = mohaa_menu.page_menu([tmp], "gametype")
+            self.assertEqual(menu["sheet"].getpixel((300, 20)), BLUE)   # serverback.inc's picture
+            self.assertEqual(menu["sheet"].getpixel((100, 400)), BLUE)  # its one-line resource too
+            self.assertEqual([a for a, _, _, _ in menu["spots"]], ["ffa", "team"])
+            self.assertEqual(menu["buttons"], [])
+
+    def test_no_page(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            make_pak(os.path.join(tmp, "pak0.pk3"))
+            self.assertIsNone(mohaa_menu.page_menu([tmp], "options"))
 
 
 if __name__ == "__main__":
