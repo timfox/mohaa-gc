@@ -51,6 +51,7 @@ enum {
 };
 enum { DOD_GRUNT_ORDER_NONE = 0, DOD_GRUNT_ORDER_WALK, DOD_GRUNT_ORDER_RUN };
 #define DOD_GRUNT_ARRIVE 32.0f		/* a move order is done this near its point */
+#define DOD_GRUNT_ORDER_STALL 4.0f	/* a move order that gets no nearer for this long arrives anyway */
 
 typedef struct DodGruntStats {
 	unsigned looks;		/* line-of-sight traces */
@@ -85,6 +86,8 @@ typedef struct DodGruntPool {
 	unsigned char order[DOD_GRUNT_MAX];	/* DOD_GRUNT_ORDER_* */
 	unsigned char order_done[DOD_GRUNT_MAX];	/* set on arrival, cleared by DodGrunt_TakeOrderDone */
 	float order_x[DOD_GRUNT_MAX], order_y[DOD_GRUNT_MAX];
+	float order_best[DOD_GRUNT_MAX];	/* nearest it has come to the order point */
+	float order_stall_at[DOD_GRUNT_MAX];	/* when a stalled order gives up and arrives; < 0 not started */
 	unsigned rng;
 	int look_cursor;	/* where the look scheduler resumes, so no slot is starved */
 	DodGruntStats stats;

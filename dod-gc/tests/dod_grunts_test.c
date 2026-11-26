@@ -202,6 +202,19 @@ static void test_script_actor(void)
 	assert(fabsf(p.x[i] - 400.0f) <= DOD_GRUNT_ARRIVE + 0.01f);
 	assert(p.state[i] == DOD_GRUNT_HOLD);
 	assert(DodGrunt_TakeOrderDone(&p, i) == 1 && DodGrunt_TakeOrderDone(&p, i) == 0);
+	/* a walk the world blocks gives up after DOD_GRUNT_ORDER_STALL s and arrives at its point */
+	DodGrunt_OrderMove(&p, i, p.x[i] + 300.0f, p.y[i], 0);
+	{
+		const float goal = p.order_x[i];
+		for (f = 0; f < 200 && !p.order_done[i]; f++, now += 0.05f) {
+			p.blocked[i] = 1;	/* every collision check stops it */
+			DodGrunt_Move(&p, i, now, 0.05f);
+		}
+		assert(p.order_done[i] && f >= 75 && f <= 85);	/* about 4 s */
+		assert(p.x[i] == goal && p.state[i] == DOD_GRUNT_HOLD);
+		p.blocked[i] = 0;
+		assert(DodGrunt_TakeOrderDone(&p, i) == 1);
+	}
 	/* turnto */
 	DodGrunt_Face(&p, i, p.x[i], p.y[i] - 100.0f);
 	for (f = 0; f < 20; f++)
