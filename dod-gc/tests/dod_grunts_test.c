@@ -274,6 +274,15 @@ static void test_actor_settings(void)
 	DodGrunt_SetParam(&p, i, DOD_GRUNT_FOV, 90, 0, 0);
 	assert(DodGrunt_SightRange(&p, i) == 900.0f && DodGrunt_HearingRange(&p, i) == 300.0f);
 	assert(fabsf(DodGrunt_FovCos(&p, i) - 0.7071f) < 0.01f);
+	/* a patrol walk (soft order) ends when an enemy comes into sight; a script order does not */
+	DodGrunt_SpawnScripted(&p, i, DOD_TEAM_AXIS, 0, 0, 0, 0, now);
+	DodGrunt_OrderMove(&p, i, 500, 0, 0);
+	p.script[i] |= DOD_GRUNT_SOFT_ORDER;
+	DodGrunt_Looked(&p, i, now, 1, 2, 400, 0, 400, 0);
+	assert(p.order[i] == DOD_GRUNT_ORDER_NONE && p.target[i] == 2);
+	DodGrunt_OrderMove(&p, i, 500, 0, 0);
+	DodGrunt_Looked(&p, i, now, 1, 2, 400, 0, 400, 0);
+	assert(p.order[i] != DOD_GRUNT_ORDER_NONE && p.target[i] == 0);
 	/* a fresh spawn forgets them */
 	DodGrunt_SpawnScripted(&p, i, DOD_TEAM_AXIS, 0, 0, 0, 0, now);
 	assert(DodGrunt_SightRange(&p, i) == DOD_GRUNT_SIGHT && !p.leash_r[i] && !p.maxdist[i]);

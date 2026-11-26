@@ -45,7 +45,9 @@ enum {
 	/* pos[0]: DodWeaponId of the MOHAA weapon ("gun"), 0 its side's rifle, -1 unarmed */
 	DOD_MOHAA_GUN,
 	/* pos[0]: 1 charges (type_attack runandshoot, startfiring), 0 fights from cover (cover, turret, ...) */
-	DOD_MOHAA_ATTACK_STYLE
+	DOD_MOHAA_ATTACK_STYLE,
+	/* a patrol walk to pos: like WALKTO, but an enemy in sight ends it */
+	DOD_MOHAA_PATROLTO
 };
 /* HUD parts a cutscene hides: ALL is MOHAA's "drawhud 0"; WEAPON (crosshair, ammo, view model) goes while the
    player is locked into a scripted ride. */
@@ -167,6 +169,9 @@ void Dod_MohaaNotify(uint32_t id, const char *event);
 /* Cover for a MOHAA soldier (a path node flagged cover, duck, crate or concealment): fills out and returns 1, else 0.
    key names the soldier, so two soldiers do not pick the same node. Coordinates in GoldSrc units. */
 int Dod_MohaaCoverSpot(int key, const float from[3], const float enemy[3], float out[3]);
+/* A MOHAA soldier saw an enemy for the first time: its patrol ends, its alarmthread runs and it heads for its
+   alarmnode (type_idle, patrolpath, alarmnode, alarmthread). */
+void Dod_MohaaActorAlerted(uint32_t id);
 void Dod_MohaaEntityFreed(uint32_t id);
 /* A trigger with MOHAA's setthread fired: run that label of the level script with self = the trigger. */
 void Dod_MohaaRunThread(const char *label, uint32_t self);

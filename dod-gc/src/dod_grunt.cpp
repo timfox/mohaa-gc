@@ -350,6 +350,11 @@ int DodGrunts_ScriptOrder( edict_t *ed, int order, const float pos[3] )
 		g_pool.gun[i] = pos[0] < 0.0f ? DOD_GRUNT_GUN_NONE : (unsigned char)( (int)pos[0] > 0 ? (int)pos[0] + 1 : 0 );
 		break;
 	case DOD_MOHAA_ATTACK_STYLE: DodGrunt_SetAttack( &g_pool, i, pos[0] > 0.0f ); break;
+	case DOD_MOHAA_PATROLTO:
+		g_pool.cover[i] = DOD_GRUNT_COVER_NONE;
+		DodGrunt_OrderMove( &g_pool, i, pos[0], pos[1], 0 );
+		g_pool.script[i] |= DOD_GRUNT_SOFT_ORDER;
+		break;
 	default: DodGrunt_OrderStop( &g_pool, i ); break;
 	}
 	return 1;
@@ -633,8 +638,13 @@ void DodGrunts_Think( void )
 	int due[DOD_GRUNT_SENSE_BUDGET];
 	const int n = DodGrunt_DueLooks( &g_pool, now, DOD_GRUNT_SENSE_BUDGET, due );
 	for( int k = 0; k < n; k++ )
-		if( GruntLive( due[k] ) )
+		if( GruntLive( due[k] ) ) {
+			const int had = g_pool.target[due[k]];
 			GruntLook( due[k], rush );
+			/* a mission soldier's first sight of an enemy: its patrol ends, its alarm goes (MOHAA alarmthread) */
+			if( !had && g_pool.target[due[k]] && g_pool.script[due[k]] )
+				DodGC_MohaaActorAlerted( g_ents[due[k]]->edict() );
+		}
 	for( int i = 0; i < DOD_GRUNT_MAX; i++ ) {
 		if( !GruntLive( i ) || g_pool.state[i] == DOD_GRUNT_FREE )
 			continue;
