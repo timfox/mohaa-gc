@@ -2,6 +2,49 @@
 
 This is a running list, updated with each PR. Each entry says what retail does that the port doesn't yet, and where it shows. Newest changes are at the top of each section.
 
+## Campaign status (sweep of 2026-11-26)
+
+Every retail mission was converted with `tools/mohaa_sd.py` (stages scripts, tags, scriptmodels, maps, worlddl, props, sounds, loading) from main f4daf3c, put on a smoke disc (`build-gamecube-disc.py --probe-menu-newgame --world-render`, `XASH_GC_PROBE_STARTMAP=<map>`), and booted headless in Dolphin for 130 s (MAP_READY plus about 60 to 100 s). Script errors and unbound commands are counted over the whole run. The heap column is the lowest `heap_free` the engine logged during the load and after MAP_READY. Stills are in `media/2026-11-26-campaign-sweep/`.
+
+**29 of 34 maps boot.** m5l3, m6l1c, m6l2a, m6l3a and m6l3c run out of MEM1 while loading the world: m6l1c, m6l2a, m6l3a and m6l3c have more than the 16384 hull-0 nodes the engine's static reserve holds (16796 to 19127), so hull 0 falls back to the heap (131 to 149 KB, not there); m5l3's 50647 clipnodes (396 KB) fail to reload from disc.
+
+| Map | Boots to MAP_READY | Script errors | Unbound commands | Lowest free heap: load / after MAP_READY | Host error | Still |
+|---|---|---|---|---|---|---|
+| m1l1 | yes | 0 |  | 8.4 / 455.7 KB |  | [still](../media/2026-11-26-campaign-sweep/m1l1.jpg) |
+| m1l2a | yes | 46 | `type_grenade` | 8.6 / 266.9 KB |  | [still](../media/2026-11-26-campaign-sweep/m1l2a.jpg) |
+| m1l2b | yes | 44 | `type_grenade` | 8.6 / 274.7 KB |  | [still](../media/2026-11-26-campaign-sweep/m1l2b.jpg) |
+| m1l3a | yes | 1 | `vehicleanim`, `perferredweapon` | 8.7 / 462.4 KB |  | [still](../media/2026-11-26-campaign-sweep/m1l3a.jpg) |
+| m1l3b | yes | 63 | `vehicleanim`, `perferredweapon`, `setsize` | 8.7 / 201.8 KB |  | [still](../media/2026-11-26-campaign-sweep/m1l3b.jpg) |
+| m1l3c | yes | 3 |  | 8.7 / 166.4 KB |  | [still](../media/2026-11-26-campaign-sweep/m1l3c.jpg) |
+| m2l1 | yes | 0 |  | 8.7 / 35.7 KB |  | [still](../media/2026-11-26-campaign-sweep/m2l1.jpg) |
+| m2l2a | yes | 35 |  | 8.7 / 352.9 KB |  | [still](../media/2026-11-26-campaign-sweep/m2l2a.jpg) |
+| m2l2b | yes | 2 | `noticescale` | 8.7 / 313.5 KB |  | [still](../media/2026-11-26-campaign-sweep/m2l2b.jpg) |
+| m2l2c | yes | 4 | `doactivate` | 8.7 / 461.1 KB |  | [still](../media/2026-11-26-campaign-sweep/m2l2c.jpg) |
+| m2l3 | yes | 21 | `speed` | 8.7 / 164.8 KB |  | [still](../media/2026-11-26-campaign-sweep/m2l3.jpg) |
+| m3l1a | yes | 80 | `bulletspread`, `showmenu`, `hidemouse`, `hidemenu` | 8.7 / 301.8 KB |  | [still](../media/2026-11-26-campaign-sweep/m3l1a.jpg) |
+| m3l1b | yes | 0 | `bulletspread`, `earthquake` | 8.7 / 299.4 KB |  | [still](../media/2026-11-26-campaign-sweep/m3l1b.jpg) |
+| m3l2 | yes | 100 |  | 8.7 / 155.7 KB |  | [still](../media/2026-11-26-campaign-sweep/m3l2.jpg) |
+| m3l3 | yes | 0 |  | 8.7 / 278.3 KB |  | [still](../media/2026-11-26-campaign-sweep/m3l3.jpg) |
+| m4l0 | yes | 0 |  | 8.7 / 463.5 KB |  | [still](../media/2026-11-26-campaign-sweep/m4l0.jpg) |
+| m4l1 | yes | 3 | `type_grenade`, `turret` | 8.7 / 451.6 KB |  | [still](../media/2026-11-26-campaign-sweep/m4l1.jpg) |
+| m4l2 | yes | 43 | `nextdrive`, `type_grenade` | 8.7 / 29.9 KB |  | [still](../media/2026-11-26-campaign-sweep/m4l2.jpg) |
+| m4l3 | yes | 53 | `type_grenade`, `earthquake`, `sighttrace` | 8.7 / 264.7 KB |  | [still](../media/2026-11-26-campaign-sweep/m4l3.jpg) |
+| m5l1a | yes | 98 | `cache` | 8.7 / 171.2 KB |  | [still](../media/2026-11-26-campaign-sweep/m5l1a.jpg) |
+| m5l1b | yes | 100 | `noticescale`, `ammo_grenade` | 8.7 / 307.9 KB |  | [still](../media/2026-11-26-campaign-sweep/m5l1b.jpg) |
+| m5l2a | yes | 0 |  | 8.7 / 47.2 KB |  | [still](../media/2026-11-26-campaign-sweep/m5l2a.jpg) |
+| m5l2b | yes | 0 |  | 8.7 / 32.3 KB |  | [still](../media/2026-11-26-campaign-sweep/m5l2b.jpg) |
+| m5l3 | **no**: out of memory | 0 |  | ? | _Mem_Alloc 395.68 KB (clipnodes reload, mod_bmodel.c:10818) | [still](../media/2026-11-26-campaign-sweep/m5l3.jpg) |
+| m6l1a | yes | 0 |  | 8.7 / 465.4 KB |  | [still](../media/2026-11-26-campaign-sweep/m6l1a.jpg) |
+| m6l1b | yes | 0 |  | 8.7 / 466.0 KB |  | [still](../media/2026-11-26-campaign-sweep/m6l1b.jpg) |
+| m6l1c | **no**: out of memory | 0 |  | ? | _Mem_Alloc 133.52 KB (hull 0, 17090 nodes) | [still](../media/2026-11-26-campaign-sweep/m6l1c.jpg) |
+| m6l2a | **no**: out of memory | 0 |  | ? | _Mem_Alloc 149.43 KB (hull 0, 19127 nodes) | [still](../media/2026-11-26-campaign-sweep/m6l2a.jpg) |
+| m6l2b | yes | 13 | `type_grenade` | 8.7 / 31.7 KB |  | [still](../media/2026-11-26-campaign-sweep/m6l2b.jpg) |
+| m6l3a | **no**: out of memory | 0 |  | ? | _Mem_Alloc 132.04 KB (hull 0, 16901 nodes) | [still](../media/2026-11-26-campaign-sweep/m6l3a.jpg) |
+| m6l3b | yes | 0 |  | 8.7 / 328.5 KB |  | [still](../media/2026-11-26-campaign-sweep/m6l3b.jpg) |
+| m6l3c | **no**: out of memory | 0 |  | ? | _Mem_Alloc 131.22 KB (hull 0, 16796 nodes) | [still](../media/2026-11-26-campaign-sweep/m6l3c.jpg) |
+| m6l3d | yes | 6 | `stopsound`, `stopwatch`, `bsptransition`, `targetname` | 8.7 / 438.5 KB |  | [still](../media/2026-11-26-campaign-sweep/m6l3d.jpg) |
+| m6l3e | yes | 42 | `volumedamage`, `earthquake`, `istouching` | 8.7 / 453.5 KB |  | [still](../media/2026-11-26-campaign-sweep/m6l3e.jpg) |
+
 ## Missions and scripts
 - **The campaign player can walk** (2026-11-26, xash3d-gc claude/mohaa-probe-sticks). The HL1 intro-tram code had pinned the player to m1l2a's *12 brush, and single-slot world-render boots skipped server PM_Move. The player's maxspeed is also set to 220 when nothing else has set it.
 - **m1l2a door hint: verified on screen.** In Dolphin, USE reaches `door_locked` (80 units away), the trigger fires, the retail locked-door rattle plays, and the hint thread's `iprintlnbold` draws "Press USE to open doors. If you cannot open the door, you will be able to hear the handle rattle." under the compass for 5 s, wrapped to two lines (`media/2026-11-26-m1l2a-walk-use/m1l2a-hint-1.jpg`, `-2.jpg`).
