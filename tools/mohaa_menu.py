@@ -69,7 +69,9 @@ def parse_urc(text):
             continue
         if cur is None:
             if t[0].lower() == "menu" and len(t) >= 4:
-                width, height = int(t[2]) + 1, int(t[3]) + 1   # "menu main 639 479": inclusive extents
+                # "menu main 639 479" gives inclusive extents, "menu options_main 640 480" the size
+                width, height = int(t[2]), int(t[3])
+                width, height = width + width % 2, height + height % 2
             elif t[0].lower() == "resource":
                 pending, rtype = True, None
             elif pending and t[0] != "{":
@@ -147,14 +149,29 @@ def room_pieces(items):
     return pieces
 
 
+INCLUDE = re.compile(r'^[ \t]*include[ \t]+"?([^"\s]+)"?[ \t]*$', re.I | re.M)
+
+
+def urc_text(files, urc, depth=0):
+    """A urc's text with its include "ui/x.inc" lines replaced by those files (ui/serverback.inc)."""
+    text = read(files[urc]).decode("latin-1")
+    if depth > 4:
+        return text
+
+    def inc(m):
+        name = m.group(1).lower().replace("\\", "/")
+        return urc_text(files, name, depth + 1) if name in files else ""
+    return INCLUDE.sub(inc, strip_comments(text))
+
+
 def compose(inputs, urc=URC):
     """The MOHAA main menu room as a 640x480 RGB PIL image, or None when the paks have no menu."""
     from PIL import Image
 
-    files = collect(inputs, (".urc", ".shader") + IMAGE_EXTS)
+    files = collect(inputs, (".urc", ".inc", ".shader") + IMAGE_EXTS)
     if urc not in files:
         return None
-    width, height, items = parse_urc(read(files[urc]).decode("latin-1"))
+    width, height, items = parse_urc(urc_text(files, urc))
     shaders = {}
     for path in sorted(p for p in files if p.startswith("scripts/") and p.endswith(".shader")):
         for k, v in parse_shaders(read(files[path]).decode("latin-1")).items():
@@ -310,6 +327,217 @@ def write_room_menu(menu, game_root):
     return written
 
 
+# The retail pages after the war room that mainui draws as retail does (menus/MohaaPage.cpp): the urc
+# whose picture is the page, and what each button does there, by its stuffcommand.
+PAGES = {
+    "options": ("ui/options_main.urc", (
+        (re.compile(r"pushmenu\s+advancedoptions", re.I), "advanced"),
+        (re.compile(r"pushmenu\s+audio_options", re.I), "audio"),
+        (re.compile(r"pushmenu\s+controls", re.I), "controls"),
+        (re.compile(r"pushmenu\s+video_options", re.I), "video"),
+        (re.compile(r"popmenu", re.I), "back"),
+    )),
+    "gametype": ("ui/multiplayerstart.urc", (
+        (re.compile(r"pushmenu\s+multiplayerstart_ffa", re.I), "ffa"),
+        (re.compile(r"pushmenu\s+multiplayerstart_team", re.I), "team"),
+        (re.compile(r"pushmenu\s+multiplayerstart_round", re.I), "round"),
+        (re.compile(r"pushmenu\s+multiplayerstart_obj", re.I), "obj"),
+        (re.compile(r"popmenu", re.I), "back"),
+    )),
+}
+PAGE_SIGN = re.compile(r"set\s+ui_\w*shader\s+(\S+)", re.I)
+ADDITIVE = ("alphaadd", "add", "gl_one gl_one", "gl_src_alpha gl_one")
+
+
+def parse_stages(text):
+    """{shader name: {"map": path or "$whiteimage", "blend": blendfunc text, "alpha": constant or None}}
+    of each shader's first stage (the menu glows are $whiteimage added at a constant alpha)."""
+    out = {}
+    depth, name, stage = 0, None, None
+    for line in strip_comments(text).splitlines():
+        t = tokens(line)
+        if not t:
+            continue
+        if t[0] == "{":
+            depth += 1
+            if depth == 2 and name and name not in out:
+                stage = {"map": None, "blend": "", "alpha": None}
+            continue
+        if t[0] == "}":
+            if depth == 2 and stage is not None:
+                out[name] = stage
+                stage = None
+            depth = max(0, depth - 1)
+            if depth == 0:
+                name = None
+            continue
+        if depth == 0:
+            name = t[0].lower()
+            continue
+        if stage is None:
+            continue
+        key = t[0].lower()
+        if key in ("map", "clampmap") and len(t) > 1:
+            stage["map"] = t[1]
+        elif key == "animmap" and len(t) > 2:
+            stage["map"] = t[2]
+        elif key == "blendfunc":
+            stage["blend"] = " ".join(t[1:]).lower()
+        elif key == "alphagen" and len(t) > 2 and t[1].lower() == "constant":
+            stage["alpha"] = float(t[2])
+    return out
+
+
+def lit_image(files, stages, sheet, shader, rect):
+    """The page under rect with the hover shader drawn over it, as retail draws it: added (the
+    menu_button_glow family, a constant-alpha white or mask) or blended (plain hover art). RGB, or None."""
+    import numpy as np
+    from PIL import Image
+
+    x, y, w, h = rect
+    base = np.asarray(sheet.convert("RGB").crop((x, y, x + w, y + h)), dtype=np.float32)
+    st = stages.get(shader.lower(), {"map": shader, "blend": "", "alpha": None})
+    src = st["map"] or shader
+    if src.startswith("$"):
+        art = np.full((h, w, 4), 255.0, dtype=np.float32)
+    else:
+        path = find_image(files, src)
+        if not path:
+            return None
+        im = Image.open(io.BytesIO(read(files[path]))).convert("RGBA").resize((w, h), Image.LANCZOS)
+        art = np.asarray(im, dtype=np.float32)
+    alpha = art[..., 3:4] / 255.0
+    if st["alpha"] is not None:
+        alpha = alpha * st["alpha"]
+    if st["blend"] in ADDITIVE:
+        out = base + art[..., :3] * alpha
+    else:
+        out = base * (1.0 - alpha) + art[..., :3] * alpha
+    return Image.fromarray(np.clip(out + 0.5, 0, 255).astype(np.uint8), "RGB")
+
+
+def page_menu(inputs, page):
+    """A retail page's working parts, or None: {"sheet": the page (PIL RGB 640x480), "sign": rect,
+    "spots": [(action, rect, lit, sign or None)], "buttons": [(action, rect, normal, focus)]}."""
+    from PIL import Image
+
+    urc, actions = PAGES[page]
+    files = collect(inputs, (".urc", ".inc", ".shader") + IMAGE_EXTS)
+    if urc not in files:
+        return None
+    sheet = compose(inputs, urc)
+    if sheet is None:
+        return None
+    width, height, items = parse_urc(urc_text(files, urc))
+    shaders, stages = {}, {}
+    for path in sorted(p for p in files if p.startswith("scripts/") and p.endswith(".shader")):
+        text = read(files[path]).decode("latin-1")
+        for k, v in parse_shaders(text).items():
+            shaders.setdefault(k, v)
+        for k, v in parse_stages(text).items():
+            stages.setdefault(k, v)
+    sx, sy = SHEET[0] / float(width), SHEET[1] / float(height)
+
+    def image(shader):
+        path = find_image(files, shaders.get(shader.lower(), shader))
+        return Image.open(io.BytesIO(read(files[path]))).convert("RGBA") if path else None
+
+    def act(cmd):
+        for pat, name in actions:
+            if pat.search(cmd):
+                return name
+        return None
+
+    menu = {"sheet": sheet, "sign": None, "spots": [], "buttons": []}
+    taken = set()
+    for it in items:
+        rect = tuple(int(float(v)) for v in it.get("rect", [])[:4])
+        if len(rect) < 4:
+            continue
+        rect = (round(rect[0] * sx), round(rect[1] * sy), round(rect[2] * sx), round(rect[3] * sy))
+        if it["type"].lower() == "label" and "linkcvartoshader" in it:
+            menu["sign"] = rect
+            continue
+        if it["type"].lower() != "button" or "enabledcvar" in it or "hovershader" not in it:
+            continue
+        action = act(" ".join(it.get("stuffcommand", [])))
+        if not action or action in taken:
+            continue
+        x, y, w, h = rect
+        if action == "back":
+            normal, focus = image(it["shader"][0]) if "shader" in it else None, image(it["hovershader"][0])
+            if normal is not None and focus is not None:
+                menu["buttons"].append((action, rect, normal.resize((w, h), Image.LANCZOS).convert("RGB"),
+                                        focus.resize((w, h), Image.LANCZOS).convert("RGB")))
+                taken.add(action)
+            continue
+        lit = lit_image(files, stages, sheet, it["hovershader"][0], rect)
+        if lit is None:
+            continue
+        sign = PAGE_SIGN.search(" ".join(it.get("hovercommand", [])))
+        signim = image(sign.group(1)) if sign else None
+        menu["spots"].append((action, rect, lit, signim.convert("RGB") if signim is not None else None))
+        taken.add(action)
+    if not menu["spots"]:
+        return None
+    menu["spots"].sort(key=lambda s: (s[1][1], s[1][0]))   # top to bottom: the D-pad's order
+    return menu
+
+
+def write_page(menu, game_root, page):
+    """Write a retail page under game_root: its picture as four quadrants (resource/gc_menu/bg_<page>_<r>_<c>
+    .tga at 160x120 plus the 320x240 GX CMPR .cmp the GameCube draws), its parts under
+    resource/gc_menu/mohaa/<page>/ and resource/gc_menu/mohaa_<page>.txt; returns the written paths."""
+    from PIL import Image
+    import numpy as np
+
+    out = os.path.join(game_root, *OUT.split("/"))
+    parts = os.path.join(game_root, *ROOM.split("/"), page)
+    os.makedirs(parts, exist_ok=True)
+    written = []
+
+    def save(img, name):
+        p = os.path.join(parts, name)
+        img.save(p, format="TGA")
+        written.append(p)
+        return "%s/%s/%s" % (ROOM, page, name)
+
+    sheet = menu["sheet"]
+    fw, fh = SHEET[0] // 2, SHEET[1] // 2
+    quads = []
+    for row in range(2):
+        for col in range(2):
+            name = "bg_%s_%d_%d" % (page, row, col)
+            quad = sheet.crop((col * fw, row * fh, (col + 1) * fw, (row + 1) * fh))
+            p = os.path.join(out, name + ".tga")
+            quad.resize((fw // 2, fh // 2), Image.LANCZOS).save(p, format="TGA")
+            written.append(p)
+            p = os.path.join(out, name + ".cmp")
+            with open(p, "wb") as fh_out:
+                fh_out.write(b"GCMP" + struct.pack(">HH", fw, fh) + bytes(24) + cmpr_encode(np.asarray(quad)))
+            written.append(p)
+            quads.append("%s/%s.tga" % (OUT, name))
+    lines = ["// The retail MOHAA %s page for the GameCube menu (mainui MohaaPage.cpp), written by" % page,
+             "// mohaa-gc tools/mohaa_menu.py from the player's own %s. Rects are x y w h on a" % PAGES[page][0],
+             "// 640x480 screen; the background is the page in four quadrants (tl tr bl br).",
+             "screen %d %d" % SHEET,
+             "background " + " ".join(quads)]
+    if menu["sign"]:
+        lines.append("sign %d %d %d %d" % menu["sign"])
+    for i, (action, rect, lit, sign) in enumerate(menu["spots"]):
+        hover = save(lit, "spot%d_%s.tga" % (i, action))
+        signp = save(sign, "sign%d_%s.tga" % (i, action)) if sign is not None else "-"
+        lines.append("spot %s %d %d %d %d %s %s" % ((action,) + rect + (hover, signp)))
+    for action, rect, normal, focus in menu["buttons"]:
+        lines.append("button %s %d %d %d %d %s %s" % ((action,) + rect + (
+            save(normal, "%s.tga" % action), save(focus, "%s_h.tga" % action))))
+    p = os.path.join(out, "mohaa_%s.txt" % page)
+    with open(p, "w", newline="\n") as fh_out:
+        fh_out.write("\n".join(lines) + "\n")
+    written.append(p)
+    return written
+
+
 def cmpr_encode(rgb):
     """GX CMPR (DXT1, opaque) of an HxWx3 uint8 array (sides multiples of 8): per 4x4 block the endpoints
     are the extremes along the block's principal colour axis, and blocks go in 8x8 tiles of 2x2,
@@ -432,6 +660,11 @@ def main(argv=None):
         if menu:
             for p in write_room_menu(menu, a.out):
                 print("wrote %s" % p)
+        for page in PAGES:
+            pm = page_menu(a.inputs, page)
+            if pm:
+                for p in write_page(pm, a.out, page):
+                    print("wrote %s" % p)
     return 0
 
 
