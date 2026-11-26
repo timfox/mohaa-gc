@@ -172,7 +172,8 @@ void DodGrunt_SetAI(DodGruntPool *p, int i, int on);
 /* attackplayer: AI on, and run at what it sees instead of holding. */
 void DodGrunt_SetAttack(DodGruntPool *p, int i, int on);
 /* MOHAA actor settings: value is a distance in GoldSrc units (degrees for FOV); LEASH and TETHER also take the
- * leash centre (x, y). LEASH centres on the actor's spot now when x and y are both 0. */
+ * leash centre (x, y). LEASH centres on the actor's spot now when x and y are both 0; a negative LEASH value keeps
+ * the radius and only re-centres it there (MOHAA resetleash). */
 enum { DOD_GRUNT_SIGHT_RANGE = 0, DOD_GRUNT_HEARING, DOD_GRUNT_FOV, DOD_GRUNT_LEASH, DOD_GRUNT_TETHER,
 	DOD_GRUNT_MINDIST, DOD_GRUNT_MAXDIST };
 void DodGrunt_SetParam(DodGruntPool *p, int i, int param, float value, float x, float y);

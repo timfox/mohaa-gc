@@ -1,0 +1,7 @@
+== before (pool1)
+:49:43] mohaa: player disguise on
+:49:43] mohaa: 'nottriggerable' on entity is not bound yet
+:49:43] mohaa: 'resetleash' on entity is not bound yet
+:49:43] mohaa: 'getwalkanim' on entity is not bound yet
+== after (bind1)
+:03:46] mohaa: player disguise on

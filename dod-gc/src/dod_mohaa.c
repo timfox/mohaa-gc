@@ -267,6 +267,27 @@ typedef struct {
 } DodPatrol;
 static DodPatrol g_patrols[DOD_MOHAA_PATROLS];
 
+/* soldiers that react to a disguised player (type_disguise salute / papers): one row each. range is in MOHAA units,
+   period in seconds, level the papers it accepts (1 or 2). */
+#define DOD_MOHAA_DISGUISERS 32
+enum { DISG_PASS = 0, DISG_SALUTE, DISG_PAPERS };
+enum { DISG_IDLE = 0, DISG_SALUTED, DISG_ASKING, DISG_PASSED };
+typedef struct {
+	uint32_t id;
+	unsigned char type;	/* DISG_* */
+	unsigned char state;	/* DISG_IDLE ... */
+	unsigned char level;
+	float range, period, asked_at;
+} DodDisguiser;
+static DodDisguiser g_disguisers[DOD_MOHAA_DISGUISERS];
+static int g_papers;	/* the papers the player carries: 0 none, 1 level 1 (papers.tik), 2 level 2 (papers2.tik) */
+static float g_next_disguise_think;
+static DodDisguiser *disguiser_for(uint32_t id, int make);
+static void set_disguise_type(uint32_t id, const char *t);
+static void set_disguise_value(uint32_t id, const char *name, float v);
+static DodSound *sound_pick(const char *alias);
+static uint32_t the_player(void);
+
 /* cover nodes soldiers have taken (Dod_MohaaCoverSpot): node + 1, the soldier, until when */
 #define DOD_MOHAA_COVER_CLAIMS 48
 static struct { int node, key; float until; } g_cover_claims[DOD_MOHAA_COVER_CLAIMS];
@@ -583,6 +604,13 @@ static int h_get_field(void *user, const ms_value *l, const char *name, ms_value
 		}
 		return 1;
 	}
+	if (!strncmp(name, "disguise_", 9) && !is_node(l->u.id)) {
+		/* spawner.scr copies these from soldier to spawner and back */
+		const DodDisguiser *d = disguiser_for(l->u.id, 0);
+		if (!strcmp(name, "disguise_range")) { *out = ms_float(d ? d->range : 256.0f); return 1; }
+		if (!strcmp(name, "disguise_period")) { *out = ms_float(d ? d->period : 30.0f); return 1; }
+		if (!strcmp(name, "disguise_level")) { *out = ms_int(d ? d->level : 1); return 1; }
+	}
 	if (!strcmp(name, "targetname") || !strcmp(name, "classname") || !strcmp(name, "model")) {
 		int what = name[0] == 't' ? DOD_MOHAA_TARGETNAME : name[0] == 'c' ? DOD_MOHAA_CLASSNAME : DOD_MOHAA_MODEL;
 		const char *s = S.be.get_str(l->u.id, what);
@@ -621,11 +649,16 @@ static int h_set_field(void *user, const ms_value *l, const char *name, const ms
 		S.be.disguise(l->u.id, ms_truthy(S.vm, val));
 		return 1;
 	}
+	if (!strcmp(name, "disguise_range") || !strcmp(name, "disguise_period") || !strcmp(name, "disguise_level")) {
+		set_disguise_value(l->u.id, name, ms_to_float(val));
+		return 1;
+	}
 	if (!strcmp(name, "type_disguise") && S.be.actor) {
 		/* "$guy.type_disguise = "none"" (m3l1b's MG42 gunners) */
 		float pos[3] = {0, 0, 0};
 		const char *t = ms_string_text(val);
 		pos[0] = t && strcmp(t, "none") ? 1.0f : 0.0f;
+		set_disguise_type(l->u.id, t);
 		if (S.be.actor(l->u.id, DOD_MOHAA_DISGUISE, pos))
 			return 1;
 	}
@@ -769,8 +802,23 @@ static int c_ammo(ms_call *c)
 
 static int c_item(ms_call *c)
 {
+	const char *tiki = ms_argc(c) >= 1 ? ms_arg_string(c, 0) : NULL;
+	/* global/items.scr gives "models/items/papers.tik" (level 1) or "papers2.tik" (level 2) */
+	if (tiki && strstr(tiki, "items/papers2"))
+		g_papers = 2;
+	else if (tiki && strstr(tiki, "items/papers"))
+		g_papers = g_papers > 1 ? g_papers : 1;
 	if (S.be.give_item && ms_argc(c) >= 1)
 		S.be.give_item(target_id(c), ms_arg_string(c, 0));
+	return 0;
+}
+
+/* "$player take models/items/papers.tik": the papers go (items.scr remove_item); other items are not tracked */
+static int c_take(ms_call *c)
+{
+	const char *tiki = ms_argc(c) >= 1 ? ms_arg_string(c, 0) : NULL;
+	if (tiki && strstr(tiki, "items/papers"))
+		g_papers = 0;
 	return 0;
 }
 
@@ -1326,12 +1374,174 @@ static void spawn_actor_keys(uint32_t id, const char *const *keys, const char *c
 
 /* "$guy type_disguise salute|sentry|officer|rover|machinegunner|none": "none" sees through the player's disguise;
    the rest let a disguised player pass (they do not salute or ask for papers here yet) */
+static DodDisguiser *disguiser_for(uint32_t id, int make)
+{
+	int k, free_row = -1;
+	for (k = 0; k < DOD_MOHAA_DISGUISERS; k++) {
+		if (g_disguisers[k].id == id)
+			return &g_disguisers[k];
+		if (free_row < 0 && (!g_disguisers[k].id || !valid(g_disguisers[k].id)))
+			free_row = k;
+	}
+	if (!make || free_row < 0)
+		return NULL;
+	memset(&g_disguisers[free_row], 0, sizeof(g_disguisers[free_row]));
+	g_disguisers[free_row].id = id;
+	g_disguisers[free_row].range = 256.0f;	/* retail defaults */
+	g_disguisers[free_row].period = 30.0f;
+	g_disguisers[free_row].level = 1;
+	return &g_disguisers[free_row];
+}
+
+static void set_disguise_type(uint32_t id, const char *t)
+{
+	DodDisguiser *d = disguiser_for(id, 1);
+	if (!d)
+		return;
+	d->type = t && !strcmp(t, "salute") ? DISG_SALUTE : t && !strcmp(t, "papers") ? DISG_PAPERS : DISG_PASS;
+	d->state = DISG_IDLE;
+}
+
 static int c_type_disguise(ms_call *c)
 {
 	float pos[3] = {0, 0, 0};
 	const char *t = ms_arg_string(c, 0);
 	pos[0] = t && strcmp(t, "none") ? 1.0f : 0.0f;
+	set_disguise_type(target_id(c), t);
 	return actor_order(c, DOD_MOHAA_DISGUISE, pos);
+}
+
+/* "disguise_range 300", "disguise_period 20", "disguise_level 2" (also as fields) */
+static void set_disguise_value(uint32_t id, const char *name, float v)
+{
+	DodDisguiser *d = disguiser_for(id, 1);
+	if (!d)
+		return;
+	if (!strcmp(name, "disguise_range"))
+		d->range = v > 0.0f ? v : 0.0f;
+	else if (!strcmp(name, "disguise_period"))
+		d->period = v > 0.0f ? v : 0.0f;
+	else if (!strcmp(name, "disguise_level"))
+		d->level = (unsigned char)(v < 0.0f ? 0 : v > 2.0f ? 2 : (int)v);
+}
+
+static int c_disguise_value(ms_call *c)
+{
+	set_disguise_value(target_id(c), ms_call_name(c), ms_arg_float(c, 0));
+	return 0;
+}
+
+static void play_alias(uint32_t id, const char *alias)
+{
+	DodSound *r = sound_pick(alias);
+	if (r && S.be.sound)
+		S.be.sound(id, S.sound_text + r->sample, 0, r->volume, r->attn, r->channel);
+}
+
+static void disguise_print(uint32_t id, const char *what)
+{
+	char msg[160];
+	const char *who = S.be.get_str(id, DOD_MOHAA_TARGETNAME);
+	snprintf(msg, sizeof(msg), "mohaa: %s %s\n", who && *who ? who : "soldier", what);
+	S.be.print(DOD_MOHAA_PRINT_CONSOLE, msg);
+}
+
+static void disguise_blown(uint32_t id, uint32_t player, const char *why)
+{
+	disguise_print(id, why);
+	if (S.be.disguise)
+		S.be.disguise(player, 0);
+	Dod_MohaaActorAlerted(id);
+}
+
+/* Five times a second: a saluting soldier turns to a disguised player who comes within its range; a papers soldier
+   turns, asks (den_disguise_057d1, "Papers, please" where the map has it) and waits disguise_period seconds for the
+   player to show them with USE, then raises the alarm. */
+static void disguisers_think(void)
+{
+	uint32_t player;
+	float pp[3];
+	int k, disguised;
+	if (S.now < g_next_disguise_think)
+		return;
+	g_next_disguise_think = S.now + 0.2f;
+	player = the_player();
+	if (!player)
+		return;
+	disguised = S.be.get_disguise ? S.be.get_disguise(player) : 0;
+	get_vec(player, DOD_MOHAA_ORIGIN, pp);
+	for (k = 0; k < DOD_MOHAA_DISGUISERS; k++) {
+		DodDisguiser *d = &g_disguisers[k];
+		float ap[3], dx, dy, d2, r;
+		if (!d->id || d->type == DISG_PASS)
+			continue;
+		if (!valid(d->id) || (S.be.get_health && S.be.get_health(d->id) <= 0.0f)) {
+			d->id = 0;
+			continue;
+		}
+		get_vec(d->id, DOD_MOHAA_ORIGIN, ap);
+		dx = pp[0] - ap[0];
+		dy = pp[1] - ap[1];
+		d2 = dx * dx + dy * dy;
+		r = d->range * DOD_MOHAA_SCALE;
+		if (d->state == DISG_ASKING) {
+			if (!disguised)
+				d->state = DISG_IDLE;
+			else if (S.now - d->asked_at >= d->period) {
+				d->state = DISG_IDLE;
+				disguise_blown(d->id, player, "got no papers: disguise blown");
+			}
+			continue;
+		}
+		if (d2 > 4.0f * r * r) {
+			d->state = DISG_IDLE;	/* out of reach: next time it reacts again */
+			continue;
+		}
+		if (!disguised || d->state != DISG_IDLE || d2 > r * r)
+			continue;
+		if (S.be.actor)
+			S.be.actor(d->id, DOD_MOHAA_TURNTO, pp);
+		if (d->type == DISG_SALUTE) {
+			d->state = DISG_SALUTED;
+			disguise_print(d->id, "salutes");
+		} else {
+			d->state = DISG_ASKING;
+			d->asked_at = S.now;
+			play_alias(d->id, "den_disguise_057d1");
+			disguise_print(d->id, "asks for papers");
+		}
+	}
+}
+
+int Dod_MohaaShowPapers(uint32_t player)
+{
+	float pp[3];
+	int k, any = 0;
+	if (!S.vm || !player)
+		return 0;
+	get_vec(player, DOD_MOHAA_ORIGIN, pp);
+	for (k = 0; k < DOD_MOHAA_DISGUISERS; k++) {
+		DodDisguiser *d = &g_disguisers[k];
+		float ap[3], dx, dy, r;
+		if (!d->id || d->state != DISG_ASKING || !valid(d->id))
+			continue;
+		get_vec(d->id, DOD_MOHAA_ORIGIN, ap);
+		dx = pp[0] - ap[0];
+		dy = pp[1] - ap[1];
+		r = d->range * DOD_MOHAA_SCALE * 1.5f;
+		if (dx * dx + dy * dy > r * r)
+			continue;
+		any = 1;
+		if (g_papers >= d->level) {
+			d->state = DISG_PASSED;
+			disguise_print(d->id, "checks the papers: they pass");
+		} else {
+			d->state = DISG_IDLE;
+			disguise_blown(d->id, player, g_papers ? "checks the papers: wrong papers, disguise blown"
+				: "asks for papers the player does not have: disguise blown");
+		}
+	}
+	return any;
 }
 
 /* "fixedleash 1": the leash stays where it was set (as it already does here) */
@@ -1909,6 +2119,29 @@ static int c_stufftext(ms_call *c)
 
 /* Accepted and dropped (see the list in register_commands). Dynamic lights cost the GameCube a lightmap rebuild per frame, so entity lights stay off;
    path links are fixed at level load (an opened door does not add a link, a closed one does not cut one). */
+/* "$trigger nottriggerable" / "triggerable": the trigger stops (or starts again) firing on touch and USE */
+static int c_triggerable(ms_call *c)
+{
+	const uint32_t id = target_id(c);
+	if (S.be.set_flag && valid(id) && !is_node(id))
+		S.be.set_flag(id, DOD_MOHAA_UNTRIGGERABLE, ms_call_name(c)[0] == 'n');
+	return 0;
+}
+
+/* "$guy resetleash": the leash centres on where the actor stands now, same radius */
+static int c_resetleash(ms_call *c)
+{
+	float pos[3] = {-1.0f, 0, 0};
+	return actor_order(c, DOD_MOHAA_LEASH, pos);
+}
+
+/* "$guy getwalkanim": the walk animation the actor uses; grunts walk with one cycle */
+static int c_getwalkanim(ms_call *c)
+{
+	ms_return_string(c, "walk");
+	return 0;
+}
+
 static int c_ignored(ms_call *c)
 {
 	(void)c;
@@ -2833,6 +3066,23 @@ static void register_commands(ms_vm *vm)
 		/* animation, TIKI models, attachment, vehicles and turrets, weapons and inventory: none of it exists on the
 		   GameCube side yet. Accepted so a mission keeps going; README "Not yet" lists what they would need. */
 		{"american", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		/* the side follows the model here (german_* plays the Axis) */
+		{"german", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		/* damage types a soldier ignores ("immune bullet"): grunts take every hit */
+		{"immune", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"removeimmune", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		/* the bounding entity for a vehicle's collision: brush collision is the map's here */
+		{"setcollisionentity", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"triggerable", MS_ON_ENTITY, c_triggerable},
+		{"nottriggerable", MS_ON_ENTITY, c_triggerable},
+		{"resetleash", MS_ON_ENTITY, c_resetleash},
+		{"getwalkanim", MS_ON_ENTITY, c_getwalkanim},
+		/* "flypath": followpath for a flying script model (a plane on a spline) */
+		{"flypath", MS_ON_ENTITY, c_followpath},
+		{"disguise_range", MS_ON_ENTITY, c_disguise_value},
+		{"disguise_period", MS_ON_ENTITY, c_disguise_value},
+		{"disguise_level", MS_ON_ENTITY, c_disguise_value},
+		{"take", MS_ON_ENTITY | MS_ON_THREAD, c_take},
 		{"attach", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"bind", MS_ON_ENTITY | MS_ON_THREAD, c_bind},
 		{"forcelegsstate", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
@@ -2928,6 +3178,9 @@ void Dod_MohaaShutdown(void)
 	S.compile_pending = S.compile_tries = 0;
 	memset(g_cover_claims, 0, sizeof(g_cover_claims));
 	memset(g_patrols, 0, sizeof(g_patrols));
+	memset(g_disguisers, 0, sizeof(g_disguisers));
+	g_papers = 0;
+	g_next_disguise_think = 0.0f;
 	memset(S.movers, 0, sizeof(S.movers));
 	S.nunknown = 0;
 	S.ticks = 0;
@@ -3308,6 +3561,7 @@ void Dod_MohaaThink(float now)
 		return;
 	start_main();
 	patrols_think();
+	disguisers_think();
 	/* MOHAA level scripts wait for these before touching the world */
 	if (S.ticks == 0) {
 		S.be.print(DOD_MOHAA_PRINT_CONSOLE, "mohaa: signal prespawn\n");

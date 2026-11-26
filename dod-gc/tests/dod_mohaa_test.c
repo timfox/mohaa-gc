@@ -1342,6 +1342,86 @@ static void test_gun_field_names_turret(void)
 	assert(strstr(log_buf, "turret=t9"));
 }
 
+/* type_disguise "papers": a disguised player within disguise_range is asked for papers; USE shows them (level 1 papers
+   pass a level 1 soldier), no papers blow the disguise and alert him, and so does waiting out disguise_period.
+   "salute" turns to the player. The other bindings of the list (triggerable, resetleash, ...) are bound. */
+static void test_disguise_papers_and_salute(void)
+{
+	DodMohaaBackend b = backend();
+	uint32_t player_id = 0;
+	int guard, saluter, pl;
+	b.disguise = m_disguise;
+	b.get_disguise = m_get_disguise;
+	reset();
+	g_disguised = 0;
+	pl = add("player", "player", 300, 0, 0);
+	guard = add("guard", "actor", 0, 0, 0);
+	saluter = add("officer", "actor", 0, 400, 0);
+	add("trig", "trigger_multiple", 0, 0, 0);
+	ents[guard].health = ents[saluter].health = ents[pl].health = 100;
+	files[0][0] = "maps/p.scr";
+	files[0][1] =
+		"main:\n"
+		"\t$player.has_disguise = 1\n"
+		"\t$guard type_disguise \"papers\"\n"
+		"\t$guard disguise_range 128\n"
+		"\t$guard.disguise_period = 2\n"
+		"\t$guard disguise_level 1\n"
+		"\tprintln (\"range=\" + $guard.disguise_range)\n"
+		"\t$officer type_disguise \"salute\"\n"
+		"\t$trig nottriggerable\n"
+		"\t$trig triggerable\n"
+		"\t$guard resetleash\n"
+		"\tlocal.a = $guard getwalkanim\n"
+		"\tprintln (\"walk=\" + local.a)\n"
+		"\t$guard german\n"
+		"\t$guard immune bullet\n"
+		"\t$guard setcollisionentity $trig\n"
+		"\tthread givepapers\n"
+		"end\n"
+		"givepapers:\n"
+		"\twait 1.5\n"
+		"\t$player item models/items/papers.tik\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "p", 0, 0));
+	run(0.05f, 0.5f);
+	assert(strstr(log_buf, "range=128") && strstr(log_buf, "walk=walk"));
+	assert(strstr(log_buf, "<guard leash -1.0"));
+	assert(!strstr(log_buf, "not bound yet"));
+	assert(!strstr(log_buf, "asks for papers"));	/* 300 units away, outside 128 */
+	assert(b.find("player", &player_id, 1) >= 1);
+	assert(!Dod_MohaaShowPapers(player_id));	/* nobody is asking */
+	/* walk up: he asks; no papers on the player: shown, the disguise is blown */
+	ents[pl].origin[0] = 60.0f;
+	run(0.55f, 0.9f);
+	assert(strstr(log_buf, "guard asks for papers") && strstr(log_buf, "<guard turnto"));
+	assert(Dod_MohaaShowPapers(player_id));
+	assert(g_disguised == 0 && strstr(log_buf, "disguise blown"));
+	/* papers in hand: back in disguise, he asks again and lets the player pass */
+	log_buf[0] = 0;
+	ents[pl].origin[0] = 1000.0f;
+	run(0.95f, 1.3f);
+	g_disguised = 1;
+	ents[pl].origin[0] = 60.0f;
+	run(1.35f, 1.7f);
+	assert(strstr(log_buf, "guard asks for papers"));
+	/* the script gave level 1 papers at 1.5 s ($player item models/items/papers.tik) */
+	assert(Dod_MohaaShowPapers(player_id));
+	assert(g_disguised == 1 && strstr(log_buf, "they pass"));
+	/* the officer salutes when the player comes near */
+	ents[pl].origin[0] = 0.0f;
+	ents[pl].origin[1] = 350.0f;
+	run(1.75f, 2.1f);
+	assert(strstr(log_buf, "officer salutes"));
+	/* waiting out the period blows it */
+	log_buf[0] = 0;
+	ents[pl].origin[0] = 1000.0f; ents[pl].origin[1] = 0.0f;
+	run(2.15f, 2.5f);
+	ents[pl].origin[0] = 60.0f;
+	run(2.55f, 5.0f);
+	assert(strstr(log_buf, "got no papers: disguise blown") && g_disguised == 0);
+}
+
 int main(void)
 {
 	RUN(test_no_script_no_vm);
@@ -1351,6 +1431,7 @@ int main(void)
 	RUN(test_actor_weapons);
 	RUN(test_patrol_and_alarm);
 	RUN(test_disguise);
+	RUN(test_disguise_papers_and_salute);
 	RUN(test_thread_on_shared_name);
 	RUN(test_level_flow_and_movers);
 	RUN(test_waittill_trigger_and_freed);

@@ -402,6 +402,14 @@ static short clamp_short(float v)
 
 void DodGrunt_SetParam(DodGruntPool *p, int i, int param, float value, float x, float y)
 {
+	if (param == DOD_GRUNT_LEASH && value < 0.0f) {
+		/* MOHAA resetleash: same radius (MOHAA's 256 default when none was set), centred where it stands */
+		if (!p->leash_r[i])
+			p->leash_r[i] = 256;
+		p->leash_x[i] = clamp_short(p->x[i]);
+		p->leash_y[i] = clamp_short(p->y[i]);
+		return;
+	}
 	if (value < 0.0f)
 		value = 0.0f;
 	switch (param) {
