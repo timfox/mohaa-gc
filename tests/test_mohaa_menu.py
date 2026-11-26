@@ -216,6 +216,78 @@ stuffcommand "set ui_dmmap dm/mohdm1;pushmenu multiplayerstart_ffa"
 }
 """
 
+FFA_URC = """menu "multiplayerstart_ffa" 639 479 NONE 0
+include "ui/serverback.inc"
+resource
+Label
+{
+name "Multiplayer : Free-For-All Start"
+rect 64 16 512 432
+shader "ffaserverback"
+}
+resource
+Label
+{
+rect 64 16 256 216
+shader "textures/mohmenu/voodoo/ffa_a"
+enabledcvar "ui_voodoo"
+}
+resource
+Button
+{
+rect 8 440 96 24
+shader "textures/mohmenu/back"
+hovershader "textures/mohmenu/back_h"
+stuffcommand "Popmenu 0"
+}
+resource
+Label
+{
+title "map title"
+rect 88 106 208 24
+linkcvar "ui_dmmap"
+}
+resource
+Field
+{
+title "server name entry"
+rect 260 314 292 28
+linkcvar "ui_hostname"
+}
+resource
+Field
+{
+title "maplist entry"
+rect 212 252 344 28
+linkcvar "ui_maplist_ffa"
+}
+resource
+Button
+{
+name "Select Map"
+rect 134 84 112 16
+shader "menu_button_trans"
+hovershader "menu_button_glow"
+stuffcommand "dmmapselect dm dm"
+}
+resource
+Button
+{
+name "Start Game"
+rect 264 416 112 16
+shader "menu_button_trans"
+hovershader "menu_button_glow"
+stuffcommand "ui_startdmmap 1 Free-For-All ui_maplist_ffa"
+}
+resource
+Field
+{
+title "max player entry"
+rect 498 92 60 28
+linkcvar "ui_maxclients"
+}
+"""
+
 SERVERBACK = """resource Label { name "Default" rect 0 0 512 512 fgcolor 0.00 0.00 0.00 1.00 shader "serverback_a" }
 resource
 Label
@@ -229,6 +301,12 @@ PAGE_SHADER = """desk_a
 {
 	{
 	clampMap textures/mohmenu/options_a.tga
+	}
+}
+ffaserverback
+{
+	{
+	clampMap textures/mohmenu/ffaserverback.tga
 	}
 }
 serverback_a
@@ -287,7 +365,9 @@ def make_page_pak(path):
     with zipfile.ZipFile(path, "w") as z:
         z.writestr("ui/options_main.urc", OPTIONS_URC)
         z.writestr("ui/multiplayerstart.urc", GAMETYPE_URC.replace("\n", "\r\n"))   # retail urcs are CRLF
+        z.writestr("ui/multiplayerstart_ffa.urc", FFA_URC.replace("\n", "\r\n"))
         z.writestr("ui/serverback.inc", SERVERBACK)
+        z.writestr("textures/mohmenu/ffaserverback.tga", tga((230, 220, 190), (512, 432)))
         z.writestr("scripts/mohmenu.shader", SHADER + PAGE_SHADER)
         z.writestr("textures/mohmenu/options_a.tga", tga((100, 50, 0), (512, 512)))
         z.writestr("textures/mohmenu/serverback_a.tga", tga(BLUE, (512, 512)))
@@ -453,6 +533,27 @@ class MenuTest(unittest.TestCase):
             self.assertEqual(menu["sheet"].getpixel((100, 400)), BLUE)  # its one-line resource too
             self.assertEqual([a for a, _, _, _ in menu["spots"]], ["ffa", "team"])
             self.assertEqual(menu["buttons"], [])
+
+    def test_server_form(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            make_page_pak(os.path.join(tmp, "pak1.pk3"))
+            menu = mohaa_menu.page_menu([tmp], "server")
+            self.assertEqual(menu["sheet"].getpixel((20, 20)), BLUE)             # serverback.inc around it
+            self.assertEqual(menu["sheet"].getpixel((300, 200)), (230, 220, 190))  # the form, no voodoo tile
+            self.assertEqual([a for a, _, _, _ in menu["spots"]], ["map", "start"])
+            lit = menu["spots"][0][2]
+            self.assertEqual(lit.getpixel((5, 5)), (255, 255, 241))              # paper + white at 0.2, added
+            self.assertEqual([a for a, _, _, _ in menu["buttons"]], ["back"])
+            self.assertEqual(menu["fields"], [("map", (88, 106, 208, 24), (0, 0, 0)),
+                                              ("hostname", (260, 314, 292, 28), (0, 0, 0)),
+                                              ("maxplayers", (498, 92, 60, 28), (0, 0, 0))])
+            out = os.path.join(tmp, "out")
+            mohaa_menu.write_page(menu, out, "server")
+            with open(os.path.join(out, "resource", "gc_menu", "mohaa_server.txt")) as f:
+                text = f.read()
+            self.assertIn("field hostname 260 314 292 28 0 0 0\n", text)
+            self.assertIn("spot start 264 416 112 16 ", text)
+            self.assertIn("button back 8 440 96 24 ", text)
 
     def test_no_page(self):
         with tempfile.TemporaryDirectory() as tmp:

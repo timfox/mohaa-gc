@@ -26,6 +26,11 @@ It also writes the retail menu's working parts, which mainui turns into MOHAA's 
                                             loaded only while lit), its sign, the Quit / Back to game art
     sound/mohaa/menu/*.wav                  sound/menu/apply.wav and back.wav as 22 kHz mono PCM
 
+and the retail pages after it (PAGES): the options desk, the game type cards and the Free-For-All
+Create Server form, each as resource/gc_menu/mohaa_<page>.txt, its picture in four quadrants
+(bg_<page>_<r>_<c>.cmp) and its parts under resource/gc_menu/mohaa/<page>/. The form also lists its
+fields ("field <name> x y w h r g b"): where the GameCube form writes the server name, map and players.
+
 The background files are the same files and sizes the disc build bakes from DoD's own splash, so on the SD card they
 take the place of the disc's copies; without them the disc's DoD background shows as before.
 The output is retail data: write it outside the repository and never commit it.
@@ -371,7 +376,16 @@ PAGES = {
         (re.compile(r"pushmenu\s+multiplayerstart_obj", re.I), "obj"),
         (re.compile(r"popmenu", re.I), "back"),
     )),
+    # Create Server: the Free-For-All form (mainui CreateGame.cpp puts its fields on the picture)
+    "server": ("ui/multiplayerstart_ffa.urc", (
+        (re.compile(r"dmmapselect", re.I), "map"),
+        (re.compile(r"ui_startdmmap", re.I), "start"),
+        (re.compile(r"popmenu", re.I), "back"),
+    )),
 }
+# The cvars a form shows in its Field and Label rects, by the name the GameCube form knows them by.
+PAGE_FIELDS = {"ui_hostname": "hostname", "ui_maxclients": "maxplayers", "ui_dmmap": "map",
+               "ui_fraglimit": "fraglimit", "ui_timelimit": "timelimit"}
 PAGE_STANDIN = (64, 48)   # a page quadrant's .tga stand-in for its 320x240 .cmp
 PAGE_SIGN = re.compile(r"set\s+ui_\w*shader\s+(\S+)", re.I)
 ADDITIVE = ("alphaadd", "add", "gl_one gl_one", "gl_src_alpha gl_one")
@@ -446,8 +460,10 @@ def lit_image(files, stages, sheet, shader, rect):
 
 def page_menu(inputs, page):
     """A retail page's working parts, or None: {"sheet": the page (PIL RGB 640x480), "sign": rect,
-    "spots": [(action, rect, lit, sign or None)], "buttons": [(action, rect, normal, focus)]}."""
-    from PIL import Image
+    "spots": [(action, rect, lit, sign or None)], "buttons": [(action, rect, normal, focus)],
+    "fields": [(name, rect, ink)]}: a form's Field and Label rects that show a cvar (PAGE_FIELDS), with
+    the ink that reads on the picture under them (black on paper, white on a dark board)."""
+    from PIL import Image, ImageStat
 
     urc, actions = PAGES[page]
     files = collect(inputs, (".urc", ".inc", ".shader") + IMAGE_EXTS)
@@ -476,7 +492,7 @@ def page_menu(inputs, page):
                 return name
         return None
 
-    menu = {"sheet": sheet, "sign": None, "spots": [], "buttons": []}
+    menu = {"sheet": sheet, "sign": None, "spots": [], "buttons": [], "fields": []}
     taken = set()
     for it in items:
         rect = tuple(int(float(v)) for v in it.get("rect", [])[:4])
@@ -485,6 +501,13 @@ def page_menu(inputs, page):
         rect = (round(rect[0] * sx), round(rect[1] * sy), round(rect[2] * sx), round(rect[3] * sy))
         if it["type"].lower() == "label" and "linkcvartoshader" in it:
             menu["sign"] = rect
+            continue
+        if it["type"].lower() in ("field", "label") and "linkcvar" in it and "enabledcvar" not in it:
+            name = PAGE_FIELDS.get(it["linkcvar"][0].lower())
+            if name and name not in [f[0] for f in menu["fields"]]:
+                x, y, w, h = rect
+                lum = ImageStat.Stat(sheet.convert("L").crop((x, y, x + w, y + h))).mean[0]
+                menu["fields"].append((name, rect, (0, 0, 0) if lum >= 128 else (255, 255, 255)))
             continue
         if it["type"].lower() != "button" or "enabledcvar" in it or "hovershader" not in it:
             continue
@@ -562,6 +585,8 @@ def write_page(menu, game_root, page):
     for action, rect, normal, focus in menu["buttons"]:
         lines.append("button %s %d %d %d %d %s %s" % ((action,) + rect + (
             save(normal, "%s.tga" % action), save(focus, "%s_h.tga" % action))))
+    for name, rect, ink in menu.get("fields", []):
+        lines.append("field %s %d %d %d %d %d %d %d" % ((name,) + rect + ink))
     p = os.path.join(out, "mohaa_%s.txt" % page)
     with open(p, "w", newline="\n") as fh_out:
         fh_out.write("\n".join(lines) + "\n")
