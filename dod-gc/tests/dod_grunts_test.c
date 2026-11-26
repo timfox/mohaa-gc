@@ -172,7 +172,7 @@ static void test_script_actor(void)
 	const int i = DodGrunt_FreeScriptSlot(&p);
 	assert(i == DOD_GRUNT_MAX - 1);
 	DodGrunt_SpawnScripted(&p, i, DOD_TEAM_AXIS, 0, 0, 0, 0, 0.0f);
-	assert(p.state[i] == DOD_GRUNT_HOLD && p.script[i] == DOD_GRUNT_SCRIPTED);
+	assert(p.state[i] == DOD_GRUNT_HOLD && p.script[i] == (DOD_GRUNT_SCRIPTED | DOD_GRUNT_HEED_DISGUISE));
 	assert(DodGrunt_FreeScriptSlot(&p) == DOD_GRUNT_MAX - 2);
 	/* holding: a far enemy turns it but does not make it wander; a close one makes it shoot */
 	DodGrunt_Looked(&p, i, 0.1f, 1, 2, 0, 1000, 1000, 0);

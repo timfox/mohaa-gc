@@ -47,7 +47,9 @@ enum {
 	/* pos[0]: 1 charges (type_attack runandshoot, startfiring), 0 fights from cover (cover, turret, ...) */
 	DOD_MOHAA_ATTACK_STYLE,
 	/* a patrol walk to pos: like WALKTO, but an enemy in sight ends it */
-	DOD_MOHAA_PATROLTO
+	DOD_MOHAA_PATROLTO,
+	/* pos[0]: 1 heeds the player's disguise (type_disguise salute, sentry, ...), 0 not ("none") */
+	DOD_MOHAA_DISGUISE
 };
 /* HUD parts a cutscene hides: ALL is MOHAA's "drawhud 0"; WEAPON (crosshair, ammo, view model) goes while the
    player is locked into a scripted ride. */
@@ -126,6 +128,10 @@ typedef struct DodMohaaBackend {
 	/* A shot or blast at point (GoldSrc units): damage what is within radius and fire MOHAA damage triggers
 	   (converted with spawnflags 2, no touch) whose box holds the point. attacker 0: the world. */
 	void (*damage_at)(uint32_t attacker, const float point[3], float radius, float damage);
+	/* "$player.has_disguise = 1|0": soldiers that heed disguises (type_disguise other than "none") let them pass;
+	   get_disguise reads it back (the game ends it when the player fires). May be NULL. */
+	void (*disguise)(uint32_t player, int on);
+	int (*get_disguise)(uint32_t player);
 	void *(*alloc)(void *ptr, size_t old_size, size_t new_size); /* NULL: pool below, else malloc */
 	/* A region the VM allocates from when alloc is NULL (dod_mohaa_pool.h), instead of the engine heap. It must
 	   stay valid until the next Dod_MohaaLevelInit or Dod_MohaaShutdown, or until Dod_MohaaDropPool says it is

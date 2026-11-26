@@ -26,7 +26,9 @@ This is a running list, updated with each PR. Each entry says what retail does t
 - **Weapons and attack styles** (2026-11-26): `gun` and the `.weapon` field pick the DoD weapon a soldier fires, by MOHAA name; `"none"` leaves it unarmed, and an unknown name falls back to its side's rifle. `type_attack runandshoot` charges; `cover`, `turret` and the other styles fight from cover. `startfiring` and `stopfiring` toggle charging on actors and are ignored on turrets. Still missing: turret behaviour itself (manning an MG42), the MG42 entities, and burst-fire settings.
 - **Patrol and alarm** (2026-11-26): `type_idle patrol` plus `patrolpath` walks the info_waypoint chain, following each waypoint's target, and also works as spawn keys. An enemy in sight ends the walk. On a soldier's first sight of an enemy, its `alarmthread` runs and it runs to its `alarmnode`. Seen in Dolphin on m1l2b: patroller02 walks patrolpath02, t329, t327 and on, and loops. Still missing: alerting nearby soldiers (`enemysharerange`), and retail's alarm-type idle behaviour (running to an alarm and raising it).
 - **More unbound commands seen on m1l2b:** `nottriggerable`, `triggerable`, `setcollisionentity`, `german`, `immune`, `flypath`.
-- **Disguise:** `type_disguise` and the `disguise_*` settings, used by m1l2a/m1l3.
+- **Disguise** (2026-11-26): `$player.has_disguise` (set, read back) and `type_disguise` (command or field). Soldiers that heed a disguise (any type but `none`, the default for mission soldiers) let a disguised player pass. Firing a weapon ends the disguise. Seen in Dolphin on m2l2a: "player disguise on", and 48 soldiers loaded with no shots fired. Still missing: soldiers saluting or asking for papers, the `disguise_range`, `disguise_period` and `disguise_level` checks, and the papers sequence (showing papers with USE).
+- **The grunt pool is full on m2l2a** (48 of 48 soldiers), so later mission soldiers wait for a free slot.
+- **More unbound commands seen on m2l2a:** `resetleash`, `getwalkanim`.
 - **Grenades:** throwing them, and reacting to them.
 
 ## Probe tooling
