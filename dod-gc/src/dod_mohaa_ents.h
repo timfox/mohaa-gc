@@ -25,5 +25,10 @@ void DodGC_MohaaActorAlerted( edict_t *e );
  * reach of the player fires. 1 when one did, so the stock door/button search is skipped this press. */
 class CBasePlayer;
 int DodGC_MohaaPlayerUse( CBasePlayer *player );
+/* MOHAA turretweapons (an info_target whose mohaa_classname is turretweapon_*): the nearest to from within radius.
+ * gun gets its x, y, yaw and the half arc it covers (#maxyawoffset, 0 the default). 1 when one is found. */
+int DodGC_MohaaTurretNear( const float from[3], float radius, float gun[4] );
+/* Make a script grunt the crew of a turret at yaw covering arc_half degrees each side. 0: not a script grunt. */
+int DodGrunts_ManTurret( edict_t *e, float yaw, float arc_half );
 
 #endif

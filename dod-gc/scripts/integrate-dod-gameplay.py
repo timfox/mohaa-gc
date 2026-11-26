@@ -369,7 +369,14 @@ def integrate_mohaa_entity_keys(dlls: Path) -> None:
 		'\tif( pkvd->szKeyName && pkvd->szKeyName[0] == \'#\' && pkvd->szValue ) {\n'
 		'\t\tDodGC_MohaaEntityKey( pentKeyvalue, pkvd->szKeyName, pkvd->szValue );\n'
 		'\t\tpkvd->fHandled = TRUE;\n\t\treturn;\n\t}\n'
-		'\tEntvarsKeyvalue( VARS( pentKeyvalue ), pkvd );\n')
+		'\tEntvarsKeyvalue( VARS( pentKeyvalue ), pkvd );\n', done='DodGC_MohaaEntityKey( pentKeyvalue')
+	# The converter's mohaa_classname marks turretweapons (MG42 nests): the binding keeps those. Not handled, so the
+	# entity still sees the key as before.
+	replace_once(cbase,
+		'\tif( pkvd->szKeyName && pkvd->szKeyName[0] == \'#\' && pkvd->szValue ) {\n',
+		'\tif( pkvd->szKeyName && pkvd->szValue && !strcmp( pkvd->szKeyName, "mohaa_classname" ) )\n'
+		'\t\tDodGC_MohaaEntityKey( pentKeyvalue, pkvd->szKeyName, pkvd->szValue );\n'
+		'\tif( pkvd->szKeyName && pkvd->szKeyName[0] == \'#\' && pkvd->szValue ) {\n')
 
 
 def integrate_doddetect(dlls: Path) -> None:

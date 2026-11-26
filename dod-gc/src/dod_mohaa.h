@@ -49,7 +49,9 @@ enum {
 	/* a patrol walk to pos: like WALKTO, but an enemy in sight ends it */
 	DOD_MOHAA_PATROLTO,
 	/* pos[0]: 1 heeds the player's disguise (type_disguise salute, sentry, ...), 0 not ("none") */
-	DOD_MOHAA_DISGUISE
+	DOD_MOHAA_DISGUISE,
+	/* type_attack "turret": man the turretweapon nearest the actor, if one is close (the host finds it) */
+	DOD_MOHAA_TURRET
 };
 /* HUD parts a cutscene hides: ALL is MOHAA's "drawhud 0"; WEAPON (crosshair, ammo, view model) goes while the
    player is locked into a scripted ride. */

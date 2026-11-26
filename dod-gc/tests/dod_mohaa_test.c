@@ -172,7 +172,7 @@ static void m_fade(float t, float r, float g, float b, float a, int out)
 static int m_actor(uint32_t id, int order, const float pos[3])
 {
 	static const char *names[] = {"ai_on", "ai_off", "attack", "walkto", "runto", "turnto", "stop",
-		"sight", "hearing", "fov", "leash", "tether", "mindist", "maxdist", "gun", "style", "patrolto", "disguise"};
+		"sight", "hearing", "fov", "leash", "tether", "mindist", "maxdist", "gun", "style", "patrolto", "disguise", "turret"};
 	char line[96];
 	Ent *e = ent(id);
 	if (!e || strcmp(e->classname, "actor"))
@@ -392,6 +392,7 @@ static void test_actor_weapons(void)
 	assert(strstr(log_buf, "<guy gun 0.0"));
 	assert(strstr(log_buf, "<guy gun 8.0"));	/* DOD_WEAPON_K98 */
 	assert(strstr(log_buf, "<guy style 1.0") && strstr(log_buf, "<guy style 0.0"));
+	assert(strstr(log_buf, "<guy turret 0.0"));	/* type_attack "turret" asks for a gun to man */
 	assert(!strstr(log_buf, "not bound yet") && !strstr(log_buf, "not an actor"));
 }
 
@@ -1319,6 +1320,28 @@ static void test_cutscene(void)
 /* one line per test, so a run reads as a list (tools/capture_run.py records it) */
 #define RUN(t) do { t(); printf("  %-40s ok\n", #t); fflush(stdout); } while (0)
 
+/* ".gun = <targetname>" (spotlight.scr's "self.spotter.gun = self.spotter.target") points at that entity, so
+   "self.gun.targetname" and "self.gun startfiring" reach the MG42; a weapon name stays the actor's weapon */
+static void test_gun_field_names_turret(void)
+{
+	DodMohaaBackend b = backend();
+	reset();
+	add("gunner", "actor", 0, 0, 0);
+	add("t9", "info_target", 10, 0, 0);
+	files[0][0] = "maps/g.scr";
+	files[0][1] =
+		"main:\n"
+		"\t$gunner.gun = \"t9\"\n"
+		"\tprintln (\"gun=\" + $gunner.gun.targetname)\n"
+		"\t$gunner.turret = \"t9\"\n"
+		"\tprintln (\"turret=\" + $gunner.turret.targetname)\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "g", 0, 0));
+	run(0.05f, 0.2f);
+	assert(strstr(log_buf, "gun=t9"));
+	assert(strstr(log_buf, "turret=t9"));
+}
+
 int main(void)
 {
 	RUN(test_no_script_no_vm);
@@ -1345,5 +1368,6 @@ int main(void)
 	Dod_MohaaShutdown();
 	assert(Dod_MohaaPathNodes(NULL) == 0);
 	printf("dod_mohaa_test: ok\n");
+	test_gun_field_names_turret();
 	return 0;
 }

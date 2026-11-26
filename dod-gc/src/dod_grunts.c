@@ -131,6 +131,10 @@ void DodGrunt_Looked(DodGruntPool *p, int i, float now, int visible, int target,
 			p->target_x[i] = tx;
 			p->target_y[i] = ty;
 			p->target_seen[i] = now;
+			if (p->script[i] & DOD_GRUNT_TURRET) {
+				p->state[i] = DOD_GRUNT_SHOOT;	/* the gun reaches anything in its arc; it never leaves it */
+				return;
+			}
 			{
 				/* MOHAA maxdist: the range it fights from; mindist: nearer than this it backs off first */
 				const float fight = p->maxdist[i] ? (float)p->maxdist[i] : DOD_GRUNT_CLOSE * 3.0f;
@@ -289,8 +293,9 @@ void DodGrunt_MoveChecked(DodGruntPool *p, int i, int clear)
 		p->blocked[i] = 0;
 		return;
 	}
-	/* Stopped: turn away so the next check finds a way. Reads as the grunt backing off a wall. */
-	{
+	/* Stopped: turn away so the next check finds a way. Reads as the grunt backing off a wall. A turret gunner keeps
+	 * its gun's heading: it does not walk. */
+	if (!(p->script[i] & DOD_GRUNT_TURRET)) {
 		const float turn = 60.0f + DodGrunt_Rand(p) * 120.0f;
 		p->heading[i] = wrap180(p->heading[i] + (DodGrunt_Rand(p) < 0.5f ? -turn : turn));
 	}
@@ -308,6 +313,8 @@ int DodGrunt_ShotDue(DodGruntPool *p, int i, float now, int skill)
 	if (skill > 3)
 		skill = 3;
 	gap = (1.0f + DodGrunt_Rand(p)) * (1.0f - 0.12f * (float)skill);
+	if (p->script[i] & DOD_GRUNT_TURRET)
+		gap = 0.25f + 0.2f * DodGrunt_Rand(p);	/* an MG42 on its bipod: short bursts, not aimed rifle shots */
 	p->next_fire[i] = now + gap;
 	p->stats.shots++;
 	return 1;
@@ -492,4 +499,31 @@ int DodGrunt_TakeOrderDone(DodGruntPool *p, int i)
 		return 0;
 	p->order_done[i] = 0;
 	return 1;
+}
+
+void DodGrunt_ManTurret(DodGruntPool *p, int i, float gun_yaw, float arc_half, int mg_weapon)
+{
+	if (!alive(p, i))
+		return;
+	if (arc_half <= 0.0f)
+		arc_half = DOD_GRUNT_TURRET_ARC;
+	if (arc_half > 180.0f)
+		arc_half = 180.0f;
+	p->script[i] |= DOD_GRUNT_SCRIPTED | DOD_GRUNT_TURRET;
+	p->script[i] &= (unsigned char)~(DOD_GRUNT_ATTACK | DOD_GRUNT_SOFT_ORDER);
+	p->cover[i] = DOD_GRUNT_COVER_NONE;
+	p->order[i] = DOD_GRUNT_ORDER_NONE;
+	p->heading[i] = gun_yaw;
+	p->yaw[i] = gun_yaw;
+	DodGrunt_SetParam(p, i, DOD_GRUNT_LEASH, DOD_GRUNT_TURRET_LEASH, 0.0f, 0.0f);
+	DodGrunt_SetParam(p, i, DOD_GRUNT_FOV, arc_half * 2.0f, 0.0f, 0.0f);
+	if (mg_weapon >= 0)
+		p->gun[i] = (unsigned char)(mg_weapon + 1);
+	if (p->state[i] != DOD_GRUNT_SHOOT)
+		p->state[i] = DOD_GRUNT_HOLD;
+}
+
+float DodGrunt_LookYaw(const DodGruntPool *p, int i)
+{
+	return (p->script[i] & DOD_GRUNT_TURRET) ? p->heading[i] : p->yaw[i];
 }

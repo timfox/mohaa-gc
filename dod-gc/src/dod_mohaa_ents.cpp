@@ -21,6 +21,11 @@
 /* Script memory cap in KiB. MEM1 is tight on GameCube (see docs/MEMORY.md); a level whose
  * scripts do not fit is refused cleanly at load instead of starving the engine. */
 static cvar_t mohaa_script_kb = { "mohaa_script_kb", "384", FCVAR_SERVER };
+/* Probe aid: "mohaa_probe_goto <targetname>" (or a probe disc's maps/<map>.goto naming it, since a menu boot runs
+ * no config) puts the player 700 units in front of that entity, facing it, two seconds into the level, so a
+ * headless run can film a spot the mission takes minutes to reach. Retail discs carry neither. */
+static cvar_t mohaa_probe_goto = { "mohaa_probe_goto", "", FCVAR_SERVER };
+static int g_probe_goto_done;
 static int g_mohaa_cvar_registered;
 static int gmsgMohaaHudDraw;
 static int gmsgMohaaCompass;
@@ -137,6 +142,14 @@ static void M_SetVec( uint32_t id, int what, const float v[3] )
 #define MOHAA_SCRIPT_MODEL_LIMIT 32
 static char g_mohaa_script_models[MOHAA_SCRIPT_MODEL_LIMIT][128];
 static int g_mohaa_script_model_count;
+
+static int ScriptModelPrecached( const char *path )
+{
+	for( int i = 0; i < g_mohaa_script_model_count; i++ )
+		if( !strcmp( g_mohaa_script_models[i], path ) )
+			return 1;
+	return 0;
+}
 
 static int M_PrecacheModel( const char *path )
 {
@@ -515,6 +528,7 @@ static int IsActorClass( const char *classname )
  * grunt's own model is a player body that is no actor class. */
 static struct { uint32_t id; int team; string_t tik; } g_actors[64];
 static void ActorWait( int team, const Vector &origin, float yaw, const char *name, uint32_t keys, string_t tik );
+static void CrewWait( edict_t *actor, string_t gun );
 
 static void ActorTrack( edict_t *e, int team, string_t tik )
 {
@@ -727,6 +741,12 @@ public:
 		pev->model = 0;	/* a .tik name, never a model the engine has */
 		const char *name = pev->targetname ? STRING( pev->targetname ) : NULL;
 		edict_t *grunt = SpawnActorAt( team, pev->origin, pev->angles.y, name, tik );
+		/* the soldier keeps the map's target ($guy.target: spotlight.scr finds a gunner's MG42 by it); a map actor
+		 * that targets a turretweapon is its crew (m1l2a's and m1l2b's MG42 nests) */
+		if( grunt && pev->target ) {
+			grunt->v.target = pev->target;
+			CrewWait( grunt, pev->target );
+		}
 		/* the map's # keys (#set, #friendtype ...) arrived on this placeholder: they go with the soldier */
 		if( grunt )
 			Dod_MohaaEntityMoved( IdFor( edict() ), IdFor( grunt ) );
@@ -1139,10 +1159,12 @@ void DodGC_MohaaDisguiseBlown( edict_t *player )
 
 void DodGC_MohaaLevelInit( void )
 {
+	g_probe_goto_done = 0;
 	DodGC_MohaaRegisterHudMessages();
 	if( !g_mohaa_cvar_registered )
 	{
 		CVAR_REGISTER( &mohaa_script_kb );
+		CVAR_REGISTER( &mohaa_probe_goto );
 		g_mohaa_cvar_registered = 1;
 	}
 	DodMohaaBackend b;
@@ -1295,8 +1317,191 @@ void DodGC_MohaaTrigger( edict_t *e, edict_t *activator )
 	DodGC_MohaaEntityEvent( e, "trigger" );
 }
 
+/* MOHAA turretweapons. The map converter writes them as info_target with mohaa_classname turretweapon_*; the MG
+ * ones get crews: an actor whose map target names the gun, or one told type_attack "turret" beside it. */
+#define MOHAA_TURRETS 16
+#define MOHAA_MG42_MODEL "models/statweapons/mg42_gun.mdl"
+static struct { uint32_t id; float arc; unsigned char mg, modelled; } g_turrets[MOHAA_TURRETS];
+static int g_nturrets;
+/* map actors waiting for their gun to spawn (keys arrive before the turret entities do) */
+#define MOHAA_CREWS 16
+static struct { uint32_t actor; string_t gun; } g_crews[MOHAA_CREWS];
+static int g_ncrews;
+
+static void TurretsReset( void );
+static string_t g_turrets_map;
+
+static int TurretRow( edict_t *e, int make )
+{
+	const uint32_t id = IdFor( e );
+	/* the rows belong to one map: the first key of a new map clears them (map keys arrive before any level hook) */
+	if( make && g_turrets_map != gpGlobals->mapname ) {
+		TurretsReset();
+		g_turrets_map = gpGlobals->mapname;
+	}
+	for( int k = 0; k < g_nturrets; k++ )
+		if( g_turrets[k].id == id )
+			return k;
+	if( !make || g_nturrets >= MOHAA_TURRETS )
+		return -1;
+	g_turrets[g_nturrets].id = id;
+	g_turrets[g_nturrets].arc = 0.0f;
+	g_turrets[g_nturrets].mg = 0;
+	g_turrets[g_nturrets].modelled = 0;
+	return g_nturrets++;
+}
+
+static void TurretsReset( void )
+{
+	g_nturrets = 0;
+	g_ncrews = 0;
+}
+
+int DodGC_MohaaTurretNear( const float from[3], float radius, float gun[4] )
+{
+	int best = -1;
+	float best_d2 = radius * radius;
+	for( int k = 0; k < g_nturrets; k++ ) {
+		edict_t *t = g_turrets[k].mg ? EdictFor( g_turrets[k].id ) : NULL;
+		if( !t )
+			continue;
+		const float dx = t->v.origin.x - from[0], dy = t->v.origin.y - from[1];
+		if( dx * dx + dy * dy < best_d2 ) {
+			best_d2 = dx * dx + dy * dy;
+			best = k;
+		}
+	}
+	if( best < 0 )
+		return 0;
+	edict_t *t = EdictFor( g_turrets[best].id );
+	gun[0] = t->v.origin.x;
+	gun[1] = t->v.origin.y;
+	gun[2] = t->v.angles.y;
+	gun[3] = g_turrets[best].arc;
+	return 1;
+}
+
+static void CrewWait( edict_t *actor, string_t gun )
+{
+	if( g_turrets_map != gpGlobals->mapname ) {
+		TurretsReset();
+		g_turrets_map = gpGlobals->mapname;
+	}
+	if( !actor || !gun || g_ncrews >= MOHAA_CREWS )
+		return;
+	g_crews[g_ncrews].actor = IdFor( actor );
+	g_crews[g_ncrews].gun = gun;
+	g_ncrews++;
+}
+
+static int ScriptModelPrecached( const char *path );
+
+static void ProbeGotoThink( void )
+{
+	char file_name[64] = "";
+	const char *name = CVAR_GET_STRING( "mohaa_probe_goto" );
+	if( g_probe_goto_done || gpGlobals->time < 2.0f )
+		return;
+	g_probe_goto_done = 1;
+	if( !name || !name[0] ) {
+		char path[96];
+		int len = 0;
+		snprintf( path, sizeof( path ), "maps/%s.goto", STRING( gpGlobals->mapname ) );
+		byte *data = LOAD_FILE_FOR_ME( path, &len );
+		if( !data )
+			return;
+		int n = 0;
+		while( n < len && n + 1 < (int)sizeof( file_name ) && data[n] > ' ' ) {
+			file_name[n] = (char)data[n];
+			n++;
+		}
+		file_name[n] = 0;
+		FREE_FILE( data );
+		name = file_name;
+		if( !name[0] )
+			return;
+	}
+	edict_t *spot = FIND_ENTITY_BY_TARGETNAME( NULL, name );
+	edict_t *pe = INDEXENT( 1 );
+	if( FNullEnt( spot ) || !pe || pe->free ) {
+		ALERT( at_console, "mohaa_probe_goto: no %s\n", name );
+		return;
+	}
+	const float r = spot->v.angles.y * 0.017453293f;
+	Vector to = spot->v.origin + Vector( cosf( r ) * 700.0f, sinf( r ) * 700.0f, 48.0f );
+	TraceResult tr;
+	UTIL_TraceHull( to, to - Vector( 0, 0, 512 ), ignore_monsters, human_hull, pe, &tr );
+	if( !tr.fStartSolid )
+		to = tr.vecEndPos;
+	UTIL_SetOrigin( &pe->v, to );
+	const Vector look = UTIL_VecToAngles( spot->v.origin - to );
+	pe->v.angles = Vector( -look.x, look.y, 0 );	/* fixangle sends these as the view: look up (or down) at it */
+	pe->v.v_angle = pe->v.angles;
+	pe->v.fixangle = 1;
+	ALERT( at_console, "mohaa_probe_goto: player at %.0f %.0f %.0f facing %s\n", to.x, to.y, to.z, name );
+}
+
+/* Once the map's entities are in: each MG gets its model, each waiting crew mans its gun. */
+static void TurretsThink( void )
+{
+	static string_t logged_map;
+	ProbeGotoThink();
+	if( logged_map != gpGlobals->mapname ) {
+		logged_map = gpGlobals->mapname;
+		ALERT( at_console, "mohaa: %d turretweapons, %d crews waiting\n", g_turrets_map == gpGlobals->mapname ? g_nturrets : 0,
+			g_turrets_map == gpGlobals->mapname ? g_ncrews : 0 );
+	}
+	if( g_turrets_map != gpGlobals->mapname )
+		return;	/* rows of an earlier map */
+	for( int k = 0; k < g_nturrets; k++ ) {
+		edict_t *t = EdictFor( g_turrets[k].id );
+		if( !t || !g_turrets[k].mg || g_turrets[k].modelled )
+			continue;
+		g_turrets[k].modelled = 1;
+		if( ScriptModelPrecached( MOHAA_MG42_MODEL ) ) {
+			SET_MODEL( t, MOHAA_MG42_MODEL );
+			t->v.solid = SOLID_NOT;
+			t->v.movetype = MOVETYPE_NONE;
+			t->v.effects &= ~EF_NODRAW;
+		}
+	}
+	for( int c = 0; c < g_ncrews; ) {
+		edict_t *actor = EdictFor( g_crews[c].actor );
+		int done = !actor;
+		for( int k = 0; !done && k < g_nturrets; k++ ) {
+			edict_t *t = g_turrets[k].mg ? EdictFor( g_turrets[k].id ) : NULL;
+			if( t && t->v.targetname && !strcmp( STRING( t->v.targetname ), STRING( g_crews[c].gun ) ) ) {
+				if( DodGrunts_ManTurret( actor, t->v.angles.y, g_turrets[k].arc ) )
+					ALERT( at_console, "mohaa: %s mans the MG42 %s\n",
+						actor->v.targetname ? STRING( actor->v.targetname ) : "actor", STRING( g_crews[c].gun ) );
+				done = 1;
+			}
+		}
+		if( done || gpGlobals->time > 10.0f ) {
+			g_crews[c] = g_crews[--g_ncrews];
+			continue;
+		}
+		c++;
+	}
+}
+
 void DodGC_MohaaEntityKey( edict_t *e, const char *key, const char *value )
 {
+	/* mohaa_classname is the converter's note of the retail class: only turretweapons are kept, never sent to the
+	 * script (every converted entity has one) */
+	if( !strcmp( key, "mohaa_classname" ) ) {
+		if( !strncmp( value, "turretweapon_", 13 ) ) {
+			const int k = TurretRow( e, 1 );
+			if( k >= 0 )
+				g_turrets[k].mg = strstr( value, "mg42" ) || strstr( value, "30cal" ) ? 1 : 0;
+		}
+		return;
+	}
+	if( !strcmp( key, "#maxyawoffset" ) ) {
+		const int k = TurretRow( e, 1 );
+		if( k >= 0 )
+			g_turrets[k].arc = (float)atof( value );
+	}
 	uint32_t id = IdFor( e );
 	if( id )
 		Dod_MohaaEntityKey( id, key, value );
@@ -1308,6 +1513,7 @@ void DodGC_MohaaThink( void )
 	CutsceneThink();
 	MusicSend();
 	ActorsWaitingThink();
+	TurretsThink();
 }
 
 void DodGC_MohaaEntityEvent( edict_t *e, const char *event )
