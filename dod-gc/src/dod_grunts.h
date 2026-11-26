@@ -49,7 +49,8 @@ enum {
 	DOD_GRUNT_AI_OFF = 1 << 1,	/* ignores what it sees: no targets, no shooting, no wandering */
 	DOD_GRUNT_ATTACK = 1 << 2,	/* runs at what it sees (MOHAA attackplayer) instead of holding */
 	DOD_GRUNT_SOFT_ORDER = 1 << 3,	/* its move order is a patrol walk: an enemy in sight ends it */
-	DOD_GRUNT_HEED_DISGUISE = 1 << 4	/* lets a disguised player pass (MOHAA type_disguise other than "none") */
+	DOD_GRUNT_HEED_DISGUISE = 1 << 4,	/* lets a disguised player pass (MOHAA type_disguise other than "none") */
+	DOD_GRUNT_TURRET = 1 << 5	/* mans a fixed MG42: stays at the gun, watches its arc, fires in bursts */
 };
 enum { DOD_GRUNT_ORDER_NONE = 0, DOD_GRUNT_ORDER_WALK, DOD_GRUNT_ORDER_RUN };
 /* A fighting script actor runs to a cover path node (its own move, not the script's: no movedone), then fights
@@ -184,6 +185,15 @@ void DodGrunt_OrderStop(DodGruntPool *p, int i);
 void DodGrunt_Face(DodGruntPool *p, int i, float tx, float ty);
 /* 1 once after a move order arrived (the host turns it into the script's "movedone"). */
 int DodGrunt_TakeOrderDone(DodGruntPool *p, int i);
+
+/* MOHAA turret gunner (an actor whose map target is a turretweapon, or type_attack "turret" beside one): it stays
+ * at the gun, carries the MG42, and watches an arc of arc_half degrees each side of the gun's yaw. heading keeps
+ * the gun's yaw, so the arc does not turn with the body. */
+#define DOD_GRUNT_TURRET_ARC 60.0f	/* degrees each side when the turret sets none */
+#define DOD_GRUNT_TURRET_LEASH 24.0f
+void DodGrunt_ManTurret(DodGruntPool *p, int i, float gun_yaw, float arc_half, int mg_weapon);
+/* The yaw a grunt's field of view is centred on: the gun's for a turret gunner, else the body's. */
+float DodGrunt_LookYaw(const DodGruntPool *p, int i);
 
 /* Facing: the yaw a grunt should look toward a point from its place. */
 float DodGrunt_YawTo(float x, float y, float tx, float ty);

@@ -327,6 +327,15 @@ int DodGrunts_ScriptRemove( edict_t *ed )
 	return 1;
 }
 
+int DodGrunts_ManTurret( edict_t *ed, float yaw, float arc_half )
+{
+	const int i = ScriptSlot( ed );
+	if( i < 0 )
+		return 0;
+	DodGrunt_ManTurret( &g_pool, i, yaw, arc_half, DOD_WEAPON_MG42 );
+	return 1;
+}
+
 int DodGrunts_ScriptOrder( edict_t *ed, int order, const float pos[3] )
 {
 	const int i = ScriptSlot( ed );
@@ -349,7 +358,18 @@ int DodGrunts_ScriptOrder( edict_t *ed, int order, const float pos[3] )
 	case DOD_MOHAA_GUN:
 		g_pool.gun[i] = pos[0] < 0.0f ? DOD_GRUNT_GUN_NONE : (unsigned char)( (int)pos[0] > 0 ? (int)pos[0] + 1 : 0 );
 		break;
-	case DOD_MOHAA_ATTACK_STYLE: DodGrunt_SetAttack( &g_pool, i, pos[0] > 0.0f ); break;
+	case DOD_MOHAA_ATTACK_STYLE:
+		/* a turret's crew stays on the gun: startfiring opens up from it, it never charges */
+		if( !( g_pool.script[i] & DOD_GRUNT_TURRET ) )
+			DodGrunt_SetAttack( &g_pool, i, pos[0] > 0.0f );
+		break;
+	case DOD_MOHAA_TURRET: {
+		float gun[4];
+		const float from[3] = { g_pool.x[i], g_pool.y[i], g_pool.z[i] };
+		if( DodGC_MohaaTurretNear( from, 160.0f, gun ) )
+			DodGrunt_ManTurret( &g_pool, i, gun[2], gun[3], DOD_WEAPON_MG42 );
+		break;
+	}
 	case DOD_MOHAA_DISGUISE:
 		if( pos[0] > 0.0f )
 			g_pool.script[i] |= DOD_GRUNT_HEED_DISGUISE;
@@ -439,7 +459,7 @@ static void GruntLook( int i, int rush )
 	const float fov_cos = DodGrunt_FovCos( &g_pool, i );
 	float best_d2 = sight * sight;
 	Vector best_pos;
-	const float fwd = g_pool.yaw[i] * 0.017453293f;
+	const float fwd = DodGrunt_LookYaw( &g_pool, i ) * 0.017453293f;	/* a turret's crew watches the gun's arc */
 	for( int k = 1; k <= gpGlobals->maxClients; k++ ) {
 		CBasePlayer *pl = GruntPlayer( k );
 		if( !pl )
@@ -484,7 +504,7 @@ static void GruntCover( int i, float now )
 {
 	const unsigned char s = g_pool.script[i];
 	float from[3], enemy[3], spot[3];
-	if( !s || ( s & ( DOD_GRUNT_AI_OFF | DOD_GRUNT_ATTACK ) ) || g_pool.state[i] == DOD_GRUNT_DEAD )
+	if( !s || ( s & ( DOD_GRUNT_AI_OFF | DOD_GRUNT_ATTACK | DOD_GRUNT_TURRET ) ) || g_pool.state[i] == DOD_GRUNT_DEAD )
 		return;
 	if( g_pool.order[i] != DOD_GRUNT_ORDER_NONE || now < g_pool.turn_at[i] )
 		return;
@@ -510,6 +530,9 @@ static void GruntCover( int i, float now )
 		ALERT( at_console, "GRUNT %d takes cover at %.0f %.0f\n", i, spot[0], spot[1] );
 }
 
+static void GruntShootRound( int i, CDodGrunt *e, CBasePlayer *pl, const Vector &from, const Vector &aim,
+	const Vector &dir, float dist, int skill, const DodWeaponDef *gun );
+
 static void GruntShoot( int i )
 {
 	CDodGrunt *e = g_ents[i];
@@ -531,6 +554,17 @@ static void GruntShoot( int i )
 		gun = Dod_ClassWeaponDef( (DodTeam)g_pool.team[i], DOD_CLASS_RIFLEMAN );
 	if( gun && gun->fire_sound && gun->fire_sound[0] )
 		EMIT_SOUND_DYN( e->edict(), CHAN_WEAPON, gun->fire_sound, 1.0f, ATTN_NORM, 0, 100 );
+	/* a turret's MG42 fires a short burst each time: two rounds, each rolled on its own */
+	const int rounds = ( g_pool.script[i] & DOD_GRUNT_TURRET ) ? 2 : 1;
+	for( int round = 0; round < rounds; round++ )
+	{
+		GruntShootRound( i, e, pl, from, aim, dir, dist, skill, gun );
+	}
+}
+
+static void GruntShootRound( int i, CDodGrunt *e, CBasePlayer *pl, const Vector &from, const Vector &aim,
+	const Vector &dir, float dist, int skill, const DodWeaponDef *gun )
+{
 	{
 		float roll = DodGrunt_Rand( &g_pool );
 		/* MOHAA's campaign: soldiers miss more, by difficulty (one hit a second killed an idle player) */

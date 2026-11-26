@@ -273,6 +273,9 @@ SCRIPT_TIKI_MODELS = {
     # The visible m1l1 trucks. The gmctruckpath/truck2path TIKIs are tag carriers with helper triangles.
     "m1l1": ("vehicles/gmctruck_opening.tik", "vehicles/opeltruck.tik",
              "human/german_afrika_private.tik"),
+    # The MG42 nests' gun (turretweapon_german_mg42); the game puts it on each turret entity.
+    "m1l2a": ("statweapons/mg42_gun.tik",),
+    "m1l2b": ("statweapons/mg42_gun.tik",),
 }
 
 # The retail German private is a composite TIKI: its body, head and equipment use

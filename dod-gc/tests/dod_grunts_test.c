@@ -1,4 +1,5 @@
 #include "dod_grunts.h"
+#include "dod_weapons.h"
 
 #include <assert.h>
 #include <math.h>
@@ -288,6 +289,37 @@ static void test_actor_settings(void)
 	assert(DodGrunt_SightRange(&p, i) == DOD_GRUNT_SIGHT && !p.leash_r[i] && !p.maxdist[i]);
 }
 
+/* A turret gunner: stays at the gun, keeps the gun's heading as its arc centre, fires anything it sees in bursts. */
+static void test_turret_gunner(void)
+{
+	DodGruntPool p;
+	const int i = 3;
+	const float now = 10.0f;
+	DodGrunt_Init(&p, 7);
+	p.cap = 8;
+	DodGrunt_SpawnScripted(&p, i, DOD_TEAM_AXIS, 100, 100, 0, 0, now);
+	DodGrunt_ManTurret(&p, i, 270.0f, 0.0f, DOD_WEAPON_MG42);
+	assert(p.script[i] & DOD_GRUNT_TURRET);
+	assert(p.gun[i] == DOD_WEAPON_MG42 + 1);
+	assert(p.leash_r[i] == (short)DOD_GRUNT_TURRET_LEASH && p.leash_x[i] == 100 && p.leash_y[i] == 100);
+	assert(fabsf(DodGrunt_FovCos(&p, i) - cosf(DOD_GRUNT_TURRET_ARC * 0.017453293f)) < 0.01f);
+	assert(DodGrunt_LookYaw(&p, i) == 270.0f);
+	/* far beyond rifle range: the MG still fires, and the arc does not swing toward the target */
+	DodGrunt_Looked(&p, i, now, 1, 2, 100, -1500, 1600, 0);
+	assert(p.state[i] == DOD_GRUNT_SHOOT && p.target[i] == 2);
+	assert(DodGrunt_LookYaw(&p, i) == 270.0f);
+	/* a blocked check never turns its arc */
+	DodGrunt_MoveChecked(&p, i, 0);
+	assert(DodGrunt_LookYaw(&p, i) == 270.0f);
+	/* bursts: well under a second between shots */
+	p.next_fire[i] = 0.0f;
+	assert(DodGrunt_ShotDue(&p, i, now, 1));
+	assert(p.next_fire[i] - now < 0.5f);
+	/* out of sight: it holds the gun */
+	DodGrunt_Looked(&p, i, now + 1.0f, 0, 0, 0, 0, 0, 0);
+	assert(p.state[i] == DOD_GRUNT_HOLD);
+}
+
 int main(void)
 {
 	test_count();
@@ -303,6 +335,7 @@ int main(void)
 	test_rand_range();
 	test_actor_settings();
 	test_script_actor();
+	test_turret_gunner();
 	printf("dod_grunts_test: ok (row %d bytes, pool %d bytes)\n", DodGrunt_RowBytes(), (int)sizeof(DodGruntPool));
 	return 0;
 }

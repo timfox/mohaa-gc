@@ -629,6 +629,17 @@ static int h_set_field(void *user, const ms_value *l, const char *name, const ms
 		if (S.be.actor(l->u.id, DOD_MOHAA_DISGUISE, pos))
 			return 1;
 	}
+	/* "$gunner.turret = $gunner.target" / ".gun = ...": retail resolves a targetname to the turretweapon it names, so
+	   "self.gun.angles" and "self.gun startfiring" reach the MG42 (spotlight.scr). Other strings stay strings. */
+	if ((!strcmp(name, "turret") || !strcmp(name, "gun")) && val->type == MS_STRING && S.be.find) {
+		uint32_t id = 0;
+		const char *t = ms_string_text(val);
+		if (t && *t && S.be.find(t, &id, 1) >= 1 && id) {
+			ms_value e = ms_entity(id);
+			ms_set_entity_var(S.vm, l->u.id, name, &e);
+			return 1;
+		}
+	}
 	if (!strcmp(name, "weapon") && val->type == MS_STRING && S.be.actor) {
 		float pos[3] = {0, 0, 0};
 		pos[0] = (float)mohaa_gun_id(ms_string_text(val));
@@ -1087,18 +1098,24 @@ static int c_gun(ms_call *c)
 	return actor_order(c, DOD_MOHAA_GUN, pos);
 }
 
-/* "$actor type_attack cover|turret|alarm|runandshoot|...": runandshoot charges, the rest fight from cover (turret and
-   alarm behaviours are not in the port yet: they fight from cover) */
+/* "$actor type_attack cover|turret|alarm|runandshoot|...": runandshoot charges, the rest fight from cover (alarm is
+   not in the port yet: it fights from cover). "turret" also asks the host to man a turretweapon beside the actor;
+   with none near, the actor fights from cover. */
 static int c_type_attack(ms_call *c)
 {
 	float pos[3] = {0, 0, 0};
 	const char *style = ms_arg_string(c, 0);
 	pos[0] = style && (!strcmp(style, "runandshoot") || !strcmp(style, "runandshoot_attack")) ? 1.0f : 0.0f;
-	return actor_order(c, DOD_MOHAA_ATTACK_STYLE, pos);
+	actor_order(c, DOD_MOHAA_ATTACK_STYLE, pos);
+	if (style && (!strcmp(style, "turret") || !strcmp(style, "machinegunner")) && S.be.actor) {
+		pos[0] = 0.0f;
+		S.be.actor(target_id(c), DOD_MOHAA_TURRET, pos);
+	}
+	return 0;
 }
 
-/* "startfiring" / "stopfiring": an actor opens fire at what it sees / stops pressing; a turret (no turret
-   entities in the port) ignores them */
+/* "startfiring" / "stopfiring": an actor opens fire at what it sees / stops pressing. On a turretweapon the host
+   passes it to the gun's crew, if it has one. */
 static int c_firing(ms_call *c)
 {
 	float pos[3] = {0, 0, 0};
