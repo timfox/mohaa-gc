@@ -533,6 +533,10 @@ static void compose_angles(const float parent_angles[3], const float local_angle
 
 static int h_get_field(void *user, const ms_value *l, const char *name, ms_value *out)
 {
+	if (l->type == MS_ENTITY && !strcmp(name, "has_disguise") && S.be.get_disguise) {
+		*out = ms_int(S.be.get_disguise(l->u.id));
+		return 1;
+	}
 	float v[3];
 	(void)user;
 	if (l->type != MS_ENTITY)
@@ -612,6 +616,18 @@ static int h_set_field(void *user, const ms_value *l, const char *name, const ms
 	if (!strcmp(name, "angles") && val->type == MS_VECTOR) {
 		S.be.set_vec(l->u.id, DOD_MOHAA_ANGLES, val->u.v);
 		return 1;
+	}
+	if (!strcmp(name, "has_disguise") && S.be.disguise) {
+		S.be.disguise(l->u.id, ms_truthy(S.vm, val));
+		return 1;
+	}
+	if (!strcmp(name, "type_disguise") && S.be.actor) {
+		/* "$guy.type_disguise = "none"" (m3l1b's MG42 gunners) */
+		float pos[3] = {0, 0, 0};
+		const char *t = ms_string_text(val);
+		pos[0] = t && strcmp(t, "none") ? 1.0f : 0.0f;
+		if (S.be.actor(l->u.id, DOD_MOHAA_DISGUISE, pos))
+			return 1;
 	}
 	if (!strcmp(name, "weapon") && val->type == MS_STRING && S.be.actor) {
 		float pos[3] = {0, 0, 0};
@@ -1289,6 +1305,16 @@ static void spawn_actor_keys(uint32_t id, const char *const *keys, const char *c
 			S.be.actor(id, order, pos);
 		}
 	}
+}
+
+/* "$guy type_disguise salute|sentry|officer|rover|machinegunner|none": "none" sees through the player's disguise;
+   the rest let a disguised player pass (they do not salute or ask for papers here yet) */
+static int c_type_disguise(ms_call *c)
+{
+	float pos[3] = {0, 0, 0};
+	const char *t = ms_arg_string(c, 0);
+	pos[0] = t && strcmp(t, "none") ? 1.0f : 0.0f;
+	return actor_order(c, DOD_MOHAA_DISGUISE, pos);
 }
 
 /* "fixedleash 1": the leash stays where it was set (as it already does here) */
@@ -2734,6 +2760,7 @@ static void register_commands(ms_vm *vm)
 		{"maxdist", MS_ON_ENTITY, c_maxdist},
 		{"gun", MS_ON_ENTITY, c_gun},
 		{"type_idle", MS_ON_ENTITY, c_type_idle},
+		{"type_disguise", MS_ON_ENTITY, c_type_disguise},
 		{"patrolpath", MS_ON_ENTITY, c_patrolpath},
 		{"alarmnode", MS_ON_ENTITY, c_alarmnode},
 		{"alarmthread", MS_ON_ENTITY, c_alarmthread},

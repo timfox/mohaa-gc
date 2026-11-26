@@ -172,7 +172,7 @@ static void m_fade(float t, float r, float g, float b, float a, int out)
 static int m_actor(uint32_t id, int order, const float pos[3])
 {
 	static const char *names[] = {"ai_on", "ai_off", "attack", "walkto", "runto", "turnto", "stop",
-		"sight", "hearing", "fov", "leash", "tether", "mindist", "maxdist", "gun", "style", "patrolto"};
+		"sight", "hearing", "fov", "leash", "tether", "mindist", "maxdist", "gun", "style", "patrolto", "disguise"};
 	char line[96];
 	Ent *e = ent(id);
 	if (!e || strcmp(e->classname, "actor"))
@@ -431,6 +431,36 @@ static void test_patrol_and_alarm(void)
 	run(0.45f, 0.6f);
 	assert(strstr(log_buf, "<guy runto 188.0 188.0"));	/* its alarmnode */
 	assert(strstr(log_buf, "alarm raised"));
+	assert(!strstr(log_buf, "not bound yet"));
+}
+
+/* disguise: "$player.has_disguise" reaches the game and reads back; type_disguise and the .type_disguise field tell a
+   soldier whether to heed it */
+static int g_disguised;
+static void m_disguise(uint32_t id, int on) { (void)id; g_disguised = on; }
+static int m_get_disguise(uint32_t id) { (void)id; return g_disguised; }
+static void test_disguise(void)
+{
+	DodMohaaBackend b = backend();
+	b.disguise = m_disguise;
+	b.get_disguise = m_get_disguise;
+	reset();
+	g_disguised = 0;
+	add("player", "player", 0, 0, 0);
+	add("guy", "actor", 0, 0, 0);
+	files[0][0] = "maps/d.scr";
+	files[0][1] =
+		"main:\n"
+		"\t$player.has_disguise = 1\n"
+		"\tif ($player.has_disguise == 1)\n"
+		"\t\tprintln \"in disguise\"\n"
+		"\t$guy type_disguise \"none\"\n"
+		"\t$guy.type_disguise = \"salute\"\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "d", 0, 0));
+	run(0.05f, 0.2f);
+	assert(g_disguised == 1 && strstr(log_buf, "in disguise"));
+	assert(strstr(log_buf, "<guy disguise 0.0") && strstr(log_buf, "<guy disguise 1.0"));
 	assert(!strstr(log_buf, "not bound yet"));
 }
 
@@ -1270,6 +1300,7 @@ int main(void)
 	RUN(test_cover_spot);
 	RUN(test_actor_weapons);
 	RUN(test_patrol_and_alarm);
+	RUN(test_disguise);
 	RUN(test_level_flow_and_movers);
 	RUN(test_waittill_trigger_and_freed);
 	RUN(test_budget_refuses_cleanly);

@@ -350,6 +350,12 @@ int DodGrunts_ScriptOrder( edict_t *ed, int order, const float pos[3] )
 		g_pool.gun[i] = pos[0] < 0.0f ? DOD_GRUNT_GUN_NONE : (unsigned char)( (int)pos[0] > 0 ? (int)pos[0] + 1 : 0 );
 		break;
 	case DOD_MOHAA_ATTACK_STYLE: DodGrunt_SetAttack( &g_pool, i, pos[0] > 0.0f ); break;
+	case DOD_MOHAA_DISGUISE:
+		if( pos[0] > 0.0f )
+			g_pool.script[i] |= DOD_GRUNT_HEED_DISGUISE;
+		else
+			g_pool.script[i] &= (unsigned char)~DOD_GRUNT_HEED_DISGUISE;
+		break;
 	case DOD_MOHAA_PATROLTO:
 		g_pool.cover[i] = DOD_GRUNT_COVER_NONE;
 		DodGrunt_OrderMove( &g_pool, i, pos[0], pos[1], 0 );
@@ -444,6 +450,9 @@ static void GruntLook( int i, int rush )
 		if( t != DOD_TEAM_ALLIES && t != DOD_TEAM_AXIS && GruntMohaaCampaign() )
 			t = DOD_TEAM_ALLIES;
 		if( ( t != DOD_TEAM_ALLIES && t != DOD_TEAM_AXIS ) || t == (int)g_pool.team[i] )
+			continue;
+		/* MOHAA disguise: a soldier that heeds it lets the disguised player pass */
+		if( ( g_pool.script[i] & DOD_GRUNT_HEED_DISGUISE ) && DodGC_MohaaPlayerDisguised() )
 			continue;
 		const Vector d = pl->pev->origin - eye;
 		const float d2 = d.x * d.x + d.y * d.y + d.z * d.z;
@@ -600,6 +609,16 @@ static void GruntLogCost( int live )
 
 void DodGrunts_Think( void )
 {
+	/* MOHAA: firing ends a disguise (retail's soldiers then see the player for who they are) */
+	if( DodGC_MohaaPlayerDisguised() ) {
+		for( int k = 1; k <= gpGlobals->maxClients; k++ ) {
+			CBaseEntity *pe = UTIL_PlayerByIndex( k );
+			if( pe && pe->IsPlayer() && ( pe->pev->button & IN_ATTACK ) ) {
+				DodGC_MohaaDisguiseBlown( pe->edict() );
+				break;
+			}
+		}
+	}
 	const int requested = (int)CVAR_GET_FLOAT( "dod_grunts" );
 	if( requested <= 0 && g_pool.cap == 0 )
 		return;	/* off, and nothing ever spawned: costs this one test per frame */

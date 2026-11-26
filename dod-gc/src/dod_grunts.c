@@ -371,7 +371,7 @@ int DodGrunt_FreeScriptSlot(const DodGruntPool *p)
 void DodGrunt_SpawnScripted(DodGruntPool *p, int i, int team, float x, float y, float z, float yaw, float now)
 {
 	DodGrunt_Spawn(p, i, team, x, y, z, yaw, now, 0);
-	p->script[i] = DOD_GRUNT_SCRIPTED;
+	p->script[i] = DOD_GRUNT_SCRIPTED | DOD_GRUNT_HEED_DISGUISE;
 	p->state[i] = DOD_GRUNT_HOLD;
 }
 

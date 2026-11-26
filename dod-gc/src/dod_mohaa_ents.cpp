@@ -1106,6 +1106,37 @@ static size_t M_PoolCarve( size_t want, DodMohaaBackend *b )
 }
 #endif
 
+/* MOHAA disguise ("$player.has_disguise = 1"): one player in the campaign, so one flag */
+static int g_player_disguised;
+
+static void M_Disguise( uint32_t id, int on )
+{
+	(void)id;
+	if( g_player_disguised != !!on )
+		ALERT( at_console, "mohaa: player disguise %s\n", on ? "on" : "off" );
+	g_player_disguised = !!on;
+}
+
+static int M_GetDisguise( uint32_t id )
+{
+	(void)id;
+	return g_player_disguised;
+}
+
+int DodGC_MohaaPlayerDisguised( void )
+{
+	return g_player_disguised;
+}
+
+void DodGC_MohaaDisguiseBlown( edict_t *player )
+{
+	(void)player;
+	if( !g_player_disguised )
+		return;
+	g_player_disguised = 0;
+	ALERT( at_console, "mohaa: player fired: disguise blown\n" );
+}
+
 void DodGC_MohaaLevelInit( void )
 {
 	DodGC_MohaaRegisterHudMessages();
@@ -1156,7 +1187,10 @@ void DodGC_MohaaLevelInit( void )
 	b.hud_draw = M_HudDraw;
 	b.compass_target = M_CompassTarget;
 	b.damage_at = M_DamageAt;
+	b.disguise = M_Disguise;
+	b.get_disguise = M_GetDisguise;
 	g_locked_player = 0;	/* a new map starts everyone free (the last map's VM let go in its shutdown) */
+	g_player_disguised = 0;
 	g_saved_viewmodel = 0;
 	g_hud_hide = 0;
 	g_nwaiting = 0;	/* the last map's waiting soldiers went with it */
