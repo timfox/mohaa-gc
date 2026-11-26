@@ -21,7 +21,10 @@
 extern "C" {
 #endif
 
-#define DOD_GRUNT_MAX 48		/* pool size; one edict each, so also the most edicts they can take */
+/* pool size; one edict each, so also the most edicts they can take. 56: MOHAA's m2l2a places 51 soldiers and m1l1
+ * 54, all named by their scripts, so a 48-slot pool left some waiting. A row is under 100 bytes and the grunt edicts
+ * come out of the static edict table (m2l2a used 372 of 460 with 48), so 8 more cost about 0.8 KB of BSS. */
+#define DOD_GRUNT_MAX 56
 #define DOD_GRUNT_EDICT_RESERVE 24	/* edicts always left free for players, gibs, grenades, temp entities */
 #define DOD_GRUNT_SENSE_BUDGET 4	/* line-of-sight looks per frame, all grunts together */
 #define DOD_GRUNT_SENSE_INTERVAL 0.35f	/* seconds between one grunt's looks (jittered +-25%) */

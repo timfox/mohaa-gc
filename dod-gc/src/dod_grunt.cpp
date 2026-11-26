@@ -2,7 +2,7 @@
  * dod_grunts.c. Opt-in: dod_grunts N (default 0) puts N of them in the match, on the side opposite the humans.
  * They sit beside the bots and share nothing with them (no client slot, no weapons, no nav graph).
  *
- *   dod_grunts N        how many (0 off), capped by the pool (48) and the free edicts minus a reserve
+ *   dod_grunts N        how many (0 off), capped by the pool (DOD_GRUNT_MAX, 56) and the free edicts minus a reserve
  *   dod_grunt_team T    0 opposite the humans (default), 1 Allies, 2 Axis
  *   dod_grunt_rush R    1 run forward and at the enemy (default), 0 wander
  *   dod_grunt_skill S   0-3 shot cadence and accuracy (default 1)
