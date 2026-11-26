@@ -463,11 +463,42 @@ static void M_SetTargetname( uint32_t id, const char *name )
 		e->v.targetname = ALLOC_STRING( name );
 }
 
+/* triggers a script made "nottriggerable" */
+#define MOHAA_UNTRIGGERABLE_MAX 32
+static uint32_t g_untriggerable[MOHAA_UNTRIGGERABLE_MAX];
+
+static int Untriggerable( edict_t *e )
+{
+	const uint32_t id = IdFor( e );
+	for( int k = 0; id && k < MOHAA_UNTRIGGERABLE_MAX; k++ )
+		if( g_untriggerable[k] == id )
+			return 1;
+	return 0;
+}
+
 static void M_SetFlag( uint32_t id, int flag, int on )
 {
 	edict_t *e = EdictFor( id );
 	if( !e )
 		return;
+	if( flag == DOD_MOHAA_UNTRIGGERABLE )
+	{
+		int free_row = -1;
+		for( int k = 0; k < MOHAA_UNTRIGGERABLE_MAX; k++ ) {
+			if( g_untriggerable[k] == id )
+				g_untriggerable[k] = 0;
+			if( free_row < 0 && ( !g_untriggerable[k] || !EdictFor( g_untriggerable[k] ) ) )
+				free_row = k;
+		}
+		if( on && free_row >= 0 )
+			g_untriggerable[free_row] = id;
+		/* a touch trigger stops touching; trigger_use is only reached through USE, which skips it */
+		if( FClassnameIs( &e->v, "trigger_multiple" ) || FClassnameIs( &e->v, "trigger_once" ) ) {
+			e->v.solid = on ? SOLID_NOT : SOLID_TRIGGER;
+			UTIL_SetOrigin( VARS( e ), e->v.origin );
+		}
+		return;
+	}
 	if( flag == DOD_MOHAA_HIDDEN )
 	{
 		if( on )
@@ -1161,6 +1192,7 @@ void DodGC_MohaaDisguiseBlown( edict_t *player )
 void DodGC_MohaaLevelInit( void )
 {
 	g_probe_goto_done = 0;
+	memset( g_untriggerable, 0, sizeof( g_untriggerable ) );
 	DodGC_MohaaRegisterHudMessages();
 	if( !g_mohaa_cvar_registered )
 	{
@@ -1273,13 +1305,16 @@ int DodGC_MohaaPlayerUse( CBasePlayer *player )
 	const char *gamedir = CVAR_GET_STRING( "gamedir" );
 	if( !player || !gamedir || strcmp( gamedir, "mohaa" ) || !( player->m_afButtonPressed & IN_USE ) )
 		return 0;
+	/* a soldier asking a disguised player for papers: USE shows them (retail's "toggleitem" key has no pad button) */
+	if( Dod_MohaaShowPapers( IdFor( player->edict() ) ) )
+		return 1;
 	for( int k = 0; k < 2; k++ )
 	{
 		edict_t *e = NULL;
 		while( !FNullEnt( e = FIND_ENTITY_BY_CLASSNAME( e, classes[k] ) ) )
 		{
 			CBaseEntity *ent = CBaseEntity::Instance( e );
-			if( !ent )
+			if( !ent || Untriggerable( e ) )
 				continue;
 			const float d = MohaaUseDistance( ent, player->pev->origin + player->pev->view_ofs * 0.5f );
 			if( d < best_dist )

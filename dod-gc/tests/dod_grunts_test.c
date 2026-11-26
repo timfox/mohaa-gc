@@ -320,6 +320,23 @@ static void test_turret_gunner(void)
 	assert(p.state[i] == DOD_GRUNT_HOLD);
 }
 
+/* MOHAA resetleash: a negative LEASH keeps the radius and centres it where the actor stands */
+static void test_reset_leash(void)
+{
+	DodGruntPool p;
+	const int i = 2;
+	DodGrunt_Init(&p, 3);
+	p.cap = 4;
+	DodGrunt_SpawnScripted(&p, i, DOD_TEAM_AXIS, 10, 20, 0, 0, 1.0f);
+	DodGrunt_SetParam(&p, i, DOD_GRUNT_LEASH, 300, 0, 0);
+	p.x[i] = 500; p.y[i] = 600;
+	DodGrunt_SetParam(&p, i, DOD_GRUNT_LEASH, -1, 0, 0);
+	assert(p.leash_r[i] == 300 && p.leash_x[i] == 500 && p.leash_y[i] == 600);
+	DodGrunt_SpawnScripted(&p, i, DOD_TEAM_AXIS, 10, 20, 0, 0, 1.0f);
+	DodGrunt_SetParam(&p, i, DOD_GRUNT_LEASH, -1, 0, 0);
+	assert(p.leash_r[i] == 256 && p.leash_x[i] == 10);
+}
+
 int main(void)
 {
 	test_count();
@@ -336,6 +353,7 @@ int main(void)
 	test_actor_settings();
 	test_script_actor();
 	test_turret_gunner();
+	test_reset_leash();
 	printf("dod_grunts_test: ok (row %d bytes, pool %d bytes)\n", DodGrunt_RowBytes(), (int)sizeof(DodGruntPool));
 	return 0;
 }
