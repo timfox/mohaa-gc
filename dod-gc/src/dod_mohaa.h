@@ -41,7 +41,11 @@ enum {
 	DOD_MOHAA_WALKTO, DOD_MOHAA_RUNTO, DOD_MOHAA_TURNTO, DOD_MOHAA_STOP,
 	/* actor settings: pos[0] is the value (GoldSrc units; degrees for FOV), TETHER's pos is the point */
 	DOD_MOHAA_SIGHT, DOD_MOHAA_HEARING, DOD_MOHAA_FOV, DOD_MOHAA_LEASH, DOD_MOHAA_TETHER,
-	DOD_MOHAA_MINDIST, DOD_MOHAA_MAXDIST
+	DOD_MOHAA_MINDIST, DOD_MOHAA_MAXDIST,
+	/* pos[0]: DodWeaponId of the MOHAA weapon ("gun"), 0 its side's rifle, -1 unarmed */
+	DOD_MOHAA_GUN,
+	/* pos[0]: 1 charges (type_attack runandshoot, startfiring), 0 fights from cover (cover, turret, ...) */
+	DOD_MOHAA_ATTACK_STYLE
 };
 /* HUD parts a cutscene hides: ALL is MOHAA's "drawhud 0"; WEAPON (crosshair, ammo, view model) goes while the
    player is locked into a scripted ride. */

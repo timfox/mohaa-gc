@@ -79,6 +79,7 @@ void DodGrunt_Spawn(DodGruntPool *p, int i, int team, float x, float y, float z,
 	p->leash_x[i] = p->leash_y[i] = 0;
 	p->fov[i] = 0;
 	p->cover[i] = DOD_GRUNT_COVER_NONE;
+	p->gun[i] = 0;
 	p->state[i] = rush ? DOD_GRUNT_ADVANCE : DOD_GRUNT_WANDER;
 	if (i >= p->cap)
 		p->cap = i + 1;
@@ -315,6 +316,12 @@ float DodGrunt_HitChance(float dist, int skill)
 		skill = 3;
 	c = 0.70f - dist / 1800.0f * 0.6f + 0.08f * (float)skill;
 	return c < 0.05f ? 0.05f : (c > 0.95f ? 0.95f : c);
+}
+
+float DodGrunt_CampaignHitScale(int skill)
+{
+	/* the DoD grunt curve hits about 2 in 3 at 300 units; MOHAA's soldiers miss far more, by difficulty */
+	return skill <= 1 ? 0.35f : (skill >= 3 ? 0.7f : 0.5f);
 }
 
 int DodGrunt_ShotHits(float dist, int skill, float roll)
