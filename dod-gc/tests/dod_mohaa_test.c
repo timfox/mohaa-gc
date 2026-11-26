@@ -280,6 +280,31 @@ static void test_no_script_no_vm(void)
 	assert(!st.active && st.memory == 0);
 }
 
+/* m1l2b's printhints: an unbound key reads NIL (so the script prints its own "NOT BOUND"), a pad-bound one its
+   button, and loc_convert_string passes the text through (it printed "NILNOT BOUNDNIL" before both were bound) */
+static void test_bound_keys_and_loc_strings(void)
+{
+	DodMohaaBackend b = backend();
+	reset();
+	files[0][0] = "maps/keys.scr";
+	files[0][1] =
+		"main:\n"
+		"\tlocal.k = getboundkey1 \"+scores\"\n"
+		"\tif (local.k == NIL)\n"
+		"\t\tlocal.k = \"NOT BOUND\"\n"
+		"\tprintln ((loc_convert_string \"Press ( \") + local.k + (loc_convert_string \" ) now\"))\n"
+		"\tprintln (\"use=\" + (getboundkey1 \"+use\"))\n"
+		"\tif ((getboundkey2 \"+use\") == NIL)\n"
+		"\t\tprintln \"second none\"\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "keys", 0, 0));
+	run(0.05f, 0.2f);
+	assert(strstr(log_buf, "Press ( NOT BOUND ) now"));
+	assert(strstr(log_buf, "use=B"));
+	assert(strstr(log_buf, "second none"));
+	assert(!strstr(log_buf, "not bound yet"));
+}
+
 static void test_level_flow_and_movers(void)
 {
 	DodMohaaBackend b = backend();
@@ -1111,6 +1136,7 @@ static void test_cutscene(void)
 int main(void)
 {
 	RUN(test_no_script_no_vm);
+	RUN(test_bound_keys_and_loc_strings);
 	RUN(test_level_flow_and_movers);
 	RUN(test_waittill_trigger_and_freed);
 	RUN(test_budget_refuses_cleanly);
