@@ -522,7 +522,14 @@ static void GruntShoot( int i )
 	}
 	g_pool.stats.hits++;
 	ClearMultiDamage();
-	pl->TraceAttack( e->pev, ( gun ? gun->damage : 30.0f ) * 0.6f, dir, &tr, DMG_BULLET | DMG_NEVERGIB );
+	float damage = ( gun ? gun->damage : 30.0f ) * 0.6f;
+	if( GruntMohaaCampaign() ) {
+		/* MOHAA's campaign scales soldiers' shots at the player by difficulty: two rifle hits (51 each) killed the
+		 * player in the m1l1 ambush. Easy, medium, hard take about 15, 23, 31 a hit. */
+		const float level = CVAR_GET_FLOAT( "skill" );
+		damage *= level <= 1.0f ? 0.3f : ( level >= 3.0f ? 0.6f : 0.45f );
+	}
+	pl->TraceAttack( e->pev, damage, dir, &tr, DMG_BULLET | DMG_NEVERGIB );
 	ApplyMultiDamage( e->pev, e->pev );
 }
 
