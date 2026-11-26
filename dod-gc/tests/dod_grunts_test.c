@@ -233,6 +233,52 @@ static void test_script_actor(void)
 	assert(DodGrunt_Hurt(&p, 0, 1000, 0.0f) && DodGrunt_RespawnDue(&p, 0, DOD_GRUNT_RESPAWN));
 }
 
+/* MOHAA actor settings: a leashed actor chasing its enemy stops at the leash edge, maxdist stops it at range,
+   mindist makes it back off, and sight/hearing/fov change what it notices */
+static void test_actor_settings(void)
+{
+	DodGruntPool p;
+	int i = 0, f;
+	float now = 0.0f;
+	DodGrunt_Init(&p, 9);
+	DodGrunt_SpawnScripted(&p, i, DOD_TEAM_AXIS, 0, 0, 0, 0, 0);
+	DodGrunt_SetAttack(&p, i, 1);
+	DodGrunt_SetParam(&p, i, DOD_GRUNT_LEASH, 200, 0, 0);
+	assert(p.leash_r[i] == 200 && p.leash_x[i] == 0 && p.leash_y[i] == 0);
+	for (f = 0; f < 200; f++, now += 0.05f) {
+		DodGrunt_Looked(&p, i, now, 1, 2, 2000, 0, 2000 - p.x[i], 0);
+		DodGrunt_Move(&p, i, now, 0.05f);
+	}
+	assert(p.x[i] <= 200.0f && p.x[i] > 150.0f);	/* ran out to the leash, no further */
+	/* maxdist: closes to 600 and holds */
+	DodGrunt_SpawnScripted(&p, i, DOD_TEAM_AXIS, 0, 0, 0, 0, now);
+	DodGrunt_SetAttack(&p, i, 1);
+	DodGrunt_SetParam(&p, i, DOD_GRUNT_MAXDIST, 600, 0, 0);
+	for (f = 0; f < 300; f++, now += 0.05f) {
+		DodGrunt_Looked(&p, i, now, 1, 2, 1500, 0, 1500 - p.x[i], 0);
+		DodGrunt_Move(&p, i, now, 0.05f);
+	}
+	assert(p.x[i] > 850.0f && p.x[i] < 950.0f);
+	/* mindist: backs away from an enemy that is too near */
+	DodGrunt_SpawnScripted(&p, i, DOD_TEAM_AXIS, 0, 0, 0, 0, now);
+	DodGrunt_SetAttack(&p, i, 1);
+	DodGrunt_SetParam(&p, i, DOD_GRUNT_MINDIST, 300, 0, 0);
+	p.state[i] = DOD_GRUNT_ADVANCE;
+	p.target_x[i] = 100; p.target_y[i] = 0; p.target_seen[i] = now;
+	for (f = 0; f < 10; f++, now += 0.05f)
+		DodGrunt_Move(&p, i, now, 0.05f);
+	assert(p.x[i] < -10.0f);
+	/* perception settings */
+	DodGrunt_SetParam(&p, i, DOD_GRUNT_SIGHT_RANGE, 900, 0, 0);
+	DodGrunt_SetParam(&p, i, DOD_GRUNT_HEARING, 0, 0, 0);
+	DodGrunt_SetParam(&p, i, DOD_GRUNT_FOV, 90, 0, 0);
+	assert(DodGrunt_SightRange(&p, i) == 900.0f && DodGrunt_HearingRange(&p, i) == 300.0f);
+	assert(fabsf(DodGrunt_FovCos(&p, i) - 0.7071f) < 0.01f);
+	/* a fresh spawn forgets them */
+	DodGrunt_SpawnScripted(&p, i, DOD_TEAM_AXIS, 0, 0, 0, 0, now);
+	assert(DodGrunt_SightRange(&p, i) == DOD_GRUNT_SIGHT && !p.leash_r[i] && !p.maxdist[i]);
+}
+
 int main(void)
 {
 	test_count();
@@ -246,6 +292,7 @@ int main(void)
 	test_move_check_stagger();
 	test_shooting();
 	test_rand_range();
+	test_actor_settings();
 	test_script_actor();
 	printf("dod_grunts_test: ok (row %d bytes, pool %d bytes)\n", DodGrunt_RowBytes(), (int)sizeof(DodGruntPool));
 	return 0;

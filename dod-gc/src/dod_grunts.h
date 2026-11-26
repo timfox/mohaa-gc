@@ -86,6 +86,14 @@ typedef struct DodGruntPool {
 	unsigned char order[DOD_GRUNT_MAX];	/* DOD_GRUNT_ORDER_* */
 	unsigned char order_done[DOD_GRUNT_MAX];	/* set on arrival, cleared by DodGrunt_TakeOrderDone */
 	float order_x[DOD_GRUNT_MAX], order_y[DOD_GRUNT_MAX];
+	/* MOHAA actor settings (script "sight", "leash", ...); 0 keeps the grunt default. Distances in GoldSrc units. */
+	short sight[DOD_GRUNT_MAX];		/* notices a player this far (default DOD_GRUNT_SIGHT) */
+	short hearing[DOD_GRUNT_MAX];		/* notices a player this near in any direction (default 300) */
+	short leash_r[DOD_GRUNT_MAX];		/* never steps more than this far from (leash_x, leash_y) */
+	short leash_x[DOD_GRUNT_MAX], leash_y[DOD_GRUNT_MAX];
+	short mindist[DOD_GRUNT_MAX];		/* backs away from a nearer enemy */
+	short maxdist[DOD_GRUNT_MAX];		/* stops closing in at this range and fights */
+	unsigned char fov[DOD_GRUNT_MAX];	/* field of view in degrees / 2 (0: default 140) */
 	float order_best[DOD_GRUNT_MAX];	/* nearest it has come to the order point */
 	float order_stall_at[DOD_GRUNT_MAX];	/* when a stalled order gives up and arrives; < 0 not started */
 	unsigned rng;
@@ -149,6 +157,15 @@ void DodGrunt_SpawnScripted(DodGruntPool *p, int i, int team, float x, float y, 
 void DodGrunt_SetAI(DodGruntPool *p, int i, int on);
 /* attackplayer: AI on, and run at what it sees instead of holding. */
 void DodGrunt_SetAttack(DodGruntPool *p, int i, int on);
+/* MOHAA actor settings: value is a distance in GoldSrc units (degrees for FOV); LEASH and TETHER also take the
+ * leash centre (x, y). LEASH centres on the actor's spot now when x and y are both 0. */
+enum { DOD_GRUNT_SIGHT_RANGE = 0, DOD_GRUNT_HEARING, DOD_GRUNT_FOV, DOD_GRUNT_LEASH, DOD_GRUNT_TETHER,
+	DOD_GRUNT_MINDIST, DOD_GRUNT_MAXDIST };
+void DodGrunt_SetParam(DodGruntPool *p, int i, int param, float value, float x, float y);
+/* the sight range, hearing range and cosine of the half field of view this grunt looks with */
+float DodGrunt_SightRange(const DodGruntPool *p, int i);
+float DodGrunt_HearingRange(const DodGruntPool *p, int i);
+float DodGrunt_FovCos(const DodGruntPool *p, int i);
 /* walkto / runto: head for (x, y) ignoring what it sees; on arrival it holds and order_done is set. */
 void DodGrunt_OrderMove(DodGruntPool *p, int i, float x, float y, int run);
 /* Drop a move order without the done event; the grunt holds where it is. */

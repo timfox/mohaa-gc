@@ -339,6 +339,13 @@ int DodGrunts_ScriptOrder( edict_t *ed, int order, const float pos[3] )
 	case DOD_MOHAA_WALKTO: DodGrunt_OrderMove( &g_pool, i, pos[0], pos[1], 0 ); break;
 	case DOD_MOHAA_RUNTO: DodGrunt_OrderMove( &g_pool, i, pos[0], pos[1], 1 ); break;
 	case DOD_MOHAA_TURNTO: DodGrunt_Face( &g_pool, i, pos[0], pos[1] ); break;
+	case DOD_MOHAA_SIGHT: DodGrunt_SetParam( &g_pool, i, DOD_GRUNT_SIGHT_RANGE, pos[0], 0, 0 ); break;
+	case DOD_MOHAA_HEARING: DodGrunt_SetParam( &g_pool, i, DOD_GRUNT_HEARING, pos[0], 0, 0 ); break;
+	case DOD_MOHAA_FOV: DodGrunt_SetParam( &g_pool, i, DOD_GRUNT_FOV, pos[0], 0, 0 ); break;
+	case DOD_MOHAA_LEASH: DodGrunt_SetParam( &g_pool, i, DOD_GRUNT_LEASH, pos[0], 0, 0 ); break;
+	case DOD_MOHAA_TETHER: DodGrunt_SetParam( &g_pool, i, DOD_GRUNT_TETHER, 0, pos[0], pos[1] ); break;
+	case DOD_MOHAA_MINDIST: DodGrunt_SetParam( &g_pool, i, DOD_GRUNT_MINDIST, pos[0], 0, 0 ); break;
+	case DOD_MOHAA_MAXDIST: DodGrunt_SetParam( &g_pool, i, DOD_GRUNT_MAXDIST, pos[0], 0, 0 ); break;
 	default: DodGrunt_OrderStop( &g_pool, i ); break;
 	}
 	return 1;
@@ -406,7 +413,10 @@ static void GruntLook( int i, int rush )
 	CDodGrunt *e = g_ents[i];
 	const Vector eye( g_pool.x[i], g_pool.y[i], g_pool.z[i] + 24.0f );
 	int best = 0;
-	float best_d2 = DOD_GRUNT_SIGHT * DOD_GRUNT_SIGHT;
+	const float sight = DodGrunt_SightRange( &g_pool, i );
+	const float hearing = DodGrunt_HearingRange( &g_pool, i );
+	const float fov_cos = DodGrunt_FovCos( &g_pool, i );
+	float best_d2 = sight * sight;
 	Vector best_pos;
 	const float fwd = g_pool.yaw[i] * 0.017453293f;
 	for( int k = 1; k <= gpGlobals->maxClients; k++ ) {
@@ -420,9 +430,9 @@ static void GruntLook( int i, int rush )
 		const float d2 = d.x * d.x + d.y * d.y + d.z * d.z;
 		if( d2 >= best_d2 )
 			continue;
-		/* in front: within about 70 degrees, or close (they hear him) */
+		/* in front (the actor's field of view, about 70 degrees each side by default), or near enough to hear */
 		const float dot = ( d.x * cosf( fwd ) + d.y * sinf( fwd ) );
-		if( d2 > 300.0f * 300.0f && dot < 0.34f * sqrtf( d2 ) )
+		if( d2 > hearing * hearing && dot < fov_cos * sqrtf( d2 ) )
 			continue;
 		best = k;
 		best_d2 = d2;

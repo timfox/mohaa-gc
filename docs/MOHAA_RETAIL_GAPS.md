@@ -11,13 +11,14 @@ This is a running list, updated with each PR. Each entry says what retail does t
 - Bound since the last update: `loc_convert_string`, and `getboundkey1`/`getboundkey2` (pad buttons). The m1l2b hint read "NILNOT BOUNDNIL"; it now prints "NOT BOUND" as retail does for keys the pad has no button for.
 
 ## Rendering
+- **The GMC** still shows a flat grey panel near the camera on the ride. The Opel is textured. Check the GMC skin binding (only "studio skinned ... opeltruck" is logged).
 - **The m1l1 trucks' skins** now upload as CMPR at gc_quality 0 (2026-11-26). They read dark under the night light grid; compare against retail.
 - **Tag-driven parts are missing:** the truck canopy and tailgate animations (`open_gate`, wheels).
 - **libogc2 builds** run out of MEM1 loading the m1l1 BSP. Classic libogc fits.
 
 ## AI (see MOHAA_AI_ASSESSMENT_2026-11-26.md)
-- **Perception:** `sight`, `hearing`, `fov`, `noticescale` and `enemysharerange` aren't bound.
-- **Zones:** `leash`, `fixedleash`, `tether`, `mindist` and `maxdist` aren't bound.
+- **Perception:** `sight`, `hearing` and `fov` are bound now (2026-11-26): per-grunt sight range, hearing radius and field of view in GruntLook. Still missing: `noticescale`, `enemysharerange` (alerting nearby allies), and a curious state that turns toward a noise before it attacks.
+- **Zones:** `leash`, `tether`, `mindist` and `maxdist` are bound (2026-11-26). An actor stops at its leash edge, fights from `maxdist`, and backs off inside `mindist`. `fixedleash` is accepted, since the leash centre is already fixed. Still missing: `tether` only centres the leash where the entity was when the command ran; it doesn't follow a moving entity.
 - **Attack styles:** `type_attack` cover and turret behaviour, plus `gun`, `startfiring` and `stopfiring`.
 - **Alarm and patrol:** `type_idle` alarm and patrol, `alarmnode`, `alarmthread` and `patrolpath`.
 - **Disguise:** `type_disguise` and the `disguise_*` settings, used by m1l2a/m1l3.
