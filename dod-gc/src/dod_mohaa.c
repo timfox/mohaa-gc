@@ -2256,6 +2256,49 @@ static int c_istouching(ms_call *c)
 	return 0;
 }
 
+/* "$ent droptofloor" */
+static int c_droptofloor(ms_call *c)
+{
+	const uint32_t id = target_id(c);
+	if (valid(id) && !is_node(id) && S.be.drop_to_floor)
+		S.be.drop_to_floor(id);
+	return 0;
+}
+
+/* "$actor cansee $ent [fov [distance]]": the line from its eyes to the other's middle is clear, and the other is
+   within the field of view (degrees, whole cone) and distance (MOHAA units) when they are given */
+static int c_cansee(ms_call *c)
+{
+	const ms_value *o = ms_arg(c, 0);
+	const uint32_t id = target_id(c);
+	float a[3], b[3], ang[3];
+	int sees = 0;
+	if (o->type == MS_ENTITY && valid(o->u.id) && valid(id) && S.be.trace_clear) {
+		get_vec(id, DOD_MOHAA_ORIGIN, a);
+		get_vec(o->u.id, DOD_MOHAA_ORIGIN, b);
+		a[2] += 36.0f;	/* GoldSrc units: eyes, and the other's middle */
+		b[2] += 24.0f;
+		sees = S.be.trace_clear(a, b, 1);
+		if (sees && ms_argc(c) > 1) {
+			const float fov = ms_arg_float(c, 1);
+			const float dx = b[0] - a[0], dy = b[1] - a[1];
+			const float d = sqrtf(dx * dx + dy * dy);
+			if (ms_argc(c) > 2 && ms_arg_float(c, 2) > 0.0f && d > ms_arg_float(c, 2) * DOD_MOHAA_SCALE)
+				sees = 0;
+			if (sees && fov > 0.0f && fov < 360.0f && d > 1.0f) {
+				float yaw, diff;
+				get_vec(id, DOD_MOHAA_ANGLES, ang);
+				yaw = atan2f(dy, dx) * 57.29578f;
+				diff = fmodf(yaw - ang[1] + 540.0f, 360.0f) - 180.0f;
+				if (fabsf(diff) > fov * 0.5f)
+					sees = 0;
+			}
+		}
+	}
+	ms_return_int(c, sees);
+	return 0;
+}
+
 /* "earthquake duration magnitude [no_rampup] [no_rampdown]" */
 static int c_earthquake(ms_call *c)
 {
@@ -3257,6 +3300,8 @@ static void register_commands(ms_vm *vm)
 		{"sighttrace", MS_ON_THREAD | MS_ON_ENTITY, c_sighttrace},
 		{"istouching", MS_ON_ENTITY, c_istouching},
 		{"earthquake", MS_ON_THREAD | MS_ON_ENTITY, c_earthquake},
+		{"droptofloor", MS_ON_ENTITY, c_droptofloor},
+		{"cansee", MS_ON_ENTITY, c_cansee},
 		{"doactivate", MS_ON_ENTITY, c_doactivate},
 		{"volumedamage", MS_ON_ENTITY, c_volumedamage},
 		{"targetname", MS_ON_ENTITY, c_targetname_cmd},

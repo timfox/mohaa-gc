@@ -1026,6 +1026,13 @@ static int M_Touching( uint32_t a, uint32_t b )
 	return 1;
 }
 
+static void M_DropToFloor( uint32_t id )
+{
+	edict_t *e = EdictFor( id );
+	if( e && !( e->v.flags & FL_CLIENT ) )
+		DROP_TO_FLOOR( e );
+}
+
 static void M_Shake( float seconds, float magnitude )
 {
 	/* MOHAA's magnitude runs about 0..2; GoldSrc's shake amplitude is in units, up to 16 */
@@ -1274,6 +1281,7 @@ void DodGC_MohaaLevelInit( void )
 	b.trace_clear = M_TraceClear;
 	b.touching = M_Touching;
 	b.shake = M_Shake;
+	b.drop_to_floor = M_DropToFloor;
 	b.music = M_Music;
 	if( g_music_intro[0] )
 		M_Music( NULL, NULL );	/* the last map's music stops unless this map starts its own */
