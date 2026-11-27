@@ -1663,6 +1663,10 @@ static void ProbeGotoThink( void )
 	}
 	/* "mid": as near, but 450 units off (inside a rifleman's sight, past grenade range's 300 minimum) */
 	const int mid = strstr( name, " mid" ) != NULL;
+	/* "squad": then bring the Allied soldiers (awake ones) round the player, facing what the player faces */
+	const int squad = strstr( name, " squad" ) != NULL;
+	/* "brawl": also six German soldiers in front of the player, across the open ground (a staged fight) */
+	const int brawl = strstr( name, " brawl" ) != NULL;
 	/* "nade": then drop a live grenade (the player's) at the entity's feet, in view: its blast, and soldiers running */
 	const int nade = strstr( name, " nade" ) != NULL;
 	const int near_it = mid || strstr( name, " near" ) != NULL;
@@ -1693,6 +1697,23 @@ static void ProbeGotoThink( void )
 	pe->v.fixangle = 1;
 	ALERT( at_console, "mohaa_probe_goto: player at %.0f %.0f %.0f %s %s\n", to.x, to.y, to.z,
 		behind ? "behind" : "facing", target );
+	if( squad ) {
+		const float at[3] = { to.x, to.y, to.z };
+		ALERT( at_console, "mohaa_probe_goto: %d Allied soldiers brought to the player\n",
+			DodGrunts_ProbeGather( DOD_TEAM_ALLIES, at, 96.0f, 0 ));
+	}
+	if( brawl ) {
+		/* six German soldiers 450 units in front of the player, in the open the player stands in */
+		Vector fwd;
+		UTIL_MakeVectors( Vector( 0, look.y, 0 ));
+		fwd = gpGlobals->v_forward;
+		TraceResult ftr;
+		UTIL_TraceHull( to, to + fwd * 450.0f, ignore_monsters, human_hull, pe, &ftr );
+		const Vector far_end = ftr.vecEndPos - fwd * 40.0f;
+		const float at[3] = { far_end.x, far_end.y, far_end.z };
+		ALERT( at_console, "mohaa_probe_goto: %d German soldiers brought %.0f units in front\n",
+			DodGrunts_ProbeGather( DOD_TEAM_AXIS, at, 120.0f, 6 ), ( far_end - to ).Length() );
+	}
 	if( nade ) {
 		CGrenade *g = DodGrenade_ThrowFrom( &pe->v, DOD_TEAM_ALLIES, spot->v.origin + Vector( 0, 0, 16 ), Vector( 0, 0, 40 ) );
 		ALERT( at_console, "mohaa_probe_goto: %s grenade at %s's feet\n", g ? "dropped a" : "could not drop a", target );

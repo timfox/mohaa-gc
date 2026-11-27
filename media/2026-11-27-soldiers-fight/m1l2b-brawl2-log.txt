@@ -1,0 +1,18 @@
+[23:36:38] mohaa_probe_goto: player at 914 -517 -160 facing spotlight
+[23:36:38] mohaa_probe_goto: 1 Allied soldiers brought to the player
+[23:36:38] mohaa_probe_goto: 6 German soldiers brought 410 units in front
+[23:36:42] GRUNT 42 throws a grenade 498 units, at 980 -423 -184
+[23:36:43] GRUNT 39 throws a grenade 323 units, at 967 -380 -184
+[23:36:44] GRUNT 40 runs from a grenade
+[23:36:44] GRUNT 45 runs from a grenade
+[23:36:45] GRUNT 40 runs from a grenade
+[23:36:45] GRUNT 45 runs from a grenade
+[23:36:46] GRUNT 40 runs from a grenade
+[23:36:46] GRUNT 55 runs from a grenade
+[23:36:46] GRUNT 40 runs from a grenade
+[23:36:46] GRUNT 55 runs from a grenade
+[23:36:47] GRUNT cost: 19 live of 56, frame avg 376 us max 1660 us (console time), per s: looks 46.5 move 15.7 floor 15.7 shots 6.7 hits 1.4 deferred 10.2, edicts 225 of 
+[23:36:57] GRUNT cost: 19 live of 56, frame avg 264 us max 605 us (console time), per s: looks 49.4 move 16.2 floor 16.2 shots 0.7 hits 0.2 deferred 5.2, edicts 218 of 46
+[23:37:04] GRUNT 45 throws a grenade 436 units, at 1274 123 -190
+[23:37:06] GRUNT 55 runs from a grenade
+[23:37:07] GRUNT 55 runs from a grenade
