@@ -1,0 +1,8 @@
+:21:58] Xash3D GameCube: reclaimed raw nodes spill tip 448.31 Kb (used 432.88 Kb)
+:21:58] Xash3D GameCube: using compact clipnodes count=19856
+:21:58] Xash3D GameCube: owned compact clipnodes 155.12 Kb
+:21:58] Xash3D GameCube: world hull0 using array spill 149.43 Kb (spill used 582.31 Kb)
+:21:58] Xash3D GameCube: world hull0 (19127 nodes) using the world array spill
+:21:59] Xash3D GameCube: MAP_READY m6l2a
+h3D GameCube: MAP_READY m6l2a
+:22:01] Xash3D GameCube: world world DL chunk cache using array spill 160 Kb (spill used 946.91 Kb)
