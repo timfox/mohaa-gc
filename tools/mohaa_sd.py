@@ -269,13 +269,19 @@ def stage_tags(sources, game_root, maps, work):
     return _written(game_root, before)
 
 
+# global/spotlight.scr's searchlight: the base turns to its aim, the bulb on it pitches, and goes dark when shot
+SEARCHLIGHT_TIKIS = ("miscobj/searchlightbase.tik", "miscobj/searchlight.tik", "miscobj/searchlightoff.tik")
+
 SCRIPT_TIKI_MODELS = {
     # The visible m1l1 trucks. The gmctruckpath/truck2path TIKIs are tag carriers with helper triangles.
     "m1l1": ("vehicles/gmctruck_opening.tik", "vehicles/opeltruck.tik",
              "human/german_afrika_private.tik"),
     # The MG42 nests' gun (turretweapon_german_mg42); the game puts it on each turret entity.
-    "m1l2a": ("statweapons/mg42_gun.tik",),
-    "m1l2b": ("statweapons/mg42_gun.tik",),
+    "m1l2a": ("statweapons/mg42_gun.tik",) + SEARCHLIGHT_TIKIS,
+    "m1l2b": ("statweapons/mg42_gun.tik",) + SEARCHLIGHT_TIKIS,
+    # maps that place a searchlight ("spotlight" entities for global/spotlight.scr)
+    "m4l2": SEARCHLIGHT_TIKIS, "m4l3": SEARCHLIGHT_TIKIS, "m6l1c": SEARCHLIGHT_TIKIS,
+    "m6l2a": SEARCHLIGHT_TIKIS, "m6l2b": SEARCHLIGHT_TIKIS,
 }
 
 # The retail German private is a composite TIKI: its body, head and equipment use
@@ -293,7 +299,7 @@ SCRIPT_TIKI_COMPONENTS = {
 
 # Baked as one posed mesh with no skeleton. The MG42's animated bake drew tilted on its turret: the game turns
 # the gun as a whole, so its idle pose is all it needs.
-SCRIPT_TIKI_STATIC = {"statweapons/mg42_gun.tik"}
+SCRIPT_TIKI_STATIC = {"statweapons/mg42_gun.tik"} | set(SEARCHLIGHT_TIKIS)
 
 SCRIPT_TIKI_ANIMATIONS = {
     "human/german_afrika_private.tik": (

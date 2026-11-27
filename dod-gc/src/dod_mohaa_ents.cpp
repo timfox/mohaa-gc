@@ -211,7 +211,10 @@ static int M_SetModel( uint32_t id, const char *tiki )
 	if( !e || !tiki )
 		return 0;
 	classname = STRING( e->v.classname );
-	if( strcmp( classname, "mohaa_script_model" ) && !actor )
+	/* a map's own script_model is written as an info_target (named points go first in the edict budget): m1l2b's
+	 * four searchlight bases are, and spotlight.scr gives each "miscobj/searchlightbase.tik" */
+	const int map_point = !strcmp( classname, "info_target" );
+	if( strcmp( classname, "mohaa_script_model" ) && !actor && !map_point )
 		return 0;
 	if( !strncmp( tiki, "models/", 7 ) )
 		snprintf( path, sizeof( path ), "%s", tiki );
@@ -239,6 +242,16 @@ static int M_SetModel( uint32_t id, const char *tiki )
 				if( header )
 					for( int group = 0; group < header->numbodyparts && group < 31; group++ )
 						((CBaseAnimating *)e->pvPrivateData)->SetBodygroup( group, 1 );
+			} else if( map_point ) {
+				/* no script-model class to run its surface masks: show every bodygroup's mesh */
+				studiohdr_t *header = (studiohdr_t *)GET_MODEL_PTR( e );
+				e->v.body = 0;
+				if( header ) {
+					mstudiobodyparts_t *parts = (mstudiobodyparts_t *)( (byte *)header + header->bodypartindex );
+					for( int group = 0; group < header->numbodyparts; group++ )
+						if( parts[group].nummodels > 1 )
+							e->v.body += parts[group].base;
+				}
 			} else {
 				M_SetAnimation( id, "idle" ); /* applies the TIKI init surface state too */
 			}

@@ -2766,9 +2766,10 @@ static int c_model(ms_call *c)
 		k->anim = 0;
 	}
 	/* The tag-carrier path TIKIs have no drawable mesh. The backend accepts only
-	   script models and actors listed in this map's .models precache manifest. */
-	if (S.be.set_model && valid(id) &&
-	    (!strcmp(classname, "mohaa_script_model") || strstr(model, ".tik")))
+	   script models (spawned, or a map's own written as info_target) and actors listed in this map's .models
+	   precache manifest. */
+	if (S.be.set_model && valid(id) && !is_node(id) && !is_point(id) &&
+	    (!strcmp(classname, "mohaa_script_model") || !strcmp(classname, "info_target") || strstr(model, ".tik")))
 		S.be.set_model(id, name);
 	return 0;
 }
