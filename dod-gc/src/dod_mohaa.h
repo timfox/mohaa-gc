@@ -69,6 +69,7 @@ enum { DOD_MOHAA_PRINT_CONSOLE = 0, DOD_MOHAA_PRINT_HUD = 1, DOD_MOHAA_PRINT_CEN
 /* Entity ids are opaque to this file: the backend packs edict index and serial so a
  * removed-and-reused edict never answers for an old reference. 0 is never valid. */
 #define DOD_MOHAA_NODE_ID 0x80000000u	/* entity ids from the backend keep this bit clear */
+#define DOD_MOHAA_POINT_ID 0xC0000000u	/* a script point (maps/<map>.points): NODE_ID plus bit 30 */
 
 typedef struct DodMohaaBackend {
 	char *(*load_file)(const char *path, size_t *len);  /* NULL if missing */

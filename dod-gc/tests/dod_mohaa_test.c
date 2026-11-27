@@ -1604,6 +1604,44 @@ static void test_world_farplane(void)
 	assert(!strstr(log_buf, "not bound yet") && !strstr(log_buf, "script error"));
 }
 
+/* script points (maps/<map>.points) answer as entities without an edict: found by name (also as arrays),
+   their origin, angles, target and # keys read back, movers and bind move them, remove deletes them */
+static void test_script_points(void)
+{
+	DodMohaaBackend b = backend();
+	reset();
+	add("boat", "info_target", 0, 0, 0);
+	files[1][0] = "maps/sp.points";
+	files[1][1] = "# mohaa script points: x y z pitch yaw roll classname targetname target\n"
+		"10 20 30 0 90 0 script_origin spot -\n"
+		"1 0 0 0 0 0 script_origin aim - #set=1\n"
+		"2 0 0 0 0 0 script_origin aim - #set=2\n"
+		"5 5 5 0 0 0 info_waypoint wp_1 wp_2\n"
+		"6 6 6 0 0 0 info_waypoint wp_2 -\n"
+		"0 0 0 0 0 0 script_origin my%20spot -\n";
+	files[0][0] = "maps/sp.scr";
+	files[0][1] =
+		"main:\n"
+		"\tprintln (\"o=\" + $spot.origin + \" a=\" + $spot.angles)\n"
+		"\tprintln (\"n=\" + $aim.size + \" s=\" + $aim[2].set)\n"
+		"\tprintln (\"t=\" + $wp_1.target + \" c=\" + $wp_1.classname)\n"
+		"\t$spot.origin = (40 50 60)\n"
+		"\tprintln (\"m=\" + $spot.origin)\n"
+		"\t$wp_2 remove\n"
+		"\twait .1\n"
+		"\tif ($wp_2 == NULL) println \"gone\"\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "sp", 0, 0));
+	run(0.05f, 0.5f);
+	assert(strstr(log_buf, "mohaa: 6 script points from maps/sp.points"));
+	assert(strstr(log_buf, "a=(0.000 90.000 0.000)"));	/* origins read in MOHAA units */
+	assert(strstr(log_buf, "m=(40.000 50.000 60.000)"));
+	assert(strstr(log_buf, "n=2 s=2"));
+	assert(strstr(log_buf, "t=wp_2 c=info_waypoint"));
+	assert(strstr(log_buf, "gone"));
+	assert(!strstr(log_buf, "script error"));
+}
+
 int main(void)
 {
 	RUN(test_no_script_no_vm);
@@ -1614,6 +1652,7 @@ int main(void)
 	RUN(test_patrol_and_alarm);
 	RUN(test_disguise);
 	RUN(test_world_farplane);
+	RUN(test_script_points);
 	RUN(test_cansee_droptofloor);
 	RUN(test_string_as_listener);
 	RUN(test_sweep_commands);

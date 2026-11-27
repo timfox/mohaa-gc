@@ -772,6 +772,23 @@ class ReachIndex:
 
 
 PATH_NODES = ("info_pathnode", "info_grav_pathnode")
+# Invisible named points the game can hold without an edict: they only carry a place, a facing, a name, a target and
+# "#" keys. With points=[...], convert() leaves them out of the .map for the <map>.points sidecar (m3l1a writes 1326
+# named points and its edict budget kept 187, so $shingle_objective and the boats' spots were NULL).
+SCRIPT_POINTS = ("script_origin", "info_waypoint", "info_splinepath", "info_vehiclepoint", "info_notnull", "info_null")
+
+
+def point_line(e, scale):
+	"""One line of the <map>.points sidecar: x y z pitch yaw roll classname targetname target [#key=value ...]."""
+	x, y, z = (c * scale for c in parse_vec(e.get("origin", "")))
+	if "angles" in e:
+		p, yw, r = parse_vec(e["angles"])
+	else:
+		p, yw, r = 0.0, float(e.get("angle", "0") or 0), 0.0
+	esc = lambda v: v.replace("%", "%25").replace(" ", "%20") or "-"  # noqa: E731
+	extra = "".join(f" {esc(k)}={esc(v)}" for k, v in hash_keys(e).items())
+	return (f"{_f(x)} {_f(y)} {_f(z)} {_f(p)} {_f(yw)} {_f(r)} {e.get('classname', '').lower()} "
+	        f"{esc(e['targetname'].strip())} {esc(e.get('target', '').strip())}{extra}")
 ACTOR_KEYS = ("targetname", "target", "angle", "angles", "model", "health", "spawnflags")
 # Retail actor settings and script fields ("$find_name" reads as find_name): written as "#" script variables, which
 # dod-gc's binding applies to the soldier (sight, type_disguise, ...) or keeps for the scripts
@@ -948,7 +965,7 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
             detail_walls: bool = False, wall_cell: float = THIN_WALL_CELL,
             collision_aabb: float = 0.0, collision_reach: float = 0.0, collision_exact: float = 0.0,
             mesh=None, mesh_terrain: bool = False, mesh_patch_tol: float = 0.0, mesh_angled: bool = True,
-            merge_static_models: bool = False, script_words: set | None = None, texture_fit=None,
+            merge_static_models: bool = False, script_words: set | None = None, texture_fit=None, points: list | None = None,
             skyname: str | None = None):
 	"""mesh: a mesh_collision.Collision that angled detail (mesh_angled, under
 	simplify_collision), terrain heightfields (mesh_terrain) and solid world patches
@@ -1283,6 +1300,10 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 		if cn.lower() in PATH_NODES:
 			stats["path_nodes_to_sidecar"] += 1
 			continue
+		if points is not None and e.get("targetname") and not model and cn.lower() in SCRIPT_POINTS and not unused_name(e):
+			points.append(point_line(e, scale))
+			stats["script_points_to_sidecar"] += 1
+			continue
 		if e.get("targetname") and not unused_name(e) and not cn.lower().startswith("light"):
 			# a named script_origin / script_model / script_object ...: scripts move it, hide it, read its
 			# origin or thread on it, so it needs to exist. A point entity holds its place (one edict).
@@ -1538,6 +1559,7 @@ def main(argv=None) -> int:
 		        and "/common/" not in bsp.shaders[sh].name.lower()}
 		cap, tex_bytes = fit.plan(used, args.texture_budget * 1024 if args.texture_budget else world_textures.TEXDATA_BUDGET)
 		print(f"{name}: textures at most {cap} texels a side, {tex_bytes // 1024} KB")
+	points = []
 	text, namer, stats, skipped = convert(bsp, args.scale, wad_key, args.terrain_brushes, args.terrain_tol, args.terrain_tex,
 	                                         not args.no_terrain_seal, args.detail_world, args.seal_box,
 	                                         args.simplify_collision,
@@ -1545,8 +1567,14 @@ def main(argv=None) -> int:
 	                                         not args.thin_detail_in_world, args.detail_walls, args.wall_cell,
 	                                         args.collision_aabb, args.collision_reach, args.collision_exact,
 	                                         mesh, not args.no_mesh_terrain, args.mesh_patch_tol, args.mesh_collision,
-	                                         not args.keep_brush_models, words, texture_fit=fit, skyname=args.skyname)
+	                                         not args.keep_brush_models, words, texture_fit=fit, skyname=args.skyname,
+	                                         points=points)
 	args.out.write_text(text)
+	if points:
+		spath = args.out.with_suffix(".points")
+		spath.write_text("# mohaa script points: x y z pitch yaw roll classname targetname target [#key=value ...]"
+		                 " (- empty, spaces as %20)\n" + "\n".join(points) + "\n")
+		print(f"{name}: wrote {spath} ({len(points)} script points, {spath.stat().st_size} bytes)")
 	ntext, nnodes = path_nodes(bsp, args.scale)
 	if nnodes:
 		npath = args.out.with_suffix(".nodes")
@@ -1591,7 +1619,8 @@ def main(argv=None) -> int:
 	print(f"  textures                     {len(namer.by_shader)}")
 	if args.scripts and words is not None:
 		wanted, assigned = script_entity_names(args.scripts, mapname)
-		missing, lost, spawned = name_report(bsp, text, wanted, assigned)
+		missing, lost, spawned = name_report(bsp, text + "".join(
+			'"targetname" "%s"' % ln.split(" ")[7].replace("%20", " ").replace("%25", "%") for ln in points), wanted, assigned)
 		if spawned:
 			print(f"  $names the scripts spawn themselves: {len(spawned)}: " + " ".join(spawned))
 		if missing:

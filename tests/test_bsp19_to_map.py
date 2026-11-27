@@ -422,6 +422,20 @@ class StaticBrushModelTest(unittest.TestCase):
 			self.assertIn("bunker_", words)
 			self.assertIsNone(conv.script_names([d], "nope"))
 
+	def test_script_points_go_to_the_sidecar(self):
+		bsp = self.bsp()
+		bsp.entities.append({"classname": "script_origin", "targetname": "spot", "origin": "8 0 0", "angle": "90"})
+		bsp.entities.append({"classname": "info_waypoint", "targetname": "wp 1", "target": "wp2", "origin": "0 0 0",
+		                     "#set": "2"})
+		bsp.entities.append({"classname": "script_model", "targetname": "gun", "origin": "0 0 0", "model": "x.tik"})
+		points = []
+		text = conv.convert(bsp, scale=0.5, merge_static_models=True, script_words={"spot", "wp 1", "gun"},
+		                    points=points)[0]
+		self.assertNotIn('"spot"', text)
+		self.assertIn('"targetname" "gun"', text)	# a model needs an entity
+		self.assertEqual(points[0], "4 0 0 0 90 0 script_origin spot -")
+		self.assertEqual(points[1], "0 0 0 0 0 0 info_waypoint wp%201 wp2 #set=2")
+
 	def test_names_built_around_a_number_stay(self):
 		# m3l1a: $("higgins" + local.m + "_move") reaches higgins2_move ... higgins6_move
 		bsp = self.bsp()
