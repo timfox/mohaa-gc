@@ -910,6 +910,26 @@ static int h_get_field(void *user, const ms_value *l, const char *name, ms_value
 
 static int mohaa_gun_id(const char *name);
 
+/* A bound entity put somewhere new (a world origin, as MOHAA's .origin is) keeps that place against its parent:
+   spotlight.scr sets "self.flare.origin = self.bulb.origin - local.vect" each frame on a flare bound to the base. */
+static void bound_moved(uint32_t id)
+{
+	DodCine *k = cine(id, 0);
+	float child[3], parent[3], angles[3], forward[3], left[3], up[3], delta[3];
+	int i;
+	if (!k || !k->bind_relative || !k->glue || !valid(k->glue))
+		return;
+	get_vec(id, DOD_MOHAA_ORIGIN, child);
+	get_vec(k->glue, DOD_MOHAA_ORIGIN, parent);
+	get_vec(k->glue, DOD_MOHAA_ANGLES, angles);
+	angle_axes(angles, forward, left, up);
+	for (i = 0; i < 3; i++)
+		delta[i] = child[i] - parent[i];
+	k->bind_offset[0] = dot3(delta, forward);
+	k->bind_offset[1] = dot3(delta, left);
+	k->bind_offset[2] = dot3(delta, up);
+}
+
 static int h_set_field(void *user, const ms_value *l, const char *name, const ms_value *val)
 {
 	float v[3];
@@ -919,9 +939,21 @@ static int h_set_field(void *user, const ms_value *l, const char *name, const ms
 	if (!strcmp(name, "origin") && val->type == MS_VECTOR) {
 		scale_in(val->u.v, v);
 		S.be.set_vec(l->u.id, DOD_MOHAA_ORIGIN, v);
+		bound_moved(l->u.id);
 		return 1;
 	}
 	if (!strcmp(name, "angles") && val->type == MS_VECTOR) {
+		DodCine *k = cine(l->u.id, 0);
+		if (k && k->bind_relative && k->glue && valid(k->glue)) {
+			/* a bound entity's angles are its own, against its parent (spotlight.scr pitches the bulb on its
+			   base with "self.bulb.angles = (pitch 0 0)"; the base turns the yaw) */
+			float parent[3];
+			memcpy(k->bind_angle_offset, val->u.v, sizeof(k->bind_angle_offset));
+			get_vec(k->glue, DOD_MOHAA_ANGLES, parent);
+			compose_angles(parent, k->bind_angle_offset, v);
+			S.be.set_vec(l->u.id, DOD_MOHAA_ANGLES, v);
+			return 1;
+		}
 		S.be.set_vec(l->u.id, DOD_MOHAA_ANGLES, val->u.v);
 		return 1;
 	}
