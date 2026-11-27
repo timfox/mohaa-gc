@@ -155,6 +155,12 @@ int CDodGrunt::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, floa
 		m_pose = -1;	/* Think sets the death sequence */
 		if( who && who->IsPlayer() )
 			( (CBasePlayer *)who )->AddPoints( 1, TRUE );
+		else if( who && !strcmp( STRING( who->pev->classname ), "dod_grunt" ) ) {
+			static int kill_logs;	/* soldiers of the two sides fighting (MOHAA's campaign), for probe logs */
+			if( kill_logs++ < 12 )
+				ALERT( at_console, "GRUNT %d (%s) shot by GRUNT %d\n", m_slot,
+					g_pool.team[m_slot] == DOD_TEAM_AXIS ? "axis" : "allies", ( (CDodGrunt *)who )->m_slot );
+		}
 		if( g_pool.script[m_slot] )
 			DodGC_MohaaEntityEvent( edict(), "death" );	/* "$guy waittill death" */
 	}
@@ -212,6 +218,25 @@ static CBasePlayer *GruntPlayer( int index )
 	if( !e || !e->IsPlayer() || !e->IsAlive() || ( e->pev->flags & FL_NOTARGET ) )
 		return NULL;
 	return (CBasePlayer *)e;
+}
+
+/* A grunt's target: > 0 a player's index, < 0 another grunt (slot -target - 1; MOHAA's campaign, where the
+ * Allied friendlies and the Germans fight each other). NULL when it is gone or dead. */
+static CBaseEntity *GruntTarget( int target, Vector *aim )
+{
+	if( target > 0 ) {
+		CBasePlayer *pl = GruntPlayer( target );
+		if( pl && aim )
+			*aim = pl->pev->origin + pl->pev->view_ofs * 0.5f;
+		return pl;
+	}
+	const int j = -target - 1;
+	if( target >= 0 || j >= DOD_GRUNT_MAX || !GruntLive( j ) || g_pool.state[j] == DOD_GRUNT_DEAD
+	    || g_pool.state[j] == DOD_GRUNT_FREE )
+		return NULL;
+	if( aim )
+		*aim = Vector( g_pool.x[j], g_pool.y[j], g_pool.z[j] + 16.0f );
+	return g_ents[j];
 }
 
 static int GruntSideForSpawn( void )
@@ -393,6 +418,35 @@ int DodGrunts_ScriptOrder( edict_t *ed, int order, const float pos[3] )
 	return 1;
 }
 
+int DodGrunts_ProbeGather( int team, const float at[3], float radius, int most )
+{
+	int moved = 0, n = 0;
+	for( int i = 0; i < DOD_GRUNT_MAX; i++ )
+		if( GruntLive( i ) && g_pool.team[i] == team && g_pool.state[i] != DOD_GRUNT_DEAD
+		    && g_pool.state[i] != DOD_GRUNT_FREE && !( g_pool.script[i] & DOD_GRUNT_AI_OFF ))
+			n++;
+	if( most > 0 && n > most )
+		n = most;
+	for( int i = 0; i < DOD_GRUNT_MAX && moved < n; i++ ) {
+		if( !GruntLive( i ) || g_pool.team[i] != team || g_pool.state[i] == DOD_GRUNT_DEAD
+		    || g_pool.state[i] == DOD_GRUNT_FREE || ( g_pool.script[i] & DOD_GRUNT_AI_OFF ))
+			continue;
+		const float a = 6.2831853f * (float)moved / (float)n;
+		Vector to( at[0] + cosf( a ) * radius, at[1] + sinf( a ) * radius, at[2] + 16.0f );
+		TraceResult tr;
+		UTIL_TraceHull( to, to - Vector( 0, 0, 256 ), ignore_monsters, human_hull, g_ents[i]->edict(), &tr );
+		if( !tr.fStartSolid )
+			to = tr.vecEndPos;
+		g_pool.x[i] = to.x;
+		g_pool.y[i] = to.y;
+		g_pool.z[i] = to.z;
+		g_pool.order[i] = DOD_GRUNT_ORDER_NONE;
+		UTIL_SetOrigin( g_ents[i]->pev, to );
+		moved++;
+	}
+	return moved;
+}
+
 /* Put grunt i into the world: make or reuse its edict, place it at a spawn point of its side. */
 static bool GruntSpawn( int i, int team )
 {
@@ -456,10 +510,31 @@ static int GruntMohaaCampaign( void )
 	return gamedir && !strcmp( gamedir, "mohaa" ) && !g_pGameRules->IsMultiplayer();
 }
 
+/* keep the CANDS nearest look candidates, nearest first */
+static void GruntLookCandidate( int *cand, float *cand_d2, Vector *cand_pos, int *n, int who, float d2, const Vector &pos )
+{
+	int k = *n < 3 ? (*n)++ : 2;
+	while( k > 0 && cand_d2[k - 1] > d2 ) {
+		cand[k] = cand[k - 1];
+		cand_d2[k] = cand_d2[k - 1];
+		cand_pos[k] = cand_pos[k - 1];
+		k--;
+	}
+	cand[k] = who;
+	cand_d2[k] = d2;
+	cand_pos[k] = pos;
+}
+
 static void GruntLook( int i, int rush )
 {
 	CDodGrunt *e = g_ents[i];
 	const Vector eye( g_pool.x[i], g_pool.y[i], g_pool.z[i] + 24.0f );
+	/* the three nearest enemies in view or earshot: the nearest one in sight is the target (the very nearest is
+	 * often behind a wall, and then a soldier with a clear shot at the next one never fired) */
+	enum { CANDS = 3 };
+	int cand[CANDS] = { 0, 0, 0 }, ncand = 0;
+	float cand_d2[CANDS];
+	Vector cand_pos[CANDS];
 	int best = 0;
 	const float sight = DodGrunt_SightRange( &g_pool, i );
 	const float hearing = DodGrunt_HearingRange( &g_pool, i );
@@ -483,24 +558,71 @@ static void GruntLook( int i, int rush )
 			continue;
 		const Vector d = pl->pev->origin - eye;
 		const float d2 = d.x * d.x + d.y * d.y + d.z * d.z;
-		if( d2 >= best_d2 )
+		if( d2 >= best_d2 || ( ncand == CANDS && d2 >= cand_d2[CANDS - 1] ))
 			continue;
 		/* in front (the actor's field of view, about 70 degrees each side by default), or near enough to hear */
 		const float dot = ( d.x * cosf( fwd ) + d.y * sinf( fwd ) );
 		if( d2 > hearing * hearing && dot < fov_cos * sqrtf( d2 ) )
 			continue;
-		best = k;
-		best_d2 = d2;
-		best_pos = pl->pev->origin;
+		GruntLookCandidate( cand, cand_d2, cand_pos, &ncand, k, d2, pl->pev->origin );
+	}
+	/* MOHAA's campaign: the other side's soldiers are enemies too (a scripted one switched off is left alone, so a
+	 * cutscene's cast is not shot down before its scene) */
+	if( GruntMohaaCampaign() ) {
+		for( int j = 0; j < DOD_GRUNT_MAX; j++ ) {
+			if( j == i || !GruntLive( j ) || g_pool.state[j] == DOD_GRUNT_DEAD || g_pool.state[j] == DOD_GRUNT_FREE )
+				continue;
+			if( g_pool.team[j] == g_pool.team[i] || ( g_pool.team[j] != DOD_TEAM_ALLIES && g_pool.team[j] != DOD_TEAM_AXIS ))
+				continue;
+			if( g_pool.script[j] & DOD_GRUNT_AI_OFF )
+				continue;
+			const Vector d( g_pool.x[j] - eye.x, g_pool.y[j] - eye.y, g_pool.z[j] + 16.0f - eye.z );
+			const float d2 = d.x * d.x + d.y * d.y + d.z * d.z;
+			if( d2 >= best_d2 || ( ncand == CANDS && d2 >= cand_d2[CANDS - 1] ))
+				continue;
+			const float dot = ( d.x * cosf( fwd ) + d.y * sinf( fwd ) );
+			if( d2 > hearing * hearing && dot < fov_cos * sqrtf( d2 ) )
+				continue;
+			GruntLookCandidate( cand, cand_d2, cand_pos, &ncand, -( j + 1 ), d2, Vector( g_pool.x[j], g_pool.y[j], g_pool.z[j] ));
+		}
+	}
+	TraceResult tr;
+	int visible = 0;
+	Vector aim;
+	for( int c = 0; c < ncand && !visible; c++ ) {
+		CBaseEntity *who = GruntTarget( cand[c], &aim );
+		if( !who )
+			continue;
+		UTIL_TraceLine( eye, aim, ignore_monsters, e->edict(), &tr );
+		visible = tr.flFraction >= 1.0f || tr.pHit == who->edict();
+		if( !visible ) {
+			/* a second line, eye to head height: a soldier at a window often has its first line cut by the frame or
+			 * sill of the merged detail walls (m3l2's defenders), where retail's sight still sees through */
+			TraceResult tr2;
+			UTIL_TraceLine( eye + Vector( 0, 0, 8 ), aim + Vector( 0, 0, 20 ), ignore_monsters, e->edict(), &tr2 );
+			if( tr2.flFraction >= 1.0f || tr2.pHit == who->edict() ) {
+				visible = 1;
+				tr = tr2;
+			}
+		}
+		if( visible || c == 0 ) {
+			best = cand[c];
+			best_d2 = cand_d2[c];
+			best_pos = cand_pos[c];
+		}
+	}
+	if( CVAR_GET_FLOAT( "dod_grunt_log" ) > 1.0f && best ) {
+		static int look_logs;
+		if( look_logs++ < 60 )
+			ALERT( at_console, "GRUNT %d (%s, script %d, state %d) sees %s %d at %.0f: %s (%.2f %s, eye %.0f %.0f %.0f)\n", i,
+				g_pool.team[i] == DOD_TEAM_AXIS ? "axis" : "allies", g_pool.script[i], g_pool.state[i],
+				best > 0 ? "player" : "GRUNT", best > 0 ? best : -best - 1, sqrtf( best_d2 ), visible ? "in sight" : "blocked",
+				tr.flFraction, tr.pHit ? STRING( tr.pHit->v.classname ) : "-", eye.x, eye.y, eye.z );
 	}
 	if( !best ) {
 		DodGrunt_Looked( &g_pool, i, gpGlobals->time, 0, 0, 0, 0, 0, rush );
 		return;
 	}
-	TraceResult tr;
-	CBasePlayer *pl = GruntPlayer( best );
-	UTIL_TraceLine( eye, pl->pev->origin + pl->pev->view_ofs * 0.5f, ignore_monsters, e->edict(), &tr );
-	const int visible = tr.flFraction >= 1.0f || tr.pHit == pl->edict();
 	DodGrunt_Looked( &g_pool, i, gpGlobals->time, visible, best, best_pos.x, best_pos.y, sqrtf( best_d2 ), rush );
 }
 
@@ -537,7 +659,7 @@ static void GruntCover( int i, float now )
 		ALERT( at_console, "GRUNT %d takes cover at %.0f %.0f\n", i, spot[0], spot[1] );
 }
 
-static void GruntShootRound( int i, CDodGrunt *e, CBasePlayer *pl, const Vector &from, const Vector &aim,
+static void GruntShootRound( int i, CDodGrunt *e, CBaseEntity *pl, const Vector &from, const Vector &aim,
 	const Vector &dir, float dist, int skill, const DodWeaponDef *gun );
 
 /* Soldiers run from live grenades (anyone's) that land near them: four times a second, each grenade, each soldier
@@ -566,6 +688,8 @@ static void GruntFleeGrenades( float now )
 				continue;
 			if( g_pool.script[i] & ( DOD_GRUNT_AI_OFF | DOD_GRUNT_TURRET ))
 				continue;
+			if( g_pool.cover[i] == DOD_GRUNT_COVER_MOVING && g_pool.order[i] != DOD_GRUNT_ORDER_NONE )
+				continue;	/* already on its way (from this grenade or to cover) */
 			if( g_pool.order[i] != DOD_GRUNT_ORDER_NONE && g_pool.cover[i] == DOD_GRUNT_COVER_NONE
 			    && !( g_pool.script[i] & DOD_GRUNT_SOFT_ORDER ))
 				continue;	/* a script's walk: the script must get its movedone */
@@ -587,14 +711,14 @@ static void GruntFleeGrenades( float now )
 static void GruntShoot( int i )
 {
 	CDodGrunt *e = g_ents[i];
-	CBasePlayer *pl = GruntPlayer( g_pool.target[i] );
+	Vector aim;
+	CBaseEntity *pl = GruntTarget( g_pool.target[i], &aim );
 	if( !pl ) {
 		g_pool.target[i] = 0;
 		return;
 	}
 	const int skill = (int)CVAR_GET_FLOAT( "dod_grunt_skill" );
 	const Vector from( g_pool.x[i], g_pool.y[i], g_pool.z[i] + 24.0f );
-	const Vector aim = pl->pev->origin + pl->pev->view_ofs * 0.5f;
 	const Vector dir = ( aim - from ).Normalize();
 	const float dist = ( aim - from ).Length();
 	if( g_pool.gun[i] == DOD_GRUNT_GUN_NONE )
@@ -630,13 +754,13 @@ static void GruntShoot( int i )
 	}
 }
 
-static void GruntShootRound( int i, CDodGrunt *e, CBasePlayer *pl, const Vector &from, const Vector &aim,
+static void GruntShootRound( int i, CDodGrunt *e, CBaseEntity *pl, const Vector &from, const Vector &aim,
 	const Vector &dir, float dist, int skill, const DodWeaponDef *gun )
 {
 	{
 		float roll = DodGrunt_Rand( &g_pool );
 		/* MOHAA's campaign: soldiers miss more, by difficulty (one hit a second killed an idle player) */
-		if( GruntMohaaCampaign() )
+		if( GruntMohaaCampaign() && pl->IsPlayer() )
 			roll /= DodGrunt_CampaignHitScale( (int)CVAR_GET_FLOAT( "skill" ) );
 		roll /= DodGrunt_AccuracyScale( &g_pool, i );	/* MOHAA "accuracy": 1 at 50 or when unset */
 		if( !DodGrunt_ShotHits( dist, skill, roll ) )
@@ -644,7 +768,9 @@ static void GruntShootRound( int i, CDodGrunt *e, CBasePlayer *pl, const Vector 
 	}
 	TraceResult tr;
 	UTIL_TraceLine( from, aim + dir * 8.0f, dont_ignore_monsters, e->edict(), &tr );
-	if( tr.pHit != pl->edict() ) {
+	/* a soldier's body is not solid to traces (SOLID_NOT props): a shot at one hits if nothing solid is in the way */
+	const int at_soldier = !pl->IsPlayer() && tr.flFraction >= 1.0f;
+	if( tr.pHit != pl->edict() && !at_soldier ) {
 		static int miss_logs;
 		if( miss_logs++ < 8 )
 			ALERT( at_console, "GRUNT %d shot missed its man: hit %s (fraction %.2f of %.0f), target at %.0f %.0f %.0f solid %d movetype %d\n", i,
@@ -655,11 +781,16 @@ static void GruntShootRound( int i, CDodGrunt *e, CBasePlayer *pl, const Vector 
 	g_pool.stats.hits++;
 	ClearMultiDamage();
 	float damage = ( gun ? gun->damage : 30.0f ) * 0.6f;
-	if( GruntMohaaCampaign() ) {
+	if( GruntMohaaCampaign() && pl->IsPlayer() ) {
 		/* MOHAA's campaign scales soldiers' shots at the player by difficulty: two rifle hits (51 each) killed the
 		 * player in the m1l1 ambush. Easy, medium, hard take about 15, 23, 31 a hit. */
 		const float level = CVAR_GET_FLOAT( "skill" );
 		damage *= level <= 1.0f ? 0.3f : ( level >= 3.0f ? 0.6f : 0.45f );
+	}
+	if( !pl->IsPlayer() ) {
+		static int hit_logs;	/* soldiers of the two sides fighting (MOHAA's campaign), for probe logs */
+		if( hit_logs++ < 16 )
+			ALERT( at_console, "GRUNT %d hits GRUNT %d (%.0f damage, %.0f units)\n", i, -g_pool.target[i] - 1, damage, dist );
 	}
 	pl->TraceAttack( e->pev, damage, dir, &tr, DMG_BULLET | DMG_NEVERGIB );
 	ApplyMultiDamage( e->pev, e->pev );

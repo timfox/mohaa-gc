@@ -1,0 +1,29 @@
+[23:40:25] mohaa_probe_goto: player at -2203 1912 84 facing friendly
+[23:40:25] mohaa_probe_goto: 4 Allied soldiers brought to the player
+[23:40:25] mohaa_probe_goto: 6 German soldiers brought 16 units in front
+[23:40:25] GRUNT 30 hits GRUNT 43 (51 damage, 47 units)
+[23:40:25] GRUNT 43 (allies) shot by GRUNT 30
+[23:40:25] GRUNT 33 hits GRUNT 46 (51 damage, 76 units)
+[23:40:26] GRUNT 31 hits GRUNT 44 (51 damage, 13 units)
+[23:40:26] GRUNT 44 (allies) shot by GRUNT 31
+[23:40:26] GRUNT 32 hits GRUNT 46 (51 damage, 46 units)
+[23:40:26] GRUNT 41 hits GRUNT 28 (33 damage, 40 units)
+[23:40:26] GRUNT 28 hits GRUNT 41 (51 damage, 40 units)
+[23:40:26] GRUNT 41 (allies) shot by GRUNT 28
+[23:40:26] GRUNT 33 hits GRUNT 46 (51 damage, 76 units)
+[23:40:27] GRUNT 32 hits GRUNT 46 (51 damage, 46 units)
+[23:40:27] GRUNT 46 hits GRUNT 32 (33 damage, 46 units)
+[23:40:28] GRUNT 32 hits GRUNT 46 (51 damage, 46 units)
+[23:40:28] GRUNT 33 hits GRUNT 46 (51 damage, 76 units)
+[23:40:28] GRUNT 46 hits GRUNT 32 (33 damage, 46 units)
+[23:40:28] GRUNT 32 (axis) shot by GRUNT 46
+[23:40:29] GRUNT 46 hits GRUNT 33 (33 damage, 76 units)
+[23:40:30] GRUNT 33 hits GRUNT 46 (51 damage, 76 units)
+[23:40:31] GRUNT 46 hits GRUNT 33 (33 damage, 76 units)
+[23:40:31] GRUNT 33 (axis) shot by GRUNT 46
+[23:40:33] GRUNT 46 hits GRUNT 28 (33 damage, 174 units)
+[23:40:33] GRUNT 28 (axis) shot by GRUNT 46
+[23:40:34] GRUNT cost: 21 live of 56, frame avg 372 us max 1146 us (console time), per s: looks 43.1 move 8.2 floor 8.2 shots 2.6 hits 1.7 deferred 50.1, edicts 428 of 46
+[23:40:37] GRUNT 29 (axis) shot by GRUNT 46
+[23:40:40] GRUNT 31 (axis) shot by GRUNT 46
+[23:40:44] GRUNT cost: 19 live of 56, frame avg 287 us max 705 us (console time), per s: looks 41.4 move 0.0 floor 0.0 shots 0.6 hits 0.3 deferred 32.5, edicts 428 of 460

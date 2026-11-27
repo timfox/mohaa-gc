@@ -31,6 +31,9 @@ int DodGC_MohaaPlayerUse( CBasePlayer *player );
 int DodGC_MohaaTurretNear( const float from[3], float radius, float gun[4], edict_t *crew );
 /* Make a script grunt the crew of a turret at yaw covering arc_half degrees each side. 0: not a script grunt. */
 int DodGrunts_ManTurret( edict_t *e, float yaw, float arc_half );
+/* Probe aid: put every live soldier of a side (that is not switched off) in a ring around a point, so a fight can
+ * be staged in front of the camera. Returns how many moved. */
+int DodGrunts_ProbeGather( int team, const float at[3], float radius, int most );
 /* the script binding's id of an entity (0: none), for Dod_MohaaEntitySound and the like */
 uint32_t DodGC_MohaaEntityId( edict_t *e );
 
