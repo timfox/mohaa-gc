@@ -227,6 +227,18 @@ static struct {
 	int started;              /* main has run (it waits for the first frame: entities spawn after the VM) */
 	int compile_pending;      /* the level script did not fit while the map loaded: compile it again from Think */
 	int nodes_pending;        /* the path nodes did not fit while the map loaded: load them again from Think */
+	int points_pending;       /* maps/<map>.points loads on the first Think, once the map's load buffers are gone */
+	struct DodPoint *points;  /* invisible named points held without an edict (DOD_MOHAA_POINT_ID | index) */
+	int npoints;
+	char *point_str;          /* their names and targets, NUL-separated */
+	size_t points_bytes;      /* the one block that holds both */
+	/* the backend's own entity calls; S.be's versions answer for points first */
+	int (*real_find)(const char *targetname, uint32_t *ids, int max);
+	int (*real_valid)(uint32_t id);
+	void (*real_get_vec)(uint32_t id, int what, float out[3]);
+	void (*real_set_vec)(uint32_t id, int what, const float v[3]);
+	const char *(*real_get_str)(uint32_t id, int what);
+	void (*real_remove)(uint32_t id);
 	int compile_tries;
 	float compile_retry_at;
 	size_t budget;
@@ -353,7 +365,273 @@ static void forget(uint32_t id)
 /* ---- path nodes seen as entities (DOD_MOHAA_NODE_ID) ---- */
 static int is_node(uint32_t id)
 {
-	return (id & DOD_MOHAA_NODE_ID) != 0;
+	return (id & DOD_MOHAA_POINT_ID) == DOD_MOHAA_NODE_ID;
+}
+
+/* ---- script points seen as entities (DOD_MOHAA_POINT_ID): script_origins, waypoints, spline and vehicle
+   points the converter wrote to maps/<map>.points instead of the .map. They cost no edict: m3l1a names 1326
+   points and its edict budget spawned 187, so most of its $names were NULL. */
+typedef struct DodPoint {
+	float org[3], ang[3];
+	uint32_t hash;           /* of the targetname, lowercased */
+	uint32_t name, target;   /* offsets in S.point_str */
+	unsigned char cls;       /* index in point_classes */
+	unsigned char removed;
+} DodPoint;
+
+static const char *const point_classes[] = {
+	"script_origin", "info_waypoint", "info_splinepath", "info_vehiclepoint", "info_notnull", "info_null"
+};
+
+static int is_point(uint32_t id)
+{
+	return (id & DOD_MOHAA_POINT_ID) == DOD_MOHAA_POINT_ID;
+}
+
+static DodPoint *point_at(uint32_t id)
+{
+	const uint32_t k = id & ~DOD_MOHAA_POINT_ID;
+	return is_point(id) && k < (uint32_t)S.npoints && !S.points[k].removed ? &S.points[k] : NULL;
+}
+
+static uint32_t point_hash(const char *s)
+{
+	uint32_t h = 2166136261u;
+	for (; *s; s++)
+		h = (h ^ (uint8_t)((*s >= 'A' && *s <= 'Z') ? *s + 32 : *s)) * 16777619u;
+	return h;
+}
+
+static int pw_find(const char *name, uint32_t *ids, int max)
+{
+	int n = S.real_find ? S.real_find(name, ids, max) : 0, k;
+	uint32_t h;
+	if (!S.npoints || !name)
+		return n;
+	h = point_hash(name);
+	for (k = 0; k < S.npoints; k++) {
+		const DodPoint *p = &S.points[k];
+		if (p->hash != h || p->removed || point_hash(S.point_str + p->name) != h)
+			continue;
+		if (n < max)
+			ids[n] = DOD_MOHAA_POINT_ID | (uint32_t)k;
+		n++;
+	}
+	return n;
+}
+
+static int pw_valid(uint32_t id)
+{
+	if (is_point(id))
+		return point_at(id) != NULL;
+	return S.real_valid ? S.real_valid(id) : 0;
+}
+
+static void pw_get_vec(uint32_t id, int what, float out[3])
+{
+	const DodPoint *p;
+	if (!is_point(id)) {
+		if (S.real_get_vec)
+			S.real_get_vec(id, what, out);
+		return;
+	}
+	out[0] = out[1] = out[2] = 0.0f;
+	if ((p = point_at(id)) && (what == DOD_MOHAA_ORIGIN || what == DOD_MOHAA_ANGLES))
+		memcpy(out, what == DOD_MOHAA_ORIGIN ? p->org : p->ang, sizeof(float) * 3);
+}
+
+static void pw_set_vec(uint32_t id, int what, const float v[3])
+{
+	DodPoint *p;
+	if (!is_point(id)) {
+		if (S.real_set_vec)
+			S.real_set_vec(id, what, v);
+		return;
+	}
+	if ((p = point_at(id)) && (what == DOD_MOHAA_ORIGIN || what == DOD_MOHAA_ANGLES))
+		memcpy(what == DOD_MOHAA_ORIGIN ? p->org : p->ang, v, sizeof(float) * 3);
+}
+
+static const char *pw_get_str(uint32_t id, int what)
+{
+	const DodPoint *p;
+	if (!is_point(id))
+		return S.real_get_str ? S.real_get_str(id, what) : "";
+	if (!(p = point_at(id)))
+		return "";
+	return what == DOD_MOHAA_TARGETNAME ? S.point_str + p->name : what == DOD_MOHAA_TARGET ? S.point_str + p->target :
+		what == DOD_MOHAA_CLASSNAME ? point_classes[p->cls] : "";
+}
+
+static void pw_remove(uint32_t id)
+{
+	DodPoint *p;
+	if (!is_point(id)) {
+		if (S.real_remove)
+			S.real_remove(id);
+		return;
+	}
+	if ((p = point_at(id)))
+		p->removed = 1;
+}
+
+/* Route the backend's entity calls through the point table (Dod_MohaaLevelInit, once per level). */
+static void points_hook(void)
+{
+	S.real_find = S.be.find;
+	S.real_valid = S.be.valid;
+	S.real_get_vec = S.be.get_vec;
+	S.real_set_vec = S.be.set_vec;
+	S.real_get_str = S.be.get_str;
+	S.real_remove = S.be.remove;
+	S.be.find = pw_find;
+	S.be.valid = pw_valid;
+	S.be.get_vec = pw_get_vec;
+	S.be.set_vec = pw_set_vec;
+	S.be.get_str = pw_get_str;
+	S.be.remove = pw_remove;
+}
+
+static void points_free(void)
+{
+	if (S.points && S.be.alloc)
+		S.be.alloc(S.points, S.points_bytes, 0);
+	S.points = NULL;
+	S.point_str = NULL;
+	S.npoints = 0;
+	S.points_bytes = 0;
+}
+
+/* "%20" -> ' ', "%25" -> '%', "-" -> "" (the converter's escapes); in place */
+static void point_unescape(char *s)
+{
+	char *o = s;
+	if (!strcmp(s, "-")) {
+		*s = 0;
+		return;
+	}
+	for (; *s; s++) {
+		if (s[0] == '%' && s[1] == '2' && (s[2] == '0' || s[2] == '5')) {
+			*o++ = s[2] == '0' ? ' ' : '%';
+			s += 2;
+		} else
+			*o++ = *s;
+	}
+	*o = 0;
+}
+
+/* split one line (NUL-terminated, changed in place) at blanks: the token count, at most max */
+static int point_tokens(char *s, char **tok, int max)
+{
+	int n = 0;
+	while (*s && n < max) {
+		while (*s == ' ' || *s == '\t' || *s == '\r' || *s == '\n')
+			*s++ = 0;
+		if (!*s)
+			break;
+		tok[n++] = s;
+		while (*s && *s != ' ' && *s != '\t' && *s != '\r' && *s != '\n')
+			s++;
+	}
+	if (*s)
+		*s = 0;
+	return n;
+}
+
+/* maps/<map>.points (mohaa-gc tools/bsp19_to_map.py): one point a line,
+   "x y z pitch yaw roll classname targetname target [#key=value ...]". 0 when it did not fit.
+   Two passes over the file: the first sizes one block for the points and their strings, exactly. */
+static int points_load(const char *mapname)
+{
+	char path[128], msg[192];
+	size_t len = 0, strs = 1, used = 1, bytes;
+	char *text, *line, *next, *block;
+	int count = 0, k = 0, pass;
+	snprintf(path, sizeof(path), "maps/%s.points", mapname);
+	text = S.be.load_file(path, &len);
+	if (!text)
+		return 1;
+	for (pass = 0; pass < 2; pass++) {
+		for (line = text; line < text + len; line = next) {
+			char buf[512], *tok[24];
+			int n, c;
+			size_t ll;
+			DodPoint *p;
+			next = memchr(line, '\n', (size_t)(text + len - line));
+			next = next ? next + 1 : text + len;
+			ll = (size_t)(next - line);
+			if (ll >= sizeof(buf) || line[0] == '#')
+				continue;
+			memcpy(buf, line, ll);
+			buf[ll] = 0;
+			n = point_tokens(buf, tok, 24);
+			if (n < 9)
+				continue;
+			point_unescape(tok[7]);
+			point_unescape(tok[8]);
+			if (!*tok[7])
+				continue;
+			if (pass == 0) {
+				count++;
+				strs += strlen(tok[7]) + 1 + (*tok[8] ? strlen(tok[8]) + 1 : 0);
+				continue;
+			}
+			if (k >= count)
+				break;
+			p = &S.points[k];
+			memset(p, 0, sizeof(*p));
+			for (c = 0; c < 3; c++) {
+				p->org[c] = (float)atof(tok[c]);
+				p->ang[c] = (float)atof(tok[3 + c]);
+			}
+			for (c = 0; c < (int)(sizeof(point_classes) / sizeof(point_classes[0])); c++)
+				if (!strcmp(tok[6], point_classes[c]))
+					p->cls = (unsigned char)c;
+			p->hash = point_hash(tok[7]);
+			p->name = (uint32_t)used;
+			memcpy(S.point_str + used, tok[7], strlen(tok[7]) + 1);
+			used += strlen(tok[7]) + 1;
+			if (*tok[8]) {
+				p->target = (uint32_t)used;
+				memcpy(S.point_str + used, tok[8], strlen(tok[8]) + 1);
+				used += strlen(tok[8]) + 1;
+			}
+			S.npoints = ++k;
+			/* "#" keys: script variables, as an entity's would be ($spot.#set -> $spot.set) */
+			for (c = 9; c < n; c++) {
+				char *eq = strchr(tok[c], '=');
+				if (!eq)
+					continue;
+				*eq = 0;
+				point_unescape(tok[c]);
+				point_unescape(eq + 1);
+				Dod_MohaaEntityKey(DOD_MOHAA_POINT_ID | (uint32_t)(k - 1), tok[c], eq + 1);
+			}
+		}
+		if (pass == 1)
+			break;
+		bytes = sizeof(DodPoint) * (size_t)count + strs;
+		block = count ? (char *)S.be.alloc(NULL, 0, bytes) : NULL;
+		if (!block) {
+			if (S.be.free_file)
+				S.be.free_file(text);
+			if (!count)
+				return 1;
+			snprintf(msg, sizeof(msg), "mohaa: %d script points (%u bytes) did not fit\n", count, (unsigned)bytes);
+			S.be.print(DOD_MOHAA_PRINT_ERROR, msg);
+			return 0;
+		}
+		points_free();
+		S.points = (DodPoint *)block;
+		S.point_str = block + sizeof(DodPoint) * (size_t)count;
+		S.point_str[0] = 0;
+		S.points_bytes = bytes;
+	}
+	if (S.be.free_file)
+		S.be.free_file(text);
+	snprintf(msg, sizeof(msg), "mohaa: %d script points from %s, %u bytes\n", S.npoints, path, (unsigned)S.points_bytes);
+	S.be.print(DOD_MOHAA_PRINT_CONSOLE, msg);
+	return 1;
 }
 
 static int valid(uint32_t id)
@@ -3467,6 +3745,8 @@ void Dod_MohaaShutdown(void)
 	S.vm = NULL;
 	S.compile_pending = S.compile_tries = 0;
 	S.nodes_pending = 0;
+	S.points_pending = 0;
+	points_free();
 	memset(g_cover_claims, 0, sizeof(g_cover_claims));
 	memset(g_patrols, 0, sizeof(g_patrols));
 	memset(g_disguisers, 0, sizeof(g_disguisers));
@@ -3510,6 +3790,9 @@ void Dod_MohaaDropPool(void)
 	memset(&S.paths, 0, sizeof(S.paths));
 	S.path_links = 0;
 	memset(&S.tags, 0, sizeof(S.tags));
+	S.points = NULL;
+	S.point_str = NULL;
+	S.npoints = 0;
 	Dod_MohaaShutdown();   /* frees the overflow blocks on the heap too */
 	S.be.alloc = default_alloc;
 }
@@ -3724,6 +4007,7 @@ int Dod_MohaaLevelInit(const DodMohaaBackend *backend, const char *mapname, floa
 	if (!backend || !mapname || !*mapname)
 		return 0;
 	S.be = *backend;
+	points_hook();
 	if (S.be.hud_draw)
 		S.be.hud_draw(-1, NULL);
 	if (S.be.compass_target) {
@@ -3775,6 +4059,7 @@ int Dod_MohaaLevelInit(const DodMohaaBackend *backend, const char *mapname, floa
 	S.rng = 0x2545F491u ^ (uint32_t)(now * 1000.0f);   /* variants differ from run to run */
 	sounds_load(mapname);
 	S.nodes_pending = !nodes_load(mapname, 0);
+	S.points_pending = 1;   /* on the first Think: the map's load buffers still hold the heap */
 	tags_load(mapname);
 	/* a level that never names its soundtrack plays music/<map>.mood (MOHAA's .mus files are named after the map) */
 	if (moods_load(mapname)) {
@@ -3867,6 +4152,15 @@ void Dod_MohaaThink(float now)
 			*strrchr(name, '.') = 0;
 		S.nodes_pending = 0;
 		nodes_load(name, 1);
+	}
+	if (S.points_pending) {
+		const char *map = strrchr(S.level_script, '/');
+		char name[sizeof(S.level_script)];
+		snprintf(name, sizeof(name), "%s", map ? map + 1 : S.level_script);
+		if (strrchr(name, '.'))
+			*strrchr(name, '.') = 0;
+		S.points_pending = 0;
+		points_load(name);
 	}
 	start_main();
 	patrols_think();

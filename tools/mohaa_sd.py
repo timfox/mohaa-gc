@@ -36,7 +36,7 @@ Stages run in this order (--stages picks some; by default every one whose tools 
   scripts   level scripts and the global/ libraries
   scriptmodels static Studio models for m1l1's scripted actors and trucks (needs Pillow + DoD-GC splitter)
   tags      cutscene model tags and animation durations
-  maps      maps/<map>.bsp with MOHAA's textures and skybox (+ .mcol collision, .nodes, media/lg_<map>.gcg light grid)
+  maps      maps/<map>.bsp with MOHAA's textures and skybox (+ .mcol collision, .nodes, .points, media/lg_<map>.gcg light grid)
                                                            needs the patched SDHLT: built once (git, cmake, C++)
   worlddl   media/wd_<map>.gcd GameCube world bake         needs --xash3d-gc DIR (a checkout of xash3d-gc)
   props     media/gp_<map>.gcp static props and terrain    needs --xash3d-gc DIR
@@ -594,7 +594,7 @@ def stage_maps(sources, game_root, maps, work):
             written.append(grid)
         except (ValueError, SystemExit) as e:
             print("   %s: no light grid (%s); models light from the floor" % (m, e))
-        for ext in (".mcol", ".nodes"):
+        for ext in (".mcol", ".nodes", ".points"):
             side = os.path.join(d, m + ext)
             if os.path.isfile(side):
                 shutil.copy(side, os.path.join(out_maps, m + ext))
