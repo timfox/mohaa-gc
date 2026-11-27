@@ -226,6 +226,7 @@ static struct {
 	char level_script[128];
 	int started;              /* main has run (it waits for the first frame: entities spawn after the VM) */
 	int compile_pending;      /* the level script did not fit while the map loaded: compile it again from Think */
+	int nodes_pending;        /* the path nodes did not fit while the map loaded: load them again from Think */
 	int compile_tries;
 	float compile_retry_at;
 	size_t budget;
@@ -3465,6 +3466,7 @@ void Dod_MohaaShutdown(void)
 		ms_destroy(S.vm);
 	S.vm = NULL;
 	S.compile_pending = S.compile_tries = 0;
+	S.nodes_pending = 0;
 	memset(g_cover_claims, 0, sizeof(g_cover_claims));
 	memset(g_patrols, 0, sizeof(g_patrols));
 	memset(g_disguisers, 0, sizeof(g_disguisers));
@@ -3597,7 +3599,8 @@ static void tags_load(const char *mapname)
 		S.be.free_file(data);
 }
 
-static void nodes_load(const char *mapname)
+/* 1 when the nodes are in (or there are none), 0 when they did not fit */
+static int nodes_load(const char *mapname, int last_try)
 {
 	char path[128], msg[256];
 	size_t len = 0;
@@ -3608,13 +3611,19 @@ static void nodes_load(const char *mapname)
 	if (!text) {
 		snprintf(msg, sizeof(msg), "mohaa: could not load path nodes %s\n", path);
 		S.be.print(DOD_MOHAA_PRINT_CONSOLE, msg);
-		return;
+		return 1;
 	}
 	loaded = MohaaPaths_Load(&S.paths, text, len, S.be.alloc);
 	if (loaded > 0)
 		MohaaPaths_Keys(text, len, S.paths.count, node_key, NULL);
 	if (S.be.free_file)
 		S.be.free_file(text);
+	if (loaded < 0 && !last_try) {
+		/* m1l2a's 1104 nodes (46 KB) cannot fit while the map's load buffers hold the heap */
+		snprintf(msg, sizeof(msg), "mohaa: %d path nodes load once the map has loaded\n", -loaded);
+		S.be.print(DOD_MOHAA_PRINT_CONSOLE, msg);
+		return 0;
+	}
 	if (loaded < 0) {
 		const size_t per_node = sizeof(float) * 4 + sizeof(uint32_t) +
 			sizeof(unsigned short) * (MOHAA_PATH_LINKS + 3);
@@ -3634,8 +3643,9 @@ static void nodes_load(const char *mapname)
 		snprintf(msg, sizeof(msg), "mohaa: %d path nodes from %s, %d links (%d walk tests)\n", S.paths.count, path,
 			S.path_links, traces);
 	else
-		return;
+		return 1;
 	S.be.print(DOD_MOHAA_PRINT_CONSOLE, msg);
+	return 1;
 }
 
 /* The script VM is created before map activation, but model precaching must wait until ServerActivate:
@@ -3764,7 +3774,7 @@ int Dod_MohaaLevelInit(const DodMohaaBackend *backend, const char *mapname, floa
 	register_commands(S.vm);
 	S.rng = 0x2545F491u ^ (uint32_t)(now * 1000.0f);   /* variants differ from run to run */
 	sounds_load(mapname);
-	nodes_load(mapname);
+	S.nodes_pending = !nodes_load(mapname, 0);
 	tags_load(mapname);
 	/* a level that never names its soundtrack plays music/<map>.mood (MOHAA's .mus files are named after the map) */
 	if (moods_load(mapname)) {
@@ -3848,6 +3858,16 @@ void Dod_MohaaThink(float now)
 	level.type = MS_LEVEL;
 	if (!compile_deferred(now))
 		return;
+	if (S.nodes_pending) {
+		/* before main runs: the script finds nodes by targetname */
+		const char *map = strrchr(S.level_script, '/');
+		char name[sizeof(S.level_script)];
+		snprintf(name, sizeof(name), "%s", map ? map + 1 : S.level_script);
+		if (strrchr(name, '.'))
+			*strrchr(name, '.') = 0;
+		S.nodes_pending = 0;
+		nodes_load(name, 1);
+	}
 	start_main();
 	patrols_think();
 	disguisers_think();

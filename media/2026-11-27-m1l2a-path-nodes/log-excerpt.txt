@@ -1,0 +1,7 @@
+9:43:33] Xash3D GameCube: mem stage=bsp-buffer-release total=243.98 Kb delta=71.66 Kb hwm=243.98 Kb map=m1l2a heap_used=1.32 Mb heap_free=51.72 Kb unclaimed=148 Kb
+9:43:34] mohaa: 1104 path nodes load once the map has loaded
+9:43:34] Xash3D GameCube: mem stage=map active total=251.61 Kb delta=9.92 Kb hwm=251.61 Kb map=m1l2a heap_used=1.41 Mb heap_free=81.61 Kb unclaimed=24 Kb
+9:43:34] Xash3D GameCube: MAP_READY m1l2a
+sh3D GameCube: MAP_READY m1l2a
+9:43:35] Xash3D GameCube: mem stage=newgame world present total=267.18 Kb delta=15.57 Kb hwm=267.18 Kb map=m1l2a heap_used=1.16 Mb heap_free=335.96 Kb unclaimed=24 Kb
+9:43:35] mohaa: 1104 path nodes from maps/m1l2a.nodes, 3070 links (9347 walk tests)
