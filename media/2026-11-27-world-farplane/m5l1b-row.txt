@@ -1,0 +1,2 @@
+before: | m5l1b | yes | 14 |  | 6.4 / 303.6 KB |  | [still](../media/2026-11-26-campaign-sweep/m5l1b.jpg) |
+after:  | m5l1b | yes | 0 |  | 5.9 / 302.2 KB |  | [still](../media/2026-11-26-campaign-sweep/m5l1b.jpg) |

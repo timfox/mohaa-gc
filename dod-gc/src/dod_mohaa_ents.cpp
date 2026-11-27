@@ -116,6 +116,19 @@ static int M_Find( const char *name, uint32_t *ids, int max )
 			n = 1;
 		}
 	}
+	/* MOHAA's "$world" (weather.scr reads and sets its farplane): GoldSrc's worldspawn can't carry script keys, so a
+	 * point named "world" stands in, made the first time a script asks */
+	if( !n && !strcmp( name, "world" ) )
+	{
+		edict_t *w = CREATE_NAMED_ENTITY( MAKE_STRING( "info_target" ) );
+		if( !FNullEnt( w ) ) {
+			w->v.targetname = MAKE_STRING( "world" );
+			DispatchSpawn( w );
+			if( max > 0 )
+				ids[0] = IdFor( w );
+			n = 1;
+		}
+	}
 	/* MOHAA's "$player" is the (first) player, who has no targetname in GoldSrc */
 	if( !n && !strcmp( name, "player" ) )
 	{
