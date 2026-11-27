@@ -1523,10 +1523,24 @@ static void ProbeGotoThink( void )
 			g_turrets[k].crew = 0;
 		}
 	}
-	const float r = spot->v.angles.y * 0.017453293f;
-	const float d = behind ? -40.0f : 700.0f;
+	const int near_it = strstr( name, " near" ) != NULL;
+	float r = spot->v.angles.y * 0.017453293f;
+	if( near_it ) {
+		/* "near": 150 units from it (a soldier's disguise_range is 256), on the side the player comes from, so the
+		 * spot is in the open rather than through the wall behind a soldier facing it */
+		const Vector away = pe->v.origin - spot->v.origin;
+		r = atan2f( away.y, away.x );
+	}
+	const float d = behind ? -40.0f : ( near_it ? 150.0f : 700.0f );
 	Vector to = spot->v.origin + Vector( cosf( r ) * d, sinf( r ) * d, 48.0f );
 	TraceResult tr;
+	if( near_it ) {
+		/* walk out from the soldier's own (open) spot, stopping short of any wall */
+		const Vector from = spot->v.origin + Vector( 0, 0, 40.0f );
+		UTIL_TraceHull( from, from + Vector( cosf( r ) * d, sinf( r ) * d, 0 ), ignore_monsters, human_hull, pe, &tr );
+		if( !tr.fStartSolid )
+			to = tr.vecEndPos;
+	}
 	UTIL_TraceHull( to, to - Vector( 0, 0, 512 ), ignore_monsters, human_hull, pe, &tr );
 	if( !tr.fStartSolid )
 		to = tr.vecEndPos;

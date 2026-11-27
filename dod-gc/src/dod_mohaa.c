@@ -1357,6 +1357,42 @@ static void spawn_actor_keys(uint32_t id, const char *const *keys, const char *c
 			ms_value name = ms_string(S.vm, vals[i]);
 			set_patrolpath(id, &name);
 			ms_release(S.vm, name);
+		} else if (!strcmp(keys[i], "type_disguise")) {
+			float heed[3] = {0, 0, 0};
+			heed[0] = strcmp(vals[i], "none") ? 1.0f : 0.0f;
+			set_disguise_type(id, vals[i]);
+			if (S.be.actor)
+				S.be.actor(id, DOD_MOHAA_DISGUISE, heed);
+		} else if (!strncmp(keys[i], "disguise_", 9))
+			set_disguise_value(id, keys[i], f);
+		else if (!strcmp(keys[i], "type_attack")) {
+			float style[3] = {0, 0, 0};
+			style[0] = !strcmp(vals[i], "runandshoot") || !strcmp(vals[i], "runandshoot_attack") ? 1.0f : 0.0f;
+			if (S.be.actor) {
+				S.be.actor(id, DOD_MOHAA_ATTACK_STYLE, style);
+				if (!strcmp(vals[i], "turret") || !strcmp(vals[i], "machinegunner")) {
+					style[0] = 0.0f;
+					S.be.actor(id, DOD_MOHAA_TURRET, style);
+				}
+			}
+		} else if (!strcmp(keys[i], "gun")) {
+			float gun[3] = {0, 0, 0};
+			gun[0] = (float)mohaa_gun_id(vals[i]);
+			if (S.be.actor)
+				S.be.actor(id, DOD_MOHAA_GUN, gun);
+		} else if (!strcmp(keys[i], "fov")) {
+			float fov[3] = {0, 0, 0};
+			fov[0] = f;
+			if (S.be.actor)
+				S.be.actor(id, DOD_MOHAA_FOV, fov);
+		} else if (!strcmp(keys[i], "alarmnode") || !strcmp(keys[i], "alarmthread")) {
+			DodPatrol *p = patrol_for(id, 1);
+			if (p && keys[i][5] == 'n') {
+				ms_value name = ms_string(S.vm, vals[i]);
+				p->alarm_node = entity_named(&name);
+				ms_release(S.vm, name);
+			} else if (p)
+				snprintf(p->alarm_thread, sizeof(p->alarm_thread), "%s", vals[i]);
 		} else if (!strcmp(keys[i], "sight"))
 			order = DOD_MOHAA_SIGHT;
 		else if (!strcmp(keys[i], "hearing"))
@@ -2911,10 +2947,40 @@ void Dod_MohaaEntityKey(uint32_t id, const char *key, const char *value)
 	ms_release(S.vm, v);
 }
 
+/* Actor settings a map soldier carries as script variables (the converter writes retail's "sight", "type_disguise",
+   ... as "#sight" ...): applied when the soldier gets its body, as the same keys on "spawn" are. */
+static const char *const MAP_ACTOR_KEYS[] = {
+	"type_idle", "patrolpath", "alarmnode", "alarmthread", "type_attack", "type_disguise", "disguise_range",
+	"disguise_period", "disguise_level", "sight", "hearing", "fov", "leash", "mindist", "maxdist", "gun",
+};
+
+static void apply_map_actor_keys(uint32_t id)
+{
+	size_t k;
+	if (!is_actor_id(id))
+		return;
+	for (k = 0; k < sizeof(MAP_ACTOR_KEYS) / sizeof(MAP_ACTOR_KEYS[0]); k++) {
+		ms_value v = ms_nil();
+		char buf[64];
+		const char *key = MAP_ACTOR_KEYS[k], *val;
+		if (!ms_get_entity_var(S.vm, id, key, &v))
+			continue;
+		if (v.type == MS_NIL) {
+			ms_release(S.vm, v);
+			continue;
+		}
+		val = ms_tostring(&v, buf, sizeof(buf));
+		spawn_actor_keys(id, &key, &val, 1);
+		ms_release(S.vm, v);
+	}
+}
+
 void Dod_MohaaEntityMoved(uint32_t from, uint32_t to)
 {
-	if (S.vm && from && to)
+	if (S.vm && from && to) {
 		ms_move_entity_vars(S.vm, from, to);
+		apply_map_actor_keys(to);
+	}
 }
 
 void Dod_MohaaSetOther(uint32_t id)

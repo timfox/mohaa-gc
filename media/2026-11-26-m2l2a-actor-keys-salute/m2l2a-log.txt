@@ -1,0 +1,7 @@
+before (campaign sweep, main f4daf3c): 35 script errors {'global/alarmlight.scr': 12, 'maps/m2l2a.scr': 19, 'global/cardgame.scr': 2, 'global/moveto.scr': 2}
+after (this PR, run item4): 5 script errors {'maps/m2l2a.scr': 1, 'global/cardgame.scr': 2, 'global/moveto.scr': 2}
+salute run (goto t1557 near):
+:41:31] mohaa: player disguise on
+:41:33] mohaa_probe_goto: player at -2929 -1061 -356 facing t1557
+:41:33] mohaa: t1557 salutes
+:41:33] mohaa: t1558 salutes

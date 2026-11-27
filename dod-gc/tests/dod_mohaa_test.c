@@ -1464,6 +1464,35 @@ static void test_turret_commands(void)
 	assert(!strstr(log_buf, "not bound yet"));
 }
 
+/* A map soldier's retail settings arrive as "#" keys on its placeholder (the converter writes "sight", "type_disguise"
+   ... that way) and apply when it gets its body, as on "spawn"; "#find_name" stays a field for alarm_system.scr */
+static void test_map_actor_keys(void)
+{
+	DodMohaaBackend b = backend();
+	int holder, grunt;
+	reset();
+	files[0][0] = "maps/k.scr";
+	files[0][1] =
+		"main:\n"
+		"\twait 0.1\n"
+		"\tprintln (\"find \" + $officer1.find_name)\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "k", 0, 0));
+	holder = add("", "mohaa_actor", 0, 0, 0);
+	Dod_MohaaEntityKey(make_id(holder), "#find_name", "officer1");
+	Dod_MohaaEntityKey(make_id(holder), "#sight", "3072");
+	Dod_MohaaEntityKey(make_id(holder), "#type_disguise", "salute");
+	Dod_MohaaEntityKey(make_id(holder), "#disguise_range", "300");
+	Dod_MohaaEntityKey(make_id(holder), "#type_attack", "runandshoot");
+	grunt = add("officer1", "actor", 0, 0, 0);
+	Dod_MohaaEntityMoved(make_id(holder), make_id(grunt));
+	run(0.05f, 0.3f);
+	assert(strstr(log_buf, "find officer1"));
+	assert(strstr(log_buf, "<officer1 sight 2353."));	/* 3072 MOHAA units */
+	assert(strstr(log_buf, "<officer1 disguise 1.0"));
+	assert(strstr(log_buf, "<officer1 style 1.0"));
+}
+
 int main(void)
 {
 	RUN(test_no_script_no_vm);
@@ -1474,6 +1503,7 @@ int main(void)
 	RUN(test_patrol_and_alarm);
 	RUN(test_disguise);
 	RUN(test_turret_commands);
+	RUN(test_map_actor_keys);
 	RUN(test_disguise_papers_and_salute);
 	RUN(test_thread_on_shared_name);
 	RUN(test_level_flow_and_movers);

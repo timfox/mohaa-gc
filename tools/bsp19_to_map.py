@@ -752,6 +752,12 @@ class ReachIndex:
 
 PATH_NODES = ("info_pathnode", "info_grav_pathnode")
 ACTOR_KEYS = ("targetname", "target", "angle", "angles", "model", "health", "spawnflags")
+# Retail actor settings and script fields ("$find_name" reads as find_name): written as "#" script variables, which
+# dod-gc's binding applies to the soldier (sight, type_disguise, ...) or keeps for the scripts
+# (alarm_system.scr's find_guy looks soldiers up by .find_name).
+ACTOR_SCRIPT_KEYS = ("find_name", "type_idle", "patrolpath", "alarmnode", "alarmthread", "type_attack",
+                     "type_disguise", "disguise_range", "disguise_period", "disguise_level", "sight", "hearing",
+                     "fov", "leash", "mindist", "maxdist", "gun")
 
 
 def hash_keys(e):
@@ -1159,6 +1165,20 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 			o = parse_vec(e.get("origin", ""))
 			brushes = [t for _, t, _ in model_brushes(bsp, mi, scale, o, namer, stats)]
 			if not brushes:
+				if e.get("targetname") and not unused_name(e):
+					# a named model with nothing solid or drawn (m2l2a's 8 "alarmcorona" glows): scripts still
+					# read its origin, hide it or index it ($alarmcorona[i]), so it stays as a point at its centre
+					m = bsp.models[mi]
+					c = [(m.mins[k] + m.maxs[k]) * 0.5 * scale + o[k] * scale for k in range(3)]
+					keys = {"classname": "info_target", "mohaa_classname": cn, "targetname": e["targetname"],
+					        "origin": f"{_f(c[0])} {_f(c[1])} {_f(c[2])}"}
+					for k in ("target", "angle", "angles"):
+						if k in e:
+							keys[k] = e[k]
+					keys.update(hash_keys(e))
+					blocks.append(kv_block(keys))
+					stats["named_empty_models_as_points"] += 1
+					continue
 				skipped[cn + " (no brushes)"] += 1
 				continue
 			if merge_static_models and gcn == "func_wall" and cn not in NONSOLID_BRUSH \
@@ -1221,6 +1241,9 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 			for k in ACTOR_KEYS:
 				if k in e:
 					keys[k] = e[k]
+			for k in ACTOR_SCRIPT_KEYS:
+				if k in e and e[k] != "":
+					keys["#" + k] = e[k]
 			keys.update(hash_keys(e))
 			if "model" not in keys and cn.lower() != "actor":
 				keys["model"] = cn
