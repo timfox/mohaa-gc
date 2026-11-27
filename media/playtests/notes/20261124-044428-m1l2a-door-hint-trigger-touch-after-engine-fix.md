@@ -1,11 +1,13 @@
-# Probe m1l2a-door-hint-trigger-touch-after-engine-fix — 20261124-044428
+# MOHAA Probe m1l2a-door-hint-trigger-touch-after-engine-fix — 20261124-044428
 
 - ISO: `/dev/shm/mohaa-door-hint-engine-out/mohaa-m1l2a-door-hint.iso`
 - Route: `m1l2a-door-hint-trigger-touch-after-engine-fix`
 - Duration cap: 40s
 - Repo: `bd6a4241d7`
 - Engine: `db73d0d126`
-- Shots: `playtests/screenshots/20261124-044428-m1l2a-door-hint-trigger-touch-after-engine-fix/`
+- Shots: `media/playtests/screenshots/20261124-044428-m1l2a-door-hint-trigger-touch-after-engine-fix/`
+- Periodic guest frames: 19 screenshots in `media/playtests/screenshots/20261124-044428-m1l2a-door-hint-trigger-touch-after-engine-fix/frames/`
+- Video: `media/playtests/videos/20261124-044428-m1l2a-door-hint-trigger-touch-after-engine-fix-silent.mkv`
 
 MOHAA GameCube full-physics probe with matching 256/32 engine and MOHAA SDK layouts. It crashed during map loading, before controller interaction.
 
