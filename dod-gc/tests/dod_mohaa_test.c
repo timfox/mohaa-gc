@@ -1493,6 +1493,45 @@ static void test_map_actor_keys(void)
 	assert(strstr(log_buf, "<officer1 style 1.0"));
 }
 
+/* The sweep's unbound commands: speed paces a move, sighttrace / istouching answer, earthquake shakes, doactivate
+   fires the trigger's targets, targetname renames, and the rest are accepted quietly */
+static int g_shook;
+static int m_trace_clear(const float a[3], const float b[3], int pass) { (void)a; (void)b; return pass ? 1 : 0; }
+static int m_touching(uint32_t a, uint32_t b) { (void)a; (void)b; return 1; }
+static void m_shake(float s, float m) { (void)s; (void)m; g_shook = 1; }
+static void test_sweep_commands(void)
+{
+	DodMohaaBackend b = backend();
+	b.trace_clear = m_trace_clear;
+	b.touching = m_touching;
+	b.shake = m_shake;
+	reset();
+	g_shook = 0;
+	add("box", "script_object", 0, 0, 0);
+	add("other", "script_object", 10, 0, 0);
+	files[0][0] = "maps/u.scr";
+	files[0][1] =
+		"main:\n"
+		"\tprintln (\"clear=\" + (sighttrace (0 0 0) (100 0 0) 1) + \" blocked=\" + (sighttrace (0 0 0) (100 0 0) 0))\n"
+		"\tprintln (\"touch=\" + ($box istouching $other))\n"
+		"\tearthquake 1 2\n"
+		"\t$other targetname renamed\n"
+		"\tprintln (\"name=\" + $renamed.targetname)\n"
+		"\t$box type_grenade grenade\n"
+		"\t$box perferredweapon \"kar98\"\n"
+		"\t$box speed 94\n"
+		"\t$box moveto (94 0 0)\n"
+		"\t$box move\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "u", 0, 0));
+	run(0.05f, 0.2f);
+	assert(strstr(log_buf, "clear=1 blocked=0"));
+	assert(strstr(log_buf, "touch=1"));
+	assert(strstr(log_buf, "name=renamed"));
+	assert(g_shook);
+	assert(!strstr(log_buf, "not bound yet"));
+}
+
 int main(void)
 {
 	RUN(test_no_script_no_vm);
@@ -1502,6 +1541,7 @@ int main(void)
 	RUN(test_actor_weapons);
 	RUN(test_patrol_and_alarm);
 	RUN(test_disguise);
+	RUN(test_sweep_commands);
 	RUN(test_turret_commands);
 	RUN(test_map_actor_keys);
 	RUN(test_disguise_papers_and_salute);

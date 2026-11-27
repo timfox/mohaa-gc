@@ -143,6 +143,13 @@ typedef struct DodMohaaBackend {
 	/* A turretweapon's own commands: DOD_MOHAA_TURRET_* (setaimtarget/clearaimtarget take target, 0 clears it;
 	   burstfiresettings takes v[4]; maxyawoffset v[0]). 0 when id is no turret. May be NULL. */
 	int (*turret)(uint32_t id, int what, uint32_t target, const float v[4]);
+	/* "sighttrace a b [pass_entities]": 1 when nothing (the world, and entities unless pass_entities) is in between.
+	   GoldSrc units. May be NULL. */
+	int (*trace_clear)(const float a[3], const float b[3], int pass_entities);
+	/* "$a istouching $b": their boxes overlap. May be NULL. */
+	int (*touching)(uint32_t a, uint32_t b);
+	/* "earthquake duration magnitude": shake every player's view. May be NULL. */
+	void (*shake)(float seconds, float magnitude);
 	void *(*alloc)(void *ptr, size_t old_size, size_t new_size); /* NULL: pool below, else malloc */
 	/* A region the VM allocates from when alloc is NULL (dod_mohaa_pool.h), instead of the engine heap. It must
 	   stay valid until the next Dod_MohaaLevelInit or Dod_MohaaShutdown, or until Dod_MohaaDropPool says it is
