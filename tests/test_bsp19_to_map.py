@@ -422,6 +422,17 @@ class StaticBrushModelTest(unittest.TestCase):
 			self.assertIn("bunker_", words)
 			self.assertIsNone(conv.script_names([d], "nope"))
 
+	def test_names_built_around_a_number_stay(self):
+		# m3l1a: $("higgins" + local.m + "_move") reaches higgins2_move ... higgins6_move
+		bsp = self.bsp()
+		for name in ("higgins2_move", "higgins3_spray_left", "higgins3_unused"):
+			bsp.entities.append({"classname": "script_origin", "targetname": name, "origin": "0 0 0"})
+		text = conv.convert(bsp, scale=1.0, merge_static_models=True,
+		                    script_words={"higgins", "_move", "_spray_left"})[0]
+		self.assertIn('"targetname" "higgins2_move"', text)
+		self.assertIn('"targetname" "higgins3_spray_left"', text)
+		self.assertNotIn("higgins3_unused", text)
+
 	def test_same_name_same_keys_merge(self):
 		bsp = self.bsp()
 		for i in (1, 2, 4):

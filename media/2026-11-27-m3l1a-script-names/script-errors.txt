@@ -1,0 +1,28 @@
+0:01:10] script error: maps/m3l1a.scr:594: command 'notsolid' applied to NULL
+0:01:10] script error: maps/m3l1a.scr:595: command 'bind' applied to NULL
+0:01:10] script error: maps/m3l1a.scr:1085: [] applied to entity
+0:01:10] script error: maps/m3l1a.scr:1085: command 'rotatey' applied to NIL
+0:01:10] script error: maps/m3l1a.scr:1086: [] applied to entity
+0:01:10] script error: maps/m3l1a.scr:1086: command 'rotatey' applied to NIL
+0:01:10] script error: maps/m3l1a.scr:1087: [] applied to entity
+0:01:10] script error: maps/m3l1a.scr:1087: command 'rotatey' applied to NIL
+0:01:10] script error: maps/m3l1a.scr:1089: [] applied to NULL
+0:01:10] script error: maps/m3l1a.scr:1089: command 'rotatey' applied to NIL
+0:01:10] script error: maps/m3l1a.scr:1090: [] applied to NULL
+0:01:10] script error: maps/m3l1a.scr:1090: command 'rotatey' applied to NIL
+0:01:10] script error: maps/m3l1a.scr:1091: [] applied to NULL
+0:01:10] script error: maps/m3l1a.scr:1091: command 'rotatey' applied to NIL
+0:01:10] script error: maps/m3l1a.scr:1092: [] applied to NULL
+0:01:10] script error: maps/m3l1a.scr:1092: command 'rotatey' applied to NIL
+0:01:10] script error: maps/m3l1a.scr:2224: field 'targetname' applied to NULL
+0:01:10] script error: maps/m3l1a.scr:2224: command 'thread' applied to NULL
+0:01:10] script error: maps/m3l1a.scr:464: command 'hide' applied to NULL
+0:01:15] script error: maps/m3l1a.scr:621: command 'bind' applied to NULL
+0:01:15] script error: maps/m3l1a.scr:621: command 'bind' applied to NULL
+0:01:16] script error: maps/m3l1a.scr:491: command 'bind' applied to NULL
+0:01:16] script error: maps/m3l1a.scr:492: command 'movedown' applied to NULL
+0:01:16] script error: maps/m3l1a.scr:493: command 'move' applied to NULL
+0:01:16] script error: maps/m3l1a.scr:548: command 'time' applied to NULL
+0:01:16] script error: maps/m3l1a.scr:549: command 'rotateyup' applied to NULL
+0:01:16] script error: maps/m3l1a.scr:550: command 'waitmove' applied to NULL
+0:01:25] script error: maps/m3l1a.scr:2494: field 'origin' applied to NULL

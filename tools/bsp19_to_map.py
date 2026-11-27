@@ -1105,14 +1105,23 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 
 	script_points = []  # named points scripts reach by $name, written right after worldspawn
 
+	def built_name(name):
+		"""True when a script can build name from its string pieces around a number:
+		$("bunker_" + local.i) reaches bunker_1, bunker_2 ..., and
+		$("higgins" + local.m + "_move") reaches higgins2_move (m3l1a's boats were dropped)."""
+		low = name.lower()
+		for m in re.finditer(r"\d+", low):
+			prefix, suffix = low[:m.start()], low[m.end():]
+			if len(prefix) >= 3 and prefix in script_words and (not suffix or suffix in script_words):
+				return True
+		return False
+
 	def unused_name(e):
 		"""e's targetname, when nothing can ever look it up."""
 		name = e.get("targetname")
 		if not name or script_words is None or name in script_words or name in targeted:
 			return False
-		# scripts build numbered names: $("bunker_" + local.i) reaches bunker_1, bunker_2 ...
-		stem = name.rstrip("0123456789")
-		return not (stem != name and len(stem) >= 3 and stem in script_words)
+		return not built_name(name)
 
 	# A few retail maps park duplicate script_model placeholders at MOHAA's
 	# 99999-unit sentinel. They are outside GoldSrc's world and make SDHLT
@@ -1285,9 +1294,8 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 					keys[k] = e[k]
 			keys.update(hash_keys(e))
 			name = e["targetname"]
-			stem = name.rstrip("0123456789")
 			if cn.lower().startswith("turretweapon") or script_words is not None and (
-					name in script_words or (stem != name and len(stem) >= 3 and stem in script_words)):
+					name in script_words or built_name(name)):
 				# (a turretweapon is the gun its crew mans: m1l2a's t736 and t738 fell past the edict budget)
 				# scripts look these up by $name: they go first, since the engine keeps only as many
 				# info_targets as its edict budget allows, in file order (m5l2b's $flak88_2 came 164th)
