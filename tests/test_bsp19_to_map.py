@@ -564,6 +564,16 @@ class ConvertTest(unittest.TestCase):
 		ntext, _ = conv.path_nodes(self.bsp, 1.0)
 		self.assertIn("8 0 0 0 0 n1 #set=3 #name%20x=a%20b", ntext)
 
+	def test_actor_settings_as_script_vars(self):
+		# retail actor settings and "$find_name" (read as find_name) reach the game as "#" script variables
+		self.bsp.entities.append({"classname": "actor", "origin": "0 0 0", "find_name": "officer1",
+		                          "type_disguise": "salute", "sight": "3072", "testanim": "idle"})
+		text, _, _, _ = conv.convert(self.bsp, scale=1.0)
+		self.assertIn('"#find_name" "officer1"', text)
+		self.assertIn('"#type_disguise" "salute"', text)
+		self.assertIn('"#sight" "3072"', text)
+		self.assertNotIn("testanim", text)
+
 	def test_name_report(self):
 		self.bsp.entities.append({"classname": "light", "origin": "0 0 0", "targetname": "Lamp1"})
 		text, _, _, _ = conv.convert(self.bsp, scale=0.5)
