@@ -18,6 +18,7 @@
 #include <string.h>
 #include <ctype.h>
 #include "dod_grunts.h"
+#include "dod_grenade.h"
 
 /* Script memory cap in KiB. MEM1 is tight on GameCube (see docs/MEMORY.md); a level whose
  * scripts do not fit is refused cleanly at load instead of starving the engine. */
@@ -1649,6 +1650,8 @@ static void ProbeGotoThink( void )
 	}
 	/* "mid": as near, but 450 units off (inside a rifleman's sight, past grenade range's 300 minimum) */
 	const int mid = strstr( name, " mid" ) != NULL;
+	/* "nade": then drop a live grenade (the player's) at the entity's feet, in view: its blast, and soldiers running */
+	const int nade = strstr( name, " nade" ) != NULL;
 	const int near_it = mid || strstr( name, " near" ) != NULL;
 	float r = spot->v.angles.y * 0.017453293f;
 	if( near_it ) {
@@ -1677,6 +1680,10 @@ static void ProbeGotoThink( void )
 	pe->v.fixangle = 1;
 	ALERT( at_console, "mohaa_probe_goto: player at %.0f %.0f %.0f %s %s\n", to.x, to.y, to.z,
 		behind ? "behind" : "facing", target );
+	if( nade ) {
+		CGrenade *g = DodGrenade_ThrowFrom( &pe->v, DOD_TEAM_ALLIES, spot->v.origin + Vector( 0, 0, 16 ), Vector( 0, 0, 40 ) );
+		ALERT( at_console, "mohaa_probe_goto: %s grenade at %s's feet\n", g ? "dropped a" : "could not drop a", target );
+	}
 	if( mount ) {
 		CBaseEntity *ent = CBaseEntity::Instance( pe );
 		if( ent && ent->IsPlayer() && RiderUse( (CBasePlayer *)ent ) && fire ) {
