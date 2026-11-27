@@ -1,0 +1,7 @@
+before: | m5l1b | yes | 100 |  | 9.2 / 306.6 KB |  | [still](../media/2026-11-26-campaign-sweep/m5l1b.jpg) |
+after:  | m5l1b | yes | 14 |  | 6.4 / 303.6 KB |  | [still](../media/2026-11-26-campaign-sweep/m5l1b.jpg) |
+:10:35] mohaa_actor enemyspawner: back to the waiting list to make room
+:10:35] mohaa_actor t1990: in from the waiting list, asked for by name (46 left)
+:10:35] mohaa_actor t1989: in from the waiting list, asked for by name (45 left)
+:10:35] mohaa_actor t1985: in from the waiting list, asked for by name (44 left)
+:10:35] mohaa_actor t1987: in from the waiting list, asked for by name (43 left)
