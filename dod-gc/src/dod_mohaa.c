@@ -2256,6 +2256,16 @@ static int c_istouching(ms_call *c)
 	return 0;
 }
 
+/* "$world farplane 4000", "farplane_color (r g b)", "farplane_cull", "farplane_bias": the distance fog. The GameCube
+   renderer draws no MOHAA fog, so the values are kept for the script to read back ($world.farplane). */
+static int c_farplane(ms_call *c)
+{
+	const uint32_t id = target_id(c);
+	if (valid(id) && !is_node(id) && ms_argc(c) > 0)
+		ms_set_entity_var(S.vm, id, ms_call_name(c), ms_arg(c, 0));
+	return 0;
+}
+
 /* "$ent droptofloor" */
 static int c_droptofloor(ms_call *c)
 {
@@ -3301,6 +3311,10 @@ static void register_commands(ms_vm *vm)
 		{"istouching", MS_ON_ENTITY, c_istouching},
 		{"earthquake", MS_ON_THREAD | MS_ON_ENTITY, c_earthquake},
 		{"droptofloor", MS_ON_ENTITY, c_droptofloor},
+		{"farplane", MS_ON_ENTITY, c_farplane},
+		{"farplane_color", MS_ON_ENTITY, c_farplane},
+		{"farplane_cull", MS_ON_ENTITY, c_farplane},
+		{"farplane_bias", MS_ON_ENTITY, c_farplane},
 		{"cansee", MS_ON_ENTITY, c_cansee},
 		{"doactivate", MS_ON_ENTITY, c_doactivate},
 		{"volumedamage", MS_ON_ENTITY, c_volumedamage},

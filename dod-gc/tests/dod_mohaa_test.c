@@ -1583,6 +1583,25 @@ static void test_cansee_droptofloor(void)
 	assert(!strstr(log_buf, "not bound yet"));
 }
 
+/* "$world farplane / farplane_color": kept on the world for the script to read back (weather.scr) */
+static void test_world_farplane(void)
+{
+	DodMohaaBackend b = backend();
+	reset();
+	add("world", "info_target", 0, 0, 0);
+	files[0][0] = "maps/w2.scr";
+	files[0][1] =
+		"main:\n"
+		"\t$world farplane 4000\n"
+		"\t$world farplane_color (0.5 0.5 0.6)\n"
+		"\tprintln (\"fp=\" + $world.farplane)\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "w2", 0, 0));
+	run(0.05f, 0.2f);
+	assert(strstr(log_buf, "fp=4000"));
+	assert(!strstr(log_buf, "not bound yet") && !strstr(log_buf, "script error"));
+}
+
 int main(void)
 {
 	RUN(test_no_script_no_vm);
@@ -1592,6 +1611,7 @@ int main(void)
 	RUN(test_actor_weapons);
 	RUN(test_patrol_and_alarm);
 	RUN(test_disguise);
+	RUN(test_world_farplane);
 	RUN(test_cansee_droptofloor);
 	RUN(test_string_as_listener);
 	RUN(test_sweep_commands);
