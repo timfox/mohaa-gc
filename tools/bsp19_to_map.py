@@ -200,6 +200,22 @@ class TextureNamer:
 		self.by_shader = {}
 		self.used = set()
 		self.special_used = set()  # sky / !water / AAATRIGGER need WAD entries too
+		self.water_by_shader = {}  # a water surface's shader -> "!name": GoldSrc warps "!" textures as water
+		self.water_sides = {}  # shader -> sides that use it ("!water" takes the most used one's image)
+
+	def water_name(self, shader: str) -> str:
+		"""The "!" texture a water brush shows: the MOHAA water shader's own image, warped like GoldSrc water."""
+		self.water_sides[shader] = self.water_sides.get(shader, 0) + 1
+		if shader in self.water_by_shader:
+			return self.water_by_shader[shader]
+		base = shader.replace("\\", "/").rsplit("/", 1)[-1].lower()
+		base = "".join(ch if ch.isalnum() or ch == "_" else "_" for ch in base) or "water"
+		cand = "!" + base[:14]
+		if cand in self.used or cand.lower() == "!water":
+			cand = "!" + base[:9] + "_" + hashlib.md5(shader.encode()).hexdigest()[:4]
+		self.used.add(cand)
+		self.water_by_shader[shader] = cand
+		return cand
 
 	def name(self, shader: str) -> str:
 		if shader in self.by_shader:
@@ -229,7 +245,12 @@ def _side_texture(sh: b19.Shader, namer: TextureNamer, brush_class: str) -> str:
 	if brush_class == "trigger":
 		return "AAATRIGGER"
 	if brush_class == "water":
-		return "!water"
+		# the surface's own water image, warped as GoldSrc water (m2l2a's harbour showed a placeholder checker).
+		# The sides MOHAA doesn't draw (nodraw, waterskip: most of a water brush) stay "!water": every side of a
+		# GoldSrc water brush has to be water for its contents, and the WAD gives "!water" the map's water image.
+		if not sh.name or sh.surface_flags & b19.SURF_NODRAW or "caulk" in low or "nodraw" in low or "skip" in low:
+			return "!water"
+		return namer.water_name(sh.name)
 	if sh.surface_flags & b19.SURF_SKY or "/sky" in low:
 		return "sky"
 	if sh.surface_flags & b19.SURF_NODRAW or "caulk" in low or "nodraw" in low:
@@ -1541,12 +1562,21 @@ def main(argv=None) -> int:
 				body = images.miptex(shader, wname)
 				real += body is not None
 				lumps.append((wname, body or placeholder_lump(wname)))
-			lumps += [(n, placeholder_lump(n)) for n in sorted(namer.special_used)]
+			for shader, wname in sorted(namer.water_by_shader.items(), key=lambda kv: kv[1]):
+				body = images.miptex(shader, wname)
+				real += body is not None
+				lumps.append((wname, body or placeholder_lump(wname)))
+			first_water = max(namer.water_sides, key=lambda sh: (namer.water_sides[sh], sh)) \
+				if namer.water_sides else None
+			for n in sorted(namer.special_used):
+				body = images.miptex(first_water, n) if n == "!water" and first_water else None
+				lumps.append((n, body or placeholder_lump(n)))
 			world_textures.write_wad(args.wad, lumps)
 			print(f"{name}: {real} of {len(namer.by_shader)} textures from MOHAA's images; "
 			      f"{fit.stats['sides_fitted']} sides on MOHAA's texture axes, {fit.stats['sides_projected']} projected")
 		else:
-			write_wad(args.wad, list(namer.by_shader.values()) + sorted(namer.special_used))
+			write_wad(args.wad, list(namer.by_shader.values()) + sorted(namer.water_by_shader.values())
+			          + sorted(namer.special_used))
 	print(f"{name}: wrote {args.out}")
 	for k in sorted(stats):
 		print(f"  {k:<28} {stats[k]}")

@@ -520,7 +520,11 @@ class ConvertTest(unittest.TestCase):
 			m = FACE_RE.match(line)
 			if m:
 				texes.add(m.group(4))
-		self.assertEqual(texes, {"NULL", "concrete", "CLIP", "!water", "sky"})
+		# the water surface keeps its own shader's image, under a "!" name GoldSrc warps as water
+		water = {t for t in texes if t.startswith("!")}
+		self.assertEqual(len(water), 1)
+		self.assertNotEqual(water, {"!water"})
+		self.assertEqual(texes - water, {"NULL", "concrete", "CLIP", "sky"})
 		self.assertIn('"classname" "func_door"', text)
 		self.assertIn('"targetname" "door1"', text)
 		# player start: MOHAA (0 0 16) at x0.5 -> feet z 8, origin lifted by hull half height + 1
@@ -622,7 +626,9 @@ class ConvertTest(unittest.TestCase):
 			self.assertEqual(wad[:4], b"WAD3")
 			count, ofs = struct.unpack_from("<ii", wad, 4)
 			names = {wad[ofs + i * 32 + 16: ofs + i * 32 + 32].split(b"\0")[0].decode() for i in range(count)}
-			self.assertEqual(names, {"concrete", "!water", "sky"})
+			water = {n for n in names if n.startswith("!")}
+			self.assertEqual(len(water), 1)
+			self.assertEqual(names - water, {"concrete", "sky"})
 
 
 if __name__ == "__main__":
