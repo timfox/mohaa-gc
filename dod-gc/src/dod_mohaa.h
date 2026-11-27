@@ -150,6 +150,8 @@ typedef struct DodMohaaBackend {
 	int (*touching)(uint32_t a, uint32_t b);
 	/* "earthquake duration magnitude": shake every player's view. May be NULL. */
 	void (*shake)(float seconds, float magnitude);
+	/* "$ent droptofloor": settle it on the ground below. May be NULL. */
+	void (*drop_to_floor)(uint32_t id);
 	void *(*alloc)(void *ptr, size_t old_size, size_t new_size); /* NULL: pool below, else malloc */
 	/* A region the VM allocates from when alloc is NULL (dod_mohaa_pool.h), instead of the engine heap. It must
 	   stay valid until the next Dod_MohaaLevelInit or Dod_MohaaShutdown, or until Dod_MohaaDropPool says it is

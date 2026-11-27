@@ -8,7 +8,7 @@ Every retail mission was converted with `tools/mohaa_sd.py` (stages scripts, tag
 
 **33 of 34 maps boot** (29 on the sweep; m5l3, m6l1c, m6l3a and m6l3c since round 2 item 2). Those four ran out of MEM1 loading the world. m6l1c, m6l3a and m6l3c have more than the 16384 hull-0 nodes the engine's static reserve holds; hull 0 now goes into the unused tail of the static clipnode table (xash3d-gc claude/mohaa-hull0-tail), and coarser collision in `tools/map_flags.txt` (`--simplify-collision --collision-grid 64 --mesh-collision`) leaves the room: clipnodes 30307 → 11738 (m6l1c), 25251 → 15086 (m6l3a), 21203 → 13015 (m6l3c). m5l3's 50647 clipnodes (396 KB) failed to reload; at grid 32 with mesh collision it has 21500 and fits the static table. Rows for these four come from runs one at a time with the round 2 DOL (two Dolphins started in the same second mix their run folders). **m6l2a still runs out of memory**: 19127 nodes, and its clipnodes (19856, 22447 at grid 128) don't leave a tail big enough; a `--detail-world` build is being tried.
 
-**Bound since the sweep** (round 2 item 7): `speed` (a move goes at that pace), `sighttrace`, `istouching`, `earthquake` (screen shake), `doactivate` (fires the trigger's targets), `volumedamage` (damage at the entity), `targetname` (command form), `stopsound` (stops the entity's loops). Accepted and ignored, each for a stated reason: `type_grenade`, `perferredweapon`, `noticescale`, `bulletspread`, `showmenu`/`hidemenu`/`hidemouse`, `cache`, `ammo_grenade`, `stopwatch`, `bsptransition`, `vehicleanim`, `setsize`, `nextdrive`, `turret` (on vehicles). The rows for m1l3b, m2l2c, m2l3, m4l3, m6l3d and m6l3e are from runs with this binding: none reports an unbound command except m4l3's `droptofloor`, which the earlier ones had hidden. The lowest free heap during load is now 6.2 KB (8.7 KB on the sweep): the DOL has grown with rounds 2 and 3.
+**Bound since the sweep** (round 2 item 7): `speed` (a move goes at that pace), `sighttrace`, `istouching`, `earthquake` (screen shake), `doactivate` (fires the trigger's targets), `volumedamage` (damage at the entity), `targetname` (command form), `stopsound` (stops the entity's loops). Accepted and ignored, each for a stated reason: `type_grenade`, `perferredweapon`, `noticescale`, `bulletspread`, `showmenu`/`hidemenu`/`hidemouse`, `cache`, `ammo_grenade`, `stopwatch`, `bsptransition`, `vehicleanim`, `setsize`, `nextdrive`, `turret` (on vehicles). The rows for m1l3b, m2l2c, m2l3, m4l3, m6l3d and m6l3e are from runs with this binding: none reports an unbound command except m4l3's `droptofloor`, which the earlier ones had hidden. The lowest free heap during load is now 6.2 KB (8.7 KB on the sweep): the DOL has grown with rounds 2 and 3. **Round 3 (2026-11-27):** a string used as a listener now resolves to the entity of that targetname, as retail's ScriptVariable::listenerValue does (cabinet.scr, ai.scr and alarm_system.scr hand global/spawner.scr a soldier's `.target` string). Script errors: m3l2 100 → 5, m5l1a 98 → 12, m6l2a 100 → 30. m5l1b stays at 100: its cabinet soldiers (t1984-t1990) are still waiting for a grunt-pool slot when cabinet.scr looks them up, so their names find nothing, which fails in retail too. `droptofloor` and `cansee` (clear line, optional fov cone and distance) are bound; m4l3 and m6l2a report no unbound command. Lowest free heap during load in these runs: 7.5 to 9.2 KB.
 
 | Map | Boots to MAP_READY | Script errors | Unbound commands | Lowest free heap: load / after MAP_READY | Host error | Still |
 |---|---|---|---|---|---|---|
@@ -25,21 +25,21 @@ Every retail mission was converted with `tools/mohaa_sd.py` (stages scripts, tag
 | m2l3 | yes | 21 |  | 6.2 / 166.3 KB |  | [still](../media/2026-11-26-campaign-sweep/m2l3.jpg) |
 | m3l1a | yes | 80 | `bulletspread`, `showmenu`, `hidemouse`, `hidemenu` | 8.7 / 301.8 KB |  | [still](../media/2026-11-26-campaign-sweep/m3l1a.jpg) |
 | m3l1b | yes | 0 | `bulletspread`, `earthquake` | 8.7 / 299.4 KB |  | [still](../media/2026-11-26-campaign-sweep/m3l1b.jpg) |
-| m3l2 | yes | 100 |  | 8.7 / 155.7 KB |  | [still](../media/2026-11-26-campaign-sweep/m3l2.jpg) |
+| m3l2 | yes | 5 |  | 9.2 / 156.1 KB |  | [still](../media/2026-11-26-campaign-sweep/m3l2.jpg) |
 | m3l3 | yes | 0 |  | 8.7 / 278.3 KB |  | [still](../media/2026-11-26-campaign-sweep/m3l3.jpg) |
 | m4l0 | yes | 0 |  | 8.7 / 463.5 KB |  | [still](../media/2026-11-26-campaign-sweep/m4l0.jpg) |
 | m4l1 | yes | 3 | `type_grenade`, `turret` | 8.7 / 451.6 KB |  | [still](../media/2026-11-26-campaign-sweep/m4l1.jpg) |
 | m4l2 | yes | 43 | `nextdrive`, `type_grenade` | 8.7 / 29.9 KB |  | [still](../media/2026-11-26-campaign-sweep/m4l2.jpg) |
-| m4l3 | yes | 53 | `droptofloor` | 6.2 / 266.2 KB |  | [still](../media/2026-11-26-campaign-sweep/m4l3.jpg) |
-| m5l1a | yes | 98 | `cache` | 8.7 / 171.2 KB |  | [still](../media/2026-11-26-campaign-sweep/m5l1a.jpg) |
-| m5l1b | yes | 100 | `noticescale`, `ammo_grenade` | 8.7 / 307.9 KB |  | [still](../media/2026-11-26-campaign-sweep/m5l1b.jpg) |
+| m4l3 | yes | 53 |  | 7.5 / 267.5 KB |  | [still](../media/2026-11-26-campaign-sweep/m4l3.jpg) |
+| m5l1a | yes | 12 |  | 9.2 / 171.6 KB |  | [still](../media/2026-11-26-campaign-sweep/m5l1a.jpg) |
+| m5l1b | yes | 100 |  | 9.2 / 306.6 KB |  | [still](../media/2026-11-26-campaign-sweep/m5l1b.jpg) |
 | m5l2a | yes | 0 |  | 8.7 / 47.2 KB |  | [still](../media/2026-11-26-campaign-sweep/m5l2a.jpg) |
 | m5l2b | yes | 0 |  | 8.7 / 32.3 KB |  | [still](../media/2026-11-26-campaign-sweep/m5l2b.jpg) |
 | m5l3 | yes | 1 | `istouching` | 7.2 / 386.2 KB |  | [still](../media/2026-11-26-campaign-sweep/m5l3.jpg) |
 | m6l1a | yes | 0 |  | 8.7 / 465.4 KB |  | [still](../media/2026-11-26-campaign-sweep/m6l1a.jpg) |
 | m6l1b | yes | 0 |  | 8.7 / 466.0 KB |  | [still](../media/2026-11-26-campaign-sweep/m6l1b.jpg) |
 | m6l1c | yes | 30 | `type_grenade`, `turret` | 7.2 / 314.5 KB |  | [still](../media/2026-11-26-campaign-sweep/m6l1c.jpg) |
-| m6l2a | **no**: out of memory | 0 |  | ? | _Mem_Alloc 149.43 KB (hull 0, 19127 nodes) | [still](../media/2026-11-26-campaign-sweep/m6l2a.jpg) |
+| m6l2a | yes | 30 |  | 7.5 / 312.4 KB |  | [still](../media/2026-11-26-campaign-sweep/m6l2a.jpg) |
 | m6l2b | yes | 13 | `type_grenade` | 8.7 / 31.7 KB |  | [still](../media/2026-11-26-campaign-sweep/m6l2b.jpg) |
 | m6l3a | yes | 8 | `speed` | 7.2 / 275.2 KB |  | [still](../media/2026-11-26-campaign-sweep/m6l3a.jpg) |
 | m6l3b | yes | 0 |  | 8.7 / 328.5 KB |  | [still](../media/2026-11-26-campaign-sweep/m6l3b.jpg) |

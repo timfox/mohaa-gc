@@ -1532,6 +1532,57 @@ static void test_sweep_commands(void)
 	assert(!strstr(log_buf, "not bound yet"));
 }
 
+/* A string used as a listener is the entity of that targetname, as in retail (cabinet.scr hands spawner_create a
+   soldier's .target string): fields read and set through it, commands reach the entity */
+static void test_string_as_listener(void)
+{
+	DodMohaaBackend b = backend();
+	reset();
+	add("crate", "script_object", 94, 0, 0);
+	files[0][0] = "maps/s.scr";
+	files[0][1] =
+		"main:\n"
+		"\tlocal.name = \"crate\"\n"
+		"\tlocal.name.mark = 7\n"
+		"\tprintln (\"mark=\" + $crate.mark + \" x=\" + local.name.origin[0])\n"
+		"\tlocal.name hide\n"
+		"\tlocal.none = \"nothing_here\"\n"
+		"\tprintln (\"none=\" + local.none.origin)\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "s", 0, 0));
+	run(0.05f, 0.2f);
+	assert(strstr(log_buf, "mark=7 x=122."));	/* 94 GoldSrc units */
+	assert(ents[0].hidden);
+	assert(strstr(log_buf, "field 'origin' applied to string"));	/* no such entity: still an error */
+}
+
+/* cansee: a clear line, inside the fov cone; droptofloor reaches the game */
+static int g_dropped;
+static int m_trace_ok(const float a[3], const float b[3], int pass) { (void)a; (void)b; (void)pass; return 1; }
+static void m_drop(uint32_t id) { (void)id; g_dropped++; }
+static void test_cansee_droptofloor(void)
+{
+	DodMohaaBackend b = backend();
+	b.trace_clear = m_trace_ok;
+	b.drop_to_floor = m_drop;
+	reset();
+	g_dropped = 0;
+	add("watcher", "actor", 0, 0, 0);	/* faces yaw 0: +x */
+	add("ahead", "actor", 200, 0, 0);
+	add("behind", "actor", -200, 0, 0);
+	files[0][0] = "maps/c.scr";
+	files[0][1] =
+		"main:\n"
+		"\tprintln (\"ahead=\" + ($watcher cansee $ahead 90) + \" behind=\" + ($watcher cansee $behind 90) + \" any=\" + ($watcher cansee $behind))\n"
+		"\t$ahead droptofloor\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "c", 0, 0));
+	run(0.05f, 0.2f);
+	assert(strstr(log_buf, "ahead=1 behind=0 any=1"));
+	assert(g_dropped == 1);
+	assert(!strstr(log_buf, "not bound yet"));
+}
+
 int main(void)
 {
 	RUN(test_no_script_no_vm);
@@ -1541,6 +1592,8 @@ int main(void)
 	RUN(test_actor_weapons);
 	RUN(test_patrol_and_alarm);
 	RUN(test_disguise);
+	RUN(test_cansee_droptofloor);
+	RUN(test_string_as_listener);
 	RUN(test_sweep_commands);
 	RUN(test_turret_commands);
 	RUN(test_map_actor_keys);

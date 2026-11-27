@@ -1,0 +1,11 @@
+before (main e46a46c) / after (this PR):
+before: | m3l2 | yes | 100 |  | 8.7 / 155.7 KB |  | [still](../media/2026-11-26-campaign-sweep/m3l2.jpg) |
+after:  | m3l2 | yes | 5 |  | 9.2 / 156.1 KB |  | [still](../media/2026-11-26-campaign-sweep/m3l2.jpg) |
+before: | m5l1a | yes | 98 | `cache` | 8.7 / 171.2 KB |  | [still](../media/2026-11-26-campaign-sweep/m5l1a.jpg) |
+after:  | m5l1a | yes | 12 |  | 9.2 / 171.6 KB |  | [still](../media/2026-11-26-campaign-sweep/m5l1a.jpg) |
+before: | m5l1b | yes | 100 | `noticescale`, `ammo_grenade` | 8.7 / 307.9 KB |  | [still](../media/2026-11-26-campaign-sweep/m5l1b.jpg) |
+after:  | m5l1b | yes | 100 |  | 9.2 / 306.6 KB |  | [still](../media/2026-11-26-campaign-sweep/m5l1b.jpg) |
+before: | m4l3 | yes | 53 | `droptofloor` | 6.2 / 266.2 KB |  | [still](../media/2026-11-26-campaign-sweep/m4l3.jpg) |
+after:  | m4l3 | yes | 53 |  | 7.5 / 267.5 KB |  | [still](../media/2026-11-26-campaign-sweep/m4l3.jpg) |
+before: | m6l2a | **no**: out of memory | 0 |  | ? | _Mem_Alloc 149.43 KB (hull 0, 19127 nodes) | [still](../media/2026-11-26-campaign-sweep/m6l2a.jpg) |
+after:  | m6l2a | yes | 30 |  | 7.5 / 312.4 KB |  | [still](../media/2026-11-26-campaign-sweep/m6l2a.jpg) |
