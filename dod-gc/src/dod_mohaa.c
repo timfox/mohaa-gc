@@ -170,7 +170,7 @@ typedef struct DodMover {
 #define MAX_MOODS 8
 #define DOD_MOHAA_MAX_ROUTES 48	/* one per grunt slot */
 #define MUSIC_PATH 80
-#define DOD_MOHAA_MAX_CINE 64
+#define DOD_MOHAA_MAX_CINE 128	/* m3l1a binds six Higgins boats of ~13 parts each */
 #define DOD_MOHAA_ANIM_DEFAULT 1.0f	/* seconds an animation with no baked length plays before "animdone" */
 
 /* An entity a cutscene drives: its MOHAA model and animation (for tags and animdone), what it is glued to, where an
