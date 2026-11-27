@@ -27,6 +27,7 @@ static cvar_t mohaa_script_kb = { "mohaa_script_kb", "384", FCVAR_SERVER };
  * headless run can film a spot the mission takes minutes to reach. Retail discs carry neither. */
 static cvar_t mohaa_probe_goto = { "mohaa_probe_goto", "", FCVAR_SERVER };
 static int g_probe_goto_done;
+static float g_probe_fire_from, g_probe_fire_until;
 static int g_mohaa_cvar_registered;
 static int gmsgMohaaHudDraw;
 static int gmsgMohaaCompass;
@@ -1204,6 +1205,7 @@ void DodGC_MohaaDisguiseBlown( edict_t *player )
 void DodGC_MohaaLevelInit( void )
 {
 	g_probe_goto_done = 0;
+	g_probe_fire_from = g_probe_fire_until = 0.0f;
 	memset( g_untriggerable, 0, sizeof( g_untriggerable ) );
 	DodGC_MohaaRegisterHudMessages();
 	if( !g_mohaa_cvar_registered )
@@ -1310,6 +1312,8 @@ static float MohaaUseDistance( CBaseEntity *ent, const Vector &at )
 	return ( closest - at ).Length();
 }
 
+static int RiderUse( CBasePlayer *pl );
+
 int DodGC_MohaaPlayerUse( CBasePlayer *player )
 {
 	static const char *const classes[] = { "trigger_use", "trigger_multiple" };
@@ -1320,6 +1324,8 @@ int DodGC_MohaaPlayerUse( CBasePlayer *player )
 		return 0;
 	/* a soldier asking a disguised player for papers: USE shows them (retail's "toggleitem" key has no pad button) */
 	if( Dod_MohaaShowPapers( IdFor( player->edict() ) ) )
+		return 1;
+	if( RiderUse( player ) )
 		return 1;
 	for( int k = 0; k < 2; k++ )
 	{
@@ -1480,7 +1486,7 @@ static void ProbeGotoThink( void )
 		if( !data )
 			return;
 		int n = 0;
-		while( n < len && n + 1 < (int)sizeof( file_name ) && data[n] > ' ' ) {
+		while( n < len && n + 1 < (int)sizeof( file_name ) && data[n] != '\n' && data[n] != '\r' ) {
 			file_name[n] = (char)data[n];
 			n++;
 		}
@@ -1490,24 +1496,54 @@ static void ProbeGotoThink( void )
 		if( !name[0] )
 			return;
 	}
-	edict_t *spot = FIND_ENTITY_BY_TARGETNAME( NULL, name );
+	/* "<name> [behind] [free]": behind stands the player at the back of the entity (a turret's gunner spot);
+	 * free takes a turret's crew off it, so the player can man it */
+	char target[64];
+	const int behind = strstr( name, " behind" ) != NULL;
+	const int free_gun = strstr( name, " free" ) != NULL;
+	/* "mount": then press USE for the player; "fire": then hold the gun's trigger for 8 s, sweeping the view
+	 * across the arc (a probe stand-in for the pad, whose TAS polls don't keep time with the map) */
+	const int mount = strstr( name, " mount" ) != NULL;
+	const int fire = strstr( name, " fire" ) != NULL;
+	snprintf( target, sizeof( target ), "%s", name );
+	if( strchr( target, ' ' ) )
+		*strchr( target, ' ' ) = 0;
+	edict_t *spot = FIND_ENTITY_BY_TARGETNAME( NULL, target );
 	edict_t *pe = INDEXENT( 1 );
 	if( FNullEnt( spot ) || !pe || pe->free ) {
-		ALERT( at_console, "mohaa_probe_goto: no %s\n", name );
+		ALERT( at_console, "mohaa_probe_goto: no %s\n", target );
 		return;
 	}
+	if( free_gun ) {
+		const int k = TurretRow( spot, 0 );
+		edict_t *crew = k >= 0 && g_turrets[k].crew ? EdictFor( g_turrets[k].crew ) : NULL;
+		if( crew ) {
+			ALERT( at_console, "mohaa_probe_goto: %s's crew leaves the gun\n", target );
+			DodGrunts_ScriptRemove( crew );
+			g_turrets[k].crew = 0;
+		}
+	}
 	const float r = spot->v.angles.y * 0.017453293f;
-	Vector to = spot->v.origin + Vector( cosf( r ) * 700.0f, sinf( r ) * 700.0f, 48.0f );
+	const float d = behind ? -40.0f : 700.0f;
+	Vector to = spot->v.origin + Vector( cosf( r ) * d, sinf( r ) * d, 48.0f );
 	TraceResult tr;
 	UTIL_TraceHull( to, to - Vector( 0, 0, 512 ), ignore_monsters, human_hull, pe, &tr );
 	if( !tr.fStartSolid )
 		to = tr.vecEndPos;
 	UTIL_SetOrigin( &pe->v, to );
-	const Vector look = UTIL_VecToAngles( spot->v.origin - to );
+	const Vector look = behind ? Vector( 0, spot->v.angles.y, 0 ) : UTIL_VecToAngles( spot->v.origin - to );
 	pe->v.angles = Vector( -look.x, look.y, 0 );	/* fixangle sends these as the view: look up (or down) at it */
 	pe->v.v_angle = pe->v.angles;
 	pe->v.fixangle = 1;
-	ALERT( at_console, "mohaa_probe_goto: player at %.0f %.0f %.0f facing %s\n", to.x, to.y, to.z, name );
+	ALERT( at_console, "mohaa_probe_goto: player at %.0f %.0f %.0f %s %s\n", to.x, to.y, to.z,
+		behind ? "behind" : "facing", target );
+	if( mount ) {
+		CBaseEntity *ent = CBaseEntity::Instance( pe );
+		if( ent && ent->IsPlayer() && RiderUse( (CBasePlayer *)ent ) && fire ) {
+			g_probe_fire_from = gpGlobals->time + 2.0f;
+			g_probe_fire_until = g_probe_fire_from + 8.0f;
+		}
+	}
 }
 
 static float WrapYaw( float a )
@@ -1572,6 +1608,124 @@ static void TurretAimAndFire( int k )
 	}
 }
 
+/* The player on an MG42 (USE behind a gun with no crew): held in place like a scripted ride, the gun turns with their
+ * view inside its arc, the attack button fires it, USE again (or dying) lets go. */
+static uint32_t g_rider;
+static int g_rider_turret = -1;
+static int g_rider_movetype;
+static string_t g_rider_viewmodel;
+static float g_rider_next_shot;
+
+static void RiderRelease( void )
+{
+	CBasePlayer *pl = g_rider ? PlayerFor( g_rider ) : NULL;
+	if( pl ) {
+		pl->pev->movetype = g_rider_movetype ? g_rider_movetype : MOVETYPE_WALK;
+		pl->pev->flags &= ~FL_FROZEN;
+		if( g_rider_viewmodel && !pl->pev->viewmodel )
+			pl->pev->viewmodel = g_rider_viewmodel;
+		ALERT( at_console, "mohaa: the player leaves the MG42\n" );
+	}
+	g_rider = 0;
+	g_rider_turret = -1;
+	g_rider_viewmodel = 0;
+}
+
+/* USE: get off the gun, or on one within reach whose crew is gone. 1 when the press was used. */
+static int RiderUse( CBasePlayer *pl )
+{
+	if( g_rider ) {
+		RiderRelease();
+		return 1;
+	}
+	if( g_turrets_map != gpGlobals->mapname )
+		return 0;
+	int best = -1;
+	float best_d = 80.0f;
+	for( int k = 0; k < g_nturrets; k++ ) {
+		edict_t *t = g_turrets[k].mg ? EdictFor( g_turrets[k].id ) : NULL;
+		edict_t *crew = g_turrets[k].crew ? EdictFor( g_turrets[k].crew ) : NULL;
+		if( !t || ( crew && crew->v.health > 0 ) )
+			continue;
+		const float d = ( t->v.origin - pl->pev->origin ).Length2D();
+		if( d < best_d ) {
+			best = k;
+			best_d = d;
+		}
+	}
+	if( best < 0 )
+		return 0;
+	edict_t *t = EdictFor( g_turrets[best].id );
+	g_rider = IdFor( pl->edict() );
+	g_rider_turret = best;
+	g_rider_movetype = pl->pev->movetype;
+	g_rider_viewmodel = pl->pev->viewmodel;
+	pl->pev->viewmodel = 0;
+	pl->pev->movetype = MOVETYPE_NOCLIP;
+	pl->pev->flags |= FL_FROZEN;
+	pl->pev->velocity = g_vecZero;
+	/* eyes just over the gun, a little behind it */
+	const float r = g_turrets[best].base_yaw * 0.017453293f;
+	const Vector eye = t->v.origin + Vector( -cosf( r ) * 40.0f, -sinf( r ) * 40.0f, 14.0f );
+	UTIL_SetOrigin( pl->pev, eye - pl->pev->view_ofs );
+	ALERT( at_console, "mohaa: the player mans the MG42 %s\n", t->v.targetname ? STRING( t->v.targetname ) : "" );
+	return 1;
+}
+
+static void RiderThink( void )
+{
+	CBasePlayer *pl = g_rider ? PlayerFor( g_rider ) : NULL;
+	if( !g_rider )
+		return;
+	edict_t *t = g_rider_turret >= 0 ? EdictFor( g_turrets[g_rider_turret].id ) : NULL;
+	if( !pl || !t || pl->pev->health <= 0 || g_turrets_map != gpGlobals->mapname ) {
+		RiderRelease();
+		return;
+	}
+	pl->pev->velocity = g_vecZero;
+	const int k = g_rider_turret;
+	const float arc = g_turrets[k].arc > 0.0f ? g_turrets[k].arc : DOD_GRUNT_TURRET_ARC;
+	float off = WrapYaw( pl->pev->v_angle.y - g_turrets[k].base_yaw );
+	if( off > arc ) off = arc;
+	if( off < -arc ) off = -arc;
+	t->v.angles.y = g_turrets[k].base_yaw + off;
+	float pitch = pl->pev->v_angle.x;
+	if( pitch > 25.0f ) pitch = 25.0f;
+	if( pitch < -25.0f ) pitch = -25.0f;
+	t->v.angles.x = -pitch;
+	int firing = ( pl->pev->button & IN_ATTACK ) != 0;
+	if( gpGlobals->time >= g_probe_fire_from && gpGlobals->time < g_probe_fire_until ) {
+		/* probe aid: trigger held, the view sweeping across the arc and back */
+		const float u = ( gpGlobals->time - g_probe_fire_from ) / ( g_probe_fire_until - g_probe_fire_from );
+		const float sweep = sinf( u * 6.2831853f ) * ( arc * 0.8f );
+		pl->pev->angles = Vector( 10.0f, g_turrets[k].base_yaw + sweep, 0 );
+		pl->pev->v_angle = pl->pev->angles;
+		pl->pev->fixangle = 1;
+		firing = 1;
+		off = sweep;
+		t->v.angles.y = g_turrets[k].base_yaw + off;
+	}
+	/* the player's own gun stays quiet while they are on the MG */
+	pl->m_flNextAttack = UTIL_WeaponTimeBase() + 0.2f;
+	pl->pev->button &= ~( IN_ATTACK | IN_ATTACK2 );
+	if( !firing || gpGlobals->time < g_rider_next_shot )
+		return;
+	if( gpGlobals->time >= g_probe_fire_until - 0.05f && gpGlobals->time < g_probe_fire_until + 0.2f )
+		ALERT( at_console, "mohaa: the player's MG42 burst ends\n" );
+	g_rider_next_shot = gpGlobals->time + 0.1f;
+	Dod_MohaaEntitySound( g_turrets[k].id, "mg42_gun_snd_fire" );
+	UTIL_MakeVectors( Vector( pitch, t->v.angles.y, 0 ) );
+	const Vector from = pl->pev->origin + pl->pev->view_ofs;
+	TraceResult tr;
+	UTIL_TraceLine( from, from + gpGlobals->v_forward * 4096.0f, dont_ignore_monsters, pl->edict(), &tr );
+	CBaseEntity *hit = tr.pHit ? CBaseEntity::Instance( tr.pHit ) : NULL;
+	if( hit && hit->pev->takedamage != DAMAGE_NO && hit != pl ) {
+		ClearMultiDamage();
+		hit->TraceAttack( pl->pev, 40.0f, gpGlobals->v_forward, &tr, DMG_BULLET | DMG_NEVERGIB );
+		ApplyMultiDamage( pl->pev, pl->pev );
+	}
+}
+
 /* Once the map's entities are in: each MG gets its model, each waiting crew mans its gun. */
 static void TurretsThink( void )
 {
@@ -1623,7 +1777,9 @@ static void TurretsThink( void )
 		c++;
 	}
 	for( int k = 0; k < g_nturrets; k++ )
-		TurretAimAndFire( k );
+		if( !g_rider || k != g_rider_turret )
+			TurretAimAndFire( k );
+	RiderThink();
 }
 
 static int M_Turret( uint32_t id, int what, uint32_t target, const float v[4] )
