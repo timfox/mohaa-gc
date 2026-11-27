@@ -583,7 +583,6 @@ void DodGC_SinglePlayerLevelInit( void )
 	Dod_GameInit();
 	Dod_SetAlliesCountry( Dod_AlliesCountryForMap( STRING( gpGlobals->mapname ) ) );
 	DodGrunts_Init();
-	DodGC_MohaaLevelInit();
 	ALERT( at_console, "mohaa: single-player level start on %s\n", STRING( gpGlobals->mapname ) );
 }
 
@@ -646,7 +645,6 @@ CHalfLifeDoD::CHalfLifeDoD()
 	}
 	DodGrunts_Init();
 	DodFilm_Init();	/* after the country and paratroopers: they pick the actors' bodies */
-	DodGC_MohaaLevelInit();	/* MOHAA maps: run maps/<map>.scr (nothing happens on DoD maps) */
 	Dod_ClearObjectives();
 	round_seconds = CVAR_GET_FLOAT( "mp_timelimit" ) * 60.0f;
 	if( round_seconds <= 0.0f )

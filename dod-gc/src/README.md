@@ -324,7 +324,7 @@ integration anchors, audio staging and the prefetch manifest have host tests.
 Original MOHAA `.scr` (Morpheus) mission scripts run against DoD-GC entities. The VM lives in `src/mohaa/`, a clean-room MIT
 copy of [timfox/mohaa-gc](https://github.com/timfox/mohaa-gc) `script/` (no OpenMoHAA code: it is GPL-2 and cannot link with
 the HLSDK). `dod_mohaa.c` binds the MOHAA commands and is host-tested in `tests/dod_mohaa_test.c`; `dod_mohaa_ents.cpp` is the
-engine glue. The game rules constructor calls `DodGC_MohaaLevelInit`, `Think` calls `DodGC_MohaaThink`, and a firing
+engine glue. `ServerActivate` calls `DodGC_MohaaLevelInit` after the map entities spawn, `Think` calls `DodGC_MohaaThink`, and a firing
 `trigger_multiple`/`trigger_once` notifies `trigger` waiters.
 
 - **Off unless the map has a script.** No VM is created and nothing is allocated unless `maps/<map>.scr` exists.

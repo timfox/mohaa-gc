@@ -1339,6 +1339,14 @@ void DodGC_MohaaDisguiseBlown( edict_t *player )
 	ALERT( at_console, "mohaa: player fired: disguise blown\n" );
 }
 
+void DodGC_MohaaResetActors( void )
+{
+	g_nwaiting = 0;
+	memset( g_actors, 0, sizeof( g_actors ) );
+	memset( g_dead, 0, sizeof( g_dead ) );
+	g_next_waiting_check = 0.0f;
+}
+
 void DodGC_MohaaLevelInit( void )
 {
 	g_probe_goto_done = 0;
@@ -1409,12 +1417,8 @@ void DodGC_MohaaLevelInit( void )
 	g_player_disguised = 0;
 	g_saved_viewmodel = 0;
 	g_hud_hide = 0;
-	g_nwaiting = 0;	/* the last map's waiting soldiers went with it */
 	g_mohaa_script_model_count = 0;
 	memset( g_mohaa_script_models, 0, sizeof( g_mohaa_script_models ) );
-	memset( g_actors, 0, sizeof( g_actors ) );
-	memset( g_dead, 0, sizeof( g_dead ) );
-	g_next_waiting_check = 0.0f;
 	size_t budget = (size_t)CVAR_GET_FLOAT( "mohaa_script_kb" ) * 1024u;
 	size_t arena = 0;	/* bytes of the budget in the map arena; the rest comes from the heap when needed */
 #if defined( __GAMECUBE__ )

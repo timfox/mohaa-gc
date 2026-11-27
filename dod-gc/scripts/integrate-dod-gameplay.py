@@ -246,6 +246,11 @@ def integrate_gc_hud(client: Path) -> None:
 		'\t\t\tif( y + nFontHeight > g_iGCMenuBottom )\n\t\t\t\t;\t// a line that no longer fits the panel is not drawn\n\t\t\telse if( menu_ralign )\n\t\t\t\t// IMPORTANT', 1)
 	menu_cpp.write_text(menu_text)
 
+	# The lean GameCube HUD can render before HUD_Init registers hud_draw.
+	replace_once(client / "hud_redraw.cpp",
+		'\tif( m_pCvarDraw->value )\n',
+		'\tif( m_pCvarDraw && m_pCvarDraw->value )\n')
+
 	# Chat lines and the chat prompt inside the safe area (dod_hud_geom.h): lines bottom-anchored above the status panel,
 	# hidden while a modal panel or the prompt is up, the prompt above the on-screen keyboard.
 	say = client / "saytext.cpp"
@@ -399,10 +404,17 @@ def integrate_pm_layout_hook(dlls: Path) -> None:
 
 
 def integrate_precache_bodies_hook(dlls: Path) -> None:
-	"""ServerActivate precaches DoD bodies and MOHAA script models after map entities spawn."""
+	"""ServerActivate initializes MOHAA scripts and precaches models after map entities spawn."""
+	replace_once(dlls / "world.cpp",
+		"void CWorld::Spawn( void )\n{\n",
+		"void CWorld::Spawn( void )\n{\n"
+		"\textern void DodGC_MohaaResetActors( void );\n"
+		"\tDodGC_MohaaResetActors();\n")
 	client = dlls / "client.cpp"
 	text = client.read_text()
 	decls = []
+	if "DodGC_MohaaLevelInit" not in text:
+		decls.append("void DodGC_MohaaLevelInit( void );")
 	if "DodGC_PrecacheTeamBodies" not in text:
 		decls.append("void DodGC_PrecacheTeamBodies( void );")
 	if "DodGC_MohaaPrecacheModels" not in text:
@@ -412,12 +424,14 @@ def integrate_precache_bodies_hook(dlls: Path) -> None:
 			"\n".join(decls) + "\nvoid ServerActivate( edict_t *pEdictList, int edictCount, int clientMax )\n{\n")
 	text = client.read_text()
 	call = "\tg_serveractive = 1;\n#ifdef __GAMECUBE__\n"
+	if "DodGC_MohaaLevelInit();" not in text:
+		call += "\tDodGC_MohaaLevelInit();\n"
 	if "DodGC_PrecacheTeamBodies();" not in text:
 		call += "\tDodGC_PrecacheTeamBodies();\n"
 	if "DodGC_MohaaPrecacheModels();" not in text:
 		call += "\tDodGC_MohaaPrecacheModels();\n"
 	call += "#endif\n"
-	if "DodGC_PrecacheTeamBodies();" not in text or "DodGC_MohaaPrecacheModels();" not in text:
+	if "DodGC_MohaaLevelInit();" not in text or "DodGC_PrecacheTeamBodies();" not in text or "DodGC_MohaaPrecacheModels();" not in text:
 		replace_once(client, "\tg_serveractive = 1;\n", call)
 
 
