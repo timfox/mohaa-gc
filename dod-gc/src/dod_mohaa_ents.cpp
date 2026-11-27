@@ -1505,6 +1505,7 @@ static struct {
 	unsigned char firing;	/* startfiring: the gun fires at its aim target in bursts */
 	unsigned char burst_on;
 	uint32_t crew;		/* the soldier on the gun, 0 none */
+	uint32_t visual;	/* the gun's model: a mohaa_script_model on the turret, 0 none */
 	uint32_t aim;		/* setaimtarget, 0 none */
 	float base_yaw;		/* the map's yaw: the arc's centre */
 	float burst[4];		/* burstfiresettings: on min, on max, off min, off max (seconds) */
@@ -1538,6 +1539,7 @@ static int TurretRow( edict_t *e, int make )
 	g_turrets[g_nturrets].modelled = 0;
 	g_turrets[g_nturrets].firing = g_turrets[g_nturrets].burst_on = 0;
 	g_turrets[g_nturrets].crew = g_turrets[g_nturrets].aim = 0;
+	g_turrets[g_nturrets].visual = 0;
 	g_turrets[g_nturrets].base_yaw = 0.0f;
 	g_turrets[g_nturrets].burst[0] = 0.5f; g_turrets[g_nturrets].burst[1] = 1.5f;	/* retail-like defaults */
 	g_turrets[g_nturrets].burst[2] = 0.5f; g_turrets[g_nturrets].burst[3] = 1.0f;
@@ -1802,7 +1804,9 @@ static int RiderUse( CBasePlayer *pl )
 	pl->pev->velocity = g_vecZero;
 	/* eyes just over the gun, a little behind it */
 	const float r = g_turrets[best].base_yaw * 0.017453293f;
-	const Vector eye = t->v.origin + Vector( -cosf( r ) * 40.0f, -sinf( r ) * 40.0f, 14.0f );
+	/* the baked gun runs about 44 units back from its pivot (the tripod head) to the stock: the gunner's eye sits
+	 * behind the stock, so the gun is in front of the view rather than around the camera */
+	const Vector eye = t->v.origin + Vector( -cosf( r ) * 64.0f, -sinf( r ) * 64.0f, 18.0f );
 	UTIL_SetOrigin( pl->pev, eye - pl->pev->view_ofs );
 	ALERT( at_console, "mohaa: the player mans the MG42 %s\n", t->v.targetname ? STRING( t->v.targetname ) : "" );
 	return 1;
@@ -1888,10 +1892,21 @@ static void TurretsThink( void )
 		g_turrets[k].modelled = 1;
 		g_turrets[k].base_yaw = t->v.angles.y;
 		if( ScriptModelPrecached( MOHAA_MG42_MODEL ) ) {
-			SET_MODEL( t, MOHAA_MG42_MODEL );
-			t->v.solid = SOLID_NOT;
-			t->v.movetype = MOVETYPE_NONE;
-			t->v.effects &= ~EF_NODRAW;
+			/* The gun is drawn by a script model on the turret: the turret's own point often sits inside the
+			 * wall it is mounted on, outside every visible leaf, so the server never sent it; script models are
+			 * always sent (AddToFullPack). A baked TIKI MDL has one bodygroup per surface and body 0 hides every
+			 * one (scripted models show theirs through their animation; a turret has none), so all are shown. */
+			edict_t *v = CREATE_NAMED_ENTITY( MAKE_STRING( "mohaa_script_model" ) );
+			if( !FNullEnt( v ) ) {
+				v->v.origin = t->v.origin;
+				v->v.angles = t->v.angles;
+				DispatchSpawn( v );
+				SET_MODEL( v, MOHAA_MG42_MODEL );
+				studiohdr_t *header = (studiohdr_t *)GET_MODEL_PTR( v );
+				if( header && header->numbodyparts > 0 )
+					v->v.body = ( 1 << ( header->numbodyparts < 30 ? header->numbodyparts : 30 )) - 1;
+				g_turrets[k].visual = IdFor( v );
+			}
 		}
 	}
 	for( int c = 0; c < g_ncrews; ) {
@@ -1923,6 +1938,13 @@ static void TurretsThink( void )
 		if( !g_rider || k != g_rider_turret )
 			TurretAimAndFire( k );
 	RiderThink();
+	/* the gun's model follows the turret's aim */
+	for( int k = 0; k < g_nturrets; k++ ) {
+		edict_t *t = g_turrets[k].visual ? EdictFor( g_turrets[k].id ) : NULL;
+		edict_t *v = t ? EdictFor( g_turrets[k].visual ) : NULL;
+		if( v )
+			v->v.angles = t->v.angles;
+	}
 }
 
 static int M_Turret( uint32_t id, int what, uint32_t target, const float v[4] )
