@@ -190,6 +190,22 @@ def map_aliases(scripts, mapname):
     return names, loops, seen
 
 
+# Sounds the game plays for map entities rather than for a script line: each class's retail TIKI names the alias
+# (models/statweapons/mg42_gun.tik fires "mg42_gun_snd_fire"). A map placing the class gets the alias.
+ENTITY_ALIASES = {
+    b"turretweapon_german_mg42": ("mg42_gun_snd_fire",),
+}
+
+
+def entity_aliases(bsp_bytes):
+    """Aliases the classes a map places need, from its BSP's entity text."""
+    out = set()
+    for cls, names in ENTITY_ALIASES.items():
+        if b'"' + cls + b'"' in bsp_bytes:
+            out.update(names)
+    return out
+
+
 def resolve(aliases, name):
     """The alias's samples (or its numbered variants'), each path once, silent placeholders dropped."""
     rows = _alias_rows(aliases, name)
@@ -426,10 +442,13 @@ def main(argv=None):
         os.path.basename(p)[:-4] for p in scripts if p.startswith("maps/") and p.count("/") == 1
         and not p.endswith(("_precache.scr", "soundcache.scr")))
     sounds = collect(args.inputs, (".wav", ".mp3")) if args.wav else {}
+    bsps = collect(args.inputs, (".bsp",))
     wanted, looped = {}, set()
     print("%d aliases defined" % len(aliases))
     for m in maps:
         names, loops, used = map_aliases(scripts, m)
+        if "maps/%s.bsp" % m in bsps:
+            names |= entity_aliases(read(bsps["maps/%s.bsp" % m]))
         if "maps/%s.scr" % m not in scripts:
             print("%s: no script" % m)
             continue

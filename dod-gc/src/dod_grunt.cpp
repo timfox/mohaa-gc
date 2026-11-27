@@ -366,7 +366,7 @@ int DodGrunts_ScriptOrder( edict_t *ed, int order, const float pos[3] )
 	case DOD_MOHAA_TURRET: {
 		float gun[4];
 		const float from[3] = { g_pool.x[i], g_pool.y[i], g_pool.z[i] };
-		if( DodGC_MohaaTurretNear( from, 160.0f, gun ) )
+		if( DodGC_MohaaTurretNear( from, 160.0f, gun, ed ) )
 			DodGrunt_ManTurret( &g_pool, i, gun[2], gun[3], DOD_WEAPON_MG42 );
 		break;
 	}
@@ -552,7 +552,10 @@ static void GruntShoot( int i )
 		: Dod_ClassWeaponDef( (DodTeam)g_pool.team[i], DOD_CLASS_RIFLEMAN );
 	if( !gun )
 		gun = Dod_ClassWeaponDef( (DodTeam)g_pool.team[i], DOD_CLASS_RIFLEMAN );
-	if( gun && gun->fire_sound && gun->fire_sound[0] )
+	/* a turret crew's MG42 sounds as retail's (the map's mg42_gun_snd_fire alias); else the DoD gun's sound */
+	const int retail_sound = ( g_pool.script[i] & DOD_GRUNT_TURRET ) && GruntMohaaCampaign()
+		&& Dod_MohaaEntitySound( DodGC_MohaaEntityId( e->edict() ), "mg42_gun_snd_fire" );
+	if( !retail_sound && gun && gun->fire_sound && gun->fire_sound[0] )
 		EMIT_SOUND_DYN( e->edict(), CHAN_WEAPON, gun->fire_sound, 1.0f, ATTN_NORM, 0, 100 );
 	/* a turret's MG42 fires a short burst each time: two rounds, each rolled on its own */
 	const int rounds = ( g_pool.script[i] & DOD_GRUNT_TURRET ) ? 2 : 1;

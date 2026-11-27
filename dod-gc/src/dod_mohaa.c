@@ -1171,6 +1171,8 @@ static int c_firing(ms_call *c)
 	if (!S.be.actor || !valid(id) || is_node(id))
 		return 0;
 	pos[0] = ms_call_name(c)[2] == 'a' ? 1.0f : 0.0f;	/* stArtfiring / stOpfiring */
+	if (S.be.turret && S.be.turret(id, pos[0] > 0.0f ? DOD_MOHAA_TURRET_START : DOD_MOHAA_TURRET_STOP, 0, NULL))
+		return 0;
 	S.be.actor(id, DOD_MOHAA_ATTACK_STYLE, pos);
 	return 0;
 }
@@ -2142,6 +2144,40 @@ static int c_getwalkanim(ms_call *c)
 	return 0;
 }
 
+/* turretweapon commands: "setaimtarget $ent" / "clearaimtarget", "burstfiresettings onmin onmax offmin offmax",
+   "maxyawoffset 45". Not a turret: ignored, as before. */
+static int c_turret_cmd(ms_call *c)
+{
+	const char *name = ms_call_name(c);
+	const uint32_t id = target_id(c);
+	float v[4] = {0, 0, 0, 0};
+	int i;
+	if (!S.be.turret || !valid(id) || is_node(id))
+		return 0;
+	if (!strcmp(name, "setaimtarget") || !strcmp(name, "clearaimtarget")) {
+		const ms_value *t = name[0] == 's' && ms_argc(c) > 0 ? ms_arg(c, 0) : NULL;
+		uint32_t target = t && t->type == MS_ENTITY && valid(t->u.id) ? t->u.id : 0;
+		S.be.turret(id, DOD_MOHAA_TURRET_AIM, target, v);
+	} else if (!strcmp(name, "burstfiresettings")) {
+		for (i = 0; i < 4 && i < ms_argc(c); i++)
+			v[i] = ms_arg_float(c, i);
+		S.be.turret(id, DOD_MOHAA_TURRET_BURST, 0, v);
+	} else if (!strcmp(name, "maxyawoffset")) {
+		v[0] = ms_arg_float(c, 0);
+		S.be.turret(id, DOD_MOHAA_TURRET_YAWCAP, 0, v);
+	}
+	return 0;
+}
+
+int Dod_MohaaEntitySound(uint32_t id, const char *alias)
+{
+	DodSound *r;
+	if (!S.vm || !alias || !(r = sound_pick(alias)) || !S.be.sound)
+		return 0;
+	S.be.sound(id, S.sound_text + r->sample, 0, r->volume, r->attn, r->channel);
+	return 1;
+}
+
 static int c_ignored(ms_call *c)
 {
 	(void)c;
@@ -3096,16 +3132,17 @@ static void register_commands(ms_vm *vm)
 		{"unbind", MS_ON_ENTITY | MS_ON_THREAD, c_unglue},
 		{"turnspeed", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"vehiclespeed", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
-		{"burstfiresettings", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"burstfiresettings", MS_ON_ENTITY | MS_ON_THREAD, c_turret_cmd},
 		{"removeondeath", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"rendereffects", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"tracerfrequency", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"triggereffect", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
-		{"setaimtarget", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"setaimtarget", MS_ON_ENTITY | MS_ON_THREAD, c_turret_cmd},
+		{"clearaimtarget", MS_ON_ENTITY | MS_ON_THREAD, c_turret_cmd},
 		{"accuracy", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"bulletdamage", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"firedelay", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
-		{"maxyawoffset", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"maxyawoffset", MS_ON_ENTITY | MS_ON_THREAD, c_turret_cmd},
 		{"pitchcaps", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"ammo", MS_ON_ENTITY | MS_ON_THREAD, c_ammo},
 		{"heal", MS_ON_ENTITY | MS_ON_THREAD, c_heal},
