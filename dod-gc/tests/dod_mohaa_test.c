@@ -1550,12 +1550,15 @@ static void test_string_as_listener(void)
 		"\tlocal.name hide\n"
 		"\tlocal.none = \"nothing_here\"\n"
 		"\tprintln (\"none=\" + local.none.origin)\n"
+		"\tlocal.ent = $crate\n"
+		"\tprintln (\"same=\" + ($(local.ent) == $crate))\n"
 		"end\n";
 	assert(Dod_MohaaLevelInit(&b, "s", 0, 0));
 	run(0.05f, 0.2f);
 	assert(strstr(log_buf, "mark=7 x=122."));	/* 94 GoldSrc units */
 	assert(ents[0].hidden);
 	assert(strstr(log_buf, "field 'origin' applied to string"));	/* no such entity: still an error */
+	assert(strstr(log_buf, "same=1"));	/* $(entity) is the entity (spotlight.scr) */
 }
 
 /* cansee: a clear line, inside the fov cone; droptofloor reaches the game */

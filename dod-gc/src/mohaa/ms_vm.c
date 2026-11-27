@@ -773,6 +773,10 @@ static void set_field(ms_vm *vm, ms_thread *t, const ms_value *obj_in, uint32_t 
 static ms_value targetname(ms_vm *vm, ms_thread *t, const ms_value *name)
 {
     char buf[96];
+    /* $(entity) is that entity: spotlight.scr tests isalive $(self.spotter) with self.spotter an actor, and a NULL
+       there ended every searchlight at once, deleting its flare under the corona thread */
+    if (name->type == MS_ENTITY)
+        return *name;
     const char *s = name->type == MS_STRING ? name->u.s->data : ms_tostring(name, buf, sizeof(buf));
     ms_value out = ms_nil();
     out.type = MS_NULL;
