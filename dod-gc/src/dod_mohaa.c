@@ -2610,8 +2610,23 @@ static int c_istouching(ms_call *c)
 static int c_farplane(ms_call *c)
 {
 	const uint32_t id = target_id(c);
+	const char *name = ms_call_name(c);
 	if (valid(id) && !is_node(id) && ms_argc(c) > 0)
-		ms_set_entity_var(S.vm, id, ms_call_name(c), ms_arg(c, 0));
+		ms_set_entity_var(S.vm, id, name, ms_arg(c, 0));
+	/* the GX renderer fogs to these (mohaa_farplane cvars): MOHAA units scaled to the map's */
+	if (S.be.set_cvar && ms_argc(c) > 0 && !strcmp(name, "farplane")) {
+		char v[32];
+		snprintf(v, sizeof(v), "%.0f", ms_arg_float(c, 0) * DOD_MOHAA_SCALE);
+		S.be.set_cvar("mohaa_farplane", v);
+	} else if (S.be.set_cvar && ms_argc(c) > 0 && !strcmp(name, "farplane_color")) {
+		const ms_value *a = ms_arg(c, 0);
+		char v[64];
+		if (a->type == MS_VECTOR)
+			snprintf(v, sizeof(v), "%g %g %g", a->u.v[0], a->u.v[1], a->u.v[2]);
+		else
+			snprintf(v, sizeof(v), "%s", ms_arg_string(c, 0));
+		S.be.set_cvar("mohaa_farplane_color", v);
+	}
 	return 0;
 }
 
