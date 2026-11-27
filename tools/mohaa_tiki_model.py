@@ -466,7 +466,7 @@ def _static_mdl(name: str, parts, skin: bytes, width: int, height: int, texture_
 
 
 def convert(main_paths, model: str, output: Path, skin_size: int = 256, scale: float | None = None,
-            animation_names=None, components=None):
+            animation_names=None, components=None, static: bool = False):
 	files = collect(main_paths, (".tik", ".skd", ".skb", ".skc", ".shader", ".tga", ".jpg", ".png", ".bmp"))
 	model = mohaa_skd.norm(model)
 	if not model.startswith("models/"):
@@ -585,7 +585,9 @@ def convert(main_paths, model: str, output: Path, skin_size: int = 256, scale: f
 		return sum(1 << i for i, surface in enumerate(kept) if surface.name.lower() not in hidden)
 	default_visible = visibility_mask(init_hidden)
 	visible_by_alias = {alias: visibility_mask(hidden) for alias, hidden in alias_hidden.items()}
-	animation = _animation_data(animation_aliases, files, skd, unit_scale, visible_by_alias, default_visible)
+	# static: the mesh baked in its idle pose, no skeleton (the game turns it as a whole: the MG42 on a turret)
+	animation = None if static else _animation_data(animation_aliases, files, skd, unit_scale, visible_by_alias,
+	                                                 default_visible)
 	if animation is not None and (len(animation[0]) > 128 or any(
 			any(bone < 0 or bone >= len(animation[0]) or bone >= 128
 			    for bone, _weight, _offset in ws)
