@@ -27,6 +27,10 @@ static cvar_t mohaa_script_kb = { "mohaa_script_kb", "384", FCVAR_SERVER };
  * no config) puts the player 700 units in front of that entity, facing it, two seconds into the level, so a
  * headless run can film a spot the mission takes minutes to reach. Retail discs carry neither. */
 static cvar_t mohaa_probe_goto = { "mohaa_probe_goto", "", FCVAR_SERVER };
+/* a level script's "$world farplane" / "farplane_color", in map units and 0..1, for the GX renderer's distance fog
+ * (-1: the script set none, the map's worldspawn keys hold) */
+static cvar_t mohaa_farplane = { "mohaa_farplane", "-1", 0 };
+static cvar_t mohaa_farplane_color = { "mohaa_farplane_color", "", 0 };
 static int g_probe_goto_done;
 static float g_probe_fire_from, g_probe_fire_until;
 static float g_probe_papers_from, g_probe_papers_until, g_probe_papers_next;
@@ -1346,8 +1350,12 @@ void DodGC_MohaaLevelInit( void )
 	{
 		CVAR_REGISTER( &mohaa_script_kb );
 		CVAR_REGISTER( &mohaa_probe_goto );
+		CVAR_REGISTER( &mohaa_farplane );
+		CVAR_REGISTER( &mohaa_farplane_color );
 		g_mohaa_cvar_registered = 1;
 	}
+	CVAR_SET_STRING( "mohaa_farplane", "-1" );	/* a new level starts with its own worldspawn fog */
+	CVAR_SET_STRING( "mohaa_farplane_color", "" );
 	DodMohaaBackend b;
 	memset( &b, 0, sizeof( b ) );
 	b.load_file = M_Load;
