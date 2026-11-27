@@ -81,6 +81,8 @@ void DodGrunt_Spawn(DodGruntPool *p, int i, int team, float x, float y, float z,
 	p->cover[i] = DOD_GRUNT_COVER_NONE;
 	p->gun[i] = 0;
 	p->accuracy[i] = 0;
+	p->grenades[i] = 0;
+	p->next_grenade[i] = now + DOD_GRUNT_GRENADE_GAP * 0.5f;
 	p->state[i] = rush ? DOD_GRUNT_ADVANCE : DOD_GRUNT_WANDER;
 	if (i >= p->cap)
 		p->cap = i + 1;
@@ -544,4 +546,49 @@ float DodGrunt_AccuracyScale(const DodGruntPool *p, int i)
 		return 1.0f;
 	f = (float)(p->accuracy[i] - 1) / 50.0f;
 	return f < 0.2f ? 0.2f : (f > 2.0f ? 2.0f : f);
+}
+
+int DodGrunt_GrenadesLeft(const DodGruntPool *p, int i)
+{
+	if (p->script[i] & DOD_GRUNT_TURRET)
+		return 0;
+	if (p->grenades[i])
+		return p->grenades[i] - 1;
+	return p->team[i] == DOD_TEAM_AXIS ? 2 : 0;
+}
+
+int DodGrunt_TakeGrenadeThrow(DodGruntPool *p, int i, float dist, float now, float roll)
+{
+	int left = DodGrunt_GrenadesLeft(p, i);
+	if (left <= 0 || now < p->next_grenade[i] || dist < DOD_GRUNT_GRENADE_MIN || dist > DOD_GRUNT_GRENADE_MAX)
+		return 0;
+	if (p->script[i] & DOD_GRUNT_AI_OFF)
+		return 0;
+	if (roll >= DOD_GRUNT_GRENADE_CHANCE)
+		return 0;
+	p->grenades[i] = (unsigned char)left;	/* left - 1 spent, stored + 1 */
+	p->next_grenade[i] = now + DOD_GRUNT_GRENADE_GAP;
+	return 1;
+}
+
+void DodGrunt_ThrowVelocity(const float from[3], const float to[3], float gravity, float out[3])
+{
+	const float dx = to[0] - from[0], dy = to[1] - from[1], dz = to[2] - from[2];
+	float t = sqrtf(dx * dx + dy * dy) / 600.0f;
+	t = t < 0.8f ? 0.8f : (t > 1.6f ? 1.6f : t);
+	out[0] = dx / t;
+	out[1] = dy / t;
+	out[2] = dz / t + 0.5f * gravity * t;
+}
+
+void DodGrunt_FleeSpot(float x, float y, float gx, float gy, float dist, float out[2])
+{
+	float dx = x - gx, dy = y - gy, len = sqrtf(dx * dx + dy * dy);
+	if (len < 1.0f) {
+		dx = 1.0f;
+		dy = 0.0f;
+		len = 1.0f;
+	}
+	out[0] = x + dx / len * dist;
+	out[1] = y + dy / len * dist;
 }

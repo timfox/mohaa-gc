@@ -1647,7 +1647,9 @@ static void ProbeGotoThink( void )
 			g_turrets[k].crew = 0;
 		}
 	}
-	const int near_it = strstr( name, " near" ) != NULL;
+	/* "mid": as near, but 450 units off (inside a rifleman's sight, past grenade range's 300 minimum) */
+	const int mid = strstr( name, " mid" ) != NULL;
+	const int near_it = mid || strstr( name, " near" ) != NULL;
 	float r = spot->v.angles.y * 0.017453293f;
 	if( near_it ) {
 		/* "near": 150 units from it (a soldier's disguise_range is 256), on the side the player comes from, so the
@@ -1655,7 +1657,7 @@ static void ProbeGotoThink( void )
 		const Vector away = pe->v.origin - spot->v.origin;
 		r = atan2f( away.y, away.x );
 	}
-	const float d = behind ? -40.0f : ( near_it ? 150.0f : 700.0f );
+	const float d = behind ? -40.0f : ( mid ? 450.0f : ( near_it ? 150.0f : 700.0f ));
 	Vector to = spot->v.origin + Vector( cosf( r ) * d, sinf( r ) * d, 48.0f );
 	TraceResult tr;
 	if( near_it ) {

@@ -74,6 +74,8 @@ typedef struct DodGruntStats {
 	unsigned deaths;
 	unsigned respawns;
 	unsigned deferred;	/* looks that were due but pushed to a later frame by the budget */
+	unsigned grenades;	/* grenades thrown */
+	unsigned flees;		/* runs from a live grenade */
 } DodGruntStats;
 
 typedef struct DodGruntPool {
@@ -109,6 +111,8 @@ typedef struct DodGruntPool {
 	unsigned char cover[DOD_GRUNT_MAX];	/* DOD_GRUNT_COVER_*: a script actor taking or holding cover */
 	unsigned char gun[DOD_GRUNT_MAX];	/* MOHAA "gun": 0 its side's rifle, DOD_GRUNT_GUN_NONE unarmed, else weapon id + 1 */
 	unsigned char accuracy[DOD_GRUNT_MAX];	/* MOHAA "accuracy" 0..100 + 1 (0: the default curve) */
+	unsigned char grenades[DOD_GRUNT_MAX];	/* MOHAA "ammo_grenade" + 1 (0: its side's default) */
+	float next_grenade[DOD_GRUNT_MAX];	/* no throw before this */
 	float order_best[DOD_GRUNT_MAX];	/* nearest it has come to the order point */
 	float order_stall_at[DOD_GRUNT_MAX];	/* when a stalled order gives up and arrives; < 0 not started */
 	unsigned rng;
@@ -120,6 +124,24 @@ typedef struct DodGruntPool {
 
 /* MOHAA "accuracy" (0..100, retail soldiers mostly 20..100): a factor on the hit chance, 1 at 50 or when unset */
 float DodGrunt_AccuracyScale(const DodGruntPool *p, int i);
+
+/* Grenades. A fighting soldier with grenades left now and then throws one at a target DOD_GRUNT_GRENADE_MIN..MAX
+ * away instead of firing, at most once every DOD_GRUNT_GRENADE_GAP seconds. MOHAA's German soldiers carry grenades
+ * and its American friendlies rarely throw, so the default is 2 for the Axis and 0 for the Allies; "ammo_grenade N"
+ * sets it, and a turret crew never throws. */
+#define DOD_GRUNT_GRENADE_MIN 300.0f
+#define DOD_GRUNT_GRENADE_MAX 1000.0f
+#define DOD_GRUNT_GRENADE_GAP 8.0f
+#define DOD_GRUNT_GRENADE_CHANCE 0.15f	/* a shot's chance of being a throw instead */
+#define DOD_GRUNT_GRENADE_FLEE 280.0f	/* a soldier this near a live grenade runs from it */
+int DodGrunt_GrenadesLeft(const DodGruntPool *p, int i);
+/* 1 when grunt i throws now rather than fires (and then counts the grenade spent) */
+int DodGrunt_TakeGrenadeThrow(DodGruntPool *p, int i, float dist, float now, float roll);
+/* The launch velocity that lands a throw from `from` on `to` under gravity (units/s^2), flight time growing with
+   range (0.8 .. 1.6 s). */
+void DodGrunt_ThrowVelocity(const float from[3], const float to[3], float gravity, float out[3]);
+/* Where a soldier at (x, y) runs from a grenade at (gx, gy): `dist` units straight away (any way if on top of it). */
+void DodGrunt_FleeSpot(float x, float y, float gx, float gy, float dist, float out[2]);
 
 /* Bytes one grunt costs in the pool (arrays only; the prop's edict is on top). */
 int DodGrunt_RowBytes(void);

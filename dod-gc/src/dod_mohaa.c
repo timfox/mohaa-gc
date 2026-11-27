@@ -1677,11 +1677,11 @@ static void spawn_actor_keys(uint32_t id, const char *const *keys, const char *c
 				ms_release(S.vm, name);
 			} else if (p)
 				snprintf(p->alarm_thread, sizeof(p->alarm_thread), "%s", vals[i]);
-		} else if (!strcmp(keys[i], "accuracy")) {
+		} else if (!strcmp(keys[i], "accuracy") || !strcmp(keys[i], "ammo_grenade")) {
 			float acc[3] = {0, 0, 0};
 			acc[0] = f;
 			if (S.be.actor)
-				S.be.actor(id, DOD_MOHAA_ACCURACY, acc);
+				S.be.actor(id, keys[i][0] == 'a' && keys[i][1] == 'c' ? DOD_MOHAA_ACCURACY : DOD_MOHAA_GRENADES, acc);
 		} else if (!strcmp(keys[i], "sight"))
 			order = DOD_MOHAA_SIGHT;
 		else if (!strcmp(keys[i], "hearing"))
@@ -2645,6 +2645,17 @@ static int c_accuracy(ms_call *c)
 	return 0;
 }
 
+/* "ammo_grenade N": the grenades an actor carries (it throws them at enemies 300 to 1000 units off) */
+static int c_ammo_grenade(ms_call *c)
+{
+	float pos[3] = {0, 0, 0};
+	if (!S.be.actor || !is_actor_id(target_id(c)))
+		return 0;
+	pos[0] = ms_arg_float(c, 0);
+	S.be.actor(target_id(c), DOD_MOHAA_GRENADES, pos);
+	return 0;
+}
+
 static int c_ignored(ms_call *c)
 {
 	(void)c;
@@ -3383,7 +3394,7 @@ void Dod_MohaaEntityKey(uint32_t id, const char *key, const char *value)
 static const char *const MAP_ACTOR_KEYS[] = {
 	"type_idle", "patrolpath", "alarmnode", "alarmthread", "type_attack", "type_disguise", "disguise_range",
 	"disguise_period", "disguise_level", "sight", "hearing", "fov", "leash", "mindist", "maxdist", "gun",
-	"accuracy",
+	"accuracy", "ammo_grenade",
 };
 
 static void apply_map_actor_keys(uint32_t id)
@@ -3617,7 +3628,7 @@ static void register_commands(ms_vm *vm)
 		{"targetname", MS_ON_ENTITY, c_targetname_cmd},
 		{"stopsound", MS_ON_ENTITY | MS_ON_THREAD, c_stoploopsound},
 		/* accepted, no effect in the port (each a reason): grenade style, preferred weapon, notice and spread
-		   tuning, the PC menus and mouse, model caching, grenade count, the HUD stopwatch, the BSP transition
+		   tuning, the PC menus and mouse, model caching, the HUD stopwatch, the BSP transition
 		   flag, vehicle animation/size/drive chain, a vehicle's turret slot */
 		{"type_grenade", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"perferredweapon", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
@@ -3628,7 +3639,7 @@ static void register_commands(ms_vm *vm)
 		{"hidemenu", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"hidemouse", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"cache", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
-		{"ammo_grenade", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"ammo_grenade", MS_ON_ENTITY | MS_ON_THREAD, c_ammo_grenade},
 		{"stopwatch", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"bsptransition", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"vehicleanim", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},

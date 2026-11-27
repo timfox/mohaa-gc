@@ -26,6 +26,10 @@ BOOL DodGrenade_CanPrime( void );
  * active, so the caller can fall back to the stock HL1 throw. */
 CGrenade *DodGrenade_Throw( CBasePlayer *pPlayer, float held );
 
+/* A grenade thrown by something that is not a player (a MOHAA soldier): its side's grenade from src at velocity,
+ * full fuse. NULL when the live cap is reached or the DoD game is not active. */
+CGrenade *DodGrenade_ThrowFrom( entvars_t *pevOwner, int team, const Vector &src, const Vector &velocity );
+
 /* Replacement for CGrenade::Explode( TraceResult *, int ). Returns TRUE when
  * the grenade is a DoD grenade and the explosion was handled. */
 BOOL DodGrenade_Explode( CGrenade *pGrenade, TraceResult *pTrace, int bitsDamageType );

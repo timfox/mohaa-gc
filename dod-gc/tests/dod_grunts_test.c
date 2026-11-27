@@ -20,7 +20,7 @@ static void test_count(void)
 static void test_row_is_small(void)
 {
 	/* the whole point: a row is tens of bytes, not a client slot */
-	assert(DodGrunt_RowBytes() < 100);
+	assert(DodGrunt_RowBytes() < 108);
 	assert(sizeof(DodGruntPool) < 6000);
 }
 
@@ -355,9 +355,43 @@ static void test_accuracy_scale(void)
 	assert(p.accuracy[1] == 0);
 }
 
+/* grenades: Axis carry 2 by default, Allies none, ammo_grenade overrides, a turret crew never throws; a throw needs
+   range, the gap and the roll; the lob lands on its mark; flee runs straight away */
+static void test_grenades(void)
+{
+	DodGruntPool p;
+	float from[3] = {0, 0, 0}, to[3] = {600, 0, 0}, v[3], out[2];
+	float t;
+	DodGrunt_Init(&p, 7);
+	DodGrunt_Spawn(&p, 0, DOD_TEAM_AXIS, 0, 0, 0, 0, 0.0f, 0);
+	DodGrunt_Spawn(&p, 1, DOD_TEAM_ALLIES, 0, 0, 0, 0, 0.0f, 0);
+	assert(DodGrunt_GrenadesLeft(&p, 0) == 2);
+	assert(DodGrunt_GrenadesLeft(&p, 1) == 0);
+	assert(!DodGrunt_TakeGrenadeThrow(&p, 0, 500.0f, 1.0f, 0.0f));	/* too soon after spawning */
+	assert(!DodGrunt_TakeGrenadeThrow(&p, 0, 100.0f, 10.0f, 0.0f));	/* too close */
+	assert(!DodGrunt_TakeGrenadeThrow(&p, 0, 500.0f, 10.0f, 0.9f));	/* the roll said shoot */
+	assert(DodGrunt_TakeGrenadeThrow(&p, 0, 500.0f, 10.0f, 0.0f));
+	assert(DodGrunt_GrenadesLeft(&p, 0) == 1);
+	assert(!DodGrunt_TakeGrenadeThrow(&p, 0, 500.0f, 12.0f, 0.0f));	/* the gap */
+	assert(DodGrunt_TakeGrenadeThrow(&p, 0, 500.0f, 20.0f, 0.0f));
+	assert(DodGrunt_GrenadesLeft(&p, 0) == 0);
+	assert(!DodGrunt_TakeGrenadeThrow(&p, 0, 500.0f, 40.0f, 0.0f));	/* none left */
+	p.grenades[1] = 4 + 1;	/* ammo_grenade 4 */
+	assert(DodGrunt_GrenadesLeft(&p, 1) == 4);
+	p.script[1] |= DOD_GRUNT_TURRET;
+	assert(DodGrunt_GrenadesLeft(&p, 1) == 0);
+	DodGrunt_ThrowVelocity(from, to, 800.0f, v);
+	t = 1.0f;	/* 600 units: one second */
+	assert(fabsf(v[0] - 600.0f) < 0.01f && fabsf(v[2] - 400.0f) < 0.01f);
+	assert(fabsf(v[0] * t - 600.0f) < 0.01f && fabsf(v[2] * t - 0.5f * 800.0f * t * t) < 0.01f);	/* lands at z 0 */
+	DodGrunt_FleeSpot(100, 0, 0, 0, 360, out);
+	assert(fabsf(out[0] - 460.0f) < 0.01f && fabsf(out[1]) < 0.01f);
+}
+
 int main(void)
 {
 	test_count();
+	test_grenades();
 	test_row_is_small();
 	test_look_budget_and_stagger();
 	test_dead_never_look();
