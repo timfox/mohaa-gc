@@ -291,6 +291,10 @@ SCRIPT_TIKI_COMPONENTS = {
     ),
 }
 
+# Baked as one posed mesh with no skeleton. The MG42's animated bake drew tilted on its turret: the game turns
+# the gun as a whole, so its idle pose is all it needs.
+SCRIPT_TIKI_STATIC = {"statweapons/mg42_gun.tik"}
+
 SCRIPT_TIKI_ANIMATIONS = {
     "human/german_afrika_private.tik": (
         "opel_driver",
@@ -334,7 +338,7 @@ def stage_script_models(sources, game_root, maps, work):
             parts, verts, tris, textures, scale, idle = mohaa_tiki_model.convert(
                 sources, tiki, Path(output),
                 animation_names=SCRIPT_TIKI_ANIMATIONS.get(tiki, None),
-                components=SCRIPT_TIKI_COMPONENTS.get(tiki, ()))
+                components=SCRIPT_TIKI_COMPONENTS.get(tiki, ()), static=tiki in SCRIPT_TIKI_STATIC)
             print("MOHAA script model %s: %d bodygroups, %d triangles, %d bodygroup verts, scale %.5f, idle %s" %
                   (tiki, parts, tris, verts, scale, idle or "-"))
             pack_path = SCRIPT_TIKI_ANIMATION_PACKS.get(tiki)
