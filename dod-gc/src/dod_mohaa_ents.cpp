@@ -1860,6 +1860,13 @@ static void RiderThink( void )
 		hit->TraceAttack( pl->pev, 40.0f, gpGlobals->v_forward, &tr, DMG_BULLET | DMG_NEVERGIB );
 		ApplyMultiDamage( pl->pev, pl->pev );
 	}
+	if( tr.flFraction < 1.0f ) {
+		/* a puff where the round lands (xash3d-gc's GX triangle list keeps particles apart again) */
+		MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY, tr.vecEndPos );
+			WRITE_BYTE( TE_GUNSHOT );
+			WRITE_COORD( tr.vecEndPos.x ); WRITE_COORD( tr.vecEndPos.y ); WRITE_COORD( tr.vecEndPos.z );
+		MESSAGE_END();
+	}
 }
 
 /* Once the map's entities are in: each MG gets its model, each waiting crew mans its gun. */
