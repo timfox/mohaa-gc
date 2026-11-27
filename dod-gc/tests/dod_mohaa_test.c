@@ -1645,6 +1645,29 @@ static void test_script_points(void)
 	assert(!strstr(log_buf, "script error"));
 }
 
+/* a bound entity's angles are local to its parent (spotlight.scr pitches the bulb on a base that yaws) */
+static void test_bound_local_angles(void)
+{
+	DodMohaaBackend b = backend();
+	reset();
+	add("base", "script_model", 0, 0, 0);
+	add("bulb", "script_model", 0, 0, 20);
+	files[0][0] = "maps/bl.scr";
+	files[0][1] =
+		"main:\n"
+		"\t$bulb bind $base\n"
+		"\t$base.angles = (0 90 0)\n"
+		"\t$bulb.angles = (30 0 0)\n"
+		"\twait .2\n"
+		"\tprintln (\"bulb=\" + $bulb.angles)\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "bl", 0, 0));
+	run(0.05f, 0.5f);
+	assert(fabsf(ents[1].angles[0] - 30.0f) < 0.5f);
+	assert(fabsf(ents[1].angles[1] - 90.0f) < 0.5f);	/* the base's yaw, the bulb's own pitch */
+	assert(!strstr(log_buf, "script error"));
+}
+
 int main(void)
 {
 	RUN(test_no_script_no_vm);
@@ -1655,6 +1678,7 @@ int main(void)
 	RUN(test_patrol_and_alarm);
 	RUN(test_disguise);
 	RUN(test_world_farplane);
+	RUN(test_bound_local_angles);
 	RUN(test_script_points);
 	RUN(test_cansee_droptofloor);
 	RUN(test_string_as_listener);
