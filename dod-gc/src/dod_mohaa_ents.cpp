@@ -1007,6 +1007,34 @@ static void M_DamageAt( uint32_t attacker, const float point[3], float radius, f
 
 static int M_Turret( uint32_t id, int what, uint32_t target, const float v[4] );
 
+static int M_TraceClear( const float a[3], const float b[3], int pass_entities )
+{
+	TraceResult tr;
+	UTIL_TraceLine( Vector( a[0], a[1], a[2] ), Vector( b[0], b[1], b[2] ),
+		pass_entities ? ignore_monsters : dont_ignore_monsters, NULL, &tr );
+	return !tr.fStartSolid && tr.flFraction >= 1.0f;
+}
+
+static int M_Touching( uint32_t a, uint32_t b )
+{
+	edict_t *ea = EdictFor( a ), *eb = EdictFor( b );
+	if( !ea || !eb )
+		return 0;
+	for( int k = 0; k < 3; k++ )
+		if( ea->v.absmin[k] > eb->v.absmax[k] || eb->v.absmin[k] > ea->v.absmax[k] )
+			return 0;
+	return 1;
+}
+
+static void M_Shake( float seconds, float magnitude )
+{
+	/* MOHAA's magnitude runs about 0..2; GoldSrc's shake amplitude is in units, up to 16 */
+	float amplitude = magnitude * 4.0f;
+	if( amplitude > 16.0f )
+		amplitude = 16.0f;
+	UTIL_ScreenShakeAll( g_vecZero, amplitude, 10.0f, seconds > 0.0f ? seconds : 1.0f );
+}
+
 static int M_Actor( uint32_t id, int order, const float pos[3] )
 {
 	edict_t *e = EdictFor( id );
@@ -1243,6 +1271,9 @@ void DodGC_MohaaLevelInit( void )
 	b.set_animation = M_SetAnimation;
 	b.actor = M_Actor;
 	b.turret = M_Turret;
+	b.trace_clear = M_TraceClear;
+	b.touching = M_Touching;
+	b.shake = M_Shake;
 	b.music = M_Music;
 	if( g_music_intro[0] )
 		M_Music( NULL, NULL );	/* the last map's music stops unless this map starts its own */

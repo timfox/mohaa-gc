@@ -160,6 +160,7 @@ typedef struct DodMover {
 	uint32_t drive_node;
 	float drive_speed;       /* GoldSrc units per second */
 	int driving;
+	float speed;             /* "$obj speed 200": a move takes distance / speed (GoldSrc units a second) */
 } DodMover;
 
 #define MAX_UNKNOWN 128
@@ -932,6 +933,10 @@ static void start_move(DodMover *m)
 	int i;
 	get_vec(m->id, DOD_MOHAA_ORIGIN, org);
 	get_vec(m->id, DOD_MOHAA_ANGLES, ang);
+	if (m->speed > 0.0f && m->has_dest) {
+		const float dx = m->dest[0] - org[0], dy = m->dest[1] - org[1], dz = m->dest[2] - org[2];
+		m->time = sqrtf(dx * dx + dy * dy + dz * dz) / m->speed;
+	}
 	if (m->time <= 0.0f) {
 		if (m->has_dest)
 			S.be.set_vec(m->id, DOD_MOHAA_ORIGIN, m->dest);
@@ -2214,6 +2219,84 @@ int Dod_MohaaEntitySound(uint32_t id, const char *alias)
 	return 1;
 }
 
+/* "$obj speed 200": moves go at that pace (MOHAA units a second) instead of over a set time */
+static int c_speed(ms_call *c)
+{
+	DodMover *m = mover(target_id(c), 1);
+	if (!m)
+		return ms_call_error(c, "too many moving objects");
+	m->speed = ms_arg_float(c, 0) * DOD_MOHAA_SCALE;
+	return 0;
+}
+
+/* "sighttrace start end [pass_entities]": 1 when the line is clear */
+static int c_sighttrace(ms_call *c)
+{
+	float a[3], b[3];
+	const ms_value *va = ms_arg(c, 0), *vb = ms_arg(c, 1);
+	int clear = 1;
+	if (va->type == MS_VECTOR && vb->type == MS_VECTOR && S.be.trace_clear) {
+		scale_in(va->u.v, a);
+		scale_in(vb->u.v, b);
+		clear = S.be.trace_clear(a, b, ms_argc(c) > 2 && ms_arg_int(c, 2) != 0);
+	}
+	ms_return_int(c, clear);
+	return 0;
+}
+
+/* "$a istouching $b" */
+static int c_istouching(ms_call *c)
+{
+	const ms_value *o = ms_arg(c, 0);
+	const uint32_t id = target_id(c);
+	int touching = 0;
+	if (o->type == MS_ENTITY && valid(o->u.id) && valid(id) && S.be.touching)
+		touching = S.be.touching(id, o->u.id);
+	ms_return_int(c, touching);
+	return 0;
+}
+
+/* "earthquake duration magnitude [no_rampup] [no_rampdown]" */
+static int c_earthquake(ms_call *c)
+{
+	if (S.be.shake)
+		S.be.shake(ms_arg_float(c, 0), ms_arg_float(c, 1));
+	return 0;
+}
+
+/* "$trigger doactivate $player": the trigger fires as if that entity used it */
+static int c_doactivate(ms_call *c)
+{
+	const uint32_t id = target_id(c);
+	const char *name = valid(id) && !is_node(id) ? S.be.get_str(id, DOD_MOHAA_TARGETNAME) : NULL;
+	if (ms_argc(c) > 0 && ms_arg(c, 0)->type == MS_ENTITY)
+		Dod_MohaaSetOther(ms_arg(c, 0)->u.id);
+	if (name && *name && S.be.use_targets)
+		S.be.use_targets(name);
+	return 0;
+}
+
+/* "$ent volumedamage 50": what stands at the entity takes that much */
+static int c_volumedamage(ms_call *c)
+{
+	const uint32_t id = target_id(c);
+	float p[3];
+	if (!valid(id) || is_node(id) || !S.be.damage_at)
+		return 0;
+	get_vec(id, DOD_MOHAA_ORIGIN, p);
+	S.be.damage_at(id, p, 64.0f, ms_arg_float(c, 0));
+	return 0;
+}
+
+/* "$ent targetname newname": the command form of the field */
+static int c_targetname_cmd(ms_call *c)
+{
+	const uint32_t id = target_id(c);
+	if (valid(id) && !is_node(id) && S.be.set_targetname)
+		S.be.set_targetname(id, ms_arg_string(c, 0));
+	return 0;
+}
+
 static int c_ignored(ms_call *c)
 {
 	(void)c;
@@ -3170,6 +3253,33 @@ static void register_commands(ms_vm *vm)
 		{"american", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		/* the side follows the model here (german_* plays the Axis) */
 		{"german", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"speed", MS_ON_ENTITY, c_speed},
+		{"sighttrace", MS_ON_THREAD | MS_ON_ENTITY, c_sighttrace},
+		{"istouching", MS_ON_ENTITY, c_istouching},
+		{"earthquake", MS_ON_THREAD | MS_ON_ENTITY, c_earthquake},
+		{"doactivate", MS_ON_ENTITY, c_doactivate},
+		{"volumedamage", MS_ON_ENTITY, c_volumedamage},
+		{"targetname", MS_ON_ENTITY, c_targetname_cmd},
+		{"stopsound", MS_ON_ENTITY | MS_ON_THREAD, c_stoploopsound},
+		/* accepted, no effect in the port (each a reason): grenade style, preferred weapon, notice and spread
+		   tuning, the PC menus and mouse, model caching, grenade count, the HUD stopwatch, the BSP transition
+		   flag, vehicle animation/size/drive chain, a vehicle's turret slot */
+		{"type_grenade", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"perferredweapon", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"preferredweapon", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"noticescale", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"bulletspread", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"showmenu", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"hidemenu", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"hidemouse", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"cache", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"ammo_grenade", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"stopwatch", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"bsptransition", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"vehicleanim", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"setsize", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"nextdrive", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"turret", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		/* damage types a soldier ignores ("immune bullet"): grunts take every hit */
 		{"immune", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"removeimmune", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
