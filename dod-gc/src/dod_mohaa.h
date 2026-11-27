@@ -52,7 +52,9 @@ enum {
 	/* pos[0]: 1 heeds the player's disguise (type_disguise salute, sentry, ...), 0 not ("none") */
 	DOD_MOHAA_DISGUISE,
 	/* type_attack "turret": man the turretweapon nearest the actor, if one is close (the host finds it) */
-	DOD_MOHAA_TURRET
+	DOD_MOHAA_TURRET,
+	/* pos[0]: MOHAA accuracy 0..100 */
+	DOD_MOHAA_ACCURACY
 };
 enum { DOD_MOHAA_TURRET_AIM = 0, DOD_MOHAA_TURRET_START, DOD_MOHAA_TURRET_STOP, DOD_MOHAA_TURRET_BURST,
 	DOD_MOHAA_TURRET_YAWCAP };

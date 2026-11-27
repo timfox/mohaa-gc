@@ -363,6 +363,9 @@ int DodGrunts_ScriptOrder( edict_t *ed, int order, const float pos[3] )
 		if( !( g_pool.script[i] & DOD_GRUNT_TURRET ) )
 			DodGrunt_SetAttack( &g_pool, i, pos[0] > 0.0f );
 		break;
+	case DOD_MOHAA_ACCURACY:
+		g_pool.accuracy[i] = (unsigned char)( pos[0] < 0.0f ? 1 : ( pos[0] > 100.0f ? 101 : (int)pos[0] + 1 ));
+		break;
 	case DOD_MOHAA_TURRET: {
 		float gun[4];
 		const float from[3] = { g_pool.x[i], g_pool.y[i], g_pool.z[i] };
@@ -573,6 +576,7 @@ static void GruntShootRound( int i, CDodGrunt *e, CBasePlayer *pl, const Vector 
 		/* MOHAA's campaign: soldiers miss more, by difficulty (one hit a second killed an idle player) */
 		if( GruntMohaaCampaign() )
 			roll /= DodGrunt_CampaignHitScale( (int)CVAR_GET_FLOAT( "skill" ) );
+		roll /= DodGrunt_AccuracyScale( &g_pool, i );	/* MOHAA "accuracy": 1 at 50 or when unset */
 		if( !DodGrunt_ShotHits( dist, skill, roll ) )
 			return;
 	}
