@@ -56,6 +56,39 @@ BOOL DodGrenade_CanPrime( void )
 	return Dod_GrenadesLive() < DOD_MAX_LIVE_GRENADES;
 }
 
+/* After CGrenade::ShootTimed: its SET_MODEL hits the engine's weapon-model stub on this route (models/w_*: modelindex
+ * 0, SOLID_NOT, MOVETYPE_NONE), which froze every grenade where it was released, so put back what CGrenade::Spawn set.
+ * Only grenades that took a slot give one back, so an over-cap throw (the pin was pulled before the cap filled)
+ * cannot underflow the count. */
+static void DodGrenade_Arm( CGrenade *pGrenade, const DodGrenadeDef &def )
+{
+	if( strcmp( def.world_model, "models/w_grenade.mdl" ) )
+		SET_MODEL( ENT( pGrenade->pev ), def.world_model );
+	pGrenade->pev->movetype = MOVETYPE_BOUNCE;
+	pGrenade->pev->solid = SOLID_BBOX;
+	UTIL_SetSize( pGrenade->pev, Vector( 0, 0, 0 ), Vector( 0, 0, 0 ) );
+	UTIL_SetOrigin( pGrenade->pev, pGrenade->pev->origin );
+	pGrenade->pev->dmg = def.damage;
+	pGrenade->pev->sequence = 0;
+	pGrenade->pev->framerate = 1.0f;
+	pGrenade->pev->iuser3 = (int)DODGC_GRENADE_MAGIC;
+	pGrenade->pev->iuser4 = Dod_GrenadeAcquire();
+}
+
+CGrenade *DodGrenade_ThrowFrom( entvars_t *pevOwner, int team, const Vector &src, const Vector &velocity )
+{
+	DodGrenadeDef def;
+	CGrenade *pGrenade;
+	if( !Dod_GameIsActive() || !pevOwner || !DodGrenade_CanPrime() || !Dod_GetGrenade( (DodTeam)team, &def ) )
+		return NULL;
+	pGrenade = CGrenade::ShootTimed( pevOwner, src, velocity, def.fuse );
+	if( !pGrenade )
+		return NULL;
+	DodGrenade_Arm( pGrenade, def );
+	EMIT_SOUND( ENT( pevOwner ), CHAN_WEAPON, "weapons/grenthrow.wav", 1.0f, ATTN_NORM );
+	return pGrenade;
+}
+
 CGrenade *DodGrenade_Throw( CBasePlayer *pPlayer, float held )
 {
 	DodGrenadeDef def;
@@ -80,21 +113,7 @@ CGrenade *DodGrenade_Throw( CBasePlayer *pPlayer, float held )
 		return NULL;
 	DodGC_VoiceAuto( pPlayer, "fireinhole" );
 
-	if( strcmp( def.world_model, "models/w_grenade.mdl" ) )
-		SET_MODEL( ENT( pGrenade->pev ), def.world_model );
-	/* ShootTimed's SET_MODEL hits the engine's weapon-model stub on this route (models/w_*: modelindex 0, SOLID_NOT, MOVETYPE_NONE),
-	 * which froze every grenade where it was released. Put back what CGrenade::Spawn set. */
-	pGrenade->pev->movetype = MOVETYPE_BOUNCE;
-	pGrenade->pev->solid = SOLID_BBOX;
-	UTIL_SetSize( pGrenade->pev, Vector( 0, 0, 0 ), Vector( 0, 0, 0 ) );
-	UTIL_SetOrigin( pGrenade->pev, pGrenade->pev->origin );
-	pGrenade->pev->dmg = def.damage;
-	pGrenade->pev->sequence = 0;
-	pGrenade->pev->framerate = 1.0f;
-	pGrenade->pev->iuser3 = (int)DODGC_GRENADE_MAGIC;
-	/* Only grenades that took a slot give one back, so an over-cap throw
-	 * (the pin was pulled before the cap filled) cannot underflow the count. */
-	pGrenade->pev->iuser4 = Dod_GrenadeAcquire();
+	DodGrenade_Arm( pGrenade, def );
 
 	EMIT_SOUND( ENT( pPlayer->pev ), CHAN_WEAPON, "weapons/grenthrow.wav", 1.0f, ATTN_NORM );
 	return pGrenade;
@@ -151,6 +170,14 @@ BOOL DodGrenade_Explode( CGrenade *pGrenade, TraceResult *pTrace, int bitsDamage
 	if( pTrace->flFraction != 1.0f )
 		pev->origin = pTrace->vecEndPos + ( pTrace->vecPlaneNormal * 0.6f );
 
+	{
+		/* a soldier's grenade (owner not a player): say where it went off, a few times a map, for probe logs */
+		static int logs;
+		edict_t *owner = pev->owner;
+		if( owner && !( owner->v.flags & FL_CLIENT ) && logs++ < 8 )
+			ALERT( at_console, "grenade from %s goes off at %.0f %.0f %.0f\n", STRING( owner->v.classname ),
+				pev->origin.x, pev->origin.y, pev->origin.z );
+	}
 	contents = UTIL_PointContents( pev->origin );
 	water = ( contents == CONTENTS_WATER );
 	plan = Dod_FxPlanExplosion( gpGlobals->time );

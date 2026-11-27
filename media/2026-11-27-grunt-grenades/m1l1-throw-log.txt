@@ -1,0 +1,29 @@
+[21:32:32] Xash3D GameCube: MAP_READY m1l1
+Xash3D GameCube: MAP_READY m1l1
+[21:32:48] GRUNT cost: 18 live of 56, frame avg 184 us max 367 us (console time), per s: looks 47.8 move 1.8 floor 1.8 shots 0.0 hits 0.0 deferred 7.3, edicts 1
+[21:32:58] GRUNT cost: 18 live of 56, frame avg 181 us max 255 us (console time), per s: looks 47.2 move 0.0 floor 0.0 shots 0.0 hits 0.0 deferred 3.2, edicts 1
+[21:33:07] GRUNT 9 throws a grenade 637 units, at -1224 -2578 66
+[21:33:07] grenade 20 at -1771 -2395 136 vel 612 fuse 4.9 magic 1 think 0.1
+[21:33:07] grenade 20 at -1628 -2443 150 vel 600 fuse 4.6 magic 1 think 0.0
+[21:33:07] grenade 20 at -1486 -2490 140 vel 606 fuse 4.4 magic 1 think 0.1
+[21:33:08] grenade 20 at -1344 -2538 105 vel 627 fuse 4.1 magic 1 think 0.0
+[21:33:08] grenade 20 at -1201 -2585 44 vel 663 fuse 3.9 magic 1 think 0.1
+[21:33:08] GRUNT cost: 18 live of 56, frame avg 192 us max 884 us (console time), per s: looks 47.7 move 0.0 floor 0.0 shots 0.5 hits 0.1 deferred 2.2, edicts 1
+[21:33:08] grenade 20 at -1065 -2631 40 vel 581 fuse 3.6 magic 1 think 0.0
+[21:33:08] grenade 20 at -939 -2676 54 vel 570 fuse 3.4 magic 1 think 0.1
+[21:33:09] grenade 20 at -820 -2720 72 vel 556 fuse 3.1 magic 1 think 0.0
+[21:33:09] grenade 20 at -714 -2760 101 vel 527 fuse 2.9 magic 1 think 0.1
+[21:33:09] grenade 20 at -611 -2796 141 vel 493 fuse 2.6 magic 1 think 0.0
+[21:33:09] grenade 20 at -515 -2829 178 vel 458 fuse 2.4 magic 1 think 0.1
+[21:33:10] grenade 20 at -420 -2861 212 vel 423 fuse 2.1 magic 1 think 0.0
+[21:33:10] grenade 20 at -339 -2891 244 vel 389 fuse 1.9 magic 1 think 0.1
+[21:33:10] grenade 20 at -266 -2922 273 vel 354 fuse 1.6 magic 1 think 0.0
+[21:33:10] grenade 20 at -190 -2955 289 vel 333 fuse 1.4 magic 1 think 0.1
+[21:33:11] grenade 20 at -125 -2990 300 vel 313 fuse 1.1 magic 1 think 0.0
+[21:33:11] grenade 20 at -66 -3028 313 vel 293 fuse 0.9 magic 1 think 0.1
+[21:33:11] grenade 20 at -17 -3068 324 vel 274 fuse 0.6 magic 1 think 0.0
+[21:33:11] grenade 20 at 19 -3103 332 vel 204 fuse 0.4 magic 1 think 0.1
+[21:33:12] grenade 20 at 20 -3106 332 vel 32 fuse 0.1 magic 1 think 0.0
+[21:33:12] grenade 20 at 20 -3106 332 vel 0 fuse -0.1 magic 1 think 0.1
+[21:33:12] grenade from dod_grunt goes off at 20 -3106 333
+[21:33:12] grenade 20 at 20 -3106 333 vel 0 fuse -0.4 magic 0 think 0.1

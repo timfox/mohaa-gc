@@ -26,6 +26,7 @@
 #include "dod_film.h"
 #include "dod_weapons.h"
 #include "dod_grunts.h"
+#include "dod_grenade.h"
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -363,6 +364,9 @@ int DodGrunts_ScriptOrder( edict_t *ed, int order, const float pos[3] )
 		if( !( g_pool.script[i] & DOD_GRUNT_TURRET ) )
 			DodGrunt_SetAttack( &g_pool, i, pos[0] > 0.0f );
 		break;
+	case DOD_MOHAA_GRENADES:
+		g_pool.grenades[i] = (unsigned char)( pos[0] < 0.0f ? 1 : ( pos[0] > 20.0f ? 21 : (int)pos[0] + 1 ));
+		break;
 	case DOD_MOHAA_ACCURACY:
 		g_pool.accuracy[i] = (unsigned char)( pos[0] < 0.0f ? 1 : ( pos[0] > 100.0f ? 101 : (int)pos[0] + 1 ));
 		break;
@@ -536,6 +540,50 @@ static void GruntCover( int i, float now )
 static void GruntShootRound( int i, CDodGrunt *e, CBasePlayer *pl, const Vector &from, const Vector &aim,
 	const Vector &dir, float dist, int skill, const DodWeaponDef *gun );
 
+/* Soldiers run from live grenades (anyone's) that land near them: four times a second, each grenade, each soldier
+ * within DOD_GRUNT_GRENADE_FLEE that is free to move (no script walk out, not on a gun) runs 360 units straight away.
+ * The run is its own move, like taking cover, so no "movedone" goes to a script. */
+static void GruntFleeGrenades( float now )
+{
+	static float next_scan;
+	static int diag_logs;
+	if( now < next_scan )
+		return;
+	next_scan = now + 0.25f;
+	CBaseEntity *g = NULL;
+	int fled = 0;
+	while(( g = UTIL_FindEntityByClassname( g, "grenade" )) != NULL ) {
+		if( g_pool.stats.grenades <= 2 && diag_logs < 24 ) {	/* the first throws' flight, for probe logs */
+			diag_logs++;
+			ALERT( at_console, "grenade %d at %.0f %.0f %.0f vel %.0f fuse %.1f magic %d think %.1f\n", ENTINDEX( g->edict() ),
+				g->pev->origin.x, g->pev->origin.y, g->pev->origin.z, g->pev->velocity.Length(), g->pev->dmgtime - now,
+				g->pev->iuser3 == (int)DODGC_GRENADE_MAGIC, g->pev->nextthink - now );
+		}
+		if( g->pev->iuser3 != (int)DODGC_GRENADE_MAGIC || g->pev->dmgtime - now > 2.5f )
+			continue;	/* still in the air early on: wait until it has come down */
+		for( int i = 0; i < DOD_GRUNT_MAX; i++ ) {
+			if( !GruntLive( i ) || g_pool.state[i] == DOD_GRUNT_DEAD || g_pool.state[i] == DOD_GRUNT_FREE )
+				continue;
+			if( g_pool.script[i] & ( DOD_GRUNT_AI_OFF | DOD_GRUNT_TURRET ))
+				continue;
+			if( g_pool.order[i] != DOD_GRUNT_ORDER_NONE && g_pool.cover[i] == DOD_GRUNT_COVER_NONE
+			    && !( g_pool.script[i] & DOD_GRUNT_SOFT_ORDER ))
+				continue;	/* a script's walk: the script must get its movedone */
+			const float dx = g_pool.x[i] - g->pev->origin.x, dy = g_pool.y[i] - g->pev->origin.y;
+			if( dx * dx + dy * dy > DOD_GRUNT_GRENADE_FLEE * DOD_GRUNT_GRENADE_FLEE )
+				continue;
+			float spot[2];
+			DodGrunt_FleeSpot( g_pool.x[i], g_pool.y[i], g->pev->origin.x, g->pev->origin.y, 360.0f, spot );
+			g_pool.script[i] &= (unsigned char)~DOD_GRUNT_SOFT_ORDER;
+			DodGrunt_OrderMove( &g_pool, i, spot[0], spot[1], 1 );
+			g_pool.cover[i] = DOD_GRUNT_COVER_MOVING;
+			g_pool.stats.flees++;
+			if( fled++ < 2 && ( CVAR_GET_FLOAT( "dod_grunt_log" ) > 0.0f || g_pool.stats.flees <= 8 ))
+				ALERT( at_console, "GRUNT %d runs from a grenade\n", i );
+		}
+	}
+}
+
 static void GruntShoot( int i )
 {
 	CDodGrunt *e = g_ents[i];
@@ -560,6 +608,20 @@ static void GruntShoot( int i )
 		&& Dod_MohaaEntitySound( DodGC_MohaaEntityId( e->edict() ), "mg42_gun_snd_fire" );
 	if( !retail_sound && gun && gun->fire_sound && gun->fire_sound[0] )
 		EMIT_SOUND_DYN( e->edict(), CHAN_WEAPON, gun->fire_sound, 1.0f, ATTN_NORM, 0, 100 );
+	/* now and then a grenade instead of a shot, lobbed to land where the enemy stands */
+	if( GruntMohaaCampaign() && DodGrunt_TakeGrenadeThrow( &g_pool, i, dist, gpGlobals->time, DodGrunt_Rand( &g_pool ))) {
+		const float src[3] = { from.x, from.y, from.z + 24.0f };
+		const float dst[3] = { pl->pev->origin.x, pl->pev->origin.y, pl->pev->origin.z - 24.0f };
+		float vel[3];
+		/* CGrenade::ShootTimed flies the grenade at half gravity */
+		DodGrunt_ThrowVelocity( src, dst, CVAR_GET_FLOAT( "sv_gravity" ) * 0.5f, vel );
+		if( DodGrenade_ThrowFrom( e->pev, g_pool.team[i], Vector( src[0], src[1], src[2] ), Vector( vel[0], vel[1], vel[2] )) ) {
+			g_pool.stats.grenades++;
+			if( CVAR_GET_FLOAT( "dod_grunt_log" ) > 0.0f || g_pool.stats.grenades <= 8 )
+				ALERT( at_console, "GRUNT %d throws a grenade %.0f units, at %.0f %.0f %.0f\n", i, dist, dst[0], dst[1], dst[2] );
+			return;
+		}
+	}
 	/* a turret's MG42 fires a short burst each time: two rounds, each rolled on its own */
 	const int rounds = ( g_pool.script[i] & DOD_GRUNT_TURRET ) ? 2 : 1;
 	for( int round = 0; round < rounds; round++ )
@@ -705,6 +767,7 @@ void DodGrunts_Think( void )
 			if( !had && g_pool.target[due[k]] && g_pool.script[due[k]] )
 				DodGC_MohaaActorAlerted( g_ents[due[k]]->edict() );
 		}
+	GruntFleeGrenades( now );
 	for( int i = 0; i < DOD_GRUNT_MAX; i++ ) {
 		if( !GruntLive( i ) || g_pool.state[i] == DOD_GRUNT_FREE )
 			continue;

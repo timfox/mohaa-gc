@@ -795,7 +795,7 @@ ACTOR_KEYS = ("targetname", "target", "angle", "angles", "model", "health", "spa
 # (alarm_system.scr's find_guy looks soldiers up by .find_name).
 ACTOR_SCRIPT_KEYS = ("find_name", "type_idle", "patrolpath", "alarmnode", "alarmthread", "type_attack",
                      "type_disguise", "disguise_range", "disguise_period", "disguise_level", "sight", "hearing",
-                     "fov", "leash", "mindist", "maxdist", "gun", "accuracy")
+                     "fov", "leash", "mindist", "maxdist", "gun", "accuracy", "ammo_grenade")
 
 
 def hash_keys(e):

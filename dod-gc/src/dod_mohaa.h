@@ -54,7 +54,9 @@ enum {
 	/* type_attack "turret": man the turretweapon nearest the actor, if one is close (the host finds it) */
 	DOD_MOHAA_TURRET,
 	/* pos[0]: MOHAA accuracy 0..100 */
-	DOD_MOHAA_ACCURACY
+	DOD_MOHAA_ACCURACY,
+	/* pos[0]: grenades it carries (MOHAA ammo_grenade) */
+	DOD_MOHAA_GRENADES
 };
 enum { DOD_MOHAA_TURRET_AIM = 0, DOD_MOHAA_TURRET_START, DOD_MOHAA_TURRET_STOP, DOD_MOHAA_TURRET_BURST,
 	DOD_MOHAA_TURRET_YAWCAP };
