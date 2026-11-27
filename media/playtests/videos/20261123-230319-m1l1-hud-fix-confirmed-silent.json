@@ -1,0 +1,15 @@
+{
+  "file": "20261123-230319-m1l1-hud-fix-confirmed-silent.mp4",
+  "date": "2026-11-23T23:03:19",
+  "commit": "f8b4c7ecc9",
+  "engine_commit": "db73d0d126",
+  "route": "m1l1-hud-fix-confirmed",
+  "disc": "/tmp/mohaa-hud-fix/mohaa-hud-m1l1.iso",
+  "duration_s": 20.9,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 0.1,
+  "project": "mohaa-gc",
+  "audio": "silent screen capture (forced or PulseAudio unavailable)"
+}

@@ -1,0 +1,28 @@
+[22:06:38] Xash3D GameCube: MAP_READY m1l2a
+Xash3D GameCube: MAP_READY m1l2a
+[22:06:48] mohaa_probe_goto: player at 3828 -1456 52 facing lock_enemy
+[22:06:48] mohaa_probe_goto: dropped a grenade at lock_enemy's feet
+[22:06:49] grenade 117 at 3780 -1379 50 vel 50 fuse 4.7 magic 1 think 0.0
+[22:06:49] grenade 117 at 3780 -1379 50 vel 140 fuse 4.4 magic 1 think 0.0
+[22:06:49] grenade 117 at 3780 -1379 50 vel 213 fuse 4.2 magic 1 think 0.1
+[22:06:49] grenade 117 at 3780 -1379 50 vel 287 fuse 3.9 magic 1 think 0.0
+[22:06:50] grenade 117 at 3747 -1347 2 vel 217 fuse 3.7 magic 1 think 0.1
+[22:06:50] grenade 117 at 3714 -1309 1 vel 158 fuse 3.4 magic 1 think 0.1
+[22:06:50] grenade 117 at 3719 -1288 0 vel 39 fuse 3.1 magic 1 think 0.0
+[22:06:50] grenade 117 at 3719 -1287 0 vel 0 fuse 2.8 magic 1 think 0.0
+[22:06:51] grenade 117 at 3719 -1287 0 vel 0 fuse 2.5 magic 1 think 0.0
+[22:06:51] grenade 117 at 3719 -1287 0 vel 0 fuse 2.3 magic 1 think 0.1
+[22:06:51] GRUNT 32 runs from a grenade
+[22:06:51] GRUNT 52 runs from a grenade
+[22:06:51] grenade 117 at 3719 -1287 0 vel 0 fuse 2.0 magic 1 think 0.1
+[22:06:51] GRUNT 32 runs from a grenade
+[22:06:51] GRUNT 52 runs from a grenade
+[22:06:52] grenade 117 at 3719 -1287 0 vel 0 fuse 1.7 magic 1 think 0.0
+[22:06:52] grenade 117 at 3719 -1287 0 vel 0 fuse 1.5 magic 1 think 0.1
+[22:06:52] grenade 117 at 3719 -1287 0 vel 0 fuse 1.2 magic 1 think 0.1
+[22:06:52] grenade 117 at 3719 -1287 0 vel 0 fuse 0.9 magic 1 think 0.0
+[22:06:53] grenade 117 at 3719 -1287 0 vel 0 fuse 0.6 magic 1 think 0.0
+[22:06:53] grenade 117 at 3719 -1287 0 vel 0 fuse 0.4 magic 1 think 0.1
+[22:06:53] grenade 117 at 3719 -1287 0 vel 0 fuse 0.1 magic 1 think 0.1
+[22:06:53] grenade 117 at 3719 -1287 0 vel 0 fuse -0.2 magic 1 think 0.0
+[22:06:54] grenade 117 at 3719 -1287 1 vel 0 fuse -0.5 magic 0 think 0.0

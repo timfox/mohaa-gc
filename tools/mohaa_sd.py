@@ -7,7 +7,7 @@
     python3 tools/mohaa_sd.py --mohaa ~/MOHAA --sd ./sdcard --maps m1l1 --xash3d-gc ~/xash3d-gc
 
 The release disc holds no game data. Everything MOHAA brings (the main menu room, loading screens, music, sounds, scripts, maps, collision,
-props and terrain; the intro movie is still to come) is converted here from files you own and written under
+props, terrain and intro movie) is converted here from files you own and written under
 
     <sd>/xash3d/<gamedir>/          (gamedir: mohaa)
 
@@ -20,16 +20,23 @@ Sources (give one or both):
   --cd DIR...   the install CDs, mounted or copied (the folders holding DATA1.HDR and the DATAn.CAB files;
                 list both CDs). Needs the `unshield` program; the cabinets are unpacked to a work folder once
                 and reused.
+  --music-source DIR  an extra folder containing loose sound/ music files; repeat for split extractions.
+                      Used by the music stage only. Normally the installed game folder already includes these.
+  --sound-source DIR  an extra folder containing loose sound/ effects and dialogue; repeat for split extractions.
+                      Used by the sounds stage only.
 
 Stages run in this order (--stages picks some; by default every one whose tools are found):
-  menu      main menu background: MOHAA's war room         needs Pillow and numpy
-            (resource/gc_menu/; without it the disc's DoD background shows)
+  menu      the retail main menu: the war room, its lit      needs Pillow and numpy
+            spots, sign, Quit and click sounds (resource/gc_menu/; without it the stock menu shows)
   loading   loading screens: the retail ones, per map          needs Pillow and numpy
             (resource/gc_loading/; without them the engine's LOADING plaque shows)
+  hud       retail MOHAA HUD artwork as 32-bit Xash3D sprites (sprites/mohaa/; needs Pillow)
   music     soundtracks and tracks                         needs ffmpeg
   sounds    per-map sound tables and samples
   scripts   level scripts and the global/ libraries
-  maps      maps/<map>.bsp with MOHAA's textures (+ .mcol collision, .nodes)
+  scriptmodels static Studio models for m1l1's scripted actors and trucks (needs Pillow + DoD-GC splitter)
+  tags      cutscene model tags and animation durations
+  maps      maps/<map>.bsp with MOHAA's textures and skybox (+ .mcol collision, .nodes, .points, media/lg_<map>.gcg light grid)
                                                            needs the patched SDHLT: built once (git, cmake, C++)
   worlddl   media/wd_<map>.gcd GameCube world bake         needs --xash3d-gc DIR (a checkout of xash3d-gc)
   props     media/gp_<map>.gcp static props and terrain    needs --xash3d-gc DIR
@@ -57,6 +64,11 @@ sys.path.insert(0, HERE)
 CD_GROUPS = {
     "Music Files": "sound/music",
     "Sound AmbStereo Files": "sound/amb_stereo",
+    "Sound Amb Files": "sound/amb",
+    "Sound Mechanics Files": "sound/mechanics",
+    "Sound Vehicle Files": "sound/vehicle",
+    "Sound Weapons Files": "sound/weapons",
+    "Sound Dialogue Files": "sound/dialogue",
     "Video Files": "video",          # intro.RoQ + intro.mp3 for the movie stage
 }
 
@@ -88,11 +100,19 @@ def find_cab_set(dirs):
     return found
 
 
+def cd_done_key():
+    """What <work>/cd/.done holds after a complete unpack with the current file groups."""
+    return "unshield-lowercase-groups-v3\n" + "\n".join(sorted(CD_GROUPS)) + "\n"
+
+
 def unpack_cds(dirs, work, log=print):
-    """Unpack the music groups and every pk3 from the CDs' cabinets into <work>/cd/main; returns that folder."""
+    """Unpack the media groups and every pk3 from the CDs' cabinets into <work>/cd/main; returns that folder."""
     out = os.path.join(work, "cd", "main")
     done = os.path.join(work, "cd", ".done")
-    groups_key = "\n".join(sorted(CD_GROUPS)) + "\n"
+    # unshield -L lowercases group-directory names and replaces spaces with underscores
+    # ("Sound AmbStereo Files" -> "sound_ambstereo_files"). Version the cache
+    # so prior extracts without the complete sound groups are unpacked again.
+    groups_key = cd_done_key()
     if os.path.exists(done):
         with open(done) as fh:
             if fh.read() == groups_key:
@@ -125,14 +145,16 @@ def unpack_cds(dirs, work, log=print):
         gdir = os.path.join(groups_out, group)
         if not os.path.isdir(gdir):
             continue
-        sub = next((v for k, v in CD_GROUPS.items() if k.lower() == group.lower()), None)
+        group_name = group.lower().replace(" ", "_")
+        sub = next((v for k, v in CD_GROUPS.items() if k.lower().replace(" ", "_") == group_name), None)
         for base, _, files in os.walk(gdir):
             for f in files:
                 src = os.path.join(base, f)
                 if f.lower().endswith(".pk3"):
                     dest = os.path.join(out, f.lower())
                 elif sub:
-                    dest = os.path.join(out, sub, f.lower())
+                    rel = os.path.relpath(src, gdir).lower()
+                    dest = os.path.join(out, sub, rel)
                 else:
                     continue
                 os.makedirs(os.path.dirname(dest), exist_ok=True)
@@ -169,7 +191,15 @@ def stage_menu(sources, game_root, maps, work):
     sheet = mohaa_menu.compose(sources)
     if sheet is None:
         raise SystemExit("no ui/main.urc menu in the sources")
-    return mohaa_menu.write_gc_menu(sheet, game_root)
+    written = mohaa_menu.write_gc_menu(sheet, game_root)
+    menu = mohaa_menu.room_menu(sources)
+    if menu:   # the retail menu's hotspots, sign, Quit and click sounds (resource/gc_menu/mohaa_main.txt)
+        written += mohaa_menu.write_room_menu(menu, game_root)
+    for page in mohaa_menu.PAGES:   # the options desk, the game type cards and the Create Server form (resource/gc_menu/mohaa_<page>.txt)
+        pm = mohaa_menu.page_menu(sources, page)
+        if pm:
+            written += mohaa_menu.write_page(pm, game_root, page)
+    return written
 
 
 def stage_loading(sources, game_root, maps, work):
@@ -183,6 +213,14 @@ def stage_loading(sources, game_root, maps, work):
         want = set(m.lower() for m in maps) | {"default"}
         items = [it for it in items if it[0] in want]
     return mohaa_loading.write_loading(items, game_root)
+
+
+def stage_hud(sources, game_root, maps, work):
+    """Convert retail HUD textures to RGBA Xash3D sprites for the GameCube renderer."""
+    import mohaa_hud
+    written = mohaa_hud.stage_hud(sources, game_root)
+    print("   MOHAA HUD: %d retail RGBA sprites" % len(written))
+    return written
 
 
 def stage_music(sources, game_root, maps, work):
@@ -215,6 +253,121 @@ def stage_scripts(sources, game_root, maps, work):
     before = _snapshot(game_root)
     if ss.main(list(sources) + ["--out", game_root, "--maps", ",".join(maps)]):
         raise SystemExit("scripts stage failed")
+    return _written(game_root, before)
+
+
+def stage_tags(sources, game_root, maps, work):
+    """Cutscene model tags and animation lengths (maps/<map>.tags) for the level scripts' "gettagposition" and
+    "waittill animdone": m1l1's opening ride follows its truck path model frame by frame."""
+    import mohaa_tags
+    maps = maps or sorted(map_sources(sources))
+    if not maps:
+        return []
+    before = _snapshot(game_root)
+    if mohaa_tags.main(list(sources) + ["--out", game_root, "--maps", ",".join(maps)]):
+        raise SystemExit("tags stage failed")
+    return _written(game_root, before)
+
+
+# global/spotlight.scr's searchlight: the base turns to its aim, the bulb on it pitches, and goes dark when shot
+SEARCHLIGHT_TIKIS = ("miscobj/searchlightbase.tik", "miscobj/searchlight.tik", "miscobj/searchlightoff.tik")
+
+SCRIPT_TIKI_MODELS = {
+    # The visible m1l1 trucks. The gmctruckpath/truck2path TIKIs are tag carriers with helper triangles.
+    "m1l1": ("vehicles/gmctruck_opening.tik", "vehicles/opeltruck.tik",
+             "human/german_afrika_private.tik"),
+    # The MG42 nests' gun (turretweapon_german_mg42); the game puts it on each turret entity.
+    "m1l2a": ("statweapons/mg42_gun.tik",) + SEARCHLIGHT_TIKIS,
+    "m1l2b": ("statweapons/mg42_gun.tik",) + SEARCHLIGHT_TIKIS,
+    # maps that place a searchlight ("spotlight" entities for global/spotlight.scr)
+    "m4l2": SEARCHLIGHT_TIKIS, "m4l3": SEARCHLIGHT_TIKIS, "m6l1c": SEARCHLIGHT_TIKIS,
+    "m6l2a": SEARCHLIGHT_TIKIS, "m6l2b": SEARCHLIGHT_TIKIS,
+}
+
+# The retail German private is a composite TIKI: its body, head and equipment use
+# separate SKDs. The mission's default KAR 98K loadout is baked into one Studio rig.
+SCRIPT_TIKI_COMPONENTS = {
+    "human/german_afrika_private.tik": (
+        {"mesh": "models/human/heads/dakhead.skd", "surfaces": {"head": "facewrap"}},
+        {"mesh": "models/human/hands/hand.skd", "surfaces": {"hand": "handsnew"}},
+        {"mesh": "models/gear/g_headgear/germanhelmet.skd",
+         "surfaces": {"outside": "dak_helmet", "inside": "german-helmet_inside"}},
+        {"mesh": "models/gear/dak/dakloadout.skd", "surfaces": {"dakloadout": "german_gear"}},
+        {"mesh": "models/gear/dak/dakkarclip.skd", "surfaces": {"dakkarclip": "german_riflebelt"}},
+    ),
+}
+
+# Baked as one posed mesh with no skeleton. The MG42's animated bake drew tilted on its turret: the game turns
+# the gun as a whole, so its idle pose is all it needs.
+SCRIPT_TIKI_STATIC = {"statweapons/mg42_gun.tik"} | set(SEARCHLIGHT_TIKIS)
+
+SCRIPT_TIKI_ANIMATIONS = {
+    "human/german_afrika_private.tik": (
+        "opel_driver",
+        "driver_killvisa", "passenger_killvisa", "guard_killvisa",
+        "driver_getvisa", "passenger_getvisa", "guard_getvisa",
+        "driver_idlevisa", "passenger_idlevisa", "guard_idlevisa",
+    ),
+}
+
+# Keep the complete retail actor animation set, but move it out of the core
+# Studio MDL. Xash3D-GC streams these native packs from ARAM one sequence at a
+# time, which keeps the model header/mesh below the lean per-file MEM1 limit.
+SCRIPT_TIKI_ANIMATION_PACKS = {
+    "human/german_afrika_private.tik": "models/human/german_afrika_private_%s.gca",
+}
+
+
+def stage_script_models(sources, game_root, maps, work):
+    """Bake the supported scripted TIKI meshes and a map-local precache manifest."""
+    from pathlib import Path
+    import importlib.util
+    import mohaa_tiki_model
+
+    split_tool = os.path.join(HERE, "..", "dod-gc", "tools", "split_studio_mdl.py")
+    split_spec = importlib.util.spec_from_file_location("mohaa_split_studio_mdl", split_tool)
+    if split_spec is None or split_spec.loader is None:
+        raise RuntimeError("could not load dod-gc/tools/split_studio_mdl.py")
+    split_studio_mdl = importlib.util.module_from_spec(split_spec)
+    split_spec.loader.exec_module(split_studio_mdl)
+
+    selected = maps or sorted(map_sources(sources))
+    before = _snapshot(game_root)
+    for mapname in selected:
+        tikis = SCRIPT_TIKI_MODELS.get(mapname.lower(), ())
+        if not tikis:
+            continue
+        model_paths = []
+        for tiki in tikis:
+            rel = "models/" + tiki[:-4] + ".mdl"
+            output = os.path.join(game_root, rel)
+            parts, verts, tris, textures, scale, idle = mohaa_tiki_model.convert(
+                sources, tiki, Path(output),
+                animation_names=SCRIPT_TIKI_ANIMATIONS.get(tiki, None),
+                components=SCRIPT_TIKI_COMPONENTS.get(tiki, ()), static=tiki in SCRIPT_TIKI_STATIC)
+            print("MOHAA script model %s: %d bodygroups, %d triangles, %d bodygroup verts, scale %.5f, idle %s" %
+                  (tiki, parts, tris, verts, scale, idle or "-"))
+            pack_path = SCRIPT_TIKI_ANIMATION_PACKS.get(tiki)
+            if pack_path:
+                model_name = os.path.splitext(os.path.basename(output))[0]
+                split_files, _ = split_studio_mdl.split(
+                    Path(output).read_bytes(), model_name, pack_path=pack_path)
+                model_dir = os.path.dirname(output)
+                for filename, data in split_files.items():
+                    with open(os.path.join(model_dir, filename), "wb") as fh:
+                        fh.write(data)
+                pack_name, pack_data = next(
+                    (name, data) for name, data in split_files.items() if name.endswith(".gca"))
+                print("  streamed %d sequences to %s (%d bytes); core %d bytes, external skin %d bytes" % (
+                    len(SCRIPT_TIKI_ANIMATIONS[tiki]), pack_name, len(pack_data),
+                    len(split_files[model_name + ".mdl"]),
+                    len(split_files[model_name + "T.mdl"])))
+            model_paths.append(rel)
+        manifest = os.path.join(game_root, "maps", mapname.lower() + ".models")
+        os.makedirs(os.path.dirname(manifest), exist_ok=True)
+        with open(manifest, "w", newline="\n") as fh:
+            fh.write("# Baked MOHAA script models; retail assets stay on the user's SD card.\n")
+            fh.writelines(path + "\n" for path in model_paths)
     return _written(game_root, before)
 
 
@@ -299,7 +452,9 @@ def ensure_sdhlt(log=print):
 def engine_script(name):
     """Path of an xash3d-gc script (from --xash3d-gc), or None."""
     root = CONFIG["xash3d_gc"]
-    path = os.path.join(root, "scripts", name) if root else None
+    # Stage commands change cwd before invoking the baker, so a relative
+    # --xash3d-gc path would otherwise be resolved from the output directory.
+    path = os.path.abspath(os.path.join(root, "scripts", name)) if root else None
     return path if path and os.path.isfile(path) else None
 
 
@@ -373,8 +528,10 @@ def bsp_unlit_size(path):
 def stage_maps(sources, game_root, maps, work):
     """Each map compiled for the GameCube: maps/<map>.bsp lit with MOHAA's own light, plus its .mcol collision
     and .nodes path nodes. Needs SDHLT (third_party/sdhlt-bsp30ext/build.sh builds the patched one)."""
+    import bsp19_lightgrid
     import bsp19_lightmaps
     import bsp19_to_map
+    import mohaa_sky
     from ubersound import read
     known, names = _map_names(sources, maps)
     folder = ensure_sdhlt()
@@ -388,9 +545,24 @@ def stage_maps(sources, game_root, maps, work):
         os.makedirs(d, exist_ok=True)
         log = os.path.join(d, "compile.log")
         open(log, "w").close()
-        src = os.path.join(d, m + "_mohaa.bsp")   # the retail map, kept for the props stage
+        # Keep the retail BSP in its own directory: SDHLT writes <map>.bsp in
+        # d, while the converter derives the script name from the source stem.
+        src_dir = os.path.join(d, "source")
+        os.makedirs(src_dir, exist_ok=True)
+        src = os.path.join(src_dir, m + ".bsp")
+        source_bsp = read(known[m])
         with open(src, "wb") as fh:
-            fh.write(read(known[m]))
+            fh.write(source_bsp)
+        try:
+            skyname, sky_files = mohaa_sky.stage_map_sky(sources, m, source_bsp, game_root)
+        except mohaa_sky.b19.BspError as exc:
+            # The sky is optional: an unreadable shader lump must not stop the map itself.
+            print("   %s: skybox skipped (%s)" % (m, exc))
+            skyname, sky_files = None, []
+        if skyname:
+            print("   %s: skybox %s (%d new CMPR faces)" % (m, skyname, len(sky_files)))
+        else:
+            print("   %s: no stageable retail skybox; leaving skyname unset" % m)
         dest = os.path.join(out_maps, m + ".bsp")
         size = CONFIG["texture_size"]
         sizes = [size] if size is not None else [TEXTURE_SIZE, TEXTURE_FALLBACK]
@@ -399,7 +571,10 @@ def stage_maps(sources, game_root, maps, work):
             if textures and CONFIG["texture_budget"]:
                 textures += ["--texture-budget", str(CONFIG["texture_budget"])]
             print("   %s: converting" % m)
-            _quiet(bsp19_to_map.main, [src, "-o", os.path.join(d, m + ".map"), "--wad", os.path.join(d, m + ".wad")]
+            convert_args = [src, "-o", os.path.join(d, m + ".map"), "--wad", os.path.join(d, m + ".wad")]
+            if skyname:
+                convert_args += ["--skyname", skyname]
+            _quiet(bsp19_to_map.main, convert_args
                    + flags.get(m, []) + [a for s in sources for a in ("--scripts", s)] + textures, log)
             print("   %s: compiling (SDHLT)" % m)
             # the textures go inside the BSP, so nothing on the card points back at this work folder
@@ -418,7 +593,14 @@ def stage_maps(sources, game_root, maps, work):
                 print("   %s: warning: %d KB over the GameCube's %d KB map budget (without its light)"
                       % (m, over // 1024 + 1, BSP_UNLIT_MAX // 1024))
         written.append(dest)
-        for ext in (".mcol", ".nodes"):
+        # MOHAA's light grid: how retail lights soldiers and other models
+        grid = os.path.join(game_root, "media", "lg_%s.gcg" % m)
+        try:
+            _quiet(bsp19_lightgrid.main, [src, "-o", grid], log)
+            written.append(grid)
+        except (ValueError, SystemExit) as e:
+            print("   %s: no light grid (%s); models light from the floor" % (m, e))
+        for ext in (".mcol", ".nodes", ".points"):
             side = os.path.join(d, m + ext)
             if os.path.isfile(side):
                 shutil.copy(side, os.path.join(out_maps, m + ext))
@@ -487,7 +669,7 @@ def stage_props(sources, game_root, maps, work):
         mprop = os.path.join(d, m + ".mprop")
         try:
             _quiet(props_models.main, list(sources) + [os.path.join(d, m + ".props"), "-o", mprop,
-                                                       "--bsp", os.path.join(d, m + "_mohaa.bsp")], log)
+                                                       "--bsp", os.path.join(d, "source", m + ".bsp")], log)
         except SystemExit:
             if not os.path.isfile(mprop):
                 raise
@@ -504,9 +686,12 @@ def stage_props(sources, game_root, maps, work):
 STAGES = {
     "menu": stage_menu,
     "loading": stage_loading,
+    "hud": stage_hud,
     "music": stage_music,
     "sounds": stage_sounds,
     "scripts": stage_scripts,
+    "tags": stage_tags,
+    "scriptmodels": stage_script_models,
     "maps": stage_maps,
     "worlddl": stage_worlddl,
     "props": stage_props,
@@ -522,13 +707,23 @@ def missing_tools(stage):
             import PIL  # noqa: F401
         except ImportError:
             return "needs Pillow and numpy (pip install pillow numpy)"
+    if stage == "hud":
+        try:
+            import PIL  # noqa: F401
+        except ImportError:
+            return "needs Pillow (pip install pillow)"
+    if stage == "scriptmodels":
+        try:
+            import PIL  # noqa: F401
+        except ImportError:
+            return "needs Pillow (pip install pillow)"
     if stage in ("maps", "props"):
         try:
             import PIL  # noqa: F401
         except ImportError:
             return "needs Pillow (pip install pillow)"
-    if stage in ("music", "movie") and not shutil.which("ffmpeg"):
-        return "needs ffmpeg"
+    if stage in ("music", "movie", "sounds") and not shutil.which("ffmpeg"):
+        return "needs ffmpeg (MP3/audio conversion)"
     if stage == "maps" and not sdhlt_dir():
         why = "--sdhlt %s is not the patched SDHLT" % CONFIG["sdhlt"] if CONFIG["sdhlt"] else sdhlt_buildable()
         if why:
@@ -569,6 +764,12 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--mohaa", help="installed MOHAA folder (holding main/)")
     ap.add_argument("--cd", nargs="+", help="install CD folders (holding DATA1.HDR / DATAn.CAB)")
+    ap.add_argument("--music-source", action="append", default=[], metavar="DIR",
+                    help="extra folder containing loose sound/ music files; repeat for split extractions")
+    ap.add_argument("--sound-source", action="append", default=[], metavar="DIR",
+                    help="extra folder containing loose sound/ effects or dialogue; repeat for split extractions")
+    ap.add_argument("--movie-source", action="append", default=[], metavar="DIR",
+                    help="extra folder containing the loose intro movie and soundtrack; repeat for split extractions")
     ap.add_argument("--sd", required=True, help="SD card root (or a folder to copy onto one later)")
     ap.add_argument("--gamedir", default="mohaa", help="game folder under xash3d/ (default mohaa)")
     ap.add_argument("--maps", default="", help="comma-separated maps (default: all the stage knows)")
@@ -592,6 +793,29 @@ def main(argv=None):
     a = ap.parse_args(argv)
     if not a.mohaa and not a.cd:
         ap.error("give --mohaa or --cd (or both)")
+    # Stages change cwd for native tools and the Xash bakers. Resolve every
+    # user-supplied path at the CLI boundary so relative paths keep working.
+    a.sd = os.path.abspath(a.sd)
+    if a.mohaa:
+        a.mohaa = os.path.abspath(a.mohaa)
+    if a.cd:
+        a.cd = [os.path.abspath(path) for path in a.cd]
+    a.music_source = [os.path.abspath(path) for path in a.music_source]
+    for path in a.music_source:
+        if not os.path.isdir(path):
+            ap.error("music source folder does not exist: %s" % path)
+    a.sound_source = [os.path.abspath(path) for path in a.sound_source]
+    for path in a.sound_source:
+        if not os.path.isdir(path):
+            ap.error("sound source folder does not exist: %s" % path)
+    a.movie_source = [os.path.abspath(path) for path in a.movie_source]
+    for path in a.movie_source:
+        if not os.path.isdir(path):
+            ap.error("movie source folder does not exist: %s" % path)
+    for name in ("sdhlt", "tools_dir", "xash3d_gc", "work"):
+        value = getattr(a, name)
+        if value:
+            setattr(a, name, os.path.abspath(value))
     CONFIG.update(sdhlt=a.sdhlt, xash3d_gc=a.xash3d_gc, fast_vis=a.fast_vis, tools_dir=a.tools_dir,
                   build_sdhlt=a.build_sdhlt, texture_size=a.texture_size,
                   texture_budget=a.texture_budget)
@@ -632,7 +856,17 @@ def main(argv=None):
     for s in stages:
         print("== %s" % s)
         try:
-            files = STAGES[s](sources, game_root, maps, work)
+            extra_sources = []
+            if s == "music":
+                extra_sources = a.music_source
+            elif s == "sounds":
+                extra_sources = a.sound_source
+            elif s == "movie":
+                extra_sources = a.movie_source
+            stage_sources = sources + extra_sources
+            if extra_sources:
+                print("%s sources: %s" % (s, ", ".join(extra_sources)))
+            files = STAGES[s](stage_sources, game_root, maps, work)
         except SystemExit as e:   # one stage's failure does not stop the others
             print("== %s: FAILED (%s)" % (s, e))
             failed.append(s)

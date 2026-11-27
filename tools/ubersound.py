@@ -15,22 +15,39 @@ playsound/loopsound, and writes <out>/maps/<map>.snd:
     door_open mohaa/mechanics/door_01.wav 0.80 160 auto
     door_open mohaa/mechanics/door_02.wav 0.80 160 auto     <- variants: the game picks one at random
 
-An alias with no exact definition resolves to its numbered variants (door_open1, door_open2...),
-the way MOHAA does. Samples move under sound/mohaa/ so they cannot clash with DoD's own.
+MOHAA looks up aliases by prefix: an exact alias and its non-underscore suffix variants
+(door_open1, door_open2...) are all candidates, while an underscore suffix starts a separate
+family. Samples move under sound/mohaa/ so they cannot clash with DoD's own.
 
 --wav also writes the referenced samples to <out>/sound/mohaa/..., as GoldSrc-friendly 16-bit
-mono PCM at 22050 Hz or less, from 8/16-bit PCM or IMA ADPCM sources (mp3 music is listed, not
-converted). Samples a script plays with loopsound get a cue point, which makes GoldSrc loop them.
+mono PCM at 22050 Hz or less, from 8/16-bit PCM or IMA ADPCM WAVs and MP3s decoded by ffmpeg.
+FFmpeg's band-limited SWR resampler handles format conversion and downsampling; a pure Python
+fallback remains for WAV input when ffmpeg is unavailable. Samples a script plays with loopsound
+get a cue point, which makes GoldSrc loop them.
 
 The output is retail data: write it outside the repository and never commit it.
 """
 import argparse
 import os
 import re
+import shutil
+import subprocess
 import sys
 import zipfile
 
 SOUND_LIMIT = 96  # samples one map may precache; DoD's own sounds need the rest of the engine's 512
+# The network GameCube profile reserves a 1 MiB ARAM sound ring. Its streaming
+# path refuses any one sample larger than half the ring (including its header).
+GC_SOUND_PCM_LIMIT = 512 * 1024 - 128
+
+# The map still calls this alias, and its commented legacy definition supplies the
+# original source and sound parms. Keep this scoped to that map and use it only if
+# no live global alias resolves.
+MAP_ALIAS_FALLBACKS = {
+    "m6l3a": {
+        "gate_large_open": ("sound/mechanics/GateWoodOpen_01.wav", 0.8, 160.0, "item"),
+    },
+}
 
 
 def collect(inputs, exts):
@@ -71,11 +88,57 @@ def read(entry):
 TOKEN = re.compile(r'"([^"]*)"|(\S+)')
 
 
+def strip_comments(text):
+    """Remove MOHAA block and line comments before parsing script commands."""
+    out, i, state = [], 0, "code"
+    while i < len(text):
+        ch = text[i]
+        if state == "code":
+            if text.startswith("//", i):
+                out.append(" ")
+                i += 2
+                state = "line"
+            elif text.startswith("/*", i):
+                out.append(" ")
+                i += 2
+                state = "block"
+            elif ch == '"':
+                out.append(ch)
+                i += 1
+                state = "string"
+            else:
+                out.append(ch)
+                i += 1
+        elif state == "line":
+            if ch in "\r\n":
+                out.append(ch)
+                state = "code"
+            i += 1
+        elif state == "block":
+            if text.startswith("*/", i):
+                i += 2
+                state = "code"
+            elif ch in "\r\n":
+                out.append(ch)
+                i += 1
+            else:
+                i += 1
+        else:  # quoted string
+            out.append(ch)
+            if ch == "\\" and i + 1 < len(text):
+                out.append(text[i + 1])
+                i += 2
+            else:
+                i += 1
+                if ch == '"':
+                    state = "code"
+    return "".join(out)
+
+
 def parse_aliases(text):
     """{alias: [(path, volume, mindist, channel)]} from ubersound script text."""
     out = {}
-    for raw in text.splitlines():
-        line = raw.split("//", 1)[0]
+    for line in strip_comments(text).splitlines():
         toks = [a if a else b for a, b in TOKEN.findall(line)]
         low = [t.lower() for t in toks]
         for kw in ("aliascache", "alias"):
@@ -115,7 +178,7 @@ def map_aliases(scripts, mapname):
         if path in seen or path not in scripts:
             continue
         seen.add(path)
-        text = read(scripts[path]).decode("latin-1")
+        text = strip_comments(read(scripts[path]).decode("latin-1"))
         for cmd, n in PLAY.findall(text):
             n = n.lower()
             if "." in n or n in NOT_ALIAS:
@@ -127,13 +190,25 @@ def map_aliases(scripts, mapname):
     return names, loops, seen
 
 
+# Sounds the game plays for map entities rather than for a script line: each class's retail TIKI names the alias
+# (models/statweapons/mg42_gun.tik fires "mg42_gun_snd_fire"). A map placing the class gets the alias.
+ENTITY_ALIASES = {
+    b"turretweapon_german_mg42": ("mg42_gun_snd_fire",),
+}
+
+
+def entity_aliases(bsp_bytes):
+    """Aliases the classes a map places need, from its BSP's entity text."""
+    out = set()
+    for cls, names in ENTITY_ALIASES.items():
+        if b'"' + cls + b'"' in bsp_bytes:
+            out.update(names)
+    return out
+
+
 def resolve(aliases, name):
     """The alias's samples (or its numbered variants'), each path once, silent placeholders dropped."""
-    if name in aliases:
-        rows = aliases[name]
-    else:
-        variants = sorted(k for k in aliases if k.startswith(name) and k[len(name):].isdigit())
-        rows = [v for k in variants for v in aliases[k]]
+    rows = _alias_rows(aliases, name)
     out, seen = [], set()
     for row in rows:
         key = row[0].lower()
@@ -144,11 +219,28 @@ def resolve(aliases, name):
     return out
 
 
+def _alias_rows(aliases, name):
+    # Match Alias_ListFindRandom: every name sharing this prefix participates unless the
+    # next character is '_'. This includes both the exact alias and suffix variants.
+    keys = (key for key in sorted(aliases)
+            if key.startswith(name) and (len(key) == len(name) or key[len(name)] != "_"))
+    return [row for key in keys for row in aliases[key]]
+
+
+def intentionally_silent(aliases, name):
+    """True when the alias is explicitly defined only with MOHAA's null.wav sentinel."""
+    rows = _alias_rows(aliases, name)
+    return bool(rows) and all(row[0].lower().replace("\\", "/").endswith("/null.wav") or
+                              row[0].lower().replace("\\", "/") == "null.wav" for row in rows)
+
+
 def sample_name(path):
     """sound/mechanics/door_01.wav -> mohaa/mechanics/door_01.wav (relative to GoldSrc's sound/)."""
     p = path.lower()
     if p.startswith("sound/"):
         p = p[6:]
+    if p.endswith(".mp3"):
+        p = p[:-4] + ".wav"
     return "mohaa/" + p
 
 
@@ -233,6 +325,11 @@ def read_wav(data):
 def write_wav(dest, rate, samples, loop):
     """16-bit mono PCM; loop adds a cue point at 0, which makes GoldSrc repeat the sample."""
     pcm = b"".join(int(v).to_bytes(2, "little", signed=True) for v in samples)
+    write_pcm_wav(dest, rate, pcm, loop)
+
+
+def write_pcm_wav(dest, rate, pcm, loop):
+    """Write little-endian 16-bit mono PCM, adding a cue point for looping samples."""
     fmt = (1).to_bytes(2, "little") + (1).to_bytes(2, "little") + rate.to_bytes(4, "little") + \
         (rate * 2).to_bytes(4, "little") + (2).to_bytes(2, "little") + (16).to_bytes(2, "little")
     chunks = b"fmt " + len(fmt).to_bytes(4, "little") + fmt + b"data" + len(pcm).to_bytes(4, "little") + pcm
@@ -247,7 +344,26 @@ def write_wav(dest, rate, samples, loop):
 
 
 def convert_wav(data, dest, loop=False):
-    """16-bit mono PCM at <= 22050 Hz. Returns None on success, or why it was skipped."""
+    """Mono PCM at 22.05 or 11.025 kHz, small enough for the GameCube ARAM ring."""
+    ffmpeg = shutil.which("ffmpeg")
+    if ffmpeg:
+        rate = wav_rate(data)
+        if isinstance(rate, str):
+            return rate
+        rate = min(rate, 22050)
+        why = convert_ffmpeg(data, dest, rate, loop, ffmpeg)
+        if why:
+            return why
+        if os.path.getsize(dest) - 44 > GC_SOUND_PCM_LIMIT and rate > 11025:
+            why = convert_ffmpeg(data, dest, 11025, loop, ffmpeg)
+            if why:
+                os.unlink(dest)
+                return why
+        if os.path.getsize(dest) - 44 > GC_SOUND_PCM_LIMIT:
+            os.unlink(dest)
+            return "exceeds the GameCube 1 MiB ARAM sound ring"
+        return None
+
     got = read_wav(data)
     if isinstance(got, str):
         return got
@@ -256,9 +372,54 @@ def convert_wav(data, dest, loop=False):
     while rate // step > 22050:
         step += 1
     frames = len(samples) // ch
+    if frames // step * 2 > GC_SOUND_PCM_LIMIT:
+        while rate // step > 11025:
+            step += 1
+    if frames // step * 2 > GC_SOUND_PCM_LIMIT:
+        return "exceeds the GameCube 1 MiB ARAM sound ring"
     mono = [sum(samples[f * ch:f * ch + ch]) // ch for f in range(0, frames, step)]
     write_wav(dest, rate // step, mono, loop)
     return None
+
+
+def wav_rate(data):
+    """Return the source WAV rate without decoding its full sample payload."""
+    if data[:4] != b"RIFF" or data[8:12] != b"WAVE":
+        return "not a wav file"
+    pos = 12
+    while pos + 8 <= len(data):
+        cid = data[pos:pos + 4]
+        size = int.from_bytes(data[pos + 4:pos + 8], "little")
+        chunk = data[pos + 8:pos + 8 + size]
+        if cid == b"fmt ":
+            if len(chunk) < 8:
+                return "short fmt chunk"
+            rate = int.from_bytes(chunk[4:8], "little")
+            return rate if rate > 0 else "invalid sample rate"
+        pos += 8 + size + (size & 1)
+    return "no fmt chunk"
+
+
+def convert_ffmpeg(data, dest, rate, loop=False, ffmpeg=None):
+    """Decode/resample audio with FFmpeg's band-limited SWR filter, then write PCM WAV."""
+    ffmpeg = ffmpeg or shutil.which("ffmpeg")
+    if not ffmpeg:
+        return "ffmpeg needed for band-limited audio conversion"
+    run = subprocess.run(
+        [ffmpeg, "-v", "error", "-i", "pipe:0", "-map", "0:a:0",
+         "-af", "aresample=%d:resampler=swr:filter_size=64:cutoff=0.95" % rate,
+         "-ar", str(rate), "-ac", "1", "-f", "s16le", "-acodec", "pcm_s16le", "pipe:1"],
+        input=data, capture_output=True)
+    if run.returncode or not run.stdout:
+        return "ffmpeg could not decode/resample sound sample"
+    pcm = run.stdout[:len(run.stdout) - len(run.stdout) % 2]
+    write_pcm_wav(dest, rate, pcm, loop)
+    return None
+
+
+def convert_mp3(data, dest, loop=False):
+    """Decode an MP3 alias to GameCube-friendly 22.05 kHz mono PCM WAV."""
+    return convert_ffmpeg(data, dest, 22050, loop)
 
 
 def main(argv=None):
@@ -281,17 +442,24 @@ def main(argv=None):
         os.path.basename(p)[:-4] for p in scripts if p.startswith("maps/") and p.count("/") == 1
         and not p.endswith(("_precache.scr", "soundcache.scr")))
     sounds = collect(args.inputs, (".wav", ".mp3")) if args.wav else {}
+    bsps = collect(args.inputs, (".bsp",))
     wanted, looped = {}, set()
     print("%d aliases defined" % len(aliases))
     for m in maps:
         names, loops, used = map_aliases(scripts, m)
+        if "maps/%s.bsp" % m in bsps:
+            names |= entity_aliases(read(bsps["maps/%s.bsp" % m]))
         if "maps/%s.scr" % m not in scripts:
             print("%s: no script" % m)
             continue
+        effective_aliases = dict(aliases)
+        for name, row in MAP_ALIAS_FALLBACKS.get(m.lower(), {}).items():
+            if name in names and not resolve(effective_aliases, name) and not intentionally_silent(effective_aliases, name):
+                effective_aliases.setdefault(name, []).append(row)
         rows, missing, samples = [], [], set()
         for name in sorted(names):
-            r = resolve(aliases, name)
-            if not r:
+            r = resolve(effective_aliases, name)
+            if not r and not intentionally_silent(effective_aliases, name):
                 missing.append(name)
             for path, vol, mindist, channel in r:
                 rows.append("%s %s %.2f %d %s" % (name, sample_name(path), vol, mindist, channel))
@@ -314,7 +482,11 @@ def main(argv=None):
             if src not in sounds:
                 skipped.append((src, "missing"))
                 continue
-            why = convert_wav(read(sounds[src]), os.path.join(args.out, "sound", rel), src in looped)
+            data = read(sounds[src])
+            if src.endswith(".mp3"):
+                why = convert_mp3(data, os.path.join(args.out, "sound", rel), src in looped)
+            else:
+                why = convert_wav(data, os.path.join(args.out, "sound", rel), src in looped)
             if why:
                 skipped.append((src, why))
             else:

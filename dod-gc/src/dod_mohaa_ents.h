@@ -5,6 +5,7 @@
 
 /* At map start (game rules construction): runs maps/<map>.scr if the map has one. */
 void DodGC_MohaaLevelInit( void );
+void DodGC_MohaaRegisterHudMessages( void );
 /* Every game rules Think. */
 void DodGC_MohaaThink( void );
 /* An entity event a script can wait for, e.g. ("trigger") from a trigger firing. */
@@ -14,5 +15,26 @@ void DodGC_MohaaEntityEvent( edict_t *e, const char *event );
 void DodGC_MohaaTrigger( edict_t *e, edict_t *activator );
 /* DispatchKeyValue: a key starting with '#' (MOHAA "#set", "#group") is for scripts only. */
 void DodGC_MohaaEntityKey( edict_t *e, const char *key, const char *value );
+
+/* MOHAA disguise: is the player disguised; the player fired, which ends it */
+int DodGC_MohaaPlayerDisguised( void );
+void DodGC_MohaaDisguiseBlown( edict_t *player );
+/* A script soldier saw an enemy for the first time (patrol ends, alarmthread runs). */
+void DodGC_MohaaActorAlerted( edict_t *e );
+/* CBasePlayer::PlayerUse, on a fresh USE press: a MOHAA trigger_use (Use) or trigger_multiple (Touch) brush within
+ * reach of the player fires. 1 when one did, so the stock door/button search is skipped this press. */
+class CBasePlayer;
+int DodGC_MohaaPlayerUse( CBasePlayer *player );
+/* MOHAA turretweapons (an info_target whose mohaa_classname is turretweapon_*): the nearest to from within radius.
+ * gun gets its x, y, yaw and the half arc it covers (#maxyawoffset, 0 the default); crew (may be NULL) becomes the gun's
+ * crew, so the gun turns with it. 1 when one is found. */
+int DodGC_MohaaTurretNear( const float from[3], float radius, float gun[4], edict_t *crew );
+/* Make a script grunt the crew of a turret at yaw covering arc_half degrees each side. 0: not a script grunt. */
+int DodGrunts_ManTurret( edict_t *e, float yaw, float arc_half );
+/* Probe aid: put every live soldier of a side (that is not switched off) in a ring around a point, so a fight can
+ * be staged in front of the camera. Returns how many moved. */
+int DodGrunts_ProbeGather( int team, const float at[3], float radius, int most );
+/* the script binding's id of an entity (0: none), for Dod_MohaaEntitySound and the like */
+uint32_t DodGC_MohaaEntityId( edict_t *e );
 
 #endif

@@ -18,6 +18,8 @@ usage: scripts/build-lean-iso.sh [options]
   --net            stage gamecube.cfg "net" for early BBA/eth2sp1 DHCP (-net)
   --map NAME       stage one BSP into lean maps/ (DoD or valve)
   --smoke MAP      disc --smoke-map MAP (auto map load; implies staging MAP)
+  --skip-worlddl   skip WorldDL only for a diagnostic smoke ISO (live BSP; static props absent)
+  --probe-gcvst    enable GX frame-stage timing for a world-render smoke ISO
   --listen MAP     playable listen host (local player plus one peer)
   --headless       server only; requires --listen (optional third Cube)
   --connect ADDR   peer client (gamecube.cfg connect ADDR); use with --net
@@ -52,6 +54,8 @@ WANT_NET=0
 FULL_MAP=0
 WORLD_RENDER=1
 WORLD_RENDER_EXPLICIT=0
+SKIP_WORLDDL=0
+PROBE_GCVST=0
 DUMPFRAMES=0
 DUMPEYE=""
 TAS=""
@@ -80,6 +84,8 @@ while [[ $# -gt 0 ]]; do
 		--core-sfx) STAGE_ARGS+=(--core-sfx) ;;
 		--world-render) WORLD_RENDER=1; WORLD_RENDER_EXPLICIT=1 ;;
 		--no-world-render) WORLD_RENDER=0; WORLD_RENDER_EXPLICIT=1 ;;
+		--skip-worlddl) SKIP_WORLDDL=1 ;;
+		--probe-gcvst) PROBE_GCVST=1 ;;
 		--dumpframes) DUMPFRAMES=1 ;;
 		--dumpeye)
 			DUMPEYE="${2:-}"
@@ -139,6 +145,14 @@ if [[ -z "$MAP" && "$WORLD_RENDER_EXPLICIT" -eq 0 ]]; then
 fi
 if (( DUMPFRAMES )) && [[ -z "$SMOKE" && -z "$LISTEN" && -z "$CONNECT" ]]; then
 	echo "error: --dumpframes requires --smoke, --listen, or --connect" >&2
+	exit 2
+fi
+if (( SKIP_WORLDDL )) && [[ -z "$SMOKE" ]]; then
+	echo "error: --skip-worlddl requires --smoke MAP" >&2
+	exit 2
+fi
+if (( PROBE_GCVST )) && [[ -z "$SMOKE" || $WORLD_RENDER -eq 0 ]]; then
+	echo "error: --probe-gcvst requires --smoke MAP with --world-render" >&2
 	exit 2
 fi
 if (( WORLD_RENDER )) && [[ -z "$MAP" ]]; then
@@ -229,6 +243,10 @@ if [[ "$DODGC_GAME" == mohaa ]]; then
 	mkdir -p "$GDATA/media" "$GDATA/maps"
 	python3 -c 'import sys; sys.path.insert(0, sys.argv[1]); import mohaa_sd; mohaa_sd.write_gameinfo(sys.argv[2], "mohaa")' \
 		"$DODGC_ROOT/../tools" "$GDATA" >/dev/null
+	# The bootstrap pk3 is built from this folder, and the engine reads delta.lst from it: without it a
+	# map load on mohaa dies with "Delta_InitFields: couldn't load file delta.lst" (the DoD copy in dod/
+	# is found, but its DIR read fails for memory at that point).
+	cp -f "$LEAN/delta.lst" "$GDATA/delta.lst"
 	# GCube_HasGameAssets wants liblist.gam and a maps/ folder in the game folder.
 	printf 'MOHAA maps are read from sd:/xash3d/mohaa/maps/ (tools/mohaa_sd.py).\n' > "$GDATA/maps/README.txt"
 	[[ ! -f "$LEAN/media/StartupVids.txt" ]] || cp -f "$LEAN/media/StartupVids.txt" "$GDATA/media/StartupVids.txt"
@@ -330,6 +348,8 @@ pack() {
 	(( SKIP_STARTUP_VIDS )) && args+=(--skip-startup-vids)
 	if [[ -n "$SMOKE" ]]; then
 		args+=(--smoke-map "$SMOKE")
+		(( SKIP_WORLDDL )) && args+=(--skip-smoke-worlddl)
+		(( PROBE_GCVST )) && args+=(--probe-gcvst)
 		(( DUMPFRAMES )) && args+=(--probe-dumpframes)
 	fi
 	(( WORLD_RENDER )) && args+=(--world-render)

@@ -1,0 +1,187 @@
+==> [dod-gc] building DoD HLSDK + engine DOL (profile=dod → dodgc.dol)
+integrated DoD gameplay into /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/hlsdk-portable
+==> [dod-gc] linking mohaagc.dol (XASH_GAMEDIR=mohaa, DoD game code)
+GameCube BBA link: XASH_GAMECUBE_LINK_BBA=0
+GameCube OGC stack resolution:
+  libogc /opt/devkitpro/libogc fat=libfat
+GameCube build profile: gamedir=mohaa dol=mohaagc.dol
+GameCube build lock: /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/xash3d-gc/.ai/build-gamecube.lock
+Skipped 3 source entities absent from archive
+Generated 280 GameCube HLSDK entity exports: /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/out/network-hlsdk/mohaa/dlls/gamecube_server_entity_exports.inc
+Setting top to                                          : /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/xash3d-gc
+Setting out to                                          : /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/xash3d-gc/build
+Build type                                              : humanrights
+LTO build                                               : no
+PolyOpt build                                           : no
+OpenMP build                                            : no
+Generate profile                                        : no
+Use profile                                             : not found
+GameCube OGC stack: stack=libogc root=/opt/devkitpro/libogc fat=libfat
+Checking for 'gcc' (C compiler)                         : /opt/devkitpro/devkitPPC/bin/powerpc-eabi-gcc
+Target OS                                               : gamecube
+Target CPU                                              : powerpc
+Target binfmt                                           : elf
+Checking for 'g++' (C++ compiler)                       : /opt/devkitpro/devkitPPC/bin/powerpc-eabi-g++
+Target OS                                               : gamecube
+Target CPU                                              : powerpc
+Target binfmt                                           : elf
+Checking for c flags '-MMD'                             : yes
+Checking for cxx flags '-MMD'                           : yes
+Checking for program 'strip'                            : /opt/devkitpro/devkitPPC/bin/powerpc-eabi-strip
+Checking for program '/opt/devkitpro/devkitPPC/bin/powerpc-eabi-objcopy' : /opt/devkitpro/devkitPPC/bin/powerpc-eabi-objcopy
+Checking if 'gcc' generates 32-bit code                                  : yes
+Checking for program 'clang-format'                                      : /usr/bin/clang-format
+Checking clang-format version                                            : 21
+GameCube OGC stack: stack=libogc root=/opt/devkitpro/libogc fat=libfat
+GameCube pure Flipper GX renderer enabled (soft/GL disabled)
+Checking for required C flags                                            : yes
+Checking for required C++ flags                                          : yes
+Checking supported flags for gcc in parallel                             : started
+... -Werror=implicit-function-declaration                                : yes
+-> processing test results                                               : all ok
+Checking supported flags for g++ in parallel                             : started
+-> processing test results                                               : all ok
+GameCube slim client slots: table 5, default 3
+Checking for library m                                                   : yes
+--> public                                                               : in progress
+Checking for program 'git'                                               : /usr/bin/git
+Git commit hash                                                          : db73d0d1-dirty
+Git branch                                                               : HEAD
+Git commit date                                                          : 2026-11-22 02:08:21 -0800
+Checking for alloca in alloca.h                                          : yes
+Executing 8 configuration tests                                          : started
+Checking for strncasecmp                                                 : yes
+Checking for strnlen                                                     : yes
+Checking for tgmath.h                                                    : yes
+Checking for strlcpy                                                     : yes
+Checking for strcasestr                                                  : yes
+Checking for strlcat                                                     : yes
+Checking for strcasecmp                                                  : yes
+Checking for strchrnul                                                   : yes
+-> processing test results                                               : all ok
+<-- public                                                               : done
+--> 3rdparty/miniz                                                       : in progress
+<-- 3rdparty/miniz                                                       : done
+--> filesystem                                                           : in progress
+Checking for memfd_create                                                : no
+Checking for d_type field in struct dirent                               : yes
+<-- filesystem                                                           : done
+--> 3rdparty/libbacktrace                                                : in progress
+<-- 3rdparty/libbacktrace                                                : done
+--> 3rdparty/library_suffix                                              : in progress
+<-- 3rdparty/library_suffix                                              : done
+--> 3rdparty/yy-thunks                                                   : in progress
+<-- 3rdparty/yy-thunks                                                   : done
+--> 3rdparty/extras                                                      : in progress
+Checking for program 'rsvg-convert'                                      : not found
+<-- 3rdparty/extras                                                      : done
+--> ref/common                                                           : in progress
+<-- ref/common                                                           : done
+--> ref/gx                                                               : in progress
+<-- ref/gx                                                               : done
+--> 3rdparty/bzip2                                                       : in progress
+<-- 3rdparty/bzip2                                                       : done
+--> 3rdparty/mbedtls                                                     : in progress
+<-- 3rdparty/mbedtls                                                     : done
+--> 3rdparty/opus                                                        : in progress
+Checking for C99 lrint                                                   : yes
+Checking for C99 lrintf                                                  : yes
+Checking for C99 VLA support                                             : yes
+<-- 3rdparty/opus                                                        : done
+--> 3rdparty/libogg                                                      : in progress
+Checking for header inttypes.h                                           : yes
+<-- 3rdparty/libogg                                                      : done
+--> 3rdparty/vorbis                                                      : in progress
+Checking for memory.h header                                             : yes
+Checking for alloca in alloca.h header                                   : yes
+<-- 3rdparty/vorbis                                                      : done
+--> 3rdparty/opusfile                                                    : in progress
+<-- 3rdparty/opusfile                                                    : done
+--> 3rdparty/mainui                                                      : in progress
+Checking if 'g++' supports C++11                                         : yes
+<-- 3rdparty/mainui                                                      : done
+--> 3rdparty/MultiEmulator                                               : in progress
+<-- 3rdparty/MultiEmulator                                               : done
+--> engine                                                               : in progress
+Checking for getrusage                                                   : no
+Checking if a pthread flag is necessary for compiling                    : None
+Checking if a pthread flag is necessary for linking                      : None
+<-- engine                                                               : done
+'configure' finished successfully (0.584s)
+GameCube ref_gx static library (XASH_PURE_GX=1) scheduled
+GameCube HLSDK gamedir=mohaa (server=found client=found)
+GameCube engine link stack: stack=libogc root=/opt/devkitpro/libogc fat=libfat
+Using GameCube HLSDK server archive from /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/out/network-hlsdk
+Using GameCube HLSDK client archive from /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/out/network-hlsdk
+Build commands will be stored in build/compile_commands.json
+Waf: Entering directory `/home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/xash3d-gc/build'
+GameCube ref_gx static library (XASH_PURE_GX=1) scheduled
+GameCube HLSDK gamedir=mohaa (server=found client=found)
+GameCube engine link stack: stack=libogc root=/opt/devkitpro/libogc fat=libfat
+Using GameCube HLSDK server archive from /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/out/network-hlsdk
+Using GameCube HLSDK client archive from /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/out/network-hlsdk
+[  6/617] Processing public/crclib.c
+[  7/617] Processing public/atlas.c
+[  8/617] Processing public/crtlib.c
+[  9/617] Processing public/utflib.c
+[ 10/617] Processing public/xash3d_mathlib.c
+[ 11/617] Processing public/dllhelpers.c
+[ 12/617] Processing public/getopt.c
+[ 13/617] Processing public/matrixlib.c
+[ 14/617] Processing public/build.c
+[176/617] Processing ref/common/ref_skybox.c
+[177/617] Processing ref/common/ref_math.c
+[178/617] Processing ref/common/ref_light.c
+[179/617] Processing ref/common/ref_image.c
+[180/617] Processing ref/common/ref_image.c
+[181/617] Processing ref/common/ref_skybox.c
+[182/617] Processing ref/common/ref_math.c
+[183/617] Processing ref/common/ref_light.c
+[184/617] Processing public/build_vcs.c
+[536/617] Processing engine/server/sv_main.c
+[617/617] Linking build/engine/xash
+Waf: Leaving directory `/home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/xash3d-gc/build'
+'build' finished successfully (2.828s)
+Waf: Entering directory `/home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/xash3d-gc/build'
+GameCube ref_gx static library (XASH_PURE_GX=1) scheduled
+GameCube HLSDK gamedir=mohaa (server=found client=found)
+GameCube engine link stack: stack=libogc root=/opt/devkitpro/libogc fat=libfat
+Using GameCube HLSDK server archive from /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/out/network-hlsdk
+Using GameCube HLSDK client archive from /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/out/network-hlsdk
+[ 18/621] Processing ref/common/ref_light.c
+[ 19/621] Processing ref/common/ref_image.c
+[ 20/621] Processing ref/common/ref_math.c
+[ 21/621] Processing ref/common/ref_skybox.c
+[ 22/621] Processing ref/common/ref_image.c
+[ 23/621] Processing ref/common/ref_math.c
+[ 24/621] Processing ref/common/ref_skybox.c
+[ 25/621] Processing ref/common/ref_light.c
+- install /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/xash3d-gc/OUT/libfilesystem_stdio.a (from build/filesystem/libfilesystem_stdio.a)
+- install /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/xash3d-gc/OUT/mohaa/extras.pk3 (from build/3rdparty/extras/extras.pk3)
+- install /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/xash3d-gc/OUT/libref_gx.a (from build/ref/gx/libref_gx.a)
+- install /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/xash3d-gc/OUT/libmenu.a (from build/3rdparty/mainui/libmenu.a)
+Waf: Leaving directory `/home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/xash3d-gc/build'
+'install' finished successfully (1.257s)
+DOL generated successfully: OUT/bin/mohaagc.dol
+xash3d-gc hardware handoff
+built_at=2026-11-23T03:22:22Z
+host=ceres
+renderer=REF_GX
+policy=retail-flipper
+loader=swiss
+gamedir=mohaa
+dol_name=mohaagc.dol
+ogc_stack=libogc
+ogc_root=/opt/devkitpro/libogc
+fat_provider=libfat
+elf=OUT/bin/xash
+elf_profile=OUT/bin/xash-mohaa
+dol=OUT/bin/mohaagc.dol
+elf_bytes=45174256
+dol_bytes=7472064
+Handoff metadata: OUT/bin/gamecube-handoff.txt
+GameCube build installed to OUT/
+Skipping disc build (XASH3D_GC_SKIP_DISC_BUILD=1).
+For disc packaging, run: python3 scripts/build-gamecube-disc.py --output OUT/xash3d-gc.iso --data Half-Life/mohaa --gamedir mohaa --dol OUT/bin/mohaagc.dol
+For DOL testing, provide assets at sd:/xash3d/mohaa/ before launching OUT/bin/mohaagc.dol.
+==> [dod-gc] DOL ready: /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/out/dodgc.dol

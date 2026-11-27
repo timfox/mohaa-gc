@@ -1,0 +1,15 @@
+{
+  "file": "20261124-005153-m1l2a-retail-tip-wrap-silent.mp4",
+  "date": "2026-11-24T00:51:53",
+  "commit": "2c0a59c871",
+  "engine_commit": "db73d0d126",
+  "route": "m1l2a-retail-tip-wrap",
+  "disc": "/tmp/mohaa-compass-build/mohaa-hud-retail-args-wrap-probe.iso",
+  "duration_s": 45.2,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 0.9,
+  "project": "mohaa-gc",
+  "audio": "silent screen capture (forced or PulseAudio unavailable)"
+}

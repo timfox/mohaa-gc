@@ -1,0 +1,15 @@
+{
+  "file": "20261123-222614-m1l3a-mohnightfog-direct-silent.mp4",
+  "date": "2026-11-23T22:26:14",
+  "commit": "06dfdba066",
+  "engine_commit": "db73d0d126",
+  "route": "m1l3a-mohnightfog-direct",
+  "disc": "/tmp/mohaa-skies-stage-update/out/m1l3a-mohnightfog-smoke.iso",
+  "duration_s": 34.2,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 0.1,
+  "project": "mohaa-gc",
+  "audio": "silent screen capture (forced or PulseAudio unavailable)"
+}

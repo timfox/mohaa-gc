@@ -1,0 +1,4 @@
+[00:10:13] Xash3D GameCube: MAP_READY m3l1a
+Xash3D GameCube: MAP_READY m3l1a
+[00:10:18] Xash3D GameCube: script farplane 2681 colour 158 158 156
+[00:10:18] Xash3D GameCube: fog map farplane colour=158,158,156 end=2681 zfar=2937

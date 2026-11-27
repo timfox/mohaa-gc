@@ -1,0 +1,146 @@
+[in#0/roq @ 0x5d28527f3c40] Error during demuxing: Input/output error
+unpacking the install cabinets (once) ...
+sources: /tmp/mohaa-av-cd-stage-20261122/.mohaa-work/cd/main, /home/tim/Desktop/mohaa-gc/retail/main
+writing: /tmp/mohaa-av-cd-stage-20261122/xash3d/mohaa
+== music
+music sources: /home/tim/Desktop/mohaa-gc/retail/unshield/main
+51 mood tables, 79 music refs (26 triggered cues)
+converted 75 tracks, 3 missing, 0 failed; skipped 1 intentional no-stream sentinel(s)
+  missing sound/amb_stereo/amb_teamdm6_trainstation_ext.mp3
+  missing sound/mohpc_prototype_music/the_jet_aircraft_facility.mp3
+  missing sound/music/mus_snipertown_01e.mp3
+  note: MOHAA stores these in the separate Sound AmbStereo Files CD group; supply both install CDs with mohaa_sd.py --cd or add an extracted loose-audio folder with --music-source (mohaa_sd.py) / as an input directory (music.py)
+== music: 126 files, 355.9 MB
+   xash3d/mohaa/music/m1l1.mood
+   xash3d/mohaa/music/m1l2a.mood
+   xash3d/mohaa/music/m1l2b.mood
+   xash3d/mohaa/music/m1l3a.mood
+   xash3d/mohaa/music/m1l3b.mood
+   xash3d/mohaa/music/m1l3c.mood
+   xash3d/mohaa/music/m2l1.mood
+   xash3d/mohaa/music/m2l2a.mood
+   xash3d/mohaa/music/m2l2b.mood
+   xash3d/mohaa/music/m2l3.mood
+   xash3d/mohaa/music/m3l1.mood
+   xash3d/mohaa/music/m3l1a.mood
+   xash3d/mohaa/music/m3l1b.mood
+   xash3d/mohaa/music/m3l2.mood
+   xash3d/mohaa/music/m3l3.mood
+   xash3d/mohaa/music/m4l0.mood
+   xash3d/mohaa/music/m4l1.mood
+   xash3d/mohaa/music/m4l2.mood
+   xash3d/mohaa/music/m4l3.mood
+   xash3d/mohaa/music/m5l1a.mood
+   xash3d/mohaa/music/m5l1b.mood
+   xash3d/mohaa/music/m5l2a.mood
+   xash3d/mohaa/music/m5l2b.mood
+   xash3d/mohaa/music/m5l3.mood
+   xash3d/mohaa/music/m6l1a.mood
+   xash3d/mohaa/music/m6l1b.mood
+   xash3d/mohaa/music/m6l1c.mood
+   xash3d/mohaa/music/m6l2a.mood
+   xash3d/mohaa/music/m6l2b.mood
+   xash3d/mohaa/music/m6l3.mood
+   xash3d/mohaa/music/m6l3a.mood
+   xash3d/mohaa/music/m6l3b.mood
+   xash3d/mohaa/music/m6l3c.mood
+   xash3d/mohaa/music/m6l3d.mood
+   xash3d/mohaa/music/m6l3e.mood
+   xash3d/mohaa/music/mohdm1.mood
+   xash3d/mohaa/music/mohdm2.mood
+   xash3d/mohaa/music/mohdm3.mood
+   xash3d/mohaa/music/mohdm4.mood
+   xash3d/mohaa/music/mohdm5.mood
+   xash3d/mohaa/music/mohdm6.mood
+   xash3d/mohaa/music/mohdm7.mood
+   xash3d/mohaa/music/mohpc_prototype.mood
+   xash3d/mohaa/music/obj_team1.mood
+   xash3d/mohaa/music/obj_team2.mood
+   xash3d/mohaa/music/obj_team3.mood
+   xash3d/mohaa/music/obj_team4.mood
+   xash3d/mohaa/music/obj_team5.mood
+   xash3d/mohaa/music/teamdm1.mood
+   xash3d/mohaa/music/teamdm6.mood
+   xash3d/mohaa/music/training.mood
+   xash3d/mohaa/sound/mohaa/music/amb_m1_bunker_01.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m1_bunker_02.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m1_bunker_03.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m1_canyon_01.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m1_cliff_01.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m1_interior_01.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m1_townext.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m1_warehouseext.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m2_snowbattleext.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m2_snowext.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m2_snowint.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m2_subfacility.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m2_subint.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m2_subpenint02.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m2_ventint.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m3_battlebeach_01.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m3_battlebeach_02.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m3_battleint_01.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m3_higgins_02.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m3_higgins_03.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m3_townext.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m3_townint_1.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m3_trees.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m4_basement_01.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m4_bunkerint_01.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m4_churchint_02.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m4_countryext_01.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m4_countryext_02.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m4_countryext_03.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m4_traintrackext.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m5_bridge.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m5_bridgeint.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m5_field.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m5_townext_1.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m5_townext_2.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m5_townint.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m5_trees.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m6_battleext.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m6_battleint01.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m6_battleint02.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m6_buildinginnerint.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m6_bunkerint2.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m6_bunkerint3.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m6_bunkerint_01.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m6_facilityint.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m6_parkareaext.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m6_prisonint.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m6_townext.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m6_traintrackext.wav
+   xash3d/mohaa/sound/mohaa/music/amb_m6_woodsext_01.wav
+   xash3d/mohaa/sound/mohaa/music/mus_01a_suspense.wav
+   xash3d/mohaa/sound/mohaa/music/mus_02b_suspense.wav
+   xash3d/mohaa/sound/mohaa/music/mus_03b_success.wav
+   xash3d/mohaa/sound/mohaa/music/mus_03c_suspense.wav
+   xash3d/mohaa/sound/mohaa/music/mus_04a_suspense.wav
+   xash3d/mohaa/sound/mohaa/music/mus_04b_suspense.wav
+   xash3d/mohaa/sound/mohaa/music/mus_04f_suspense.wav
+   xash3d/mohaa/sound/mohaa/music/mus_06a_mystery.wav
+   xash3d/mohaa/sound/mohaa/music/mus_10a_action.wav
+   xash3d/mohaa/sound/mohaa/music/mus_11a_surprise.wav
+   xash3d/mohaa/sound/mohaa/music/mus_11b_action.wav
+   xash3d/mohaa/sound/mohaa/music/mus_14a_action.wav
+   xash3d/mohaa/sound/mohaa/music/mus_15a_mystery.wav
+   xash3d/mohaa/sound/mohaa/music/mus_16a_mystery.wav
+   xash3d/mohaa/sound/mohaa/music/mus_17a_mystery.wav
+   xash3d/mohaa/sound/mohaa/music/mus_17b_mystery.wav
+   xash3d/mohaa/sound/mohaa/music/mus_17c_failure.wav
+   xash3d/mohaa/sound/mohaa/music/mus_17d_failure.wav
+   xash3d/mohaa/sound/mohaa/music/mus_18a_action.wav
+   xash3d/mohaa/sound/mohaa/music/mus_northafrica_01a.wav
+   xash3d/mohaa/sound/mohaa/music/mus_schmerzen_01a.wav
+   xash3d/mohaa/sound/mohaa/music/mus_schmerzen_01f.wav
+   xash3d/mohaa/sound/mohaa/music/mus_snipertown_01a.wav
+   xash3d/mohaa/sound/mohaa/music/mus_snipertown_01b.wav
+   xash3d/mohaa/sound/mohaa/music/mus_tigertank_01a.wav
+== movie
+movie sources: /home/tim/Desktop/mohaa-gc/retail/video-out/Video_Files
+intro movie: video/intro.roq -> media/mohaa_intro.gcvid (2503 frames, 166.9 s, 1 keyframes, 137.9 MB, 0.83 MB/s video)
+== movie: 2 files, 161.0 MB
+   xash3d/mohaa/media/mohaa_intro.gcvid
+   xash3d/mohaa/media/mohaa_intro.gcpcm
+done: 516.9 MB new under /tmp/mohaa-av-cd-stage-20261122/xash3d/mohaa

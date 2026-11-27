@@ -1,0 +1,2 @@
+xash3d/mohaa/sound/mohaa/mechanics/shortwave2.wav: present, 352366 bytes, 22050 Hz, 1 channel, 16-bit PCM, cue=True
+xash3d/mohaa/sound/mohaa/mechanics/static1.wav: present, 309222 bytes, 11025 Hz, 1 channel, 16-bit PCM, cue=True

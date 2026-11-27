@@ -1,0 +1,15 @@
+{
+  "file": "20261124-010859-m1l2a-retail-trigger-live-silent.mp4",
+  "date": "2026-11-24T01:08:59",
+  "commit": "be19bf9df1",
+  "engine_commit": "db73d0d126",
+  "route": "m1l2a-retail-trigger-live",
+  "disc": "/tmp/mohaa-compass-build/mohaa-m1l2a-retail-trigger-input.iso",
+  "duration_s": 65.3,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 0.4,
+  "project": "mohaa-gc",
+  "audio": "silent screen capture (forced or PulseAudio unavailable)"
+}

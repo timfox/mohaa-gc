@@ -1,0 +1,46 @@
+== m3l1a
+[20:14:59] Xash3D GameCube: m3l1a parity tiers walls 23/23 logic 187/222 lights 0/0, baked illusionary 0
+[20:15:00] Xash3D GameCube: mem stage=map active total=333.96 Kb delta=17.15 Kb hwm=333.96 Kb map=m3l1a heap_used=1.30 Mb heap_free=183.88 Kb unclaimed=20 Kb
+[20:15:00] Xash3D GameCube: mem stage=newgame world present total=350.09 Kb delta=16.13 Kb hwm=350.09 Kb map=m3l1a heap_used=1.05 Mb heap_free=437.66 Kb unclaimed=20 Kb
+[20:15:01] mohaa: 1104 script points from maps/m3l1a.points, 56626 bytes
+script errors: 5
+== m1l2a
+[20:20:56] Xash3D GameCube: m1l2a parity tiers walls 84/84 logic 38/38 lights 0/0, baked illusionary 0
+[20:20:56] Xash3D GameCube: mem stage=map active total=250.23 Kb delta=8.50 Kb hwm=250.23 Kb map=m1l2a heap_used=1.40 Mb heap_free=92.91 Kb unclaimed=4 Kb
+[20:20:56] Xash3D GameCube: mem stage=newgame world present total=265.80 Kb delta=15.57 Kb hwm=265.80 Kb map=m1l2a heap_used=1.15 Mb heap_free=347.26 Kb unclaimed=4 Kb
+[20:20:57] mohaa: 97 script points from maps/m1l2a.points, 4936 bytes
+[20:20:57] mohaa: t763 mans the MG42 t737
+[20:20:57] mohaa: t739 mans the MG42 t738
+[20:20:57] mohaa: t735 mans the MG42 t736
+script errors: 43
+== m1l2b
+[20:24:09] Xash3D GameCube: m1l2b parity tiers walls 22/22 logic 69/69 lights 0/0, baked illusionary 0
+[20:24:10] Xash3D GameCube: mem stage=map active total=235.67 Kb delta=7.77 Kb hwm=235.67 Kb map=m1l2b heap_used=1.46 Mb heap_free=26.48 Kb unclaimed=8 Kb
+[20:24:10] Xash3D GameCube: mem stage=newgame world present total=251.24 Kb delta=15.57 Kb hwm=251.24 Kb map=m1l2b heap_used=1.21 Mb heap_free=280.84 Kb unclaimed=8 Kb
+[20:24:10] mohaa: 171 script points from maps/m1l2b.points, 8851 bytes
+[20:24:10] mohaa: spot1owner mans the MG42 t355
+[20:24:10] mohaa: spot4owner mans the MG42 t358
+[20:24:10] mohaa: spot3owner mans the MG42 t357
+[20:24:10] mohaa: spot2owner mans the MG42 t356
+[20:24:39] mohaa: patroller03 patrols to patrolpath03b
+[20:24:39] mohaa: patroller02 patrols to patrolpath02
+[20:24:39] mohaa: patroller03 patrols to t262
+[20:24:47] mohaa: patroller03 patrols to t268
+[20:24:49] mohaa: patroller03 patrols to t267
+[20:24:51] mohaa: patroller03 patrols to t269
+[20:24:52] mohaa: patroller02 patrols to t329
+script errors: 44
+== m4l2
+[20:27:25] Xash3D GameCube: m4l2 parity tiers walls 84/84 logic 117/117 lights 0/0, baked illusionary 0
+[20:27:26] Xash3D GameCube: mem stage=map active total=232.76 Kb delta=12.04 Kb hwm=232.76 Kb map=m4l2 heap_used=1.32 Mb heap_free=74.19 Kb unclaimed=104 Kb
+[20:27:26] Xash3D GameCube: mem stage=newgame world present total=248.89 Kb delta=16.13 Kb hwm=248.89 Kb map=m4l2 heap_used=1.07 Mb heap_free=35.97 Kb unclaimed=396 Kb
+[20:27:26] mohaa: 186 script points from maps/m4l2.points, 9639 bytes
+[20:27:26] mohaa: spotguy01 mans the MG42 t394
+[20:27:26] mohaa: spotguy02 mans the MG42 t376
+script errors: 48
+== m1l3b
+[20:30:39] Xash3D GameCube: m1l3b parity tiers walls 13/13 logic 58/58 lights 0/0, baked illusionary 0
+[20:30:39] Xash3D GameCube: mem stage=map active total=289.97 Kb delta=4.22 Kb hwm=289.97 Kb map=m1l3b heap_used=1.24 Mb heap_free=210.40 Kb unclaimed=52 Kb
+[20:30:39] Xash3D GameCube: mem stage=newgame world present total=306.10 Kb delta=16.13 Kb hwm=306.10 Kb map=m1l3b heap_used=1.24 Mb heap_free=208.17 Kb unclaimed=52 Kb
+[20:30:39] mohaa: 232 script points from maps/m1l3b.points, 11604 bytes
+script errors: 39

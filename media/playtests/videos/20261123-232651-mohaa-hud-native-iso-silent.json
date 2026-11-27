@@ -1,0 +1,15 @@
+{
+  "file": "20261123-232651-mohaa-hud-native-iso-silent.mp4",
+  "date": "2026-11-23T23:26:51",
+  "commit": "6be6ce53a9",
+  "engine_commit": "db73d0d126",
+  "route": "mohaa-hud-native-iso",
+  "disc": "/tmp/mohaa-hud-visual/mohaa-m1l1-hud-native-build.iso",
+  "duration_s": 60.1,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 1.0,
+  "project": "mohaa-gc",
+  "audio": "silent screen capture (forced or PulseAudio unavailable)"
+}

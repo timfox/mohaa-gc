@@ -1,0 +1,15 @@
+$ props_models /home/tim/Desktop/mohaa-gc/retail/main /tmp/mohaa-m1l2b-assets-20261122/work/maps/m1l2b/m1l2b.props -o /tmp/mohaa-m1l2b-assets-20261122/work/maps/m1l2b/m1l2b.mprop --bsp /tmp/mohaa-m1l2b-assets-20261122/work/maps/m1l2b/source/m1l2b.bsp
+wrote /tmp/mohaa-m1l2b-assets-20261122/work/maps/m1l2b/m1l2b.mprop (1672410 bytes)
+  instances            233
+  instances_unloaded   0
+  models               80
+  models_unloaded      0
+  textures             60
+  textures_missing     0
+  triangles            19443
+  texture_bytes        989184
+  textures_blend_cutout 2
+  world_models         44
+  world_models_lit     44
+$ /usr/bin/python3 /home/tim/Desktop/mohaa-gc/cutscene-20261122/xash3d-gc/scripts/bake_props_goldsrc.py --map /tmp/mohaa-m1l2b-assets-20261122/sd/xash3d/mohaa/maps/m1l2b.bsp --mprop /tmp/mohaa-m1l2b-assets-20261122/work/maps/m1l2b/m1l2b.mprop --out /tmp/mohaa-m1l2b-assets-20261122/sd/xash3d/mohaa/media
+  props: gp_m1l2b.gcp instances=254 models=101 tris=20089 (placed 38761) chains=756608 B far=24672 B impostors=31 cells=21 (182 members) pvs=56 lit=44, pt_m1l2b.gct materials=91 702144 B

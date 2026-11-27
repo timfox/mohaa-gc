@@ -1,0 +1,15 @@
+{
+  "file": "20261124-022249-m1l2a-compass-direct-pad-silent.mp4",
+  "date": "2026-11-24T02:22:49",
+  "commit": "43fa234",
+  "engine_commit": "db73d0d126",
+  "route": "m1l2a-compass-direct-pad",
+  "disc": "/tmp/mohaa-hud-refine/out/mohaa-compass-direct-pad.iso",
+  "duration_s": 34.5,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 0.4,
+  "project": "mohaa-gc",
+  "audio": "silent screen capture (forced or PulseAudio unavailable)"
+}

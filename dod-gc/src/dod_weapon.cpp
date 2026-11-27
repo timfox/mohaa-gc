@@ -161,10 +161,22 @@ void CDodWeapon::PlayViewSounds( void )
 int CDodWeapon::GetItemInfo( ItemInfo *p )
 {
 	const DodWeaponDef *def = Def();
+	const char *gamedir = CVAR_GET_STRING( "gamedir" );
+	const char *mohaa_ammo = NULL;
 	if( !def )
 		return 0;
+	if( gamedir && !strcmp( gamedir, "mohaa" ) )
+		switch( def->id ) {
+		case DOD_WEAPON_GARAND: case DOD_WEAPON_SPRINGFIELD:
+		case DOD_WEAPON_K98: case DOD_WEAPON_K98_SCOPED: mohaa_ammo = "mohaa_rifle"; break;
+		case DOD_WEAPON_THOMPSON: case DOD_WEAPON_MP40: case DOD_WEAPON_STG44: mohaa_ammo = "mohaa_smg"; break;
+		case DOD_WEAPON_BAR: case DOD_WEAPON_BROWNING: case DOD_WEAPON_MG42: mohaa_ammo = "mohaa_mg"; break;
+		case DOD_WEAPON_BAZOOKA: case DOD_WEAPON_PSCHRECK: mohaa_ammo = "mohaa_heavy"; break;
+		case DOD_WEAPON_COLT: case DOD_WEAPON_LUGER: mohaa_ammo = "mohaa_pistol"; break;
+		default: break;
+		}
 	p->pszName = def->classname;
-	p->pszAmmo1 = def->ammo;
+	p->pszAmmo1 = mohaa_ammo ? mohaa_ammo : def->ammo;
 	p->iMaxAmmo1 = def->ammo_max;
 	p->pszAmmo2 = NULL;
 	p->iMaxAmmo2 = -1;

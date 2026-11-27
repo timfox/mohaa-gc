@@ -1,0 +1,442 @@
+==> [dod-gc] building DoD HLSDK + engine DOL (profile=dod → dodgc.dol)
+integrated DoD gameplay into /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/hlsdk-portable
+==> HLSDK GameCube archives for gamedir=dod → /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/out/network-hlsdk
+    note: retail DoD client is vgui2-blocked upstream; this tree uses
+    HL1SDK deathmatch as the code base while mirroring DoD assets.
+HLSDK source: /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/hlsdk-portable
+branch: claude/dod-hlsdk-integration
+commit: 0e324da
+mobile_hacks: local branch not present
+gamecube hooks: present
+probe: OK
+Already on 'claude/dod-hlsdk-integration'
+M	cl_dll/StudioModelRenderer.cpp
+M	cl_dll/entity.cpp
+M	cl_dll/hud.cpp
+M	cl_dll/hud.h
+M	cl_dll/hud_redraw.cpp
+M	cl_dll/menu.cpp
+M	cl_dll/saytext.cpp
+M	cl_dll/vgui_SpectatorPanel.cpp
+M	cl_dll/view.cpp
+M	common/r_studioint.h
+M	dlls/CMakeLists.txt
+M	dlls/aflock.cpp
+M	dlls/bigmomma.cpp
+M	dlls/bullsquid.cpp
+M	dlls/cbase.cpp
+M	dlls/cbase.h
+M	dlls/client.cpp
+M	dlls/combat.cpp
+M	dlls/crossbow.cpp
+M	dlls/dod_game.c
+M	dlls/dod_game.h
+M	dlls/dod_runtime.cpp
+M	dlls/dod_runtime.h
+M	dlls/effects.cpp
+M	dlls/func_tank.cpp
+M	dlls/game.cpp
+M	dlls/gamerules.cpp
+M	dlls/gargantua.cpp
+M	dlls/ggrenade.cpp
+M	dlls/items.cpp
+M	dlls/mortar.cpp
+M	dlls/multiplay_gamerules.cpp
+M	dlls/nodes.cpp
+M	dlls/plats.cpp
+M	dlls/player.cpp
+M	dlls/rpg.cpp
+M	dlls/subs.cpp
+M	dlls/triggers.cpp
+M	dlls/weapons.cpp
+M	dlls/world.cpp
+M	dlls/wscript
+M	dlls/xen.cpp
+M	pm_shared/pm_defs.h
+M	pm_shared/pm_shared.c
+Your branch is behind 'origin/claude/dod-hlsdk-integration' by 1 commit, and can be fast-forwarded.
+  (use "git pull" to update your local branch)
+Building HLSDK branch claude/dod-hlsdk-integration for GameCube gamedir=dod → dodgc.dol (see docs/gamecube/MULTI_GAME.md research gate) ...
+Setting top to                                               : /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/hlsdk-portable
+Setting out to                                               : /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/hlsdk-portable/build
+Build type                                                   : humanrights
+LTO build                                                    : no
+PolyOpt build                                                : no
+OpenMP build                                                 : no
+Generate profile                                             : no
+Use profile                                                  : not found
+Checking for 'gcc' (C compiler)                              : /opt/devkitpro/devkitPPC/bin/powerpc-eabi-gcc
+Target OS                                                    : gamecube
+Target CPU                                                   : powerpc
+Target binfmt                                                : elf
+Checking for 'g++' (C++ compiler)                            : /opt/devkitpro/devkitPPC/bin/powerpc-eabi-g++
+Target OS                                                    : gamecube
+Target CPU                                                   : powerpc
+Target binfmt                                                : elf
+Checking for c flags '-MMD'                                  : yes
+Checking for cxx flags '-MMD'                                : yes
+Checking for program 'strip'                                 : /opt/devkitpro/devkitPPC/bin/powerpc-eabi-strip
+Checking for program '/opt/devkitpro/devkitPPC/bin/powerpc-eabi-objcopy' : /opt/devkitpro/devkitPPC/bin/powerpc-eabi-objcopy
+Checking for strlcpy                                                     : yes
+Checking for strlcat                                                     : yes
+Checking if 'gcc' can target 32-bit                                      : yes
+Checking for required C flags                                            : yes
+Checking for required C++ flags                                          : yes
+Checking for library m                                                   : yes
+Checking for header tgmath.h                                             : yes
+Checking if tgmath.h is usable                                           : yes
+Checking if cmath is usable                                              : yes
+-> processing mod options                                                : ...
+* Barnacle tongue length fix                                             : OFF
+* Client local weapons prediction                                        : ON
+* Crowbar idle animation                                                 : OFF
+* Crowbar attack delay fix                                               : OFF
+* Rapid crowbar fix                                                      : ON
+* Gauss overcharge fix                                                   : OFF
+* Fix of tripmine beam duplication on level transition                   : OFF
+* Handgrenade deploy animation fix after finishing a throw               : OFF
+* Animation times fix for some weapons                                   : OFF
+* Old pre-HL 25th satchel's behaviour                                    : OFF
+* Speakable cycler and func_button (breaks AMXModX offsets)              : ON
+* OEM Build                                                              : OFF
+* Demo Build                                                             : OFF
+* Hacks for some mods on Android                                         : ON
+* Gamedir path                                                           : valve
+* Where to put server dll                                                : dlls
+* Where to put client or menu dll                                        : cl_dlls
+* Default server dll name                                                : hl
+Determining library postfix                                              : started
+-> processing test results                                               : _gamecube_ppc
+--> game_shared                                                          : in progress
+Checking for program 'git'                                               : /usr/bin/git
+Git commit hash                                                          : 0e324da-dirty
+Git branch                                                               : claude/dod-hlsdk-integration
+<-- game_shared                                                          : done
+--> dlls                                                                 : in progress
+<-- dlls                                                                 : done
+--> cl_dll                                                               : in progress
+<-- cl_dll                                                               : done
+'configure' finished successfully (1.839s)
+Build commands will be stored in build/compile_commands.json
+Waf: Entering directory `/home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/hlsdk-portable/build'
+Waf: Leaving directory `/home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/hlsdk-portable/build'
+'build' finished successfully (0.190s)
+Waf: Entering directory `/home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/hlsdk-portable/build'
+- install /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/out/network-hlsdk/valve/dlls/libhl_gamecube_ppc.a (from build/dlls/libhl_gamecube_ppc.a)
+- install /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/out/network-hlsdk/valve/cl_dlls/libclient_gamecube_ppc.a (from build/cl_dll/libclient_gamecube_ppc.a)
+Waf: Leaving directory `/home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/hlsdk-portable/build'
+'install' finished successfully (0.182s)
+Skipped 3 source entities absent from archive
+Generated 280 GameCube HLSDK entity exports: /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/out/network-hlsdk/dod/dlls/gamecube_server_entity_exports.inc
+HLSDK GameCube install complete: /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/out/network-hlsdk/dod
+==> [dod-gc] linking mohaagc.dol (XASH_GAMEDIR=mohaa, DoD game code)
+GameCube BBA link: XASH_GAMECUBE_LINK_BBA=0
+GameCube OGC stack resolution:
+  libogc /opt/devkitpro/libogc fat=libfat
+GameCube build profile: gamedir=mohaa dol=mohaagc.dol
+GameCube build lock: /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/xash3d-gc/.ai/build-gamecube.lock
+Skipped 3 source entities absent from archive
+Generated 280 GameCube HLSDK entity exports: /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/out/network-hlsdk/mohaa/dlls/gamecube_server_entity_exports.inc
+Setting top to                                          : /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/xash3d-gc
+Setting out to                                          : /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/xash3d-gc/build
+Build type                                              : humanrights
+LTO build                                               : no
+PolyOpt build                                           : no
+OpenMP build                                            : no
+Generate profile                                        : no
+Use profile                                             : not found
+GameCube OGC stack: stack=libogc root=/opt/devkitpro/libogc fat=libfat
+Checking for 'gcc' (C compiler)                         : /opt/devkitpro/devkitPPC/bin/powerpc-eabi-gcc
+Target OS                                               : gamecube
+Target CPU                                              : powerpc
+Target binfmt                                           : elf
+Checking for 'g++' (C++ compiler)                       : /opt/devkitpro/devkitPPC/bin/powerpc-eabi-g++
+Target OS                                               : gamecube
+Target CPU                                              : powerpc
+Target binfmt                                           : elf
+Checking for c flags '-MMD'                             : yes
+Checking for cxx flags '-MMD'                           : yes
+Checking for program 'strip'                            : /opt/devkitpro/devkitPPC/bin/powerpc-eabi-strip
+Checking for program '/opt/devkitpro/devkitPPC/bin/powerpc-eabi-objcopy' : /opt/devkitpro/devkitPPC/bin/powerpc-eabi-objcopy
+Checking if 'gcc' generates 32-bit code                                  : yes
+Checking for program 'clang-format'                                      : /usr/bin/clang-format
+Checking clang-format version                                            : 21
+GameCube OGC stack: stack=libogc root=/opt/devkitpro/libogc fat=libfat
+GameCube pure Flipper GX renderer enabled (soft/GL disabled)
+Checking for required C flags                                            : yes
+Checking for required C++ flags                                          : yes
+Checking supported flags for gcc in parallel                             : started
+... -Werror=implicit-function-declaration                                : yes
+-> processing test results                                               : all ok
+Checking supported flags for g++ in parallel                             : started
+-> processing test results                                               : all ok
+GameCube slim client slots: table 5, default 3
+Checking for library m                                                   : yes
+--> public                                                               : in progress
+Checking for program 'git'                                               : /usr/bin/git
+Git commit hash                                                          : db73d0d1-dirty
+Git branch                                                               : HEAD
+Git commit date                                                          : 2026-11-22 02:08:21 -0800
+Checking for alloca in alloca.h                                          : yes
+Executing 8 configuration tests                                          : started
+Checking for strcasestr                                                  : yes
+Checking for strnlen                                                     : yes
+Checking for strncasecmp                                                 : yes
+Checking for tgmath.h                                                    : yes
+Checking for strcasecmp                                                  : yes
+Checking for strlcat                                                     : yes
+Checking for strchrnul                                                   : yes
+Checking for strlcpy                                                     : yes
+-> processing test results                                               : all ok
+<-- public                                                               : done
+--> 3rdparty/miniz                                                       : in progress
+<-- 3rdparty/miniz                                                       : done
+--> filesystem                                                           : in progress
+Checking for memfd_create                                                : no
+Checking for d_type field in struct dirent                               : yes
+<-- filesystem                                                           : done
+--> 3rdparty/libbacktrace                                                : in progress
+<-- 3rdparty/libbacktrace                                                : done
+--> 3rdparty/library_suffix                                              : in progress
+<-- 3rdparty/library_suffix                                              : done
+--> 3rdparty/yy-thunks                                                   : in progress
+<-- 3rdparty/yy-thunks                                                   : done
+--> 3rdparty/extras                                                      : in progress
+Checking for program 'rsvg-convert'                                      : not found
+<-- 3rdparty/extras                                                      : done
+--> ref/common                                                           : in progress
+<-- ref/common                                                           : done
+--> ref/gx                                                               : in progress
+<-- ref/gx                                                               : done
+--> 3rdparty/bzip2                                                       : in progress
+<-- 3rdparty/bzip2                                                       : done
+--> 3rdparty/mbedtls                                                     : in progress
+<-- 3rdparty/mbedtls                                                     : done
+--> 3rdparty/opus                                                        : in progress
+Checking for C99 lrint                                                   : yes
+Checking for C99 lrintf                                                  : yes
+Checking for C99 VLA support                                             : yes
+<-- 3rdparty/opus                                                        : done
+--> 3rdparty/libogg                                                      : in progress
+Checking for header inttypes.h                                           : yes
+<-- 3rdparty/libogg                                                      : done
+--> 3rdparty/vorbis                                                      : in progress
+Checking for memory.h header                                             : yes
+Checking for alloca in alloca.h header                                   : yes
+<-- 3rdparty/vorbis                                                      : done
+--> 3rdparty/opusfile                                                    : in progress
+<-- 3rdparty/opusfile                                                    : done
+--> 3rdparty/mainui                                                      : in progress
+Checking if 'g++' supports C++11                                         : yes
+<-- 3rdparty/mainui                                                      : done
+--> 3rdparty/MultiEmulator                                               : in progress
+<-- 3rdparty/MultiEmulator                                               : done
+--> engine                                                               : in progress
+Checking for getrusage                                                   : no
+Checking if a pthread flag is necessary for compiling                    : None
+Checking if a pthread flag is necessary for linking                      : None
+<-- engine                                                               : done
+'configure' finished successfully (1.918s)
+GameCube ref_gx static library (XASH_PURE_GX=1) scheduled
+GameCube HLSDK gamedir=mohaa (server=found client=found)
+GameCube engine link stack: stack=libogc root=/opt/devkitpro/libogc fat=libfat
+Using GameCube HLSDK server archive from /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/out/network-hlsdk
+Using GameCube HLSDK client archive from /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/out/network-hlsdk
+Build commands will be stored in build/compile_commands.json
+Waf: Entering directory `/home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/xash3d-gc/build'
+GameCube ref_gx static library (XASH_PURE_GX=1) scheduled
+GameCube HLSDK gamedir=mohaa (server=found client=found)
+GameCube engine link stack: stack=libogc root=/opt/devkitpro/libogc fat=libfat
+Using GameCube HLSDK server archive from /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/out/network-hlsdk
+Using GameCube HLSDK client archive from /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/out/network-hlsdk
+[  6/617] Processing public/crtlib.c
+[  7/617] Processing public/matrixlib.c
+[  8/617] Processing public/xash3d_mathlib.c
+[  9/617] Processing public/atlas.c
+[ 10/617] Processing public/utflib.c
+[ 11/617] Processing public/dllhelpers.c
+[ 12/617] Processing public/getopt.c
+[ 13/617] Processing public/crclib.c
+[ 14/617] Processing public/build.c
+[176/617] Processing ref/common/ref_skybox.c
+[177/617] Processing ref/common/ref_math.c
+[178/617] Processing ref/common/ref_light.c
+[179/617] Processing ref/common/ref_image.c
+[180/617] Processing ref/common/ref_image.c
+[181/617] Processing ref/common/ref_light.c
+[182/617] Processing ref/common/ref_skybox.c
+[183/617] Processing ref/common/ref_math.c
+[184/617] Processing public/build_vcs.c
+[472/617] Processing engine/client/cl_custom.c
+[478/617] Processing engine/server/sv_game.c
+In file included from ../engine/common/system.h:30,
+                 from ../engine/common/common.h:36,
+                 from ../engine/server/sv_game.c:16:
+../engine/server/sv_game.c: In function 'SV_GCLazyBlockTargetname':
+../engine/server/sv_game.c:2538:39: warning: passing argument 1 of 'COM_ParseFileSafe' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+ 2538 |         while(( text = COM_ParseFile( text, key, sizeof( key ))) != NULL )
+      |                                       ^~~~
+../public/crtlib.h:134:63: note: in definition of macro 'COM_ParseFile'
+  134 | #define COM_ParseFile( data, token, size ) COM_ParseFileSafe( data, token, size, 0, NULL, NULL )
+      |                                                               ^~~~
+../public/crtlib.h:133:32: note: expected 'char *' but argument is of type 'const char *'
+  133 | char *COM_ParseFileSafe( char *data, char *token, const int size, unsigned int flags, int *len, qboolean *quoted );
+      |                          ~~~~~~^~~~
+../engine/server/sv_game.c:2542:44: warning: passing argument 1 of 'COM_ParseFileSafe' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+ 2542 |                 if(( text = COM_ParseFile( text, value, sizeof( value ))) == NULL )
+      |                                            ^~~~
+../public/crtlib.h:134:63: note: in definition of macro 'COM_ParseFile'
+  134 | #define COM_ParseFile( data, token, size ) COM_ParseFileSafe( data, token, size, 0, NULL, NULL )
+      |                                                               ^~~~
+../public/crtlib.h:133:32: note: expected 'char *' but argument is of type 'const char *'
+  133 | char *COM_ParseFileSafe( char *data, char *token, const int size, unsigned int flags, int *len, qboolean *quoted );
+      |                          ~~~~~~^~~~
+../engine/server/sv_game.c: In function 'SV_GCLazyReport':
+../engine/server/sv_game.c:2632:47: warning: passing argument 1 of 'COM_ParseFileSafe' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+ 2632 |                 while(( text = COM_ParseFile( text, key, sizeof( key ))) != NULL && key[0] != '}' )
+      |                                               ^~~~
+../public/crtlib.h:134:63: note: in definition of macro 'COM_ParseFile'
+  134 | #define COM_ParseFile( data, token, size ) COM_ParseFileSafe( data, token, size, 0, NULL, NULL )
+      |                                                               ^~~~
+../public/crtlib.h:133:32: note: expected 'char *' but argument is of type 'const char *'
+  133 | char *COM_ParseFileSafe( char *data, char *token, const int size, unsigned int flags, int *len, qboolean *quoted );
+      |                          ~~~~~~^~~~
+../engine/server/sv_game.c:2634:52: warning: passing argument 1 of 'COM_ParseFileSafe' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+ 2634 |                         if(( text = COM_ParseFile( text, value, sizeof( value ))) == NULL )
+      |                                                    ^~~~
+../public/crtlib.h:134:63: note: in definition of macro 'COM_ParseFile'
+  134 | #define COM_ParseFile( data, token, size ) COM_ParseFileSafe( data, token, size, 0, NULL, NULL )
+      |                                                               ^~~~
+../public/crtlib.h:133:32: note: expected 'char *' but argument is of type 'const char *'
+  133 | char *COM_ParseFileSafe( char *data, char *token, const int size, unsigned int flags, int *len, qboolean *quoted );
+      |                          ~~~~~~^~~~
+
+[479/617] Processing engine/server/sv_world.c
+[481/617] Processing engine/platform/gamecube/hud_hires.c
+[482/617] Processing engine/common/cfgscript.c
+[484/617] Processing engine/client/avi/avi_gc.c
+[485/617] Processing engine/platform/gamecube/hitext_gamecube.c
+[491/617] Processing engine/client/soundlib/snd_ogg_opus.c
+[493/617] Processing engine/client/avi/avi_cinepak.c
+[494/617] Processing engine/client/cl_main.c
+[496/617] Processing engine/platform/gamecube/aram_core.c
+[502/617] Processing engine/server/sv_log.c
+[503/617] Processing engine/client/cl_video.c
+[504/617] Processing engine/client/input/in_touch.c
+[505/617] Processing engine/client/input/in_gyro.c
+[508/617] Processing engine/client/cl_events.c
+[509/617] Processing engine/common/lib_common.c
+[511/617] Processing engine/server/sv_frame.c
+[512/617] Processing engine/platform/gamecube/sys_gamecube.c
+[513/617] Processing engine/client/sound/s_load.c
+[515/617] Processing engine/client/cl_frame.c
+[518/617] Processing engine/client/cl_sprite.c
+[519/617] Processing engine/common/imagelib/img_wad.c
+[523/617] Processing engine/client/cl_efrag.c
+[524/617] Processing engine/common/model.c
+[526/617] Processing engine/common/http/net_http_xash.c
+[529/617] Processing engine/common/mod_studio.c
+[532/617] Processing engine/client/soundlib/snd_main.c
+[533/617] Processing engine/client/parse/cl_parse_gs.c
+[535/617] Processing engine/client/cine_path.c
+[538/617] Processing engine/common/launcher.c
+[543/617] Processing engine/client/cl_netgraph.c
+[545/617] Processing engine/client/cl_cmds.c
+[546/617] Processing engine/platform/gamecube/skin_stream.c
+[548/617] Processing engine/common/base_cmd.c
+[551/617] Processing engine/client/console.c
+[553/617] Processing engine/client/identification.c
+[559/617] Processing engine/common/net_encode.c
+[562/617] Processing engine/common/soundlib/snd_utils.c
+[564/617] Processing engine/common/pm_surface.c
+[566/617] Processing engine/common/sounds.c
+[567/617] Processing engine/common/mcol.c
+[569/617] Processing engine/common/imagelib/img_tga.c
+[575/617] Processing engine/client/dll_int/cl_render.c
+[579/617] Processing engine/common/net_buffer.c
+[585/617] Processing engine/common/filesystem_engine.c
+[586/617] Processing engine/platform/gamecube/vid_gamecube.c
+../engine/platform/gamecube/vid_gamecube.c: In function 'GC_MaybeRestreamRideMapFaces':
+../engine/platform/gamecube/vid_gamecube.c:7601:37: warning: assignment discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+ 7601 |                 gc_newgame_surfbits = bits;
+      |                                     ^
+../engine/platform/gamecube/vid_gamecube.c: In function 'GC_CapFacesSeedLeanDecals':
+../engine/platform/gamecube/vid_gamecube.c:14331:52: warning: passing argument 1 of 'CL_TraceLine' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+14331 |                                 tr = CL_TraceLine( org, end, PM_STUDIO_IGNORE );
+      |                                                    ^~~
+In file included from ../engine/platform/gamecube/vid_gamecube.c:11:
+../engine/client/client.h:1056:32: note: expected 'vec_t *' {aka 'float *'} but argument is of type 'const float *'
+ 1056 | pmtrace_t CL_TraceLine( vec3_t start, vec3_t end, int flags );
+      |                         ~~~~~~~^~~~~
+
+[589/617] Processing engine/client/mod_dbghulls.c
+[592/617] Processing engine/server/sv_lazy_logic.c
+[594/617] Processing engine/common/mod_alias.c
+[597/617] Processing engine/common/imagelib/img_dds.c
+[598/617] Processing engine/platform/gamecube/soundscape_gamecube.c
+[599/617] Processing engine/common/hpak.c
+[605/617] Processing engine/client/soundlib/snd_wav.c
+[607/617] Processing engine/common/net_chan.c
+[609/617] Processing engine/common/imagelib/img_tga_gc.c
+[610/617] Processing engine/common/imagelib/img_png.c
+[611/617] Processing engine/common/cvar.c
+In file included from ../engine/common/system.h:30,
+                 from ../engine/common/common.h:36,
+                 from ../engine/common/cvar.c:17:
+../engine/common/cvar.c: In function 'Cvar_Set_f':
+../public/crtlib.h:97:36: warning: 'strlen' reading 1 or more bytes from a region of size 0 [-Wstringop-overread]
+   97 | #define Q_strlen( str ) (( str ) ? strlen(( str )) : 0 )
+      |                                    ^~~~~~~~~~~~~~~
+../engine/common/cvar.c:1182:27: note: in expansion of macro 'Q_strlen'
+ 1182 |                 int len = Q_strlen( Cmd_Argv(i) + 1 );
+      |                           ^~~~~~~~
+
+[612/617] Processing engine/client/sound/s_dsp.c
+[613/617] Processing engine/client/cl_cine.c
+[615/617] Processing engine/client/input/in_joy.c
+[616/617] Linking build/engine/xash
+Waf: Leaving directory `/home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/xash3d-gc/build'
+'build' finished successfully (1m8.935s)
+Waf: Entering directory `/home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/xash3d-gc/build'
+GameCube ref_gx static library (XASH_PURE_GX=1) scheduled
+GameCube HLSDK gamedir=mohaa (server=found client=found)
+GameCube engine link stack: stack=libogc root=/opt/devkitpro/libogc fat=libfat
+Using GameCube HLSDK server archive from /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/out/network-hlsdk
+Using GameCube HLSDK client archive from /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/out/network-hlsdk
+[ 18/621] Processing ref/common/ref_skybox.c
+[ 19/621] Processing ref/common/ref_math.c
+[ 20/621] Processing ref/common/ref_light.c
+[ 21/621] Processing ref/common/ref_image.c
+[ 22/621] Processing ref/common/ref_math.c
+[ 23/621] Processing ref/common/ref_skybox.c
+[ 24/621] Processing ref/common/ref_image.c
+[ 25/621] Processing ref/common/ref_light.c
+- install /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/xash3d-gc/OUT/libfilesystem_stdio.a (from build/filesystem/libfilesystem_stdio.a)
+- install /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/xash3d-gc/OUT/mohaa/extras.pk3 (from build/3rdparty/extras/extras.pk3)
+- install /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/xash3d-gc/OUT/libref_gx.a (from build/ref/gx/libref_gx.a)
+- install /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/xash3d-gc/OUT/libmenu.a (from build/3rdparty/mainui/libmenu.a)
+Waf: Leaving directory `/home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/xash3d-gc/build'
+'install' finished successfully (2.331s)
+DOL generated successfully: OUT/bin/mohaagc.dol
+xash3d-gc hardware handoff
+built_at=2026-11-23T03:16:23Z
+host=ceres
+renderer=REF_GX
+policy=retail-flipper
+loader=swiss
+gamedir=mohaa
+dol_name=mohaagc.dol
+ogc_stack=libogc
+ogc_root=/opt/devkitpro/libogc
+fat_provider=libfat
+elf=OUT/bin/xash
+elf_profile=OUT/bin/xash-mohaa
+dol=OUT/bin/mohaagc.dol
+elf_bytes=45173356
+dol_bytes=7471968
+Handoff metadata: OUT/bin/gamecube-handoff.txt
+GameCube build installed to OUT/
+Skipping disc build (XASH3D_GC_SKIP_DISC_BUILD=1).
+For disc packaging, run: python3 scripts/build-gamecube-disc.py --output OUT/xash3d-gc.iso --data Half-Life/mohaa --gamedir mohaa --dol OUT/bin/mohaagc.dol
+For DOL testing, provide assets at sd:/xash3d/mohaa/ before launching OUT/bin/mohaagc.dol.
+==> [dod-gc] DOL ready: /home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/out/dodgc.dol

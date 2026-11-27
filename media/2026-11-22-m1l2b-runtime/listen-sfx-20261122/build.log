@@ -1,0 +1,1054 @@
+==> TEST DISC: MOHAA data from /home/tim/Desktop/mohaa-gc/retail/mohaa-full-stage-20261122/xash3d/mohaa on the disc (not for release)
+==> game folder: mohaa/ over dod/ (958 files)
+==> listenserver cfg: m1l2b net=off world_render=1 dumpframes=0 tas=off
+==> packaging /tmp/mohaa-m1l2b-listen-20261122/out/m1l2b-listen.iso (intro) startup_vids=off net=off listen=m1l2b connect= net_ip=
+Warning: btns_main.bmp not found; GC menu keeps text buttons.
+
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣠⣤⣴⣶⣾⣿⣿⣿⣿⣿⣿⣷⣶⣦⣤⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⣀⣴⣾⣿⣿⣿⣿⣿⣿⣿⠿⠿⠿⠿⢿⣿⣿⣿⣿⣿⣿⣷⣦⣀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⣠⣾⣿⣿⣿⡿⠟⠋⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠙⠻⢿⣿⣿⣿⣷⣄⡀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⣠⣾⣿⣿⣿⠟⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠻⣿⣿⣿⣷⣄⠀⠀⠀⠀
+⠀⠀⢀⣼⣿⣿⣿⠟⠁⠀⠀⠀⠀⠀⠀⣶⣶⣶⣶⣶⣶⣦⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣿⣧⡀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+
+Xash3D GameCube: content build begins
+Staging retail assets for GameCube gamedir=mohaa (source files are not modified).
+GameCube menu banner: logo.avi frame baked as logo_banner.cmp 640x104
+GameCube menu assets: loading.tga baked as loading.cmp 160x120 CMPR
+GameCube menu assets: baked resource/gc_menu/background.tga 320x240 from BackgroundLayout.txt (12 tiles, nonblack=91.2%)
+GameCube loading assets: baked resource/gc_menu/loading.tga and resource/gc_menu/intro.tga (bald scientist + HL motif)
+Built delta GCVID logo.gcvid (320x48, duration 110 frames, rgb565)
+warning: incomplete skybox 'desert' (need 6 sides, have 0)
+  skyboxes: 0 as GX CMPR 128x128 (maps=desert)
+  music: 0 CD tracks as 22 kHz WAV
+world DL bake credits (GoldSrc BSP30):
+  faces=0 skip=42 orphans=0 tris=0
+  static brush entities=0 (solid 0) faces=0
+  static func_water baked=0
+  clusters=1 chunks=0 batches=0 mats=0
+  tree nodes=6 planes=6
+  MEM1 resident=0 KB  ARAM chunks=0 KB (max 0 KB)
+  lightmap pages=0 (0 KB, CMPR), 0 chunks with more than one
+  lightmap cells: 0 faces below retail size, 0 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_credits.gcd (0 KB)
+  light faces: 42 faces, lighting 20 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_credits_lf.gcd (3 KB)
+world DL bake m1l1 (GoldSrc BSP30):
+  faces=4373 skip=321 orphans=4 tris=12221
+  static brush entities=3 (solid 3) faces=59
+  static func_water baked=0
+  clusters=5292 chunks=1893 batches=2831 mats=62
+  tree nodes=8547 planes=3746
+  MEM1 resident=153 KB  ARAM chunks=539 KB (max 2 KB)
+  lightmap pages=215 (107 KB, CMPR), 11 chunks with more than one
+  lightmap cells: 0 faces below retail size, 0 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m1l1.gcd (902 KB)
+  light faces: 5163 faces, lighting 226 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m1l1_lf.gcd (434 KB)
+world DL bake m1l2a (GoldSrc BSP30):
+  faces=11055 skip=908 orphans=624 tris=32724
+  static brush entities=67 (solid 67) faces=9112
+  static func_water baked=0
+  clusters=7098 chunks=703 batches=2774 mats=119
+  tree nodes=10896 planes=3676
+  MEM1 resident=139 KB  ARAM chunks=1127 KB (max 49 KB)
+  lightmap pages=472 (236 KB, CMPR), 134 chunks with more than one
+  lightmap cells: 1025 faces below retail size, 141 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m1l2a.gcd (1522 KB)
+  light faces: 12755 faces, lighting 502 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m1l2a_lf.gcd (1020 KB)
+world DL bake m1l2b (GoldSrc BSP30):
+  faces=10762 skip=343 orphans=56 tris=29188
+  static brush entities=11 (solid 11) faces=1090
+  static func_water baked=0
+  clusters=6862 chunks=3355 batches=5764 mats=96
+  tree nodes=10358 planes=4172
+  MEM1 resident=205 KB  ARAM chunks=1231 KB (max 7 KB)
+  lightmap pages=578 (289 KB, CMPR), 64 chunks with more than one
+  lightmap cells: 0 faces below retail size, 0 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m1l2b.gcd (1889 KB)
+  light faces: 11852 faces, lighting 592 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m1l2b_lf.gcd (1084 KB)
+world DL bake m1l3a (GoldSrc BSP30):
+  faces=3623 skip=350 orphans=8 tris=10043
+  static brush entities=3 (solid 3) faces=599
+  static func_water baked=0
+  clusters=3913 chunks=1583 batches=2014 mats=46
+  tree nodes=5581 planes=2827
+  MEM1 resident=114 KB  ARAM chunks=437 KB (max 29 KB)
+  lightmap pages=156 (78 KB, CMPR), 2 chunks with more than one
+  lightmap cells: 295 faces below retail size, 0 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m1l3a.gcd (752 KB)
+  light faces: 4085 faces, lighting 183 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m1l3a_lf.gcd (344 KB)
+world DL bake m1l3b (GoldSrc BSP30):
+  faces=2849 skip=477 orphans=1 tris=8016
+  static brush entities=6 (solid 6) faces=154
+  static func_water baked=0
+  clusters=2822 chunks=1186 batches=1477 mats=40
+  tree nodes=4123 planes=2081
+  MEM1 resident=85 KB  ARAM chunks=345 KB (max 2 KB)
+  lightmap pages=178 (89 KB, CMPR), 14 chunks with more than one
+  lightmap cells: 0 faces below retail size, 0 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m1l3b.gcd (556 KB)
+  light faces: 3362 faces, lighting 197 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m1l3b_lf.gcd (319 KB)
+world DL bake m1l3c (GoldSrc BSP30):
+  faces=12402 skip=275 orphans=3 tris=33933
+  static brush entities=5 (solid 5) faces=608
+  static func_water baked=0
+  clusters=9287 chunks=4711 batches=7642 mats=79
+  tree nodes=14670 planes=5388
+  MEM1 resident=281 KB  ARAM chunks=1483 KB (max 4 KB)
+  lightmap pages=452 (226 KB, CMPR), 13 chunks with more than one
+  lightmap cells: 34 faces below retail size, 0 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m1l3c.gcd (2123 KB)
+  light faces: 13431 faces, lighting 469 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m1l3c_lf.gcd (1063 KB)
+world DL bake m2l1 (GoldSrc BSP30):
+  faces=11817 skip=476 orphans=101 tris=35347
+  static brush entities=68 (solid 68) faces=10334
+  static func_water baked=0
+  clusters=6029 chunks=318 batches=1774 mats=83
+  tree nodes=8863 planes=3519
+  MEM1 resident=115 KB  ARAM chunks=1103 KB (max 73 KB)
+  lightmap pages=431 (215 KB, CMPR), 123 chunks with more than one
+  lightmap cells: 3479 faces below retail size, 785 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m2l1.gcd (1423 KB)
+  light faces: 12668 faces, lighting 618 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m2l1_lf.gcd (1048 KB)
+world DL bake m2l2a (GoldSrc BSP30):
+  faces=19014 skip=167 orphans=32 tris=52917
+  static brush entities=13 (solid 13) faces=983
+  static func_water baked=0
+  clusters=7148 chunks=3780 batches=5710 mats=86
+  tree nodes=11171 planes=4370
+  MEM1 resident=223 KB  ARAM chunks=1974 KB (max 30 KB)
+  lightmap pages=717 (358 KB, CMPR), 113 chunks with more than one
+  lightmap cells: 44 faces below retail size, 0 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m2l2a.gcd (2549 KB)
+  light faces: 19465 faces, lighting 4652 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m2l2a_lf.gcd (2022 KB)
+world DL bake m2l2b (GoldSrc BSP30):
+  faces=18433 skip=149 orphans=26 tris=48800
+  static brush entities=10 (solid 10) faces=803
+  static func_water baked=0
+  clusters=7618 chunks=4192 batches=6558 mats=116
+  tree nodes=12118 planes=4604
+  MEM1 resident=242 KB  ARAM chunks=1919 KB (max 40 KB)
+  lightmap pages=439 (219 KB, CMPR), 25 chunks with more than one
+  lightmap cells: 641 faces below retail size, 3 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m2l2b.gcd (2402 KB)
+  light faces: 18967 faces, lighting 4281 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m2l2b_lf.gcd (1762 KB)
+world DL bake m2l2c (GoldSrc BSP30):
+  faces=11765 skip=139 orphans=13 tris=32678
+  static brush entities=4 (solid 4) faces=71
+  static func_water baked=0
+  clusters=4341 chunks=2570 batches=3931 mats=61
+  tree nodes=7137 planes=2195
+  MEM1 resident=137 KB  ARAM chunks=1240 KB (max 41 KB)
+  lightmap pages=578 (289 KB, CMPR), 111 chunks with more than one
+  lightmap cells: 164 faces below retail size, 0 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m2l2c.gcd (1622 KB)
+  light faces: 11917 faces, lighting 3172 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m2l2c_lf.gcd (1504 KB)
+world DL bake m2l3 (GoldSrc BSP30):
+  faces=14923 skip=139 orphans=129 tris=43982
+  static brush entities=10 (solid 10) faces=2768
+  static func_water baked=0
+  clusters=7849 chunks=4336 batches=6299 mats=75
+  tree nodes=12134 planes=4919
+  MEM1 resident=250 KB  ARAM chunks=1724 KB (max 9 KB)
+  lightmap pages=554 (277 KB, CMPR), 28 chunks with more than one
+  lightmap cells: 675 faces below retail size, 82 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m2l3.gcd (2223 KB)
+  light faces: 15825 faces, lighting 564 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m2l3_lf.gcd (1234 KB)
+world DL bake m3l1a (GoldSrc BSP30):
+  faces=4831 skip=435 orphans=86 tris=10994
+  static brush entities=4 (solid 4) faces=345
+  static func_water baked=0
+  clusters=4262 chunks=651 batches=974 mats=37
+  tree nodes=5892 planes=2790
+  MEM1 resident=93 KB  ARAM chunks=415 KB (max 42 KB)
+  lightmap pages=161 (80 KB, CMPR), 22 chunks with more than one
+  lightmap cells: 338 faces below retail size, 0 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m3l1a.gcd (613 KB)
+  light faces: 6491 faces, lighting 2472 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m3l1a_lf.gcd (501 KB)
+world DL bake m3l1b (GoldSrc BSP30):
+  faces=10514 skip=477 orphans=21 tris=29865
+  static brush entities=9 (solid 9) faces=842
+  static func_water baked=0
+  clusters=6667 chunks=3652 batches=6061 mats=62
+  tree nodes=10325 planes=3627
+  MEM1 resident=203 KB  ARAM chunks=1255 KB (max 10 KB)
+  lightmap pages=442 (221 KB, CMPR), 32 chunks with more than one
+  lightmap cells: 72 faces below retail size, 0 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m3l1b.gcd (1790 KB)
+  light faces: 12755 faces, lighting 965 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m3l1b_lf.gcd (1048 KB)
+world DL bake m3l2 (GoldSrc BSP30):
+  faces=6051 skip=3345 orphans=49 tris=19061
+  static brush entities=92 (solid 92) faces=4764
+  static func_water baked=0
+  clusters=6166 chunks=471 batches=1544 mats=90
+  tree nodes=8378 planes=3141
+  MEM1 resident=110 KB  ARAM chunks=643 KB (max 116 KB)
+  lightmap pages=303 (151 KB, CMPR), 77 chunks with more than one
+  lightmap cells: 927 faces below retail size, 836 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m3l2.gcd (980 KB)
+  light faces: 9541 faces, lighting 387 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m3l2_lf.gcd (723 KB)
+world DL bake m3l3 (GoldSrc BSP30):
+  faces=10843 skip=1104 orphans=184 tris=35537
+  static brush entities=133 (solid 133) faces=10757
+  static func_water baked=0
+  clusters=8514 chunks=292 batches=2101 mats=73
+  tree nodes=12100 planes=4236
+  MEM1 resident=144 KB  ARAM chunks=1150 KB (max 152 KB)
+  lightmap pages=384 (192 KB, CMPR), 102 chunks with more than one
+  lightmap cells: 4825 faces below retail size, 2783 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m3l3.gcd (1620 KB)
+  light faces: 12385 faces, lighting 606 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m3l3_lf.gcd (1058 KB)
+world DL bake m4l0 (GoldSrc BSP30):
+  faces=4529 skip=658 orphans=0 tris=12583
+  static brush entities=1 (solid 1) faces=46
+  static func_water baked=0
+  clusters=4919 chunks=1820 batches=2598 mats=42
+  tree nodes=7616 planes=3161
+  MEM1 resident=137 KB  ARAM chunks=540 KB (max 3 KB)
+  lightmap pages=269 (134 KB, CMPR), 17 chunks with more than one
+  lightmap cells: 0 faces below retail size, 0 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m4l0.gcd (952 KB)
+  light faces: 5211 faces, lighting 363 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m4l0_lf.gcd (477 KB)
+world DL bake m4l1 (GoldSrc BSP30):
+  faces=4091 skip=425 orphans=119 tris=11896
+  static brush entities=64 (solid 64) faces=3632
+  static func_water baked=0
+  clusters=3756 chunks=172 batches=948 mats=86
+  tree nodes=5505 planes=3049
+  MEM1 resident=85 KB  ARAM chunks=406 KB (max 43 KB)
+  lightmap pages=263 (131 KB, CMPR), 65 chunks with more than one
+  lightmap cells: 869 faces below retail size, 5 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m4l1.gcd (615 KB)
+  light faces: 4710 faces, lighting 333 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m4l1_lf.gcd (471 KB)
+world DL bake m4l2 (GoldSrc BSP30):
+  faces=5608 skip=1293 orphans=330 tris=14716
+  static brush entities=5 (solid 5) faces=136
+  static func_water baked=0
+  clusters=8675 chunks=2459 batches=3742 mats=83
+  tree nodes=12726 planes=6037
+  MEM1 resident=227 KB  ARAM chunks=674 KB (max 4 KB)
+  lightmap pages=340 (170 KB, CMPR), 22 chunks with more than one
+  lightmap cells: 0 faces below retail size, 0 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m4l2.gcd (1284 KB)
+  light faces: 8823 faces, lighting 428 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m4l2_lf.gcd (794 KB)
+world DL bake m4l3 (GoldSrc BSP30):
+  faces=13849 skip=470 orphans=366 tris=41551
+  static brush entities=126 (solid 126) faces=12328
+  static func_water baked=0
+  clusters=9301 chunks=547 batches=2929 mats=136
+  tree nodes=14012 planes=4479
+  MEM1 resident=166 KB  ARAM chunks=1373 KB (max 55 KB)
+  lightmap pages=601 (300 KB, CMPR), 178 chunks with more than one
+  lightmap cells: 2171 faces below retail size, 183 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m4l3.gcd (1941 KB)
+  light faces: 14873 faces, lighting 648 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m4l3_lf.gcd (1250 KB)
+world DL bake m5l1a (GoldSrc BSP30):
+  faces=8873 skip=899 orphans=54 tris=30058
+  static brush entities=50 (solid 49) faces=8603
+  static func_water baked=0
+  clusters=6919 chunks=421 batches=2555 mats=65
+  tree nodes=9982 planes=4150
+  MEM1 resident=134 KB  ARAM chunks=1011 KB (max 66 KB)
+  lightmap pages=441 (220 KB, CMPR), 116 chunks with more than one
+  lightmap cells: 1553 faces below retail size, 346 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m5l1a.gcd (1395 KB)
+  light faces: 10158 faces, lighting 436 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m5l1a_lf.gcd (794 KB)
+world DL bake m5l1b (GoldSrc BSP30):
+  faces=10851 skip=1126 orphans=93 tris=36944
+  static brush entities=59 (solid 58) faces=10002
+  static func_water baked=0
+  clusters=9071 chunks=446 batches=3201 mats=65
+  tree nodes=13528 planes=5054
+  MEM1 resident=169 KB  ARAM chunks=1233 KB (max 121 KB)
+  lightmap pages=604 (302 KB, CMPR), 173 chunks with more than one
+  lightmap cells: 2383 faces below retail size, 932 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m5l1b.gcd (1755 KB)
+  light faces: 12801 faces, lighting 701 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m5l1b_lf.gcd (1095 KB)
+world DL bake m5l2a (GoldSrc BSP30):
+  faces=5754 skip=1034 orphans=0 tris=14794
+  static brush entities=0 (solid 0) faces=0
+  static func_water baked=0
+  clusters=7149 chunks=2773 batches=3904 mats=58
+  tree nodes=10387 planes=4264
+  MEM1 resident=193 KB  ARAM chunks=697 KB (max 2 KB)
+  lightmap pages=376 (188 KB, CMPR), 20 chunks with more than one
+  lightmap cells: 0 faces below retail size, 0 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m5l2a.gcd (1249 KB)
+  light faces: 9851 faces, lighting 585 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m5l2a_lf.gcd (910 KB)
+world DL bake m5l2b (GoldSrc BSP30):
+  faces=4272 skip=2328 orphans=5 tris=14959
+  static brush entities=57 (solid 57) faces=4062
+  static func_water baked=0
+  clusters=8836 chunks=332 batches=1287 mats=36
+  tree nodes=12084 planes=5683
+  MEM1 resident=167 KB  ARAM chunks=532 KB (max 57 KB)
+  lightmap pages=388 (194 KB, CMPR), 116 chunks with more than one
+  lightmap cells: 2357 faces below retail size, 263 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m5l2b.gcd (1034 KB)
+  light faces: 11918 faces, lighting 772 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m5l2b_lf.gcd (1098 KB)
+world DL bake m5l3 (GoldSrc BSP30):
+  faces=10330 skip=423 orphans=49 tris=34444
+  static brush entities=93 (solid 93) faces=9288
+  static func_water baked=0
+  clusters=9015 chunks=155 batches=2288 mats=69
+  tree nodes=13336 planes=5477
+  MEM1 resident=168 KB  ARAM chunks=1101 KB (max 124 KB)
+  lightmap pages=372 (186 KB, CMPR), 84 chunks with more than one
+  lightmap cells: 4858 faces below retail size, 1405 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m5l3.gcd (1468 KB)
+  light faces: 15073 faces, lighting 1338 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m5l3_lf.gcd (1367 KB)
+world DL bake m6l1a (GoldSrc BSP30):
+  faces=3379 skip=351 orphans=49 tris=11640
+  static brush entities=72 (solid 71) faces=3379
+  static func_water baked=0
+  clusters=3793 chunks=225 batches=978 mats=21
+  tree nodes=5787 planes=2530
+  MEM1 resident=79 KB  ARAM chunks=404 KB (max 17 KB)
+  lightmap pages=333 (166 KB, CMPR), 101 chunks with more than one
+  lightmap cells: 317 faces below retail size, 0 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l1a.gcd (655 KB)
+  light faces: 3779 faces, lighting 317 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l1a_lf.gcd (392 KB)
+world DL bake m6l1b (GoldSrc BSP30):
+  faces=4423 skip=306 orphans=62 tris=15088
+  static brush entities=58 (solid 57) faces=4133
+  static func_water baked=0
+  clusters=3759 chunks=266 batches=1199 mats=43
+  tree nodes=5767 planes=2546
+  MEM1 resident=80 KB  ARAM chunks=508 KB (max 54 KB)
+  lightmap pages=371 (185 KB, CMPR), 107 chunks with more than one
+  lightmap cells: 1288 faces below retail size, 128 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l1b.gcd (774 KB)
+  light faces: 4791 faces, lighting 411 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l1b_lf.gcd (518 KB)
+world DL bake m6l1c (GoldSrc BSP30):
+  faces=20287 skip=468 orphans=969 tris=60808
+  static brush entities=59 (solid 59) faces=18749
+  static func_water baked=0
+  clusters=11633 chunks=624 batches=2868 mats=94
+  tree nodes=17090 planes=6102
+  MEM1 resident=211 KB  ARAM chunks=1918 KB (max 157 KB)
+  lightmap pages=483 (241 KB, CMPR), 110 chunks with more than one
+  lightmap cells: 6069 faces below retail size, 3039 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l1c.gcd (2413 KB)
+  light faces: 22273 faces, lighting 703 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l1c_lf.gcd (1672 KB)
+world DL bake m6l2a (GoldSrc BSP30):
+  faces=18309 skip=890 orphans=549 tris=60647
+  static brush entities=61 (solid 60) faces=16106
+  static func_water baked=0
+  clusters=12235 chunks=669 batches=5113 mats=115
+  tree nodes=19127 planes=5967
+  MEM1 resident=222 KB  ARAM chunks=2011 KB (max 66 KB)
+  lightmap pages=732 (366 KB, CMPR), 214 chunks with more than one
+  lightmap cells: 3525 faces below retail size, 449 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l2a.gcd (2756 KB)
+  light faces: 20390 faces, lighting 816 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l2a_lf.gcd (1661 KB)
+world DL bake m6l2b (GoldSrc BSP30):
+  faces=15478 skip=476 orphans=369 tris=49232
+  static brush entities=95 (solid 94) faces=13626
+  static func_water baked=0
+  clusters=9496 chunks=746 batches=3469 mats=114
+  tree nodes=13992 planes=5198
+  MEM1 resident=182 KB  ARAM chunks=1633 KB (max 148 KB)
+  lightmap pages=605 (302 KB, CMPR), 145 chunks with more than one
+  lightmap cells: 3528 faces below retail size, 2534 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l2b.gcd (2130 KB)
+  light faces: 17696 faces, lighting 806 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l2b_lf.gcd (1380 KB)
+world DL bake m6l3a (GoldSrc BSP30):
+  faces=18738 skip=334 orphans=599 tris=59732
+  static brush entities=41 (solid 41) faces=16082
+  static func_water baked=0
+  clusters=11405 chunks=735 batches=3605 mats=91
+  tree nodes=16901 planes=5809
+  MEM1 resident=208 KB  ARAM chunks=1922 KB (max 74 KB)
+  lightmap pages=553 (276 KB, CMPR), 137 chunks with more than one
+  lightmap cells: 4586 faces below retail size, 988 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l3a.gcd (2436 KB)
+  light faces: 22656 faces, lighting 621 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l3a_lf.gcd (1644 KB)
+world DL bake m6l3b (GoldSrc BSP30):
+  faces=20034 skip=263 orphans=7 tris=57934
+  static brush entities=11 (solid 11) faces=1665
+  static func_water baked=0
+  clusters=10125 chunks=6859 batches=10303 mats=42
+  tree nodes=15613 planes=5480
+  MEM1 resident=338 KB  ARAM chunks=2399 KB (max 26 KB)
+  lightmap pages=477 (238 KB, CMPR), 12 chunks with more than one
+  lightmap cells: 678 faces below retail size, 552 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l3b.gcd (3002 KB)
+  light faces: 21910 faces, lighting 530 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l3b_lf.gcd (1558 KB)
+world DL bake m6l3c (GoldSrc BSP30):
+  faces=19360 skip=24 orphans=24 tris=55468
+  static brush entities=10 (solid 10) faces=1742
+  static func_water baked=0
+  clusters=11142 chunks=6514 batches=10926 mats=50
+  tree nodes=16796 planes=6436
+  MEM1 resident=352 KB  ARAM chunks=2330 KB (max 10 KB)
+  lightmap pages=470 (235 KB, CMPR), 11 chunks with more than one
+  lightmap cells: 442 faces below retail size, 195 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l3c.gcd (2953 KB)
+  light faces: 22862 faces, lighting 532 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l3c_lf.gcd (1611 KB)
+world DL bake m6l3d (GoldSrc BSP30):
+  faces=11106 skip=22 orphans=0 tris=36459
+  static brush entities=9 (solid 9) faces=2953
+  static func_water baked=0
+  clusters=5755 chunks=3662 batches=4813 mats=40
+  tree nodes=8184 planes=2742
+  MEM1 resident=177 KB  ARAM chunks=1400 KB (max 10 KB)
+  lightmap pages=296 (148 KB, CMPR), 20 chunks with more than one
+  lightmap cells: 0 faces below retail size, 0 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l3d.gcd (1730 KB)
+  light faces: 11345 faces, lighting 247 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l3d_lf.gcd (788 KB)
+world DL bake m6l3e (GoldSrc BSP30):
+  faces=5489 skip=261 orphans=15 tris=15311
+  static brush entities=8 (solid 7) faces=136
+  static func_water baked=0
+  clusters=4596 chunks=2110 batches=3241 mats=54
+  tree nodes=7180 planes=2480
+  MEM1 resident=131 KB  ARAM chunks=660 KB (max 3 KB)
+  lightmap pages=263 (131 KB, CMPR), 12 chunks with more than one
+  lightmap cells: 0 faces below retail size, 0 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l3e.gcd (967 KB)
+  light faces: 7796 faces, lighting 288 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l3e_lf.gcd (622 KB)
+world DL bake training (GoldSrc BSP30):
+  faces=4413 skip=1502 orphans=0 tris=12876
+  static brush entities=8 (solid 8) faces=221
+  static func_water baked=0
+  clusters=4878 chunks=1467 batches=2053 mats=29
+  tree nodes=6839 planes=2866
+  MEM1 resident=119 KB  ARAM chunks=514 KB (max 6 KB)
+  lightmap pages=228 (114 KB, CMPR), 23 chunks with more than one
+  lightmap cells: 0 faces below retail size, 0 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_training.gcd (850 KB)
+  light faces: 6245 faces, lighting 272 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_training_lf.gcd (501 KB)
+world DL bake void (GoldSrc BSP30):
+  faces=0 skip=54 orphans=0 tris=0
+  static brush entities=0 (solid 0) faces=0
+  static func_water baked=0
+  clusters=1 chunks=0 batches=0 mats=0
+  tree nodes=6 planes=6
+  MEM1 resident=0 KB  ARAM chunks=0 KB (max 0 KB)
+  lightmap pages=0 (0 KB, CMPR), 0 chunks with more than one
+  lightmap cells: 0 faces below retail size, 0 flat grey (no room)
+  wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_void.gcd (0 KB)
+  light faces: 54 faces, lighting 28 KB, wrote /home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_void_lf.gcd (4 KB)
+  world DL: 111 map(s) baked/cached
+  world textures: media/wt_credits.gct entries=1 blob=2720 bytes
+  world textures: media/wt_m1l1.gct entries=64 blob=196032 bytes
+  world textures: media/wt_m1l2a.gct entries=126 blob=306752 bytes
+  world textures: media/wt_m1l2b.gct entries=99 blob=311456 bytes
+  world textures: media/wt_m1l3a.gct entries=47 blob=114976 bytes
+  world textures: media/wt_m1l3b.gct entries=41 blob=175328 bytes
+  world textures: media/wt_m1l3c.gct entries=98 blob=191936 bytes
+  world textures: media/wt_m2l1.gct entries=87 blob=298752 bytes
+  world textures: media/wt_m2l2a.gct entries=88 blob=246112 bytes
+  world textures: media/wt_m2l2b.gct entries=115 blob=195488 bytes
+  world textures: media/wt_m2l2c.gct entries=61 blob=220672 bytes
+  world textures: media/wt_m2l3.gct entries=86 blob=292416 bytes
+  world textures: media/wt_m3l1a.gct entries=41 blob=115424 bytes
+  world textures: media/wt_m3l1b.gct entries=64 blob=129760 bytes
+  world textures: media/wt_m3l2.gct entries=93 blob=287840 bytes
+  world textures: media/wt_m3l3.gct entries=75 blob=222336 bytes
+  world textures: media/wt_m4l0.gct entries=42 blob=214720 bytes
+  world textures: media/wt_m4l1.gct entries=92 blob=353568 bytes
+  world textures: media/wt_m4l2.gct entries=99 blob=306976 bytes
+  world textures: media/wt_m4l3.gct entries=143 blob=332928 bytes
+  world textures: media/wt_m5l1a.gct entries=67 blob=253344 bytes
+  world textures: media/wt_m5l1b.gct entries=69 blob=287648 bytes
+  world textures: media/wt_m5l2a.gct entries=60 blob=297664 bytes
+  world textures: media/wt_m5l2b.gct entries=41 blob=183904 bytes
+  world textures: media/wt_m5l3.gct entries=74 blob=150912 bytes
+  world textures: media/wt_m6l1a.gct entries=21 blob=115360 bytes
+  world textures: media/wt_m6l1b.gct entries=43 blob=118688 bytes
+  world textures: media/wt_m6l1c.gct entries=95 blob=106496 bytes
+  world textures: media/wt_m6l2a.gct entries=126 blob=176064 bytes
+  world textures: media/wt_m6l2b.gct entries=130 blob=195168 bytes
+  world textures: media/wt_m6l3a.gct entries=112 blob=111552 bytes
+  world textures: media/wt_m6l3b.gct entries=45 blob=68320 bytes
+  world textures: media/wt_m6l3c.gct entries=60 blob=50208 bytes
+  world textures: media/wt_m6l3d.gct entries=42 blob=75808 bytes
+  world textures: media/wt_m6l3e.gct entries=67 blob=158432 bytes
+  world textures: media/wt_training.gct entries=32 blob=120576 bytes
+  world textures: media/wt_void.gct entries=1 blob=2720 bytes
+  world textures: 37 map packs, CMPR with mipmaps, 6 MiB
+  props: 0 map prop pack(s)
+  CapFaces pack credits: faces=42 eyes=1 38304 bytes
+  CapFaces spatial credits: cells=4 faces≈42 → pk3
+  CapFaces spatial credits: media/cf_credits_spatial.pk3 (137757 bytes)
+  CapFaces pack m1l1: faces=768 eyes=1 132672 bytes
+  CapFaces spatial m1l1: cells=23 faces≈1043 → pk3
+  CapFaces spatial m1l1: media/cf_m1l1_spatial.pk3 (895094 bytes)
+  CapFaces pack m1l2a: faces=768 eyes=1 132672 bytes
+  CapFaces spatial m1l2a: cells=63 faces≈1777 → pk3
+  CapFaces spatial m1l2a: media/cf_m1l2a_spatial.pk3 (2310816 bytes)
+  CapFaces pack m1l2b: faces=768 eyes=1 132672 bytes
+  CapFaces spatial m1l2b: cells=60 faces≈1900 → pk3
+  CapFaces spatial m1l2b: media/cf_m1l2b_spatial.pk3 (2227749 bytes)
+  CapFaces pack m1l3a: faces=708 eyes=1 124896 bytes
+  CapFaces spatial m1l3a: cells=46 faces≈708 → pk3
+  CapFaces spatial m1l3a: media/cf_m1l3a_spatial.pk3 (1610845 bytes)
+  CapFaces pack m1l3b: faces=719 eyes=1 126304 bytes
+  CapFaces spatial m1l3b: cells=49 faces≈719 → pk3
+  CapFaces spatial m1l3b: media/cf_m1l3b_spatial.pk3 (1711280 bytes)
+  CapFaces pack m1l3c: faces=768 eyes=1 132672 bytes
+  CapFaces spatial m1l3c: cells=44 faces≈1544 → pk3
+  CapFaces spatial m1l3c: media/cf_m1l3c_spatial.pk3 (1653552 bytes)
+  CapFaces pack m2l1: faces=768 eyes=1 132672 bytes
+  CapFaces spatial m2l1: cells=63 faces≈1786 → pk3
+  CapFaces spatial m2l1: media/cf_m2l1_spatial.pk3 (2311821 bytes)
+  CapFaces pack m2l2a: faces=768 eyes=1 132672 bytes
+  CapFaces spatial m2l2a: cells=63 faces≈2505 → pk3
+  CapFaces spatial m2l2a: media/cf_m2l2a_spatial.pk3 (2405474 bytes)
+  CapFaces pack m2l2b: faces=768 eyes=1 132672 bytes
+  CapFaces spatial m2l2b: cells=63 faces≈1777 → pk3
+  CapFaces spatial m2l2b: media/cf_m2l2b_spatial.pk3 (2310771 bytes)
+  CapFaces pack m2l2c: faces=768 eyes=1 132672 bytes
+  CapFaces spatial m2l2c: cells=63 faces≈2036 → pk3
+  CapFaces spatial m2l2c: media/cf_m2l2c_spatial.pk3 (2344447 bytes)
+  CapFaces pack m2l3: faces=768 eyes=1 132672 bytes
+  CapFaces spatial m2l3: cells=61 faces≈1431 → pk3
+  CapFaces spatial m2l3: media/cf_m2l3_spatial.pk3 (2199754 bytes)
+  CapFaces pack m3l1a: faces=768 eyes=1 132672 bytes
+  CapFaces spatial m3l1a: cells=63 faces≈846 → pk3
+  CapFaces spatial m3l1a: media/cf_m3l1a_spatial.pk3 (2189559 bytes)
+  CapFaces pack m3l1b: faces=768 eyes=1 132672 bytes
+  CapFaces spatial m3l1b: cells=56 faces≈1486 → pk3
+  CapFaces spatial m3l1b: media/cf_m3l1b_spatial.pk3 (2042021 bytes)
+  CapFaces pack m3l2: faces=768 eyes=1 132672 bytes
+  CapFaces spatial m3l2: cells=63 faces≈1190 → pk3
+  CapFaces spatial m3l2: media/cf_m3l2_spatial.pk3 (2234662 bytes)
+  CapFaces pack m3l3: faces=768 eyes=1 132672 bytes
+  CapFaces spatial m3l3: cells=63 faces≈2232 → pk3
+  CapFaces spatial m3l3: media/cf_m3l3_spatial.pk3 (2369655 bytes)
+  CapFaces pack m4l0: faces=768 eyes=1 132672 bytes
+  CapFaces spatial m4l0: cells=43 faces≈795 → pk3
+  CapFaces spatial m4l0: media/cf_m4l0_spatial.pk3 (1523028 bytes)
+  CapFaces pack m4l1: faces=768 eyes=1 132672 bytes
+  CapFaces spatial m4l1: cells=63 faces≈1233 → pk3
+  CapFaces spatial m4l1: media/cf_m4l1_spatial.pk3 (2240021 bytes)
+  CapFaces pack m4l2: faces=768 eyes=1 132672 bytes
+  CapFaces spatial m4l2: cells=63 faces≈1689 → pk3
+  CapFaces spatial m4l2: media/cf_m4l2_spatial.pk3 (2299189 bytes)
+  CapFaces pack m4l3: faces=768 eyes=1 132672 bytes
+  CapFaces spatial m4l3: cells=63 faces≈1850 → pk3
+  CapFaces spatial m4l3: media/cf_m4l3_spatial.pk3 (2320116 bytes)
+  CapFaces pack m5l1a: faces=768 eyes=1 132672 bytes
+  CapFaces spatial m5l1a: cells=47 faces≈1742 → pk3
+  CapFaces spatial m5l1a: media/cf_m5l1a_spatial.pk3 (1778177 bytes)
+  CapFaces pack m5l1b: faces=768 eyes=1 132672 bytes
+  CapFaces spatial m5l1b: cells=55 faces≈2945 → pk3
+  CapFaces spatial m5l1b: media/cf_m5l1b_spatial.pk3 (2198778 bytes)
+  CapFaces pack m5l2a: faces=768 eyes=1 132672 bytes
+  CapFaces spatial m5l2a: cells=57 faces≈2440 → pk3
+  CapFaces spatial m5l2a: media/cf_m5l2a_spatial.pk3 (2199048 bytes)
+  CapFaces pack m5l2b: faces=768 eyes=1 132672 bytes
+  CapFaces spatial m5l2b: cells=63 faces≈2828 → pk3
+  CapFaces spatial m5l2b: media/cf_m5l2b_spatial.pk3 (2447453 bytes)
+  CapFaces pack m5l3: faces=768 eyes=1 132672 bytes
+  CapFaces spatial m5l3: cells=63 faces≈2940 → pk3
+  CapFaces spatial m5l3: media/cf_m5l3_spatial.pk3 (2461570 bytes)
+  CapFaces pack m6l1a: faces=768 eyes=1 132672 bytes
+  CapFaces spatial m6l1a: cells=63 faces≈1298 → pk3
+  CapFaces spatial m6l1a: media/cf_m6l1a_spatial.pk3 (2248554 bytes)
+  CapFaces pack m6l1b: faces=768 eyes=1 132672 bytes
+  CapFaces spatial m6l1b: cells=56 faces≈1581 → pk3
+  CapFaces spatial m6l1b: media/cf_m6l1b_spatial.pk3 (2054485 bytes)
+  CapFaces pack m6l1c: faces=768 eyes=1 132672 bytes
+  CapFaces spatial m6l1c: cells=53 faces≈2686 → pk3
+  CapFaces spatial m6l1c: media/cf_m6l1c_spatial.pk3 (2098985 bytes)
+  CapFaces pack m6l2a: faces=768 eyes=1 132672 bytes
+  CapFaces spatial m6l2a: cells=62 faces≈3611 → pk3
+  CapFaces spatial m6l2a: media/cf_m6l2a_spatial.pk3 (2516452 bytes)
+  CapFaces pack m6l2b: faces=768 eyes=1 132672 bytes
+  CapFaces spatial m6l2b: cells=63 faces≈2443 → pk3
+  CapFaces spatial m6l2b: media/cf_m6l2b_spatial.pk3 (2397271 bytes)
+  CapFaces pack m6l3a: faces=768 eyes=1 132672 bytes
+  CapFaces spatial m6l3a: cells=42 faces≈2457 → pk3
+  CapFaces spatial m6l3a: media/cf_m6l3a_spatial.pk3 (1706084 bytes)
+  CapFaces pack m6l3b: faces=768 eyes=1 132672 bytes
+  CapFaces spatial m6l3b: cells=22 faces≈1640 → pk3
+  CapFaces spatial m6l3b: media/cf_m6l3b_spatial.pk3 (939724 bytes)
+  CapFaces pack m6l3c: faces=768 eyes=1 132672 bytes
+  CapFaces spatial m6l3c: cells=19 faces≈1707 → pk3
+  CapFaces spatial m6l3c: media/cf_m6l3c_spatial.pk3 (849318 bytes)
+  CapFaces pack m6l3d: faces=416 eyes=1 86912 bytes
+  CapFaces spatial m6l3d: cells=9 faces≈416 → pk3
+  CapFaces spatial m6l3d: media/cf_m6l3d_spatial.pk3 (351475 bytes)
+  CapFaces pack m6l3e: faces=768 eyes=1 132672 bytes
+  CapFaces spatial m6l3e: cells=23 faces≈1224 → pk3
+  CapFaces spatial m6l3e: media/cf_m6l3e_spatial.pk3 (918618 bytes)
+  CapFaces pack training: faces=768 eyes=1 132672 bytes
+  CapFaces spatial training: cells=55 faces≈774 → pk3
+  CapFaces spatial training: media/cf_training_spatial.pk3 (1917088 bytes)
+  CapFaces pack void: faces=54 eyes=1 39872 bytes
+  CapFaces spatial void: cells=4 faces≈54 → pk3
+  CapFaces spatial void: media/cf_void_spatial.pk3 (139277 bytes)
+  CapFaces packs: 74 files
+GameCube ISO: extra gamedir graft /xash3d/valve=/tmp/mohaa-m1l2b-listen-20261122/cache/valve-menu-min
+GameCube ISO: extra gamedir graft /xash3d/dod=/tmp/mohaa-m1l2b-listen-20261122/cache/dod-menu-min
+  lean studio player.mdl: 281324 → 281324 bytes
+  lean studio v_garand.mdl: 548076 → 116140 bytes
+  lean studio tex v_garandt.mdl: 548076 → 333874 bytes
+  lean studio v_mp40.mdl: 394240 → 85184 bytes
+  lean studio tex v_mp40t.mdl: 394240 → 309298 bytes
+  lean studio v_98k.mdl: 604952 → 100836 bytes
+  lean studio tex v_98kt.mdl: 604952 → 406056 bytes
+  lean studio v_tommy.mdl: 411168 → 77536 bytes
+  lean studio tex v_tommyt.mdl: 411168 → 333874 bytes
+  lean studio v_colt.mdl: 306624 → 73848 bytes
+  lean studio tex v_coltt.mdl: 306624 → 233020 bytes
+  lean studio v_luger.mdl: 307352 → 74576 bytes
+  lean studio tex v_lugert.mdl: 307352 → 233020 bytes
+  lean studio v_amerk.mdl: 196500 → 30108 bytes
+  lean studio tex v_amerkt.mdl: 196500 → 166634 bytes
+  lean studio v_spade.mdl: 232372 → 32364 bytes
+  lean studio tex v_spadet.mdl: 232372 → 200252 bytes
+  lean studio v_grenade.mdl: 267712 → 67704 bytes
+  lean studio tex v_grenadet.mdl: 267712 → 200252 bytes
+  lean studio v_stick.mdl: 225164 → 58772 bytes
+  lean studio tex v_stickt.mdl: 225164 → 166634 bytes
+  lean studio w_grenade.mdl: 20012 → 2776 bytes
+  lean studio w_stick.mdl: 19012 → 1776 bytes
+  lean studio v_bren.mdl: 525840 → 125824 bytes
+  lean studio tex v_brent.mdl: 525840 → 400260 bytes
+  lean studio v_mp44.mdl: 391628 → 91616 bytes
+  lean studio tex v_mp44t.mdl: 391628 → 300256 bytes
+  lean studio v_spring.mdl: 391032 → 91020 bytes
+  lean studio tex v_springt.mdl: 391032 → 300256 bytes
+  lean studio v_scoped98k.mdl: 642312 → 104576 bytes
+  lean studio tex v_scoped98kt.mdl: 642312 → 37242 bytes
+  viewmodel v_30cal: core 75800 bytes, animation anim_ac7305cfc81f.gca (116448 bytes)
+  lean studio v_30cal.mdl: 466080 → 75800 bytes
+  lean studio tex v_30calt.mdl: 466080 → 275680 bytes
+  viewmodel v_mg42: core 80984 bytes, animation anim_03357e2f8349.gca (195040 bytes)
+  lean studio v_mg42.mdl: 608028 → 80984 bytes
+  lean studio tex v_mg42t.mdl: 608028 → 333874 bytes
+  lean studio v_bazooka.mdl: 444552 → 94536 bytes
+  lean studio tex v_bazookat.mdl: 444552 → 350258 bytes
+  lean studio v_panzerschreck.mdl: 571268 → 104864 bytes
+  lean studio tex v_panzerschreckt.mdl: 571268 → 36566 bytes
+  lean studio w_bazooka_rocket.mdl: 36264 → 2644 bytes
+  lean studio w_crowbar.mdl: 2472 → 2472 bytes
+  lean studio v_bar.mdl: 413000 → 95752 bytes
+  lean studio tex v_bart.mdl: 413000 → 317490 bytes
+  lean studio v_enfield.mdl: 502252 → 125960 bytes
+  lean studio tex v_enfieldt.mdl: 502252 → 376534 bytes
+  lean studio v_enfield_scoped.mdl: 555380 → 121744 bytes
+  lean studio tex v_enfield_scopedt.mdl: 555380 → 40662 bytes
+  lean studio v_sten.mdl: 413324 → 80544 bytes
+  lean studio tex v_stent.mdl: 413324 → 333024 bytes
+  lean studio v_piat.mdl: 444588 → 94572 bytes
+  lean studio tex v_piatt.mdl: 444588 → 350258 bytes
+  lean studio v_webley.mdl: 345972 → 79576 bytes
+  lean studio tex v_webleyt.mdl: 345972 → 266638 bytes
+  lean studio v_fairbairn.mdl: 159564 → 25940 bytes
+  lean studio tex v_fairbairnt.mdl: 159564 → 133866 bytes
+  lean studio v_mills.mdl: 339484 → 73088 bytes
+  lean studio tex v_millst.mdl: 339484 → 266638 bytes
+  lean studio v_m1carbine.mdl: 406128 → 73348 bytes
+  lean studio tex v_m1carbinet.mdl: 406128 → 333024 bytes
+  lean studio v_greasegun.mdl: 422796 → 89164 bytes
+  lean studio tex v_greasegunt.mdl: 422796 → 333874 bytes
+  lean studio v_fg42.mdl: 526092 → 126076 bytes
+  lean studio tex v_fg42t.mdl: 526092 → 400260 bytes
+  lean studio v_paraknife.mdl: 199032 → 32640 bytes
+  lean studio tex v_paraknifet.mdl: 199032 → 166634 bytes
+  lean studio w_mills.mdl: 38492 → 4872 bytes
+  lean studio p_garand.mdl: 74088 → 7700 bytes
+  lean studio tex p_garandt.mdl: 74088 → 5190 bytes
+  lean studio p_k98.mdl: 73628 → 7240 bytes
+  lean studio tex p_k98t.mdl: 73628 → 5190 bytes
+  lean studio p_mp40.mdl: 75872 → 9484 bytes
+  lean studio tex p_mp40t.mdl: 75872 → 5190 bytes
+  lean studio p_tommy.mdl: 73204 → 6816 bytes
+  lean studio tex p_tommyt.mdl: 73204 → 5190 bytes
+  lean studio p_colt.mdl: 21612 → 4376 bytes
+  lean studio tex p_coltt.mdl: 21612 → 5190 bytes
+  lean studio p_luger.mdl: 22540 → 5304 bytes
+  lean studio tex p_lugert.mdl: 22540 → 5190 bytes
+  lean studio p_amerk.mdl: 37836 → 4216 bytes
+  lean studio tex p_amerkt.mdl: 37836 → 3142 bytes
+  lean studio p_spade.mdl: 20560 → 3324 bytes
+  lean studio tex p_spadet.mdl: 20560 → 5190 bytes
+  lean studio p_grenade.mdl: 19244 → 5256 bytes
+  lean studio tex p_grenadet.mdl: 19244 → 4632 bytes
+  lean studio p_stick.mdl: 20376 → 3140 bytes
+  lean studio tex p_stickt.mdl: 20376 → 5190 bytes
+  lean studio p_bren.mdl: 73100 → 6712 bytes
+  lean studio tex p_brent.mdl: 73100 → 5190 bytes
+  lean studio p_stg44.mdl: 75244 → 8856 bytes
+  lean studio tex p_stg44t.mdl: 75244 → 5190 bytes
+  lean studio p_spring.mdl: 25632 → 8396 bytes
+  lean studio tex p_springt.mdl: 25632 → 5190 bytes
+  lean studio p_30cal.mdl: 23964 → 6728 bytes
+  lean studio tex p_30calt.mdl: 23964 → 5190 bytes
+  lean studio p_mg42pr.mdl: 41832 → 7364 bytes
+  lean studio tex p_mg42prt.mdl: 41832 → 10136 bytes
+  lean studio p_bazooka.mdl: 41932 → 8312 bytes
+  lean studio tex p_bazookat.mdl: 41932 → 3142 bytes
+  lean studio p_pschreck.mdl: 45908 → 12288 bytes
+  lean studio tex p_pschreckt.mdl: 45908 → 3142 bytes
+  lean studio p_barbu.mdl: 73916 → 7528 bytes
+  lean studio tex p_barbut.mdl: 73916 → 5190 bytes
+  lean studio p_enfield.mdl: 49348 → 12832 bytes
+  lean studio tex p_enfieldt.mdl: 49348 → 6040 bytes
+  lean studio p_enfields.mdl: 56288 → 13628 bytes
+  lean studio tex p_enfieldst.mdl: 56288 → 6040 bytes
+  lean studio p_sten.mdl: 43632 → 10012 bytes
+  lean studio tex p_stent.mdl: 43632 → 3142 bytes
+  lean studio p_piat.mdl: 42504 → 8884 bytes
+  lean studio tex p_piatt.mdl: 42504 → 3142 bytes
+  lean studio p_webley.mdl: 41968 → 8348 bytes
+  lean studio tex p_webleyt.mdl: 41968 → 3142 bytes
+  lean studio p_fairbairn.mdl: 14544 → 5500 bytes
+  lean studio tex p_fairbairnt.mdl: 14544 → 3142 bytes
+  lean studio p_mills.mdl: 39856 → 6236 bytes
+  lean studio tex p_millst.mdl: 39856 → 3142 bytes
+  lean studio p_m1carb.mdl: 24660 → 7424 bytes
+  lean studio tex p_m1carbt.mdl: 24660 → 5190 bytes
+  lean studio p_grease.mdl: 41700 → 8080 bytes
+  lean studio tex p_greaset.mdl: 41700 → 3142 bytes
+  lean studio p_fg42.mdl: 73100 → 6712 bytes
+  lean studio tex p_fg42t.mdl: 73100 → 5190 bytes
+  lean studio p_paraknife.mdl: 22476 → 5240 bytes
+  lean studio tex p_paraknifet.mdl: 22476 → 5190 bytes
+  lean studio p_barbd.mdl: 75980 → 9592 bytes
+  lean studio tex p_barbdt.mdl: 75980 → 5190 bytes
+  lean studio p_brenbd.mdl: 47184 → 13564 bytes
+  lean studio tex p_brenbdt.mdl: 47184 → 3142 bytes
+  lean studio p_brenbu.mdl: 47132 → 13512 bytes
+  lean studio tex p_brenbut.mdl: 47132 → 3142 bytes
+  lean studio p_fg42bd.mdl: 45080 → 11460 bytes
+  lean studio tex p_fg42bdt.mdl: 45080 → 3142 bytes
+  lean studio p_fg42bu.mdl: 44988 → 11368 bytes
+  lean studio tex p_fg42but.mdl: 44988 → 3142 bytes
+  lean studio p_scopedfg42bu.mdl: 44304 → 10684 bytes
+  lean studio tex p_scopedfg42but.mdl: 44304 → 3142 bytes
+  lean studio p_mg34bd.mdl: 45264 → 10796 bytes
+  lean studio tex p_mg34bdt.mdl: 45264 → 10136 bytes
+  lean studio p_mg34bu.mdl: 45240 → 10772 bytes
+  lean studio tex p_mg34but.mdl: 45240 → 10136 bytes
+  lean studio p_mg42bd.mdl: 25940 → 8704 bytes
+  lean studio tex p_mg42bdt.mdl: 25940 → 5190 bytes
+  lean studio p_mg42bu.mdl: 26044 → 8808 bytes
+  lean studio tex p_mg42but.mdl: 26044 → 5190 bytes
+  lean studio hk_satchel.mdl: 37984 → 4364 bytes
+  lean studio tex hk_satchelt.mdl: 37984 → 9286 bytes
+  lean studio horse_statue.mdl: 83500 → 17112 bytes
+  lean studio tex horse_statuet.mdl: 83500 → 17478 bytes
+  lean studio by_rubble_set.mdl: 76816 → 9580 bytes
+  lean studio tex by_rubble_sett.mdl: 76816 → 18328 bytes
+  lean studio sandbags.mdl: 74316 → 40696 bytes
+  lean studio tex sandbagst.mdl: 74316 → 3142 bytes
+  lean studio by_canopy.mdl: 135924 → 3152 bytes
+  lean studio tex by_canopyt.mdl: 135924 → 34712 bytes
+  lean studio arc_xer_tree2.mdl: 111808 → 3612 bytes
+  lean studio tex arc_xer_tree2t.mdl: 111808 → 16280 bytes
+  lean studio furniture.mdl: 73592 → 7204 bytes
+  lean studio tex furnituret.mdl: 73592 → 17478 bytes
+  lean studio bulb.mdl: 43484 → 14484 bytes
+  lean studio tex bulbt.mdl: 43484 → 29244 bytes
+  lean studio sherman.mdl: 294496 → 94488 bytes
+  lean studio tex shermant.mdl: 294496 → 15932 bytes
+  lean studio jagd.mdl: 159424 → 42184 bytes
+  lean studio tex jagdt.mdl: 159424 → 13034 bytes
+  lean studio by_banister.mdl: 117056 → 50668 bytes
+  lean studio tex by_banistert.mdl: 117056 → 5190 bytes
+  lean studio flags.mdl: 96260 → 27324 bytes
+  lean studio tex flagst.mdl: 96260 → 20028 bytes
+GameCube studio mirror: injected 169 MDL(s) into bootstrap pk3
+  animation pack: 3724000 -> 2355616 bytes (LZ4, 1368799 saved)
+  player model axis-inf: 3981216 → core 79192 bytes, animation anim_d47c788d71e4.gca, meshes 186192 bytes to mesh_00cc06dc5470.gcm
+  player skins axis-inft.mdl: 982852 → 33856 bytes (GX CMPR up to 128 px)
+  animation pack: 3665920 -> 2326432 bytes (LZ4, 1340344 saved)
+  player model axis-para: 3854728 → core 78876 bytes, animation anim_a4f97e0d6796.gca, meshes 118140 bytes to mesh_74040f5cae74.gcm
+  player skins axis-parat.mdl: 757592 → 25568 bytes (GX CMPR up to 128 px)
+  animation pack: 3723904 -> 2355296 bytes (LZ4, 1369084 saved)
+  player model brit-inf: 3880980 → core 79048 bytes, animation anim_95068896ddbf.gca, meshes 86020 bytes to mesh_56944538eba9.gcm
+  player skins brit-inft.mdl: 621188 → 29600 bytes (GX CMPR up to 128 px)
+  animation pack: 3724192 -> 2354272 bytes (LZ4, 1370623 saved)
+  player model us-inf: 3960160 → core 79144 bytes, animation anim_cb5bc431a18a.gca, meshes 165028 bytes to mesh_db85a7ed515b.gcm
+  player skins us-inft.mdl: 951600 → 33856 bytes (GX CMPR up to 128 px)
+  animation pack: 3741120 -> 2350240 bytes (LZ4, 1391291 saved)
+  player model us-para: 3922396 → core 79116 bytes, animation anim_c09d941452cf.gca, meshes 110556 bytes to mesh_d8ee3a6014c1.gcm
+  player skins us-parat.mdl: 491000 → 74720 bytes (GX CMPR up to 128 px)
+  player animation and mesh packs: 10, 12749408 bytes, in /tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/mohaa/models/player
+GameCube player models: injected 10 file(s) into bootstrap pk3
+GameCube sky mirror: injected 103 lean BMP(s) into bootstrap pk3
+GameCube bootstrap: baking what mohaa lacks from /tmp/mohaa-m1l2b-listen-20261122/cache/dod-menu-min
+  animation pack: 3724000 -> 2355616 bytes (LZ4, 1368799 saved)
+  animation pack: 3665920 -> 2326432 bytes (LZ4, 1340344 saved)
+  animation pack: 3723904 -> 2355296 bytes (LZ4, 1369084 saved)
+  animation pack: 3724192 -> 2354272 bytes (LZ4, 1370623 saved)
+  animation pack: 3741120 -> 2350240 bytes (LZ4, 1391291 saved)
+  player animation and mesh packs: 10, 12749408 bytes, in /tmp/mohaa-m1l2b-listen-20261122/cache/dod-menu-min/models/player
+GameCube HUD mirror: injected 1 sprite(s) into bootstrap pk3
+  lean font CREDITSFONT: → gfx/gc_creditsfont.fnt (5908 bytes, 128x32)
+  full font CREDITSFONT: → gfx/gc_creditsfont256.fnt (18196 bytes, 256x64)
+  hi-res text atlas: → gfx/gc_hitext.bin (67008 bytes)
+GameCube font mirror: injected 1 lean font(s) into bootstrap pk3
+GameCube sky mirror: injected 3 lean BMP(s) into bootstrap pk3
+GameCube media mirror: injected 37 overlay CapFaces/sky file(s) into bootstrap pk3
+GameCube ISO: assembling 235 grafts into /tmp/mohaa-m1l2b-listen-20261122/cache/dodgc-lean-intro-3.iso (primary=mohaa, xorriso progress follows)
+xorriso 1.5.6 : RockRidge filesystem manipulator, libburnia project.
+
+Drive current: -outdev 'stdio:/tmp/mohaa-m1l2b-listen-20261122/cache/dodgc-lean-intro-3.iso'
+Media current: stdio file, overwriteable
+Media status : is blank
+Media summary: 0 sessions, 0 data blocks, 0 data,  119g free
+Added to ISO image: directory '/xash3d/mohaa'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/mohaa'
+xorriso : UPDATE :    1010 files added in 1 seconds
+Added to ISO image: directory '/xash3d/valve'='/tmp/mohaa-m1l2b-listen-20261122/cache/valve-menu-min'
+Added to ISO image: directory '/xash3d/dod'='/tmp/mohaa-m1l2b-listen-20261122/cache/dod-menu-min'
+Added to ISO image: file '/xash3d/mohaa/config.cfg'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/config.cfg'
+Added to ISO image: file '/xash3d/mohaa/autoexec.cfg'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/autoexec.cfg'
+Added to ISO image: file '/xash3d/mohaa/mainui.cfg'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/mainui.cfg'
+Added to ISO image: file '/xash3d/mohaa/valve.rc'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/valve.rc'
+Added to ISO image: file '/xash3d/mohaa/media/c0a0.prefetch'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/c0a0.prefetch'
+Added to ISO image: file '/xash3d/mohaa/media/logo.gcvid'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/logo.gcvid'
+Added to ISO image: file '/xash3d/mohaa/media/cdaudio.txt'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cdaudio.txt'
+Added to ISO image: file '/xash3d/mohaa/media/wd_credits.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_credits.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_credits_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_credits_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_credits_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_credits_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m1l1.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m1l1.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m1l1_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m1l1_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m1l1_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m1l1_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m1l2a.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m1l2a.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m1l2a_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m1l2a_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m1l2a_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m1l2a_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m1l2b.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m1l2b.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m1l2b_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m1l2b_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m1l2b_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m1l2b_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m1l3a.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m1l3a.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m1l3a_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m1l3a_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m1l3a_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m1l3a_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m1l3b.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m1l3b.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m1l3b_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m1l3b_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m1l3b_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m1l3b_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m1l3c.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m1l3c.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m1l3c_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m1l3c_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m1l3c_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m1l3c_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m2l1.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m2l1.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m2l1_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m2l1_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m2l1_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m2l1_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m2l2a.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m2l2a.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m2l2a_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m2l2a_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m2l2a_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m2l2a_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m2l2b.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m2l2b.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m2l2b_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m2l2b_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m2l2b_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m2l2b_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m2l2c.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m2l2c.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m2l2c_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m2l2c_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m2l2c_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m2l2c_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m2l3.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m2l3.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m2l3_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m2l3_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m2l3_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m2l3_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m3l1a.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m3l1a.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m3l1a_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m3l1a_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m3l1a_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m3l1a_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m3l1b.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m3l1b.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m3l1b_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m3l1b_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m3l1b_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m3l1b_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m3l2.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m3l2.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m3l2_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m3l2_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m3l2_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m3l2_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m3l3.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m3l3.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m3l3_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m3l3_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m3l3_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m3l3_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m4l0.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m4l0.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m4l0_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m4l0_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m4l0_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m4l0_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m4l1.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m4l1.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m4l1_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m4l1_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m4l1_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m4l1_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m4l2.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m4l2.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m4l2_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m4l2_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m4l2_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m4l2_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m4l3.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m4l3.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m4l3_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m4l3_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m4l3_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m4l3_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m5l1a.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m5l1a.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m5l1a_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m5l1a_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m5l1a_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m5l1a_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m5l1b.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m5l1b.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m5l1b_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m5l1b_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m5l1b_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m5l1b_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m5l2a.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m5l2a.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m5l2a_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m5l2a_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m5l2a_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m5l2a_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m5l2b.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m5l2b.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m5l2b_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m5l2b_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m5l2b_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m5l2b_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m5l3.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m5l3.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m5l3_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m5l3_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m5l3_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m5l3_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m6l1a.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l1a.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m6l1a_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l1a_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m6l1a_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l1a_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m6l1b.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l1b.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m6l1b_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l1b_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m6l1b_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l1b_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m6l1c.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l1c.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m6l1c_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l1c_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m6l1c_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l1c_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m6l2a.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l2a.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m6l2a_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l2a_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m6l2a_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l2a_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m6l2b.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l2b.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m6l2b_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l2b_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m6l2b_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l2b_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m6l3a.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l3a.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m6l3a_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l3a_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m6l3a_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l3a_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m6l3b.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l3b.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m6l3b_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l3b_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m6l3b_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l3b_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m6l3c.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l3c.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m6l3c_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l3c_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m6l3c_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l3c_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m6l3d.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l3d.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m6l3d_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l3d_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m6l3d_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l3d_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m6l3e.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l3e.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m6l3e_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l3e_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_m6l3e_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_m6l3e_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_training.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_training.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_training_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_training_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_training_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_training_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_void.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_void.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_void_lf.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_void_lf.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wd_void_sb.gcd'='/home/tim/Desktop/mohaa-gc/retail/xash3d-gc-latest/build/gc-wd-cache/wd_void_sb.gcd'
+Added to ISO image: file '/xash3d/mohaa/media/wt_credits.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_credits.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_m1l1.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_m1l1.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_m1l2a.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_m1l2a.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_m1l2b.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_m1l2b.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_m1l3a.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_m1l3a.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_m1l3b.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_m1l3b.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_m1l3c.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_m1l3c.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_m2l1.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_m2l1.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_m2l2a.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_m2l2a.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_m2l2b.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_m2l2b.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_m2l2c.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_m2l2c.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_m2l3.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_m2l3.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_m3l1a.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_m3l1a.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_m3l1b.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_m3l1b.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_m3l2.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_m3l2.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_m3l3.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_m3l3.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_m4l0.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_m4l0.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_m4l1.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_m4l1.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_m4l2.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_m4l2.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_m4l3.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_m4l3.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_m5l1a.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_m5l1a.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_m5l1b.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_m5l1b.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_m5l2a.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_m5l2a.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_m5l2b.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_m5l2b.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_m5l3.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_m5l3.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_m6l1a.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_m6l1a.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_m6l1b.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_m6l1b.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_m6l1c.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_m6l1c.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_m6l2a.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_m6l2a.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_m6l2b.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_m6l2b.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_m6l3a.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_m6l3a.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_m6l3b.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_m6l3b.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_m6l3c.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_m6l3c.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_m6l3d.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_m6l3d.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_m6l3e.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_m6l3e.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_training.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_training.gct'
+Added to ISO image: file '/xash3d/mohaa/media/wt_void.gct'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/wt_void.gct'
+Added to ISO image: file '/xash3d/mohaa/media/cf_credits.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_credits.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_credits_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_credits_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m1l1.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m1l1.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m1l1_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m1l1_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m1l2a.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m1l2a.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m1l2a_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m1l2a_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m1l2b.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m1l2b.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m1l2b_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m1l2b_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m1l3a.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m1l3a.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m1l3a_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m1l3a_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m1l3b.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m1l3b.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m1l3b_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m1l3b_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m1l3c.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m1l3c.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m1l3c_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m1l3c_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m2l1.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m2l1.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m2l1_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m2l1_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m2l2a.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m2l2a.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m2l2a_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m2l2a_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m2l2b.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m2l2b.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m2l2b_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m2l2b_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m2l2c.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m2l2c.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m2l2c_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m2l2c_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m2l3.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m2l3.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m2l3_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m2l3_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m3l1a.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m3l1a.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m3l1a_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m3l1a_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m3l1b.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m3l1b.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m3l1b_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m3l1b_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m3l2.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m3l2.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m3l2_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m3l2_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m3l3.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m3l3.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m3l3_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m3l3_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m4l0.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m4l0.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m4l0_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m4l0_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m4l1.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m4l1.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m4l1_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m4l1_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m4l2.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m4l2.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m4l2_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m4l2_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m4l3.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m4l3.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m4l3_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m4l3_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m5l1a.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m5l1a.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m5l1a_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m5l1a_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m5l1b.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m5l1b.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m5l1b_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m5l1b_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m5l2a.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m5l2a.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m5l2a_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m5l2a_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m5l2b.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m5l2b.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m5l2b_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m5l2b_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m5l3.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m5l3.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m5l3_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m5l3_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m6l1a.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m6l1a.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m6l1a_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m6l1a_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m6l1b.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m6l1b.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m6l1b_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m6l1b_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m6l1c.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m6l1c.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m6l1c_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m6l1c_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m6l2a.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m6l2a.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m6l2a_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m6l2a_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m6l2b.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m6l2b.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m6l2b_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m6l2b_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m6l3a.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m6l3a.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m6l3a_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m6l3a_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m6l3b.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m6l3b.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m6l3b_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m6l3b_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m6l3c.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m6l3c.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m6l3c_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m6l3c_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m6l3d.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m6l3d.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m6l3d_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m6l3d_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m6l3e.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m6l3e.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_m6l3e_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_m6l3e_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_training.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_training.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_training_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_training_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/cf_void.gcp'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_void.gcp'
+Added to ISO image: file '/xash3d/mohaa/media/cf_void_spatial.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/cf_void_spatial.pk3'
+Added to ISO image: file '/xash3d/mohaa/media/StartupVids.txt'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-retail-data-qv7kktt1/overlay/mohaa/media/StartupVids.txt'
+Added to ISO image: file '/xash3d/mohaa/gamecube-bootstrap.pk3'='/tmp/mohaa-m1l2b-listen-20261122/cache/xash3d-gc-bootstrap-jyc24u4p/gamecube-bootstrap.pk3'
+xorriso : UPDATE :    1687 files added in 1 seconds
+xorriso : UPDATE :  35.03% done
+ISO image produced: 584540 sectors
+Written to medium : 584540 sectors at LBA 0
+Writing to 'stdio:/tmp/mohaa-m1l2b-listen-20261122/cache/dodgc-lean-intro-3.iso' completed successfully.
+
+Built /tmp/mohaa-m1l2b-listen-20261122/cache/dodgc-lean-intro-3.iso (1204623360 bytes, hybrid GameCube/ISO9660)
+Handoff metadata: /tmp/mohaa-m1l2b-listen-20261122/cache/dodgc-lean-intro-3-handoff.txt
+==> CapFaces pack required for m1l2b (enforced by disc build)
+-rw-rw-r-- 1 tim tim 1.2G Nov 22 18:58 /tmp/mohaa-m1l2b-listen-20261122/out/m1l2b-listen.iso
+dod-gc lean disc
+built_at=2026-11-23T02:58:50Z
+iso=/tmp/mohaa-m1l2b-listen-20261122/out/m1l2b-listen.iso
+menu_iso=/tmp/mohaa-m1l2b-listen-20261122/out/dodgc-menu.iso
+dol=/home/tim/Desktop/mohaa-gc/retail/build-ca7e9b3/xash3d-gc/OUT/bin/mohaagc.dol
+lean=/tmp/mohaa-m1l2b-listen-20261122/cache/dod-menu-min
+valve_min=/tmp/mohaa-m1l2b-listen-20261122/cache/valve-menu-min
+smoke=
+listen=m1l2b
+connect=
+map=m1l2b
+engine_commit=12dd85d902
+dodgc_commit=d7dd1ade44
+==> lean ISOs ready
+    probe: scripts/probe-playtest.sh --route intro-menu out/dodgc.iso

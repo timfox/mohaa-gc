@@ -83,11 +83,16 @@ if git -C "$DODGC_HLSDK" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
 fi
 
 case "$DODGC_GAME" in
-	dod) ENGINE_DOL="$DODGC_ENGINE/OUT/bin/dodgc.dol" ;;
-	mohaa) ENGINE_DOL="$DODGC_ENGINE/OUT/bin/mohaagc.dol" ;;
+	dod) DOL_NAME="dodgc.dol" ;;
+	mohaa) DOL_NAME="mohaagc.dol" ;;
 	*) echo "error: DODGC_GAME must be mohaa or dod (got $DODGC_GAME)" >&2; exit 2 ;;
 esac
-ENGINE_HLSDK_DOD="$DODGC_ENGINE/OUT/hlsdk-gamecube/dod"
+ENGINE_OUT="${XASH_GC_OUT:-$DODGC_ENGINE/OUT}"
+if [[ "$ENGINE_OUT" != /* ]]; then
+	ENGINE_OUT="$DODGC_ENGINE/$ENGINE_OUT"
+fi
+ENGINE_DOL="$ENGINE_OUT/bin/$DOL_NAME"
+ENGINE_HLSDK_DOD="$ENGINE_OUT/hlsdk-gamecube/dod"
 
 if (( ! ISO_ONLY )); then
 	echo "==> [dod-gc] building DoD HLSDK + engine DOL (profile=dod → dodgc.dol)"
@@ -129,7 +134,7 @@ if (( ! ISO_ONLY )); then
 	# The archives are built: put the stock header back now (the EXIT trap above covers a failed build).
 	python3 "$SCRIPT_DIR/integrate-dod-gameplay.py" --hlsdk-dir "$DODGC_HLSDK" --restore-pm-caps
 
-	SDK_SOURCE="${HLSDK_GAMECUBE_FALLBACK_SOURCE:-$DODGC_ENGINE/OUT/hlsdk-gamecube}"
+	SDK_SOURCE="${HLSDK_GAMECUBE_FALLBACK_SOURCE:-$ENGINE_OUT/hlsdk-gamecube}"
 	if [[ ! -s "$SDK_PRIVATE/dod/cl_dlls/libclient_gamecube_ppc.a" ]] \
 		&& [[ -s "$SDK_SOURCE/dod/cl_dlls/libclient_gamecube_ppc.a" ]]; then
 		mkdir -p "$SDK_PRIVATE/lib"
@@ -162,8 +167,8 @@ if (( ! ISO_ONLY )); then
 
 	cp -f "$ENGINE_DOL" "$DODGC_DOL"
 	bash "$SCRIPT_DIR/check-menu-provenance.sh" --dol "$DODGC_DOL" || exit 1
-	if [[ -f "$DODGC_ENGINE/OUT/bin/gamecube-handoff.txt" ]]; then
-		cp -f "$DODGC_ENGINE/OUT/bin/gamecube-handoff.txt" "$DODGC_HANDOFF"
+	if [[ -f "$ENGINE_OUT/bin/gamecube-handoff.txt" ]]; then
+		cp -f "$ENGINE_OUT/bin/gamecube-handoff.txt" "$DODGC_HANDOFF"
 	fi
 	echo "==> [dod-gc] DOL ready: $DODGC_DOL"
 fi

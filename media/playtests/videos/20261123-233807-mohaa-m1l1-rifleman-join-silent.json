@@ -1,0 +1,15 @@
+{
+  "file": "20261123-233807-mohaa-m1l1-rifleman-join-silent.mp4",
+  "date": "2026-11-23T23:38:07",
+  "commit": "d9a2faa539",
+  "engine_commit": "db73d0d126",
+  "route": "mohaa-m1l1-rifleman-join",
+  "disc": "/tmp/mohaa-hud-visual/mohaa-m1l1-hud-direct.iso",
+  "duration_s": 60.3,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 1.1,
+  "project": "mohaa-gc",
+  "audio": "silent screen capture (forced or PulseAudio unavailable)"
+}

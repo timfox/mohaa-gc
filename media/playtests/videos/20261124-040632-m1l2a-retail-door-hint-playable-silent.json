@@ -1,0 +1,15 @@
+{
+  "file": "20261124-040632-m1l2a-retail-door-hint-playable-silent.mp4",
+  "date": "2026-11-24T04:06:32",
+  "commit": "893bf3e037",
+  "engine_commit": "db73d0d126",
+  "route": "m1l2a-retail-door-hint-playable",
+  "disc": "/tmp/mohaa-door-hint/mohaa-m1l2a-door-hint-playable.iso",
+  "duration_s": 60.3,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 0.2,
+  "project": "mohaa-gc",
+  "audio": "silent screen capture (forced or PulseAudio unavailable)"
+}

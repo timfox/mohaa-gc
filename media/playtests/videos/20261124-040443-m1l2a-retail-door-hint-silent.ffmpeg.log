@@ -1,0 +1,4 @@
+[x11grab @ 0x5c2ef6360040] Cannot get the image data event_error: response_type:0 error_code:8 sequence:3536 resource_id:62914570 minor_code:4 major_code:130.
+[x11grab @ 0x5c2ef6360040] Continuing without shared memory.
+[x11grab @ 0x5c2ef6360040] Cannot get the image data event_error: response_type:0 error_code:8 sequence:3537 resource_id:41943054 minor_code:0 major_code:73.
+[in#0/x11grab @ 0x5c2ef635fd80] Error during demuxing: Permission denied

@@ -1,0 +1,15 @@
+{
+  "file": "20261124-003947-m1l2a-hint-render-v3-silent.mp4",
+  "date": "2026-11-24T00:39:47",
+  "commit": "d9a2faa539",
+  "engine_commit": "db73d0d126",
+  "route": "m1l2a-hint-render-v3",
+  "disc": "/tmp/mohaa-compass-build/mohaa-hint-render-probe-v3.iso",
+  "duration_s": 44.7,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 0.8,
+  "project": "mohaa-gc",
+  "audio": "silent screen capture (forced or PulseAudio unavailable)"
+}

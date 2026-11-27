@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read MOHAA static model meshes: .tik model scripts and the SKMD (.skd) meshes they name.
+"""Read MOHAA static model meshes: .tik model scripts and their SKMD (.skd) or SKL (.skb) meshes.
 
     python3 tools/mohaa_skd.py "/path/to/MOHAA/main" --props out/m6l1a.props
 
@@ -24,7 +24,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 SKD_IDENT = b"SKMD"
 SURF_IDENTS = (b"SKL ", b"SKSF")  # MOHAA's v5 files start each surface with "SKL "
-# ident, version, name[64], numSurfaces, numBones, ofsBones, ofsSurfaces, ofsEnd
+# Both SKMD (.skd) and retail SKL (.skb) headers share these leading fields;
+# SKL appends LOD and hitbox fields after ofsEnd.
 HEADER = struct.Struct("<4si64s5i")
 # ident, name[64], numTriangles, numVerts, staticSurfProcessed, ofsTriangles, ofsVerts,
 # ofsCollapse, ofsEnd, ofsCollapseIndex
@@ -55,6 +56,7 @@ class Skd:
 	version: int
 	num_bones: int
 	bones: list = field(default_factory=list)  # bone names, in index order
+	bone_parents: list = field(default_factory=list)  # parent names, parallel to bones
 	surfaces: list = field(default_factory=list)
 
 	@property
@@ -115,8 +117,8 @@ def parse_skd(data: bytes, name: str = "") -> Skd:
 	if len(data) < HEADER.size:
 		raise SkdError(f"{name}: too short for an SKMD header")
 	ident, version, mname, nsurf, nbones, _ofs_bones, ofs_surf, ofs_end = HEADER.unpack_from(data, 0)
-	if ident != SKD_IDENT:
-		raise SkdError(f"{name}: not an SKMD file")
+	if ident not in (SKD_IDENT, b"SKL "):
+		raise SkdError(f"{name}: not an SKMD or SKL file")
 	if not 0 <= nsurf <= 256 or not 0 < ofs_surf < len(data):
 		raise SkdError(f"{name}: bad surface table ({nsurf} at {ofs_surf})")
 	skd = Skd(_cstr(mname) or name, version, nbones)
@@ -126,8 +128,9 @@ def parse_skd(data: bytes, name: str = "") -> Skd:
 	for _ in range(nbones if 0 < _ofs_bones < len(data) else 0):
 		if at + BONE.size > len(data):
 			break
-		bname, _parent, _jtype, _ov, _oc, _orf, oend = BONE.unpack_from(data, at)
+		bname, parent, _jtype, _ov, _oc, _orf, oend = BONE.unpack_from(data, at)
 		skd.bones.append(_cstr(bname))
+		skd.bone_parents.append(_cstr(parent))
 		if oend < BONE.size:
 			break
 		at += oend
@@ -201,31 +204,66 @@ SKC_HEADER = struct.Struct("<4s3if3ff3i")
 SKC_FRAME = struct.Struct("<3f3ff3ffi")
 
 
-def parse_skc(data: bytes, name: str = "") -> dict:
-	"""Frame 0 of an SKAN animation as a pose: {bone name: (position, quaternion)}, names lowercased.
-	Channels are "<bone> pos" and "<bone> rot", 4 floats each (pos: x y z and a spare; rot: x y z w)."""
+def parse_skc_animation(data: bytes, name: str = "") -> dict:
+	"""Read all SKAN frames as per-bone (position, quaternion) poses.
+
+	Channels are "<bone> pos" and "<bone> rot", four floats each (pos uses
+	xyz plus a spare; rot uses xyzw). Frame channel offsets are absolute file
+	offsets, as in the retail SKCs used by the TIKI converter.
+	"""
 	if len(data) < SKC_HEADER.size + SKC_FRAME.size:
 		raise SkdError(f"{name}: too short for an SKAN header")
-	ident, _ver, _flags, _used, _ft, _dx, _dy, _dz, _da, nchan, ofs_names, nframes = SKC_HEADER.unpack_from(data, 0)
-	if ident != SKC_IDENT or nframes < 1 or not 0 < nchan <= 512 or ofs_names + 32 * nchan > len(data):
+	(ident, _ver, _flags, used, frame_time, dx, dy, dz, angle_delta,
+	 nchan, ofs_names, nframes) = SKC_HEADER.unpack_from(data, 0)
+	limit = used if used else len(data)
+	frame_table_end = SKC_HEADER.size + nframes * SKC_FRAME.size
+	if (ident != SKC_IDENT or nframes < 1 or not 0 < nchan <= 512 or
+			limit > len(data) or limit < SKC_HEADER.size or
+			frame_table_end > limit or ofs_names < frame_table_end or
+			ofs_names + 32 * nchan > limit):
 		raise SkdError(f"{name}: not a readable SKAN file")
-	ofs_chan = SKC_FRAME.unpack_from(data, SKC_HEADER.size)[-1]
-	if not 0 < ofs_chan or ofs_chan + 16 * nchan > len(data):
-		raise SkdError(f"{name}: frame 0 channels run past the file")
-	pose = {}
+
+	channels = []
 	for i in range(nchan):
 		cname = _cstr(data[ofs_names + 32 * i:ofs_names + 32 * (i + 1)]).lower()
-		vals = struct.unpack_from("<4f", data, ofs_chan + 16 * i)
 		bone, _, kind = cname.rpartition(" ")
-		pos, q = pose.get(bone, ((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0)))
-		if kind == "pos":
-			pos = vals[:3]
-		elif kind == "rot":
-			q = vals
-		else:
-			continue
-		pose[bone] = (pos, q)
-	return pose
+		channels.append((bone, kind) if bone and kind in ("pos", "rot") else ("", ""))
+
+	poses = []
+	for frame in range(nframes):
+		ofs_frame = SKC_HEADER.size + frame * SKC_FRAME.size
+		ofs_chan = SKC_FRAME.unpack_from(data, ofs_frame)[-1]
+		if ofs_chan < frame_table_end or ofs_chan + 16 * nchan > limit:
+			raise SkdError(f"{name}: frame {frame} channels run past the file")
+		pose = {}
+		for i, (bone, kind) in enumerate(channels):
+			if not bone:
+				continue
+			vals = struct.unpack_from("<4f", data, ofs_chan + 16 * i)
+			pos, q = pose.get(bone, (None, None))
+			if kind == "pos":
+				pos = vals[:3]
+			else:
+				q = vals
+			pose[bone] = (pos, q)
+		poses.append(pose)
+
+	return {
+		"frame_time": frame_time,
+		"delta": (dx, dy, dz),
+		"angle_delta": angle_delta,
+		"poses": poses,
+	}
+
+
+def parse_skc(data: bytes, name: str = "") -> dict:
+	"""Frame 0 as a complete pose, retained for existing static-pose callers."""
+	pose = parse_skc_animation(data, name)["poses"][0]
+	return {
+		bone: (pos if pos is not None else (0.0, 0.0, 0.0),
+		       q if q is not None else (0.0, 0.0, 0.0, 1.0))
+		for bone, (pos, q) in pose.items()
+	}
 
 
 # ---------------------------------------------------------------- .tik and shaders
@@ -367,7 +405,7 @@ def main(argv=None) -> int:
 	ap.add_argument("main", nargs="+", help="MOHAA main folder or pk3 files")
 	ap.add_argument("--props", action="append", required=True, help="a <map>.props sidecar (repeatable)")
 	args = ap.parse_args(argv)
-	files = collect(args.main, (".tik", ".skd", ".skc", ".shader"))
+	files = collect(args.main, (".tik", ".skd", ".skb", ".skc", ".shader"))
 	shaders = {}
 	for p, e in sorted(files.items()):
 		if p.endswith(".shader"):

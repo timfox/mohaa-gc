@@ -176,6 +176,15 @@ class CompileSafetyTest(unittest.TestCase):
 		bsp.entities[1]["classname"] = "trigger_once"
 		self.assertIn('"classname" "trigger_once"', conv.convert(bsp, scale=1.0)[0])
 
+	def test_damage_trigger_does_not_fire_on_touch(self):
+		bsp = tiny_bsp([((-256, -256, -16), (256, 256, 0), 0)], [((0, 0, 0), (64, 64, 64), 0)], door_class="trigger_multiple")
+		bsp.entities[1].update({"targetname": "intro_target", "setthread": "intro_exploder", "spawnflags": "16"})
+		text, _, stats, _ = conv.convert(bsp, scale=1.0)
+		block = text[text.index('"classname" "trigger_multiple"'):]
+		block = block[:block.index("\n}\n")]
+		self.assertIn('"spawnflags" "2"', block)  # GoldSrc: no clients touch it; scripted shots fire it
+		self.assertEqual(stats["damage_triggers"], 1)
+
 	def test_rain_volume_is_nonsolid(self):
 		bsp = tiny_bsp([((0, 0, 0), (64, 64, 64), 0)], [((0, 0, 100), (64, 64, 164), 0)], door_class="func_rain")
 		text, _, _, _ = conv.convert(bsp, scale=1.0)
@@ -413,6 +422,31 @@ class StaticBrushModelTest(unittest.TestCase):
 			self.assertIn("bunker_", words)
 			self.assertIsNone(conv.script_names([d], "nope"))
 
+	def test_script_points_go_to_the_sidecar(self):
+		bsp = self.bsp()
+		bsp.entities.append({"classname": "script_origin", "targetname": "spot", "origin": "8 0 0", "angle": "90"})
+		bsp.entities.append({"classname": "info_waypoint", "targetname": "wp 1", "target": "wp2", "origin": "0 0 0",
+		                     "#set": "2"})
+		bsp.entities.append({"classname": "script_model", "targetname": "gun", "origin": "0 0 0", "model": "x.tik"})
+		points = []
+		text = conv.convert(bsp, scale=0.5, merge_static_models=True, script_words={"spot", "wp 1", "gun"},
+		                    points=points)[0]
+		self.assertNotIn('"spot"', text)
+		self.assertIn('"targetname" "gun"', text)	# a model needs an entity
+		self.assertEqual(points[0], "4 0 0 0 90 0 script_origin spot -")
+		self.assertEqual(points[1], "0 0 0 0 0 0 info_waypoint wp%201 wp2 #set=2")
+
+	def test_names_built_around_a_number_stay(self):
+		# m3l1a: $("higgins" + local.m + "_move") reaches higgins2_move ... higgins6_move
+		bsp = self.bsp()
+		for name in ("higgins2_move", "higgins3_spray_left", "higgins3_unused"):
+			bsp.entities.append({"classname": "script_origin", "targetname": name, "origin": "0 0 0"})
+		text = conv.convert(bsp, scale=1.0, merge_static_models=True,
+		                    script_words={"higgins", "_move", "_spray_left"})[0]
+		self.assertIn('"targetname" "higgins2_move"', text)
+		self.assertIn('"targetname" "higgins3_spray_left"', text)
+		self.assertNotIn("higgins3_unused", text)
+
 	def test_same_name_same_keys_merge(self):
 		bsp = self.bsp()
 		for i in (1, 2, 4):
@@ -511,7 +545,11 @@ class ConvertTest(unittest.TestCase):
 			m = FACE_RE.match(line)
 			if m:
 				texes.add(m.group(4))
-		self.assertEqual(texes, {"NULL", "concrete", "CLIP", "!water", "sky"})
+		# the water surface keeps its own shader's image, under a "!" name GoldSrc warps as water
+		water = {t for t in texes if t.startswith("!")}
+		self.assertEqual(len(water), 1)
+		self.assertNotEqual(water, {"!water"})
+		self.assertEqual(texes - water, {"NULL", "concrete", "CLIP", "sky"})
 		self.assertIn('"classname" "func_door"', text)
 		self.assertIn('"targetname" "door1"', text)
 		# player start: MOHAA (0 0 16) at x0.5 -> feet z 8, origin lifted by hull half height + 1
@@ -554,6 +592,16 @@ class ConvertTest(unittest.TestCase):
 		self.assertIn('"classname" "mohaa_actor"\n"origin" "0 0 0"\n"#set" "1"', text)
 		ntext, _ = conv.path_nodes(self.bsp, 1.0)
 		self.assertIn("8 0 0 0 0 n1 #set=3 #name%20x=a%20b", ntext)
+
+	def test_actor_settings_as_script_vars(self):
+		# retail actor settings and "$find_name" (read as find_name) reach the game as "#" script variables
+		self.bsp.entities.append({"classname": "actor", "origin": "0 0 0", "find_name": "officer1",
+		                          "type_disguise": "salute", "sight": "3072", "testanim": "idle"})
+		text, _, _, _ = conv.convert(self.bsp, scale=1.0)
+		self.assertIn('"#find_name" "officer1"', text)
+		self.assertIn('"#type_disguise" "salute"', text)
+		self.assertIn('"#sight" "3072"', text)
+		self.assertNotIn("testanim", text)
 
 	def test_name_report(self):
 		self.bsp.entities.append({"classname": "light", "origin": "0 0 0", "targetname": "Lamp1"})
@@ -603,7 +651,9 @@ class ConvertTest(unittest.TestCase):
 			self.assertEqual(wad[:4], b"WAD3")
 			count, ofs = struct.unpack_from("<ii", wad, 4)
 			names = {wad[ofs + i * 32 + 16: ofs + i * 32 + 32].split(b"\0")[0].decode() for i in range(count)}
-			self.assertEqual(names, {"concrete", "!water", "sky"})
+			water = {n for n in names if n.startswith("!")}
+			self.assertEqual(len(water), 1)
+			self.assertEqual(names - water, {"concrete", "sky"})
 
 
 if __name__ == "__main__":

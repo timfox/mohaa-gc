@@ -17,6 +17,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include "dod_mohaa_hud.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -27,7 +28,9 @@ extern "C" {
 
 enum { DOD_MOHAA_ORIGIN = 0, DOD_MOHAA_ANGLES = 1 };
 enum { DOD_MOHAA_TARGETNAME = 0, DOD_MOHAA_CLASSNAME = 1, DOD_MOHAA_MODEL = 2, DOD_MOHAA_TARGET = 3 };
-enum { DOD_MOHAA_HIDDEN = 0, DOD_MOHAA_NOTSOLID = 1 };
+/* set_flag modes: hide, solidity, and whether damage can affect this entity. */
+enum { DOD_MOHAA_HIDDEN = 0, DOD_MOHAA_NOTSOLID = 1, DOD_MOHAA_TAKEDAMAGE = 2,
+	DOD_MOHAA_UNTRIGGERABLE = 3 /* "nottriggerable" (on) / "triggerable" (off): a trigger that does not fire */ };
 /* Sound channels, from the ubersound alias's channel name. */
 enum { DOD_MOHAA_CHAN_AUTO = 0, DOD_MOHAA_CHAN_VOICE, DOD_MOHAA_CHAN_ITEM, DOD_MOHAA_CHAN_BODY, DOD_MOHAA_CHAN_WEAPON };
 /* Sound aliases come from maps/<map>.snd, written by mohaa-gc tools/ubersound.py (lines "alias sample volume mindist
@@ -36,13 +39,39 @@ enum { DOD_MOHAA_CHAN_AUTO = 0, DOD_MOHAA_CHAN_VOICE, DOD_MOHAA_CHAN_ITEM, DOD_M
 /* Orders to a script actor (a MOHAA AI soldier, played by a grunt). pos is in GoldSrc units. */
 enum {
 	DOD_MOHAA_AI_ON = 0, DOD_MOHAA_AI_OFF, DOD_MOHAA_ATTACK,	/* attackplayer */
-	DOD_MOHAA_WALKTO, DOD_MOHAA_RUNTO, DOD_MOHAA_TURNTO, DOD_MOHAA_STOP
+	DOD_MOHAA_WALKTO, DOD_MOHAA_RUNTO, DOD_MOHAA_TURNTO, DOD_MOHAA_STOP,
+	/* actor settings: pos[0] is the value (GoldSrc units; degrees for FOV), TETHER's pos is the point */
+	DOD_MOHAA_SIGHT, DOD_MOHAA_HEARING, DOD_MOHAA_FOV, DOD_MOHAA_LEASH, DOD_MOHAA_TETHER,
+	DOD_MOHAA_MINDIST, DOD_MOHAA_MAXDIST,
+	/* pos[0]: DodWeaponId of the MOHAA weapon ("gun"), 0 its side's rifle, -1 unarmed */
+	DOD_MOHAA_GUN,
+	/* pos[0]: 1 charges (type_attack runandshoot, startfiring), 0 fights from cover (cover, turret, ...) */
+	DOD_MOHAA_ATTACK_STYLE,
+	/* a patrol walk to pos: like WALKTO, but an enemy in sight ends it */
+	DOD_MOHAA_PATROLTO,
+	/* pos[0]: 1 heeds the player's disguise (type_disguise salute, sentry, ...), 0 not ("none") */
+	DOD_MOHAA_DISGUISE,
+	/* type_attack "turret": man the turretweapon nearest the actor, if one is close (the host finds it) */
+	DOD_MOHAA_TURRET,
+	/* pos[0]: MOHAA accuracy 0..100 */
+	DOD_MOHAA_ACCURACY,
+	/* pos[0]: grenades it carries (MOHAA ammo_grenade) */
+	DOD_MOHAA_GRENADES
 };
-enum { DOD_MOHAA_PRINT_CONSOLE = 0, DOD_MOHAA_PRINT_HUD = 1, DOD_MOHAA_PRINT_CENTER = 2, DOD_MOHAA_PRINT_ERROR = 3, DOD_MOHAA_PRINT_HUD_BOLD = 4 };
+enum { DOD_MOHAA_TURRET_AIM = 0, DOD_MOHAA_TURRET_START, DOD_MOHAA_TURRET_STOP, DOD_MOHAA_TURRET_BURST,
+	DOD_MOHAA_TURRET_YAWCAP };
+/* Play a sound alias of the map's table (maps/<map>.snd) on an entity: the game's own sounds that retail ties to an
+   alias (an MG42's "mg42_gun_snd_fire"). 1 when the map has the alias. */
+int Dod_MohaaEntitySound(uint32_t id, const char *alias);
+/* HUD parts a cutscene hides: ALL is MOHAA's "drawhud 0"; WEAPON (crosshair, ammo, view model) goes while the
+   player is locked into a scripted ride. */
+enum { DOD_MOHAA_HUD_ALL = 1, DOD_MOHAA_HUD_WEAPON = 2 };
+enum { DOD_MOHAA_PRINT_CONSOLE = 0, DOD_MOHAA_PRINT_HUD = 1, DOD_MOHAA_PRINT_CENTER = 2, DOD_MOHAA_PRINT_ERROR = 3 };
 
 /* Entity ids are opaque to this file: the backend packs edict index and serial so a
  * removed-and-reused edict never answers for an old reference. 0 is never valid. */
 #define DOD_MOHAA_NODE_ID 0x80000000u	/* entity ids from the backend keep this bit clear */
+#define DOD_MOHAA_POINT_ID 0xC0000000u	/* a script point (maps/<map>.points): NODE_ID plus bit 30 */
 
 typedef struct DodMohaaBackend {
 	char *(*load_file)(const char *path, size_t *len);  /* NULL if missing */
@@ -54,6 +83,11 @@ typedef struct DodMohaaBackend {
 	void (*set_vec)(uint32_t id, int what, const float v[3]);
 	float (*get_health)(uint32_t id);
 	void (*set_health)(uint32_t id, float health);
+	/* Set a retail MOHAA player ammo pool (rifle, smg, pistol, mg, heavy, grenade). */
+	void (*set_ammo)(uint32_t id, const char *category, int amount);
+	void (*give_item)(uint32_t id, const char *tiki);
+	void (*take_all)(uint32_t id);
+	void (*use_weapon_class)(uint32_t id, const char *weapon_class);
 	const char *(*get_str)(uint32_t id, int what);
 	void (*set_targetname)(uint32_t id, const char *name);
 	void (*set_flag)(uint32_t id, int flag, int on);
@@ -66,6 +100,14 @@ typedef struct DodMohaaBackend {
 	void (*sound)(uint32_t id, const char *sample, int loop, float volume, float attn, int channel);
 	/* At level start, for each sample maps/<map>.snd names. NULL: nothing to precache (host tests). */
 	void (*precache_sound)(const char *sample);
+	/* Scripted TIKI models baked to GoldSrc MDL by tools/mohaa_tiki_model.py. Models are precached
+	   from maps/<map>.models at ServerActivate, before the level script's first frame. */
+	int (*precache_model)(const char *model);
+	/* Set a script_model/script_object to its already-preloaded GoldSrc model. 0 when this TIKI was
+	   not baked/staged for the map; tag sampling still works without a drawable mesh. */
+	int (*set_model)(uint32_t id, const char *tiki);
+	/* Select a named exported sequence on an already-bound script model. */
+	int (*set_animation)(uint32_t id, const char *alias);
 	/* An order to an actor; returns 0 when id is not one. The game sends "movedone" when a walk/run
 	   order arrives and "death" when the actor dies, through Dod_MohaaNotify. NULL: no actors. */
 	int (*actor)(uint32_t id, int order, const float pos[3]);
@@ -83,6 +125,38 @@ typedef struct DodMohaaBackend {
 	   intro once and stops; intro NULL stops the music. Paths are game-relative ("sound/mohaa/music/x.wav"),
 	   PCM wavs written by mohaa-gc tools/music.py. NULL: no music. */
 	void (*music)(const char *intro, const char *loop);
+	/* In-game cutscenes (see "Cutscenes" in dod_mohaa.c). All NULL-safe: a backend without them plays the script
+	   with the player free. */
+	/* physics_off / freezeplayer: the player stops moving under their own control (they can still look) */
+	void (*player_lock)(uint32_t id, int locked);
+	/* Put the player at pos (GoldSrc units): pos is where their eyes go when eye is 1, their feet when 0. */
+	void (*place_player)(uint32_t id, const float pos[3], int eye);
+	/* Turn the player's view: to angles when add is 0, by angles[1] degrees of yaw when 1 (their own look stays). */
+	void (*view)(uint32_t id, const float angles[3], int add);
+	/* What of every player's HUD to hide: DOD_MOHAA_HUD_* bits, 0 shows it all. */
+	void (*hud)(int hide);
+	/* Scripted huddraw elements and the current objective compass target. NULL: no custom HUD. */
+	void (*hud_draw)(int index, const DodMohaaHudDraw *draw);
+	void (*compass_target)(const float target[3], int visible);
+	/* A shot or blast at point (GoldSrc units): damage what is within radius and fire MOHAA damage triggers
+	   (converted with spawnflags 2, no touch) whose box holds the point. attacker 0: the world. */
+	void (*damage_at)(uint32_t attacker, const float point[3], float radius, float damage);
+	/* "$player.has_disguise = 1|0": soldiers that heed disguises (type_disguise other than "none") let them pass;
+	   get_disguise reads it back (the game ends it when the player fires). May be NULL. */
+	void (*disguise)(uint32_t player, int on);
+	int (*get_disguise)(uint32_t player);
+	/* A turretweapon's own commands: DOD_MOHAA_TURRET_* (setaimtarget/clearaimtarget take target, 0 clears it;
+	   burstfiresettings takes v[4]; maxyawoffset v[0]). 0 when id is no turret. May be NULL. */
+	int (*turret)(uint32_t id, int what, uint32_t target, const float v[4]);
+	/* "sighttrace a b [pass_entities]": 1 when nothing (the world, and entities unless pass_entities) is in between.
+	   GoldSrc units. May be NULL. */
+	int (*trace_clear)(const float a[3], const float b[3], int pass_entities);
+	/* "$a istouching $b": their boxes overlap. May be NULL. */
+	int (*touching)(uint32_t a, uint32_t b);
+	/* "earthquake duration magnitude": shake every player's view. May be NULL. */
+	void (*shake)(float seconds, float magnitude);
+	/* "$ent droptofloor": settle it on the ground below. May be NULL. */
+	void (*drop_to_floor)(uint32_t id);
 	void *(*alloc)(void *ptr, size_t old_size, size_t new_size); /* NULL: pool below, else malloc */
 	/* A region the VM allocates from when alloc is NULL (dod_mohaa_pool.h), instead of the engine heap. It must
 	   stay valid until the next Dod_MohaaLevelInit or Dod_MohaaShutdown, or until Dod_MohaaDropPool says it is
@@ -105,12 +179,19 @@ typedef struct DodMohaaStats {
 /* Start the map's script if maps/<mapname>.scr exists. Replaces any previous map's VM.
  * memory_budget 0 means unlimited. Returns 1 when a script is running. */
 int Dod_MohaaLevelInit(const DodMohaaBackend *backend, const char *mapname, float now, size_t memory_budget);
+/* Called from ServerActivate, after map entities spawn but before runtime. */
+void Dod_MohaaPrecacheModels(void);
 /* Every server frame: sends "prespawn" then "spawn" to level, runs threads, finishes moves. */
 void Dod_MohaaThink(float now);
 void Dod_MohaaShutdown(void);
 /* A map entity's key that only scripts read (MOHAA "#set", "#group", ...): the script sees it as $ent.set (MOHAA drops the '#').
  * Numbers become numbers. Ignored when no script runs. */
 void Dod_MohaaEntityKey(uint32_t id, const char *key, const char *value);
+/* The player pressed USE: a soldier asking a disguised player for papers (type_disguise "papers") within reach checks
+   them. 1 when one did, so the press does nothing else. */
+int Dod_MohaaShowPapers(uint32_t player);
+/* Probe aid: the player carries papers of this level (as items.scr's add_item would give) */
+void Dod_MohaaProbeGivePapers(int level);
 /* The backend replaced entity from with to (a mohaa_actor placeholder became a grunt): to keeps from's script
  * variables, map keys included. from may be an id no entity has, to park them meanwhile. */
 void Dod_MohaaEntityMoved(uint32_t from, uint32_t to);
@@ -121,6 +202,12 @@ void Dod_MohaaSetOther(uint32_t id);
 void Dod_MohaaDropPool(void);
 /* Game events: Dod_MohaaNotify(id, "trigger") wakes "$t waittill trigger". */
 void Dod_MohaaNotify(uint32_t id, const char *event);
+/* Cover for a MOHAA soldier (a path node flagged cover, duck, crate or concealment): fills out and returns 1, else 0.
+   key names the soldier, so two soldiers do not pick the same node. Coordinates in GoldSrc units. */
+int Dod_MohaaCoverSpot(int key, const float from[3], const float enemy[3], float out[3]);
+/* A MOHAA soldier saw an enemy for the first time: its patrol ends, its alarmthread runs and it heads for its
+   alarmnode (type_idle, patrolpath, alarmnode, alarmthread). */
+void Dod_MohaaActorAlerted(uint32_t id);
 void Dod_MohaaEntityFreed(uint32_t id);
 /* A trigger with MOHAA's setthread fired: run that label of the level script with self = the trigger. */
 void Dod_MohaaRunThread(const char *label, uint32_t self);

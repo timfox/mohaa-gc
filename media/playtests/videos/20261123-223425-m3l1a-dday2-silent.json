@@ -1,0 +1,15 @@
+{
+  "file": "20261123-223425-m3l1a-dday2-silent.mp4",
+  "date": "2026-11-23T22:34:25",
+  "commit": "06dfdba066",
+  "engine_commit": "db73d0d126",
+  "route": "m3l1a-dday2",
+  "disc": "/tmp/mohaa-skies-stage-update/out/m3l1a-mohnightfog-smoke.iso",
+  "duration_s": 24.8,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 0.1,
+  "project": "mohaa-gc",
+  "audio": "silent screen capture (forced or PulseAudio unavailable)"
+}

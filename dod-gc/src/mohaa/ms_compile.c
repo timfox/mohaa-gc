@@ -16,8 +16,8 @@
 /* arena for tokens and AST                                             */
 /* ================================================================== */
 
-/* Blocks are small so a compile fits in a fragmented heap (GameCube: the largest free piece after m1l1
-   loads is 11 KB); a token or node bigger than this gets a block of its own. */
+/* Blocks are small so a compile fits in a fragmented heap; a token or node bigger than this gets a block of
+   its own. */
 #ifndef MS_ARENA_BLOCK
 #define MS_ARENA_BLOCK 4096
 #endif
@@ -38,9 +38,21 @@ static void *arena_alloc(arena *a, size_t n)
     n = (n + 7) & ~(size_t)7;
     if (!a->head || a->head->used + n > a->head->cap) {
         size_t cap = n > MS_ARENA_BLOCK ? n : MS_ARENA_BLOCK;
-        arena_blk *b = (arena_blk *)ms_alloc(a->vm, sizeof(arena_blk) + cap);
-        if (!b)
+        arena_blk *b;
+        for (;;) {
+            b = (arena_blk *)ms_alloc(a->vm, sizeof(arena_blk) + cap);
+            if (b)
+                break;
+#if defined(__GAMECUBE__)
+            /* The level arena can leave holes smaller than 4 KiB. Keep the normal block where
+               possible, but fall back to smaller chunks instead of failing a script compile. */
+            if (cap <= n || cap <= 512 || cap / 2 < n)
+                return NULL;
+            cap /= 2;
+#else
             return NULL;
+#endif
+        }
         b->cap = cap;
         b->next = a->head;
         a->head = b;

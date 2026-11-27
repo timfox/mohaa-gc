@@ -1,0 +1,25 @@
+:14:04] mohaa: 7 turretweapons, 2 crews waiting
+:14:04] mohaa: t763 mans the MG42 t737
+:14:12] mohaa: the player mans the MG42 t736
+:14:14] Xash3D GameCube: G278 sound chan=1 sample=mohaa/weapons/fire/mg42fire5.wav
+:14:14] Xash3D GameCube: sound load allowed for gameplay sfx mohaa/weapons/fire/mg42fire5.wav
+:14:14] Xash3D GameCube: SFX FS_Open miss sound/mohaa/weapons/fire/mg42fire5.wav 竊 FS_LoadFile
+:14:14] Xash3D GameCube: SFX FS_Open miss mohaa/weapons/fire/mg42fire5.wav 竊 FS_LoadFile
+:14:14] Xash3D GameCube: SFX FS_Open miss media/sfx_mg42fire5.wav 竊 FS_LoadFile
+:14:14] Warning: FS_LoadSound: couldn't load "mohaa/weapons/fire/mg42fire5"
+:14:14] Xash3D GameCube: SFX FS_Open miss sound/mohaa/weapons/fire/mg42fire5.wav 竊 FS_LoadFile
+:14:14] Xash3D GameCube: SFX FS_Open miss mohaa/weapons/fire/mg42fire5.wav 竊 FS_LoadFile
+:14:14] Xash3D GameCube: SFX FS_Open miss media/sfx_mg42fire5.wav 竊 FS_LoadFile
+:14:14] Warning: FS_LoadSound: couldn't load "mohaa/weapons/fire/mg42fire5"
+:14:14] Warning: Xash3D GameCube: sound mohaa/weapons/fire/mg42fire5.wav not found for ARAM
+:14:14] Xash3D GameCube: sound fallback skipped for map-load memopt mohaa/weapons/fire/mg42fire5.wav
+:14:14] Xash3D GameCube: sound 21 registered late mohaa/weapons/fire/mg42fire5.wav handle=6
+:14:14] Xash3D GameCube: G278 sound chan=1 sample=mohaa/weapons/fire/mg42fire5.wav
+:14:14] Xash3D GameCube: G278 sound chan=1 sample=mohaa/weapons/fire/mg42fire5.wav
+:14:15] Xash3D GameCube: G278 sound chan=1 sample=mohaa/weapons/fire/mg42fire5.wav
+:14:15] Xash3D GameCube: G278 sound chan=1 sample=mohaa/weapons/fire/mg42fire5.wav
+:14:15] Xash3D GameCube: G278 sound chan=1 sample=mohaa/weapons/fire/mg42fire5.wav
+:14:15] Xash3D GameCube: G278 sound chan=1 sample=mohaa/weapons/fire/mg42fire5.wav
+:14:15] Xash3D GameCube: G278 sound chan=1 sample=mohaa/weapons/fire/mg42fire5.wav
+:14:15] Xash3D GameCube: G278 sound chan=1 sample=mohaa/weapons/fire/mg42fire5.wav
+:14:15] Xash3D GameCube: G278 sound chan=1 sample=mohaa/weapons/fire/mg42fire5.wav

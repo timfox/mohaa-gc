@@ -25,7 +25,9 @@ raised by up to --lift-db (8 dB) with its peak kept under -1 dBFS: retail tracks
 too quietly under the GameCube's mixer. The
 GameCube streams PCM from disc; decoding mp3 on the Gekko costs too much. Retail installs keep the
 music loose in main/sound/music (it is not in the paks), so point the inputs at the installed main
-directory. Missing tracks are listed.
+directory. Missing tracks are listed. The `sound/music/null.wav` mood reference is an intentional
+no-stream sentinel used to stop the current track; it stays in the mood table but is not treated as a
+missing source or converted into a silent audio file.
 
 The output is retail data: write it outside the repository and never commit it.
 """
@@ -41,6 +43,7 @@ from ubersound import collect, read  # noqa: E402
 
 MOODS = ("normal", "aux1", "aux2", "aux3", "aux4", "aux5", "aux6")
 CUE = re.compile(r'\b(tmstart|tmstartloop)\s+([^\s";]+)', re.I)
+NO_STREAM_SENTINELS = {"sound/music/null.wav", "sound/amb_stereo/null.wav"}
 
 
 def parse_mus(text):
@@ -146,14 +149,17 @@ def main(argv=None):
             if src not in wanted:
                 n_cues += 1
             wanted[src] = sample_name(src)
-    print("%d mood tables, %d tracks (%d triggered cues)" % (n_mus, len(wanted), n_cues))
+    print("%d mood tables, %d music refs (%d triggered cues)" % (n_mus, len(wanted), n_cues))
     if args.convert:
         if not shutil.which("ffmpeg"):
             print("ffmpeg is needed for --convert")
             return 1
         audio = collect(args.inputs, (".mp3", ".wav"))
-        done, missing, failed = 0, [], []
+        done, missing, failed, sentinels = 0, [], [], []
         for src, rel in sorted(wanted.items()):
+            if src in NO_STREAM_SENTINELS:
+                sentinels.append(src)
+                continue
             if src not in audio:
                 missing.append(src)
                 continue
@@ -162,9 +168,14 @@ def main(argv=None):
                 failed.append((src, why))
             else:
                 done += 1
-        print("converted %d tracks, %d missing, %d failed" % (done, len(missing), len(failed)))
+        print("converted %d tracks, %d missing, %d failed; skipped %d intentional no-stream sentinel(s)"
+              % (done, len(missing), len(failed), len(sentinels)))
         for src in missing[:20]:
             print("  missing %s" % src)
+        if any(src.startswith("sound/amb_stereo/") for src in missing):
+            print("  note: MOHAA stores these in the separate Sound AmbStereo Files CD group; "
+                  "supply both install CDs with mohaa_sd.py --cd or add an extracted loose-audio folder "
+                  "with --music-source (mohaa_sd.py) / as an input directory (music.py)")
         for src, why in failed[:20]:
             print("  failed %s: %s" % (src, why.splitlines()[0]))
     return 0

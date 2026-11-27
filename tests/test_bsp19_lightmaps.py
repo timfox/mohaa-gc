@@ -102,18 +102,24 @@ class Bsp19LightmapsTest(unittest.TestCase):
 		o = (0 * 5 + 2) * 3  # x = 32 GoldSrc = 64 MOHAA -> lightmap 31.5 -> red 63
 		self.assertEqual(lit[o], 63)
 
-	def test_special_faces_stay_unlit_and_unmatched_faces_get_a_flat_light(self):
+	def test_special_faces_stay_unlit_and_unmatched_faces_take_the_nearest_light(self):
 		mohaa = bl.Mohaa(mohaa_floor(), 1.0)
 		out, st = bl.relight(mohaa, goldsrc_floor(flags=bl.TEX_SPECIAL))
 		lit, face = lighting_of(out)
 		self.assertEqual((face[5], face[9]), (255, -1))
 		self.assertEqual(lit, b"")
-		far = goldsrc_floor()
-		# move the GoldSrc face's plane up 64: nothing in MOHAA lies on it
-		lumps = struct.unpack_from("<i", far, 4 + 1 * 8)[0]
-		far = bytearray(far)
-		struct.pack_into("<4f", far, lumps, 0, 0, 1, 64)
-		out, st = bl.relight(mohaa, bytes(far))
+		def lifted(z):
+			far = bytearray(goldsrc_floor())
+			struct.pack_into("<4f", far, struct.unpack_from("<i", far, 4 + 1 * 8)[0], 0, 0, 1, z)
+			return bl.relight(mohaa, bytes(far))
+
+		# up 64: nothing in MOHAA lies on its plane, but the floor below faces the same way
+		out, st = lifted(64)
+		self.assertEqual((st["wide"], st["fallback"]), (1, 0))
+		lit, _ = lighting_of(out)
+		self.assertEqual(tuple(lit[:3]), (0, 0, 125))  # the floor's corner luxel at the default gain
+		# up 500: nothing near, and nothing else in the map is lit
+		out, st = lifted(500)
 		self.assertEqual(st["fallback"], 1)
 		lit, _ = lighting_of(out)
 		self.assertEqual(tuple(lit[:3]), bl.FALLBACK)

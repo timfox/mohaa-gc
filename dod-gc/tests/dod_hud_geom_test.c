@@ -4,7 +4,9 @@
 #include <stdio.h>
 #include <string.h>
 
-/* covers: CHudDod::DrawKills  CHudDod::DrawVoice  CHudDod::DrawBoard  CHudDod::DrawRetail */
+/* covers: CHudDod::DrawKills  CHudDod::DrawVoice  CHudDod::DrawBoard  CHudDod::DrawRetail
+ *         CHudDod::DrawMohaa  CHudDod::DrawMohaaVitals (mohaa_elements, own check: retail MOHAA puts the
+ *         compass on the screen edge, so the DoD safe area does not apply) */
 #define MAX_EL 40
 
 typedef struct {
@@ -146,6 +148,36 @@ static void build(void)
 	add("chat prompt", Dod_HudChatInput(lh), ST_CHAT);
 }
 
+/* MOHAA's lean HUD at 640x480, as hud_dod.cpp places it: compass (DrawMohaa, x -48, y 6, 110 px, the
+ * on-screen part), the health meter (44 px from the left, 16 px off the bottom, healthback.tga 64x128),
+ * the ammo arm (50 px from the right, ammotoparm 128x64 over ammobotmarm 128x64), its bar left of it
+ * (ammotoparmbar 16x128, 16 px gap) and the centred crosshair (32x32). */
+static int mohaa_check(void)
+{
+	const DodRect r[] = {
+		{ 0, 6, 62, 110 },		/* compass */
+		{ 44, 480 - 16 - 128, 64, 128 },	/* health */
+		{ 640 - 50 - 128, 480 - 128, 128, 128 },	/* ammo arm */
+		{ 640 - 50 - 128 - 16 - 16, 480 - 128, 16, 128 },	/* ammo bar */
+		{ 320 - 16, 240 - 16, 32, 32 },	/* crosshair */
+	};
+	static const char *const names[] = { "compass", "health", "ammo arm", "ammo bar", "crosshair" };
+	const int n = (int)(sizeof(r) / sizeof(r[0]));
+	int i, j, bad = 0;
+	for (i = 0; i < n; i++) {
+		if (r[i].x < 0 || r[i].y < 0 || r[i].x + r[i].w > 640 || r[i].y + r[i].h > 480) {
+			printf("MOHAA OFF SCREEN: %s\n", names[i]);
+			bad++;
+		}
+		for (j = i + 1; j < n; j++)
+			if (dod_rect_hit(r[i], r[j])) {
+				printf("MOHAA OVERLAP: %s x %s\n", names[i], names[j]);
+				bad++;
+			}
+	}
+	return bad;
+}
+
 int main(void)
 {
 	static const struct { unsigned st; const char *name; } states[] = {
@@ -171,6 +203,7 @@ int main(void)
 						els[i].r.y, els[i].r.w, els[i].r.h, els[j].name, els[j].r.x, els[j].r.y, els[j].r.w, els[j].r.h);
 					bad++;
 				}
+	bad += mohaa_check();
 	fflush(stdout);
 	assert(bad == 0);
 	/* with the keyboard up the layout leaves nothing at the bottom for it to cut into */

@@ -164,7 +164,7 @@ class IntroMovieTest(unittest.TestCase):
                 mohaa_sd.unpack_cds([self.tmp], work, log=logs.append)
         self.assertTrue(any("unpacking again" in m for m in logs))
         with open(os.path.join(work, "cd", ".done"), "w") as fh:
-            fh.write("\n".join(sorted(mohaa_sd.CD_GROUPS)) + "\n")
+            fh.write(mohaa_sd.cd_done_key())
         self.assertEqual(mohaa_sd.unpack_cds([self.tmp], work), os.path.join(work, "cd", "main"))
 
     def test_exact_mode_is_lossless_and_static_frames_cost_nothing(self):

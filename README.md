@@ -7,6 +7,66 @@ missions are converted into formats the existing dod-gc runtime already plays.
 No retail game data lives in this repository. Point the tools at your own
 copy of the game's `.pk3` files.
 
+The CDs hold loose music, ambience, vehicle, mechanics, weapons and dialogue
+samples outside the PK3 files. Pass the CDs with your installed folder so the
+stager can unpack those InstallShield groups, then run both sound stages:
+
+```bash
+python3 tools/mohaa_sd.py --cd /path/to/cd1 /path/to/cd2 --mohaa ~/MOHAA --sd /media/SDCARD --stages sounds,music
+```
+
+The SFX stage writes map-specific `maps/<map>.snd` tables and native 22.05 kHz-or-lower mono
+PCM samples under `sound/mohaa/`. Samples too large for the GameCube's 1 MiB ARAM sound ring
+are converted at 11.025 kHz when that fits; looping samples retain a WAV cue point. It keeps
+nested retail dialogue paths intact. The music stage
+still needs separate loose tracks when the install's `main/` folder does not contain them; see
+`--music-source` below.
+
+If effects or dialogue were extracted into a separate folder containing `sound/`, pass it with
+`--sound-source`. It is read only by the sounds stage:
+
+```bash
+python3 tools/mohaa_sd.py --mohaa ~/MOHAA --sound-source /path/to/extracted/main \
+  --sd /media/SDCARD --stages sounds
+```
+
+If the loose music files were extracted separately from the `main/` folder,
+pass that directory with `--music-source`; it is read only by the music stage:
+
+```bash
+python3 tools/mohaa_sd.py --mohaa ~/MOHAA --music-source /path/to/extracted/main --sd /media/SDCARD --stages music
+```
+
+## Intro movie
+
+The movie stage converts MOHAA's silent `main/video/intro.RoQ` and its adjacent
+`intro.mp3` soundtrack into GameCube streams:
+
+```bash
+python3 tools/intro_movie.py ~/MOHAA/main/video/intro.RoQ --sd /media/SDCARD
+```
+
+When the loose `Video Files` cabinet was extracted separately from the installed `main/` folder,
+pass that directory to the regular stager so it can find both the intro and its soundtrack:
+
+```bash
+python3 tools/mohaa_sd.py --mohaa ~/MOHAA --movie-source /path/to/Video_Files \
+  --sd /media/SDCARD --stages movie
+```
+
+Repeat `--movie-source` for additional extraction folders. The movie stage also searches the
+installed folder and CD groups supplied with `--cd`.
+
+It writes `xash3d/mohaa/media/mohaa_intro.gcvid` (GCV2, 320x240 RGB565 frames at 15 fps) and
+`mohaa_intro.gcpcm` (GCPA, 48 kHz stereo signed 16-bit big-endian PCM). The stock retail intro is
+letterboxed to preserve its 2:1 picture. On the local retail extraction, all 2,503 output frames
+were validated against ffmpeg after the converter's documented one-bit RGB565 delta threshold;
+the PCM payload matched ffmpeg byte for byte. The stream is 137.9 MB of video at 0.83 MB/s plus
+30.9 MB of audio. Existing Dolphin evidence in
+[`media/2026-11-22-intro-movie/README.md`](media/2026-11-22-intro-movie/README.md) confirms picture
+and sound playback on a test disc; SD-card streaming on physical hardware remains to be checked.
+The generated streams contain retail game data and must stay outside the repository.
+
 ## Map pipeline (planned)
 
 ```
@@ -66,7 +126,13 @@ sdHLCSG m1l1.map && sdHLBSP m1l1.map      # fast fullbright loop; add sdHLVIS
 python3 tools/bsp19_lightmaps.py retail/main/Pak5.pk3:maps/m1l1.bsp m1l1.bsp   # MOHAA's own light
 ```
 
-`bsp19_lightmaps.py` lights the compiled BSP30 with the light MOHAA shipped, so no sdHLRAD run is needed. Each lit face gets a GoldSrc lightmap (one luxel per 16 texels), and each luxel samples the MOHAA lightmap of the coplanar MOHAA surface under it. Luxels with no MOHAA surface within 24 units take their face's average, and faces with none at all get a flat grey. MOHAA stores light one overbright bit down, so samples are doubled, and the default `--gain` of 2.5 adds a little more because at 2.0 the night towns of m1l1 read too dark on the GameCube. Without a lighting lump the map draws fullbright, and on the GameCube the models drew black. Like every converter step, it runs on the user's own install.
+`bsp19_lightmaps.py` lights the compiled BSP30 with the light MOHAA shipped, so no sdHLRAD run is needed. Each lit face gets a GoldSrc lightmap (one luxel per 16 texels), and each luxel samples the MOHAA lightmap of the coplanar MOHAA surface under it. Luxels with no MOHAA surface within 24 units take their face's average, and a face with no coplanar MOHAA surface at all (one the conversion made up) samples the nearest MOHAA surface facing its way within 96 units, or failing that gets the map's average light rather than a flat grey that glows at night. MOHAA stores light one overbright bit down, so samples are doubled, and the default `--gain` of 2.5 adds a little more because at 2.0 the night towns of m1l1 read too dark on the GameCube. Without a lighting lump the map draws fullbright, and on the GameCube the models drew black. Like every converter step, it runs on the user's own install.
+
+`bsp19_lightgrid.py` copies MOHAA's light grid (the colours retail lights soldiers and other models with, one per 32 units) to `media/lg_<map>.gcg`, keeping MOHAA's run-length layout so the GameCube engine can sample it from ARAM. Its colours are scaled to match the lightmaps.
+
+The maps stage resolves each BSP's sky shader through the retail `scripts/sky.shader`, reads its six `skyParms` environment images from the paks, and writes 128x128 GameCube CMPR faces as `media/sky_<env><side>.cmp`. It also writes that environment root as the compiled map's `skyname`. For example, m1l1 and m1l2a use `textures/sky/africanight`, which resolves to `env/mohnight1`. The stage checks all six sides and their expected byte size before treating a cubemap as complete. Some retail shaders intentionally name nonexistent environment roots such as `idontexist`; those maps keep `skyname` unset and use the engine fallback instead of advertising missing faces.
+
+The `hud` stage reads retail `textures/hud/*.tga` art from the paks and writes one-frame Xash3D version-32 RGBA sprites under `sprites/mohaa/`. It fails early if any of the seven directly loaded textures (health gauge, ammo arms, or crosshair) are missing. The low-memory GameCube HUD path draws the retail health gauge, ammo arm pieces, ammo readout, and crosshair from these sprites, keeping the source alpha edges intact for the GX texture path. Select it with `--stages hud` or include it when rebuilding maps with `--stages hud,maps`.
 
 Writes a Valve-220 .map that SDHLT compiles to BSP30. Stage one only covers brushes:
 
@@ -95,6 +161,37 @@ Stock BSP30 tops out at 32,767 clipnodes, and 15 MOHAA maps go over it. `third_p
 third_party/sdhlt-bsp30ext/build.sh /tmp/sdhlt
 python3 tools/bsp30_check.py m1l2a.bsp --point 0 0 40 1
 ```
+
+## In-game cutscenes
+
+MOHAA scripts and baked model tags can advance the m1l1 opening truck path in Dolphin. The scripted GMC and Opel truck models export their SKC sequences and TIKI surface states, and `anim` commands select the matching Studio sequence/bodygroups. The latest isolated DOL has run through the m1l2b listenserver: it reaches map-ready, connects its local client, and draws the first-person weapon and HUD. That frame is very dark, and the isolated engine source has no canonical Git metadata. See the [m1l2b runtime capture](media/2026-11-23-m1l2b-current-runtime/README.md), [cutscene status](docs/MOHAA_CUTSCENE_STATUS.md), and [m1l1 tag-motion evidence](media/2026-11-22-m1l1-tag-arena/README.md).
+
+Capture bounded MOHAA playtests with `tools/mohaa-playtest.sh --duration 90 --ready-regex 'map loaded m1l1|direct map ready' --route m1l1-actor /path/to/mohaa.iso`. It writes per-run Dolphin logs, game-window screenshots, a note with repository and ISO hashes, and an H.264/AAC video when ffmpeg and PulseAudio are available, under `media/playtests/`. It uses a fresh Dolphin profile seeded with saved controller and graphics settings; set `MOHAA_DOLPHIN_PROFILE`, `MOHAA_ENGINE`, or `MOHAA_DOLPHIN_BIN` to use other local paths. Keep the captures local as evidence and as source footage for later edits.
+
+The latest 60-second m1l1 actor-load capture ends on the Allied class picker, so it records asset and map startup rather than the opening cutscene: [gameplay still](media/playtests/screenshots/20261123-203149-m1l1-actor/final.png), [H.264/AAC video](media/playtests/videos/20261123-203149-m1l1-actor-3ed781eb42.mp4), and [probe note with log](media/playtests/notes/20261123-203149-m1l1-actor.md).
+
+The current project-history and progress talk is [available as a PDF](output/pdf/mohaa-gamecube-progress-2026-11-23.pdf), with its [full speaker script](output/presentation/mohaa-gdc-narration.txt). The full nine-slide talk is available as a [narrated video](output/presentation/mohaa-gdc-progress-narrated.mp4) and [audio track](output/presentation/mohaa-gdc-narration.mp3), rendered locally with Qwen3-TTS 1.7B CustomVoice.
+
+`tools/mohaa_tiki_model.py` can bake a TIKI mesh, skeleton, named SKC sequences and per-sequence surface visibility into a GoldSrc Studio v10 MDL. For example, write the output into a temporary game tree; generated models contain retail data and must stay out of Git:
+
+```bash
+python3 tools/mohaa_tiki_model.py retail/main \
+  --model vehicles/gmctruck_opening.tik \
+  --out /tmp/mohaa-script-models/models/vehicles/gmctruck_opening.mdl
+```
+
+The exporter supports Xash's four-influence Studio v10 skinning format and up to 31 surface bodygroups. It reads animation aliases through included TIKIs; repeat `--animation <alias>` to keep a small mission-specific sequence set. When a vertex has more than four influences, it keeps the four strongest and renormalizes them. Models with an unsupported skeleton fall back to a posed static model. The script-entity sequence binding is in the GameCube DOL; direct visual confirmation still needs an m1l1 runtime capture.
+
+The m1l1 German Afrika private TIKI exports as a composite Studio model: body, covered head, hands, helmet, loadout, and KAR clip share a 72-bone rig. The stage keeps all ten m1l1 actor aliases used by the retail script, from `opel_driver` through the kill, get-visa, and idle-visa animations. It splits the actor into an MDL core, external skin, and hashed GameCube animation pack so all ten retail sequences stay intact while the core fits the engine's lean per-file limit. A direct split of the current model produced a 177,632-byte core, 66,632-byte external skin, and 308,864-byte animation pack. The matched m1l1 Dolphin run loaded the external skin and GCA pack and submitted draw calls for the actor. The class-picker capture does not yet prove correct appearance, animation, or cutscene motion. Evidence: [m1l1 actor runtime capture](media/2026-11-23-m1l1-actor-runtime/README.md).
+
+To stage the visible m1l1 trucks, configured scripted actors, and `maps/m1l1.models` on an SD card, use:
+
+```bash
+python3 tools/mohaa_sd.py --mohaa ~/MOHAA --sd /media/SDCARD \
+  --maps m1l1 --stages scriptmodels --list
+```
+
+The GameCube game code precaches the manifest at `ServerActivate`; matching TIKIs are assigned to script entities and tracked mission actors. Current runtime evidence confirms m1l2b boot, local listenserver connection and first-person HUD/weapon drawing, but does not confirm the m1l1 truck or actor models animating.
 
 ## Mission scripts
 

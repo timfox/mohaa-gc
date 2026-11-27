@@ -1,0 +1,5 @@
+1743:21:31:284 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [09:21:30] Xash3D GameCube: HUD hi-res cell arena 128K (decode buffer, evictions=0)
+1747:21:31:293 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [09:21:30] Xash3D GameCube: HUD hi-res cell arena 128K (decode buffer, evictions=1)
+1774:21:31:346 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [09:21:30] Xash3D GameCube: newgame world render ready
+1912:21:32:050 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [09:21:31] Xash3D GameCube: HUD hi-res cell arena 128K (decode buffer, evictions=2)
+2017:21:33:712 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [09:21:33] Xash3D GameCube: HUD hi-res cell arena 128K (decode buffer, evictions=3)

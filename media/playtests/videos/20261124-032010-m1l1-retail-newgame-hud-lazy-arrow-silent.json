@@ -1,0 +1,15 @@
+{
+  "file": "20261124-032010-m1l1-retail-newgame-hud-lazy-arrow-silent.mp4",
+  "date": "2026-11-24T03:20:10",
+  "commit": "ebf188540a",
+  "engine_commit": "db73d0d126",
+  "route": "m1l1-retail-newgame-hud-lazy-arrow",
+  "disc": "/tmp/mohaa-hud-refine/out/mohaa-m1l1-retail-newgame-hud.iso",
+  "duration_s": 21.1,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 0.1,
+  "project": "mohaa-gc",
+  "audio": "silent screen capture (forced or PulseAudio unavailable)"
+}

@@ -1,4 +1,5 @@
 #include "dod_grunts.h"
+#include "dod_weapons.h"
 
 #include <assert.h>
 #include <math.h>
@@ -19,7 +20,7 @@ static void test_count(void)
 static void test_row_is_small(void)
 {
 	/* the whole point: a row is tens of bytes, not a client slot */
-	assert(DodGrunt_RowBytes() < 100);
+	assert(DodGrunt_RowBytes() < 108);
 	assert(sizeof(DodGruntPool) < 6000);
 }
 
@@ -172,7 +173,7 @@ static void test_script_actor(void)
 	const int i = DodGrunt_FreeScriptSlot(&p);
 	assert(i == DOD_GRUNT_MAX - 1);
 	DodGrunt_SpawnScripted(&p, i, DOD_TEAM_AXIS, 0, 0, 0, 0, 0.0f);
-	assert(p.state[i] == DOD_GRUNT_HOLD && p.script[i] == DOD_GRUNT_SCRIPTED);
+	assert(p.state[i] == DOD_GRUNT_HOLD && p.script[i] == (DOD_GRUNT_SCRIPTED | DOD_GRUNT_HEED_DISGUISE));
 	assert(DodGrunt_FreeScriptSlot(&p) == DOD_GRUNT_MAX - 2);
 	/* holding: a far enemy turns it but does not make it wander; a close one makes it shoot */
 	DodGrunt_Looked(&p, i, 0.1f, 1, 2, 0, 1000, 1000, 0);
@@ -202,6 +203,19 @@ static void test_script_actor(void)
 	assert(fabsf(p.x[i] - 400.0f) <= DOD_GRUNT_ARRIVE + 0.01f);
 	assert(p.state[i] == DOD_GRUNT_HOLD);
 	assert(DodGrunt_TakeOrderDone(&p, i) == 1 && DodGrunt_TakeOrderDone(&p, i) == 0);
+	/* a walk the world blocks gives up after DOD_GRUNT_ORDER_STALL s and arrives at its point */
+	DodGrunt_OrderMove(&p, i, p.x[i] + 300.0f, p.y[i], 0);
+	{
+		const float goal = p.order_x[i];
+		for (f = 0; f < 200 && !p.order_done[i]; f++, now += 0.05f) {
+			p.blocked[i] = 1;	/* every collision check stops it */
+			DodGrunt_Move(&p, i, now, 0.05f);
+		}
+		assert(p.order_done[i] && f >= 75 && f <= 85);	/* about 4 s */
+		assert(p.x[i] == goal && p.state[i] == DOD_GRUNT_HOLD);
+		p.blocked[i] = 0;
+		assert(DodGrunt_TakeOrderDone(&p, i) == 1);
+	}
 	/* turnto */
 	DodGrunt_Face(&p, i, p.x[i], p.y[i] - 100.0f);
 	for (f = 0; f < 20; f++)
@@ -220,9 +234,164 @@ static void test_script_actor(void)
 	assert(DodGrunt_Hurt(&p, 0, 1000, 0.0f) && DodGrunt_RespawnDue(&p, 0, DOD_GRUNT_RESPAWN));
 }
 
+/* MOHAA actor settings: a leashed actor chasing its enemy stops at the leash edge, maxdist stops it at range,
+   mindist makes it back off, and sight/hearing/fov change what it notices */
+static void test_actor_settings(void)
+{
+	DodGruntPool p;
+	int i = 0, f;
+	float now = 0.0f;
+	DodGrunt_Init(&p, 9);
+	DodGrunt_SpawnScripted(&p, i, DOD_TEAM_AXIS, 0, 0, 0, 0, 0);
+	DodGrunt_SetAttack(&p, i, 1);
+	DodGrunt_SetParam(&p, i, DOD_GRUNT_LEASH, 200, 0, 0);
+	assert(p.leash_r[i] == 200 && p.leash_x[i] == 0 && p.leash_y[i] == 0);
+	for (f = 0; f < 200; f++, now += 0.05f) {
+		DodGrunt_Looked(&p, i, now, 1, 2, 2000, 0, 2000 - p.x[i], 0);
+		DodGrunt_Move(&p, i, now, 0.05f);
+	}
+	assert(p.x[i] <= 200.0f && p.x[i] > 150.0f);	/* ran out to the leash, no further */
+	/* maxdist: closes to 600 and holds */
+	DodGrunt_SpawnScripted(&p, i, DOD_TEAM_AXIS, 0, 0, 0, 0, now);
+	DodGrunt_SetAttack(&p, i, 1);
+	DodGrunt_SetParam(&p, i, DOD_GRUNT_MAXDIST, 600, 0, 0);
+	for (f = 0; f < 300; f++, now += 0.05f) {
+		DodGrunt_Looked(&p, i, now, 1, 2, 1500, 0, 1500 - p.x[i], 0);
+		DodGrunt_Move(&p, i, now, 0.05f);
+	}
+	assert(p.x[i] > 850.0f && p.x[i] < 950.0f);
+	/* mindist: backs away from an enemy that is too near */
+	DodGrunt_SpawnScripted(&p, i, DOD_TEAM_AXIS, 0, 0, 0, 0, now);
+	DodGrunt_SetAttack(&p, i, 1);
+	DodGrunt_SetParam(&p, i, DOD_GRUNT_MINDIST, 300, 0, 0);
+	p.state[i] = DOD_GRUNT_ADVANCE;
+	p.target_x[i] = 100; p.target_y[i] = 0; p.target_seen[i] = now;
+	for (f = 0; f < 10; f++, now += 0.05f)
+		DodGrunt_Move(&p, i, now, 0.05f);
+	assert(p.x[i] < -10.0f);
+	/* perception settings */
+	DodGrunt_SetParam(&p, i, DOD_GRUNT_SIGHT_RANGE, 900, 0, 0);
+	DodGrunt_SetParam(&p, i, DOD_GRUNT_HEARING, 0, 0, 0);
+	DodGrunt_SetParam(&p, i, DOD_GRUNT_FOV, 90, 0, 0);
+	assert(DodGrunt_SightRange(&p, i) == 900.0f && DodGrunt_HearingRange(&p, i) == 300.0f);
+	assert(fabsf(DodGrunt_FovCos(&p, i) - 0.7071f) < 0.01f);
+	/* a patrol walk (soft order) ends when an enemy comes into sight; a script order does not */
+	DodGrunt_SpawnScripted(&p, i, DOD_TEAM_AXIS, 0, 0, 0, 0, now);
+	DodGrunt_OrderMove(&p, i, 500, 0, 0);
+	p.script[i] |= DOD_GRUNT_SOFT_ORDER;
+	DodGrunt_Looked(&p, i, now, 1, 2, 400, 0, 400, 0);
+	assert(p.order[i] == DOD_GRUNT_ORDER_NONE && p.target[i] == 2);
+	DodGrunt_OrderMove(&p, i, 500, 0, 0);
+	DodGrunt_Looked(&p, i, now, 1, 2, 400, 0, 400, 0);
+	assert(p.order[i] != DOD_GRUNT_ORDER_NONE && p.target[i] == 0);
+	/* a fresh spawn forgets them */
+	DodGrunt_SpawnScripted(&p, i, DOD_TEAM_AXIS, 0, 0, 0, 0, now);
+	assert(DodGrunt_SightRange(&p, i) == DOD_GRUNT_SIGHT && !p.leash_r[i] && !p.maxdist[i]);
+}
+
+/* A turret gunner: stays at the gun, keeps the gun's heading as its arc centre, fires anything it sees in bursts. */
+static void test_turret_gunner(void)
+{
+	DodGruntPool p;
+	const int i = 3;
+	const float now = 10.0f;
+	DodGrunt_Init(&p, 7);
+	p.cap = 8;
+	DodGrunt_SpawnScripted(&p, i, DOD_TEAM_AXIS, 100, 100, 0, 0, now);
+	DodGrunt_ManTurret(&p, i, 270.0f, 0.0f, DOD_WEAPON_MG42);
+	assert(p.script[i] & DOD_GRUNT_TURRET);
+	assert(p.gun[i] == DOD_WEAPON_MG42 + 1);
+	assert(p.leash_r[i] == (short)DOD_GRUNT_TURRET_LEASH && p.leash_x[i] == 100 && p.leash_y[i] == 100);
+	assert(fabsf(DodGrunt_FovCos(&p, i) - cosf(DOD_GRUNT_TURRET_ARC * 0.017453293f)) < 0.01f);
+	assert(DodGrunt_LookYaw(&p, i) == 270.0f);
+	/* far beyond rifle range: the MG still fires, and the arc does not swing toward the target */
+	DodGrunt_Looked(&p, i, now, 1, 2, 100, -1500, 1600, 0);
+	assert(p.state[i] == DOD_GRUNT_SHOOT && p.target[i] == 2);
+	assert(DodGrunt_LookYaw(&p, i) == 270.0f);
+	/* a blocked check never turns its arc */
+	DodGrunt_MoveChecked(&p, i, 0);
+	assert(DodGrunt_LookYaw(&p, i) == 270.0f);
+	/* bursts: well under a second between shots */
+	p.next_fire[i] = 0.0f;
+	assert(DodGrunt_ShotDue(&p, i, now, 1));
+	assert(p.next_fire[i] - now < 0.5f);
+	/* out of sight: it holds the gun */
+	DodGrunt_Looked(&p, i, now + 1.0f, 0, 0, 0, 0, 0, 0);
+	assert(p.state[i] == DOD_GRUNT_HOLD);
+}
+
+/* MOHAA resetleash: a negative LEASH keeps the radius and centres it where the actor stands */
+static void test_reset_leash(void)
+{
+	DodGruntPool p;
+	const int i = 2;
+	DodGrunt_Init(&p, 3);
+	p.cap = 4;
+	DodGrunt_SpawnScripted(&p, i, DOD_TEAM_AXIS, 10, 20, 0, 0, 1.0f);
+	DodGrunt_SetParam(&p, i, DOD_GRUNT_LEASH, 300, 0, 0);
+	p.x[i] = 500; p.y[i] = 600;
+	DodGrunt_SetParam(&p, i, DOD_GRUNT_LEASH, -1, 0, 0);
+	assert(p.leash_r[i] == 300 && p.leash_x[i] == 500 && p.leash_y[i] == 600);
+	DodGrunt_SpawnScripted(&p, i, DOD_TEAM_AXIS, 10, 20, 0, 0, 1.0f);
+	DodGrunt_SetParam(&p, i, DOD_GRUNT_LEASH, -1, 0, 0);
+	assert(p.leash_r[i] == 256 && p.leash_x[i] == 10);
+}
+
+/* MOHAA accuracy scales the hit chance: unset 1, 50 is 1, 100 doubles, 0 floors at 0.2 */
+static void test_accuracy_scale(void)
+{
+	DodGruntPool p;
+	DodGrunt_Init(&p, 5);
+	p.cap = 2;
+	DodGrunt_SpawnScripted(&p, 1, DOD_TEAM_AXIS, 0, 0, 0, 0, 1.0f);
+	assert(DodGrunt_AccuracyScale(&p, 1) == 1.0f);
+	p.accuracy[1] = 51;
+	assert(fabsf(DodGrunt_AccuracyScale(&p, 1) - 1.0f) < 0.001f);
+	p.accuracy[1] = 101;
+	assert(fabsf(DodGrunt_AccuracyScale(&p, 1) - 2.0f) < 0.001f);
+	p.accuracy[1] = 1;
+	assert(fabsf(DodGrunt_AccuracyScale(&p, 1) - 0.2f) < 0.001f);
+	DodGrunt_SpawnScripted(&p, 1, DOD_TEAM_AXIS, 0, 0, 0, 0, 1.0f);
+	assert(p.accuracy[1] == 0);
+}
+
+/* grenades: Axis carry 2 by default, Allies none, ammo_grenade overrides, a turret crew never throws; a throw needs
+   range, the gap and the roll; the lob lands on its mark; flee runs straight away */
+static void test_grenades(void)
+{
+	DodGruntPool p;
+	float from[3] = {0, 0, 0}, to[3] = {600, 0, 0}, v[3], out[2];
+	float t;
+	DodGrunt_Init(&p, 7);
+	DodGrunt_Spawn(&p, 0, DOD_TEAM_AXIS, 0, 0, 0, 0, 0.0f, 0);
+	DodGrunt_Spawn(&p, 1, DOD_TEAM_ALLIES, 0, 0, 0, 0, 0.0f, 0);
+	assert(DodGrunt_GrenadesLeft(&p, 0) == 2);
+	assert(DodGrunt_GrenadesLeft(&p, 1) == 0);
+	assert(!DodGrunt_TakeGrenadeThrow(&p, 0, 500.0f, 1.0f, 0.0f));	/* too soon after spawning */
+	assert(!DodGrunt_TakeGrenadeThrow(&p, 0, 100.0f, 10.0f, 0.0f));	/* too close */
+	assert(!DodGrunt_TakeGrenadeThrow(&p, 0, 500.0f, 10.0f, 0.9f));	/* the roll said shoot */
+	assert(DodGrunt_TakeGrenadeThrow(&p, 0, 500.0f, 10.0f, 0.0f));
+	assert(DodGrunt_GrenadesLeft(&p, 0) == 1);
+	assert(!DodGrunt_TakeGrenadeThrow(&p, 0, 500.0f, 12.0f, 0.0f));	/* the gap */
+	assert(DodGrunt_TakeGrenadeThrow(&p, 0, 500.0f, 20.0f, 0.0f));
+	assert(DodGrunt_GrenadesLeft(&p, 0) == 0);
+	assert(!DodGrunt_TakeGrenadeThrow(&p, 0, 500.0f, 40.0f, 0.0f));	/* none left */
+	p.grenades[1] = 4 + 1;	/* ammo_grenade 4 */
+	assert(DodGrunt_GrenadesLeft(&p, 1) == 4);
+	p.script[1] |= DOD_GRUNT_TURRET;
+	assert(DodGrunt_GrenadesLeft(&p, 1) == 0);
+	DodGrunt_ThrowVelocity(from, to, 800.0f, v);
+	t = 1.0f;	/* 600 units: one second */
+	assert(fabsf(v[0] - 600.0f) < 0.01f && fabsf(v[2] - 400.0f) < 0.01f);
+	assert(fabsf(v[0] * t - 600.0f) < 0.01f && fabsf(v[2] * t - 0.5f * 800.0f * t * t) < 0.01f);	/* lands at z 0 */
+	DodGrunt_FleeSpot(100, 0, 0, 0, 360, out);
+	assert(fabsf(out[0] - 460.0f) < 0.01f && fabsf(out[1]) < 0.01f);
+}
+
 int main(void)
 {
 	test_count();
+	test_grenades();
 	test_row_is_small();
 	test_look_budget_and_stagger();
 	test_dead_never_look();
@@ -233,7 +402,11 @@ int main(void)
 	test_move_check_stagger();
 	test_shooting();
 	test_rand_range();
+	test_actor_settings();
 	test_script_actor();
+	test_turret_gunner();
+	test_accuracy_scale();
+	test_reset_leash();
 	printf("dod_grunts_test: ok (row %d bytes, pool %d bytes)\n", DodGrunt_RowBytes(), (int)sizeof(DodGruntPool));
 	return 0;
 }

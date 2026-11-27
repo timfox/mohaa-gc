@@ -69,6 +69,9 @@ void DodFilm_Think( void );
 /* Grunts (dod_grunt.cpp): opt-in cheap fodder for co-op matches (dod_grunts > 0). Init at map start, Think each server frame. */
 void DodGrunts_Init( void );
 void DodGrunts_Think( void );
+/* MOHAA campaign levels under the single-player rules (see dod_runtime.cpp) */
+void DodGC_SinglePlayerLevelInit( void );
+void DodGC_SinglePlayerThink( void );
 /* MOHAA mission actors played by grunts (dod_mohaa_ents.cpp). Precache both sides' bodies once a script runs; spawn a
  * script-owned grunt (NULL when the pool or the edicts are full); give it a DOD_MOHAA_* order (0: not a grunt). */
 void DodGrunts_PrecacheBodies( void );

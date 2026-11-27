@@ -1,0 +1,15 @@
+{
+  "file": "20261124-031504-mohaa-retail-hud-lowmem-silent.mp4",
+  "date": "2026-11-24T03:15:04",
+  "commit": "ebf188540a",
+  "engine_commit": "db73d0d126",
+  "route": "mohaa-retail-hud-lowmem",
+  "disc": "/tmp/mohaa-hud-refine/out/mohaa-playable-retail-hud.iso",
+  "duration_s": 21.0,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 0.1,
+  "project": "mohaa-gc",
+  "audio": "silent screen capture (forced or PulseAudio unavailable)"
+}

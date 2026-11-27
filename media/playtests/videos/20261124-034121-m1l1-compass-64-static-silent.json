@@ -1,0 +1,15 @@
+{
+  "file": "20261124-034121-m1l1-compass-64-static-silent.mp4",
+  "date": "2026-11-24T03:41:21",
+  "commit": "4141399",
+  "engine_commit": "db73d0d126",
+  "route": "m1l1-compass-64-static",
+  "disc": "/tmp/mohaa-hud-refine/out/mohaa-m1l1-compass-64-smoke.iso",
+  "duration_s": 31.4,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 0.2,
+  "project": "mohaa-gc",
+  "audio": "silent screen capture (forced or PulseAudio unavailable)"
+}

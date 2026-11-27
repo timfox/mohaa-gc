@@ -76,6 +76,7 @@ ms_vm *ms_create(const ms_host *host, const ms_config *cfg)
     vm->rng = 0x12345678u;
     vm->n_size = ms_intern(vm, "size", 4);
     vm->n_removed = ms_intern(vm, "removed", 7);
+    vm->n_self = ms_intern(vm, "self", 4);
     ms_register_builtins(vm);
     return vm;
 }
@@ -668,6 +669,31 @@ static ms_table *scope_table(ms_vm *vm, ms_thread *t, int sc)
     }
 }
 
+static ms_value targetname(ms_vm *vm, ms_thread *t, const ms_value *name);
+
+/* Retail turns a string used as a listener into the entity of that targetname (ScriptVariable::listenerValue):
+   cabinet.scr hands spawner_create a soldier's .target, a string. obj is replaced by the first such entity, or left
+   alone when there is none. Returns 1 when it was replaced (the caller releases *obj). */
+static int string_listener(ms_vm *vm, ms_thread *t, ms_value *obj)
+{
+    ms_value v;
+    if (obj->type != MS_STRING)
+        return 0;
+    v = targetname(vm, t, obj);
+    if (v.type == MS_CARRAY) {
+        ms_value first = v.u.c->n > 0 ? v.u.c->items[0] : ms_nil();
+        ms_retain(first);
+        ms_release(vm, v);
+        v = first;
+    }
+    if (v.type != MS_ENTITY) {
+        ms_release(vm, v);
+        return 0;
+    }
+    *obj = v;
+    return 1;
+}
+
 /* variable table behind a listener value (entity, level, game, thread) */
 static ms_table *listener_table(ms_vm *vm, const ms_value *obj, int create)
 {
@@ -683,9 +709,11 @@ static ms_table *listener_table(ms_vm *vm, const ms_value *obj, int create)
     }
 }
 
-static ms_value get_field(ms_vm *vm, ms_thread *t, const ms_value *obj, uint32_t name)
+static ms_value get_field(ms_vm *vm, ms_thread *t, const ms_value *obj_in, uint32_t name)
 {
     ms_value out = ms_nil();
+    ms_value as_entity = *obj_in;
+    const ms_value *obj = string_listener(vm, t, &as_entity) ? &as_entity : obj_in;
     if (!ms_is_listener(obj)) {
         if (obj->type == MS_ARRAY || obj->type == MS_CARRAY) {
             vm_error(vm, t, "field '%s' applied to an array", ms_name(vm, name));
@@ -712,8 +740,10 @@ static ms_value get_field(ms_vm *vm, ms_thread *t, const ms_value *obj, uint32_t
 }
 
 /* takes ownership of val */
-static void set_field(ms_vm *vm, ms_thread *t, const ms_value *obj, uint32_t name, ms_value val)
+static void set_field(ms_vm *vm, ms_thread *t, const ms_value *obj_in, uint32_t name, ms_value val)
 {
+    ms_value as_entity = *obj_in;
+    const ms_value *obj = string_listener(vm, t, &as_entity) ? &as_entity : obj_in;
     if (!ms_is_listener(obj)) {
         vm_error(vm, t, "cannot set field '%s' on %s", ms_name(vm, name), ms_type_name(obj->type));
         ms_release(vm, val);
@@ -743,6 +773,10 @@ static void set_field(ms_vm *vm, ms_thread *t, const ms_value *obj, uint32_t nam
 static ms_value targetname(ms_vm *vm, ms_thread *t, const ms_value *name)
 {
     char buf[96];
+    /* $(entity) is that entity: spotlight.scr tests isalive $(self.spotter) with self.spotter an actor, and a NULL
+       there ended every searchlight at once, deleting its flare under the corona thread */
+    if (name->type == MS_ENTITY)
+        return *name;
     const char *s = name->type == MS_STRING ? name->u.s->data : ms_tostring(name, buf, sizeof(buf));
     ms_value out = ms_nil();
     out.type = MS_NULL;
@@ -873,6 +907,13 @@ oom:
 static int dispatch(ms_vm *vm, ms_call *c)
 {
     unsigned on;
+    if (c->target.type == MS_STRING) {
+        ms_value as_entity = c->target;
+        if (string_listener(vm, c->thread, &as_entity)) {
+            ms_release(vm, c->target);
+            c->target = as_entity;
+        }
+    }
     switch (c->target.type) {
     case MS_ENTITY: on = MS_ON_ENTITY; break;
     case MS_LEVEL: on = MS_ON_LEVEL; break;
@@ -972,6 +1013,10 @@ static void interpret(ms_vm *vm, ms_thread *t)
                 ms_value *v = ms_table_get(scope_table(vm, t, sc), name);
                 if (v) {
                     out = *v;
+                    ms_retain(out);
+                } else if (sc == SC_LOCAL && name == vm->n_self) {
+                    /* MOHAA threads expose their bound entity as local.self. */
+                    out = t->self;
                     ms_retain(out);
                 }
             }

@@ -21,7 +21,10 @@
 extern "C" {
 #endif
 
-#define DOD_GRUNT_MAX 48		/* pool size; one edict each, so also the most edicts they can take */
+/* pool size; one edict each, so also the most edicts they can take. 56: MOHAA's m2l2a places 51 soldiers and m1l1
+ * 54, all named by their scripts, so a 48-slot pool left some waiting. A row is under 100 bytes and the grunt edicts
+ * come out of the static edict table (m2l2a used 372 of 460 with 48), so 8 more cost about 0.8 KB of BSS. */
+#define DOD_GRUNT_MAX 56
 #define DOD_GRUNT_EDICT_RESERVE 24	/* edicts always left free for players, gibs, grenades, temp entities */
 #define DOD_GRUNT_SENSE_BUDGET 4	/* line-of-sight looks per frame, all grunts together */
 #define DOD_GRUNT_SENSE_INTERVAL 0.35f	/* seconds between one grunt's looks (jittered +-25%) */
@@ -47,10 +50,20 @@ typedef enum {
 enum {
 	DOD_GRUNT_SCRIPTED = 1 << 0,	/* owned by a script */
 	DOD_GRUNT_AI_OFF = 1 << 1,	/* ignores what it sees: no targets, no shooting, no wandering */
-	DOD_GRUNT_ATTACK = 1 << 2	/* runs at what it sees (MOHAA attackplayer) instead of holding */
+	DOD_GRUNT_ATTACK = 1 << 2,	/* runs at what it sees (MOHAA attackplayer) instead of holding */
+	DOD_GRUNT_SOFT_ORDER = 1 << 3,	/* its move order is a patrol walk: an enemy in sight ends it */
+	DOD_GRUNT_HEED_DISGUISE = 1 << 4,	/* lets a disguised player pass (MOHAA type_disguise other than "none") */
+	DOD_GRUNT_TURRET = 1 << 5	/* mans a fixed MG42: stays at the gun, watches its arc, fires in bursts */
 };
 enum { DOD_GRUNT_ORDER_NONE = 0, DOD_GRUNT_ORDER_WALK, DOD_GRUNT_ORDER_RUN };
+/* A fighting script actor runs to a cover path node (its own move, not the script's: no movedone), then fights
+ * from there. */
+enum { DOD_GRUNT_COVER_NONE = 0, DOD_GRUNT_COVER_MOVING, DOD_GRUNT_COVER_HELD };
+#define DOD_GRUNT_GUN_NONE 255
+/* MOHAA single-player difficulty (the "skill" cvar, 1 easy .. 3 hard): how often a soldier's shot hits */
+float DodGrunt_CampaignHitScale(int skill);
 #define DOD_GRUNT_ARRIVE 32.0f		/* a move order is done this near its point */
+#define DOD_GRUNT_ORDER_STALL 4.0f	/* a move order that gets no nearer for this long arrives anyway */
 
 typedef struct DodGruntStats {
 	unsigned looks;		/* line-of-sight traces */
@@ -61,6 +74,8 @@ typedef struct DodGruntStats {
 	unsigned deaths;
 	unsigned respawns;
 	unsigned deferred;	/* looks that were due but pushed to a later frame by the budget */
+	unsigned grenades;	/* grenades thrown */
+	unsigned flees;		/* runs from a live grenade */
 } DodGruntStats;
 
 typedef struct DodGruntPool {
@@ -85,12 +100,48 @@ typedef struct DodGruntPool {
 	unsigned char order[DOD_GRUNT_MAX];	/* DOD_GRUNT_ORDER_* */
 	unsigned char order_done[DOD_GRUNT_MAX];	/* set on arrival, cleared by DodGrunt_TakeOrderDone */
 	float order_x[DOD_GRUNT_MAX], order_y[DOD_GRUNT_MAX];
+	/* MOHAA actor settings (script "sight", "leash", ...); 0 keeps the grunt default. Distances in GoldSrc units. */
+	short sight[DOD_GRUNT_MAX];		/* notices a player this far (default DOD_GRUNT_SIGHT) */
+	short hearing[DOD_GRUNT_MAX];		/* notices a player this near in any direction (default 300) */
+	short leash_r[DOD_GRUNT_MAX];		/* never steps more than this far from (leash_x, leash_y) */
+	short leash_x[DOD_GRUNT_MAX], leash_y[DOD_GRUNT_MAX];
+	short mindist[DOD_GRUNT_MAX];		/* backs away from a nearer enemy */
+	short maxdist[DOD_GRUNT_MAX];		/* stops closing in at this range and fights */
+	unsigned char fov[DOD_GRUNT_MAX];	/* field of view in degrees / 2 (0: default 140) */
+	unsigned char cover[DOD_GRUNT_MAX];	/* DOD_GRUNT_COVER_*: a script actor taking or holding cover */
+	unsigned char gun[DOD_GRUNT_MAX];	/* MOHAA "gun": 0 its side's rifle, DOD_GRUNT_GUN_NONE unarmed, else weapon id + 1 */
+	unsigned char accuracy[DOD_GRUNT_MAX];	/* MOHAA "accuracy" 0..100 + 1 (0: the default curve) */
+	unsigned char grenades[DOD_GRUNT_MAX];	/* MOHAA "ammo_grenade" + 1 (0: its side's default) */
+	float next_grenade[DOD_GRUNT_MAX];	/* no throw before this */
+	float order_best[DOD_GRUNT_MAX];	/* nearest it has come to the order point */
+	float order_stall_at[DOD_GRUNT_MAX];	/* when a stalled order gives up and arrives; < 0 not started */
 	unsigned rng;
 	int look_cursor;	/* where the look scheduler resumes, so no slot is starved */
 	DodGruntStats stats;
 } DodGruntPool;
 
 #define DOD_GRUNT_MEMORY 4.0f
+
+/* MOHAA "accuracy" (0..100, retail soldiers mostly 20..100): a factor on the hit chance, 1 at 50 or when unset */
+float DodGrunt_AccuracyScale(const DodGruntPool *p, int i);
+
+/* Grenades. A fighting soldier with grenades left now and then throws one at a target DOD_GRUNT_GRENADE_MIN..MAX
+ * away instead of firing, at most once every DOD_GRUNT_GRENADE_GAP seconds. MOHAA's German soldiers carry grenades
+ * and its American friendlies rarely throw, so the default is 2 for the Axis and 0 for the Allies; "ammo_grenade N"
+ * sets it, and a turret crew never throws. */
+#define DOD_GRUNT_GRENADE_MIN 300.0f
+#define DOD_GRUNT_GRENADE_MAX 1000.0f
+#define DOD_GRUNT_GRENADE_GAP 8.0f
+#define DOD_GRUNT_GRENADE_CHANCE 0.15f	/* a shot's chance of being a throw instead */
+#define DOD_GRUNT_GRENADE_FLEE 280.0f	/* a soldier this near a live grenade runs from it */
+int DodGrunt_GrenadesLeft(const DodGruntPool *p, int i);
+/* 1 when grunt i throws now rather than fires (and then counts the grenade spent) */
+int DodGrunt_TakeGrenadeThrow(DodGruntPool *p, int i, float dist, float now, float roll);
+/* The launch velocity that lands a throw from `from` on `to` under gravity (units/s^2), flight time growing with
+   range (0.8 .. 1.6 s). */
+void DodGrunt_ThrowVelocity(const float from[3], const float to[3], float gravity, float out[3]);
+/* Where a soldier at (x, y) runs from a grenade at (gx, gy): `dist` units straight away (any way if on top of it). */
+void DodGrunt_FleeSpot(float x, float y, float gx, float gy, float dist, float out[2]);
 
 /* Bytes one grunt costs in the pool (arrays only; the prop's edict is on top). */
 int DodGrunt_RowBytes(void);
@@ -146,6 +197,16 @@ void DodGrunt_SpawnScripted(DodGruntPool *p, int i, int team, float x, float y, 
 void DodGrunt_SetAI(DodGruntPool *p, int i, int on);
 /* attackplayer: AI on, and run at what it sees instead of holding. */
 void DodGrunt_SetAttack(DodGruntPool *p, int i, int on);
+/* MOHAA actor settings: value is a distance in GoldSrc units (degrees for FOV); LEASH and TETHER also take the
+ * leash centre (x, y). LEASH centres on the actor's spot now when x and y are both 0; a negative LEASH value keeps
+ * the radius and only re-centres it there (MOHAA resetleash). */
+enum { DOD_GRUNT_SIGHT_RANGE = 0, DOD_GRUNT_HEARING, DOD_GRUNT_FOV, DOD_GRUNT_LEASH, DOD_GRUNT_TETHER,
+	DOD_GRUNT_MINDIST, DOD_GRUNT_MAXDIST };
+void DodGrunt_SetParam(DodGruntPool *p, int i, int param, float value, float x, float y);
+/* the sight range, hearing range and cosine of the half field of view this grunt looks with */
+float DodGrunt_SightRange(const DodGruntPool *p, int i);
+float DodGrunt_HearingRange(const DodGruntPool *p, int i);
+float DodGrunt_FovCos(const DodGruntPool *p, int i);
 /* walkto / runto: head for (x, y) ignoring what it sees; on arrival it holds and order_done is set. */
 void DodGrunt_OrderMove(DodGruntPool *p, int i, float x, float y, int run);
 /* Drop a move order without the done event; the grunt holds where it is. */
@@ -154,6 +215,15 @@ void DodGrunt_OrderStop(DodGruntPool *p, int i);
 void DodGrunt_Face(DodGruntPool *p, int i, float tx, float ty);
 /* 1 once after a move order arrived (the host turns it into the script's "movedone"). */
 int DodGrunt_TakeOrderDone(DodGruntPool *p, int i);
+
+/* MOHAA turret gunner (an actor whose map target is a turretweapon, or type_attack "turret" beside one): it stays
+ * at the gun, carries the MG42, and watches an arc of arc_half degrees each side of the gun's yaw. heading keeps
+ * the gun's yaw, so the arc does not turn with the body. */
+#define DOD_GRUNT_TURRET_ARC 60.0f	/* degrees each side when the turret sets none */
+#define DOD_GRUNT_TURRET_LEASH 24.0f
+void DodGrunt_ManTurret(DodGruntPool *p, int i, float gun_yaw, float arc_half, int mg_weapon);
+/* The yaw a grunt's field of view is centred on: the gun's for a turret gunner, else the body's. */
+float DodGrunt_LookYaw(const DodGruntPool *p, int i);
 
 /* Facing: the yaw a grunt should look toward a point from its place. */
 float DodGrunt_YawTo(float x, float y, float tx, float ty);

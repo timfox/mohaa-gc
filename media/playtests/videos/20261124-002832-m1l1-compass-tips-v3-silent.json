@@ -1,0 +1,15 @@
+{
+  "file": "20261124-002832-m1l1-compass-tips-v3-silent.mp4",
+  "date": "2026-11-24T00:28:32",
+  "commit": "d9a2faa539",
+  "engine_commit": "db73d0d126",
+  "route": "m1l1-compass-tips-v3",
+  "disc": "/tmp/mohaa-compass-build/mohaa-compass-m1l1-v3.iso",
+  "duration_s": 49.3,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 0.8,
+  "project": "mohaa-gc",
+  "audio": "silent screen capture (forced or PulseAudio unavailable)"
+}

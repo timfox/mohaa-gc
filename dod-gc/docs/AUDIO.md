@@ -52,7 +52,8 @@ scripts/stage-lean-dod.sh
 # Every map soundscape + menu + core SFX
 scripts/stage-lean-dod.sh --all-maps-audio --core-sfx
 
-# One map: BSP-referenced props only + that map's soundscapes (no core SFX)
+# One map: BSP-referenced props, that map's soundscapes, and required short player/grenade events
+# (large generic core SFX set stays off)
 scripts/stage-lean-dod.sh --map dod_flash --full-map
 
 # ISO helpers

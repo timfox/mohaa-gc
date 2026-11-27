@@ -1,0 +1,4 @@
+[x11grab @ 0x575cc0871040] Cannot get the image data event_error: response_type:0 error_code:8 sequence:1168 resource_id:67108868 minor_code:4 major_code:130.
+[x11grab @ 0x575cc0871040] Continuing without shared memory.
+[x11grab @ 0x575cc0871040] Cannot get the image data event_error: response_type:0 error_code:8 sequence:1169 resource_id:50331662 minor_code:0 major_code:73.
+[in#0/x11grab @ 0x575cc0870d80] Error during demuxing: Permission denied

@@ -1,0 +1,27 @@
+== m1l2b script errors: 0
+[20:41:08] Spawned spotlight 1
+[20:41:08] Spawned spotlight 2
+[20:41:08] Spawned spotlight 3
+[20:41:08] Spawned spotlight 4
+[20:41:08] mohaa: spot1owner mans the MG42 t355
+[20:41:08] mohaa: spot4owner mans the MG42 t358
+[20:41:08] mohaa: spot3owner mans the MG42 t357
+[20:41:08] mohaa: spot2owner mans the MG42 t356
+== m1l2a script errors: 19
+[20:44:44] script error: maps/m1l2a.scr:38: exec: cannot load 'global/friendly.scr'
+[20:44:44] script error: maps/m1l2a.scr:47: cannot set field 'leashvalue' on NIL
+[20:44:44] script error: maps/m1l2a.scr:48: field 'leashvalue' applied to NIL
+[20:44:44] script error: maps/m1l2a.scr:48: command 'leash' applied to NIL
+[20:44:44] script error: maps/m1l2a.scr:49: command 'tether' applied to NIL
+[20:44:44] script error: maps/m1l2a.scr:50: cannot set field 'fixedleash' on NIL
+[20:44:44] script error: maps/m1l2a.scr:52: command 'exec' applied to NIL
+[20:44:44] script error: maps/m1l2a.scr:53: command 'exec' applied to NIL
+[20:44:44] script error: maps/m1l2a.scr:54: command 'threatbias' applied to NIL
+[20:44:44] script error: maps/m1l2a.scr:59: command 'gun' applied to NIL
+[20:44:44] Spawned spotlight 1
+[20:44:44] Spawned spotlight 2
+== m4l2 script errors: 0
+[20:47:59] Spawned spotlight 1
+[20:47:59] Spawned spotlight 2
+[20:47:59] mohaa: spotguy01 mans the MG42 t394
+[20:47:59] mohaa: spotguy02 mans the MG42 t376

@@ -1,0 +1,15 @@
+{
+  "file": "20261123-223534-training-mohday2-player-silent.mp4",
+  "date": "2026-11-23T22:35:34",
+  "commit": "06dfdba066",
+  "engine_commit": "db73d0d126",
+  "route": "training-mohday2-player",
+  "disc": "/tmp/mohaa-skies-stage-update/out/training-mohnightfog-smoke.iso",
+  "duration_s": 24.8,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 0.2,
+  "project": "mohaa-gc",
+  "audio": "silent screen capture (forced or PulseAudio unavailable)"
+}

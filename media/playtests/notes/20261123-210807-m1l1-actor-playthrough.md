@@ -1,0 +1,81 @@
+# MOHAA Probe m1l1-actor-playthrough — 20261123-210807
+
+- ISO: `/tmp/mohaa-actor-anim-fix/out/mohaa-m1l1-actor-animation-dispatch.iso`
+- Route: `m1l1-actor-playthrough`
+- Duration cap: 65s
+- Repo: `c1064a463f`
+- Engine: `db73d0d126`
+- Shots: `media/playtests/screenshots/20261123-210807-m1l1-actor-playthrough/`
+
+MOHAA GameCube playtest. Repo HEAD: c1064a463f. Engine checkout: /tmp/mohaa-loopback-fix/engine (Git revision db73d0d126). ISO: /tmp/mohaa-actor-anim-fix/out/mohaa-m1l1-actor-animation-dispatch.iso (SHA-256 97fc9343f9bf0a722cbf2316a5ee85213c719b4fc1bc0e6ed39c245a4c1b6ca1). Isolated input-assisted m1l1 playthrough; raw silent screen recording for actor and intro review.
+
+## Frame stats
+```
+final.png: (640, 480) black=8.9% mean=(50, 46, 45)
+```
+
+## OSReport (key)
+```
+41:08:09:821 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: linked gamedir=mohaa detected=valve,dod,mohaa
+42:08:09:821 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:09] Xash3D GameCube: linked gamedir=mohaa detected=valve,dod,mohaa
+69:08:09:908 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:09] FS_Rescan( Medal of Honor: Allied Assault, 0x4000000, english )
+96:08:10:624 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:10] Program args: xash xash -dev 2 -log -game mohaa -gcworldrender -gclistenserver m1l1 -gcmap m1l1 -gcvideo prog -gcplayerinput -width 320 -height 240
+143:08:10:658 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:10] Xash3D GameCube: released unused nodes reserve 256 Kb
+144:08:10:658 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:10] Xash3D GameCube: released unused submodels reserve 16 Kb
+196:08:10:696 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:10] Xash3D GameCube: heap mark stage=client_local_init_ready used=876128 free=238560 unclaimed=790528 avail=1029088
+226:08:10:730 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:10] Xash3D GameCube: heap mark stage=renderer_video_init_ready used=886560 free=228128 unclaimed=790528 avail=1018656
+233:08:10:768 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:10] Xash3D GameCube: renderer screen map ready
+236:08:10:769 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:10] Xash3D GameCube: heap mark stage=renderer_screen_alloc_ready used=886560 free=228128 unclaimed=790528 avail=1018656
+245:08:10:771 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:10] Xash3D GameCube: heap mark stage=renderer_images_ready used=886696 free=227992 unclaimed=790528 avail=1018520
+249:08:10:773 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:10] Xash3D GameCube: heap mark stage=renderer_init_ready used=985088 free=129600 unclaimed=790528 avail=920128
+256:08:10:778 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:10] Xash3D GameCube: heap mark stage=client_video_init_ready used=988832 free=125856 unclaimed=790528 avail=916384
+279:08:10:784 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:10] Xash3D GameCube: heap mark stage=engine_subsystems_ready used=992624 free=122064 unclaimed=790528 avail=912592
+289:08:10:792 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:10] Xash3D GameCube: gcmap lookup begin
+290:08:10:792 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:10] Xash3D GameCube: queue map m1l1
+291:08:10:792 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:10] Xash3D GameCube: direct map begin
+293:08:10:793 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:10] Xash3D GameCube: freed 0 menu/UI textures for map load
+294:08:10:793 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:10] Xash3D GameCube: GX HUD/menu slabs released for map load
+296:08:10:795 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:10] Xash3D GameCube: sound trimmed for map load
+297:08:10:795 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:10] Xash3D GameCube: client subsystems trimmed for map load
+306:08:10:796 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:10] Xash3D GameCube: renderer trim for map load
+307:08:10:797 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:10] Xash3D GameCube: present buf released map load
+323:08:10:802 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:10] Xash3D GameCube: map load cfg skipped
+326:08:10:805 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:10] Xash3D GameCube: pre-spawn mem map set
+340:08:10:806 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:10] Xash3D GameCube: present buf released map load
+342:08:10:807 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:10] Xash3D GameCube: server string arena spill dropped for map reload
+351:08:10:807 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:10] Xash3D GameCube: pre-spawn map buffer prepared for m1l1
+355:08:10:808 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:10] Xash3D GameCube: server string arena spill dropped for map reload
+364:08:11:273 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:10] Xash3D GameCube: map load compact (no lighting, miptex headers only) 1.79 Mb 竊 1.14 Mb (G154 disc LM)
+402:08:11:477 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:11] Xash3D GameCube: world surfedges copied 95.81 Kb to map tail
+404:08:11:477 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:11] Xash3D GameCube: world faces copied 100.84 Kb to map tail
+416:08:11:484 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:11] Xash3D GameCube: releasing gcmap BSP staging 1.14 Mb before surfaces
+521:08:12:912 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:12] Xash3D GameCube: freed 64 menu/UI textures for map load
+522:08:12:912 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:12] Xash3D GameCube: GX HUD/menu slabs released for map load
+530:08:13:044 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:12] PM_WorldMesh: maps/m1l1.mcol, 0 brushes, 18 terrain patches, 13212 patch triangles, 388920 bytes in the map arena
+875:08:13:541 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:13] mohaa: running maps/m1l1.scr (budget 384 KiB, 384 KiB in the map arena in 1 piece, the rest from the heap)
+1090:08:14:090 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:13] Xash3D GameCube: resource sync skipped for local map route
+1096:08:14:097 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:13] Xash3D GameCube: renderer restore after map load
+1097:08:14:097 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:13] Xash3D GameCube: map loaded m1l1
+1098:08:14:098 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: boot phase=map last=client
+1100:08:14:099 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:13] Xash3D GameCube: budget moved entity text to map leftover (20.55 Kb), entity reserve returned, heap free 223.68 Kb
+1105:08:14:109 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: Xash3D GameCube: boot phase=map last=map
+1107:08:14:109 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:13] Xash3D GameCube: direct map ready
+1110:08:14:110 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:13] Xash3D GameCube: skip startup video scan for gcmap route
+1111:08:14:110 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:13] Xash3D GameCube: gcmap smoke frames begin
+1118:08:14:116 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:13] Xash3D GameCube: gcmap smoke frames ready
+1121:08:14:116 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:13] Xash3D GameCube: heap mark stage=host_main_loop_begin_status used=1676168 free=204472 unclaimed=24576 avail=229048
+1122:08:14:116 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:13] Xash3D GameCube: solo listenserver active map=m1l1 (gcmap tip)
+1133:08:14:127 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:13] Xash3D GameCube: livemap armed=0 (file absent)
+1137:08:14:176 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:13] Xash3D GameCube: released unused nodes reserve 256 Kb
+1138:08:14:176 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:13] Xash3D GameCube: released unused submodels reserve 16 Kb
+1140:08:14:177 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:13] Xash3D GameCube: freed 64 menu/UI textures for map load
+1141:08:14:177 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:13] Xash3D GameCube: GX HUD/menu slabs released for map load
+1162:08:14:185 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:13] Xash3D GameCube: titles init skipped for gcmap smoke route
+1167:08:14:189 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:13] Xash3D GameCube: client edicts using static gcmap bootstrap tables
+1253:08:14:198 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:13] Xash3D GameCube: heap mark stage=client_module_ready used=1411232 free=469408 unclaimed=24576 avail=493984
+1255:08:14:198 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:13] Xash3D GameCube: heap mark stage=deferred_client_init_ready used=1411232 free=469408 unclaimed=24576 avail=493984
+1284:08:14:237 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:13] Xash3D GameCube: serverdata HUD vidinit deferred for local map route
+1285:08:14:238 Core/HW/EXI/EXI_DeviceIPL.cpp:306 N[OSREPORT]: [21:08:13] Xash3D GameCube: client edicts capped for map route max=460 requested=460
+```
+
+- Full Dolphin log: `media/playtests/screenshots/20261123-210807-m1l1-actor-playthrough/dolphin.log.gz`

@@ -1,0 +1,15 @@
+{
+  "file": "20261124-025910-m1l1-intro-hud-detect-silent.mp4",
+  "date": "2026-11-24T02:59:10",
+  "commit": "ebf188540a",
+  "engine_commit": "db73d0d126",
+  "route": "m1l1-intro-hud-detect",
+  "disc": "/tmp/mohaa-hud-refine/out/mohaa-m1l1-intro-hud-detect.iso",
+  "duration_s": 45.0,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 0.2,
+  "project": "mohaa-gc",
+  "audio": "silent screen capture (forced or PulseAudio unavailable)"
+}

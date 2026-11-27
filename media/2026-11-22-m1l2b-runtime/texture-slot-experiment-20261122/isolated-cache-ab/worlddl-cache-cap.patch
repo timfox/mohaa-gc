@@ -1,0 +1,9 @@
+--- a/ref/gx/r_gx_worlddl.c
++++ b/ref/gx/r_gx_worlddl.c
+@@ -1941,7 +1941,7 @@ static void R_GXWorldDLLoad( const char *mapbase )
+ 		 * frame draws (avalanche: 204 KB bound, 39 KB drawn). charlie and
+ 		 * caen run on a 96 KB cache; twice that is kept at most. */
+ 		keep = need + (( gc_wd_hdr.max_chunk + 31u ) & ~31u );
+-		keep = Q_min( keep, 192u * 1024u );
++		keep = Q_min( keep, 128u * 1024u ); /* scratch texture-slot budget experiment */
+ 		keep = ( Q_max( keep, floor_bytes ) + 32767u ) & ~32767u;

@@ -1,0 +1,26 @@
+SLIDE 1 - MOHAA on GameCube
+This project started with a straightforward question: could Medal of Honor: Allied Assault live on the GameCube without losing the shape of the original game? The answer has been a long chain of conversions, engine work, and map-by-map proof. The project began as a Day of Defeat port. MOHAA became the next game target on that existing GameCube foundation.
+
+SLIDE 2 - Four acts, one port
+The story has four acts. First, we inherited a working Day of Defeat GameCube port and its Xash3D-GC runtime. Second, we built a translation pipeline for MOHAA's maps and retail assets. Third, we measured what the GameCube renderer could actually afford. And now we are bringing MOHAA-specific scripting and its opening cutscene back into view.
+
+SLIDE 3 - Why Xash3D-GC was the bridge
+The engine choice sounds unusual until you look at the families involved. MOHAA comes from the id Tech 3, or Quake Three, side of the family. GoldSrc and Xash3D come from the Half-Life and earlier Quake side. These are not the same engine, and their retail assets are not interchangeable. But they share useful production concepts: BSP worlds, entities, client and server game code, model animation, and resource loading. The Xash3D-GC port already solved the hardest platform problem: a GameCube runtime with a GX renderer and a tested boot path. Reusing it was the practical choice. We translated the data and behavior instead of trying to load MOHAA binaries directly.
+
+SLIDE 4 - m1l2b: world, props, and gameplay state
+The m1l2b night airfield is our clearest gameplay route. In Dolphin, the map reaches the ready markers, and the converted prop pack loads two hundred fifty-four instances, one hundred one models, and just over twenty thousand triangles. A later listenserver capture opens the map sound table and shows the Garand viewmodel and HUD. The map is real progress, but the frame budget matters. The default WorldDL path preserves converted props and detail, yet one early frame measured about one hundred ninety-two milliseconds. A live-BSP diagnostic ran much faster, but drew none of those static props, so it is not the same quality target.
+
+SLIDE 5 - Keep fidelity while paying down frame time
+We treated performance as a measurement problem. A three-slot forced-chunk ring reduced forced work and improved the measured WorldDL time in a directional Dolphin comparison. The builds differed, so the numbers are not a controlled A-B result. A separate cache experiment put more textures in resident slots without proving a speedup. Those experiments narrowed the next target: texture binding and WorldDL workload. The point is to preserve the content path while reducing the cost, not to win a frame-rate number by dropping the props.
+
+SLIDE 6 - The truck path moves. The truck mesh is next.
+The m1l1 script and tag path are already moving. Runtime logs show five tagged models, sixty-five animation lengths, and a truck origin traveling to the end of its path. The newest work turns the GMC and Opel TIKIs into animated Studio models. The GMC export carries fifty-two bones and three sequences. The Opel carries fifty-seven bones and six. The exporter also maps TIKI surface visibility into Studio bodygroups, so the script can show or hide panels and lights as its animation changes. The earlier screenshot is after the path ends; the truck mesh was still invisible in that capture.
+
+SLIDE 7 - Build status and next check
+On November twenty-third, a fresh build exposed a mismatch between the engine and the MOHAA game archive. The engine expected a larger playermove structure than the game DLL provided. The MOHAA profile had not picked up the same 256-by-32 limits as the Day of Defeat build. In an isolated engine copy, I applied those limits and rebuilt. The new DOL passes game initialization and reaches MAP_READY on m1l1. The captured 640-by-480 frame is still black, so we have map startup, but not visible gameplay yet. The temporary engine source still needs a pinned canonical revision and a durable profile fix.
+
+SLIDE 8 - Four gates to a visible opening ride
+Four gates remain: carry the matching playermove limits into the pinned engine source, find why the m1l1 frame stays black after MAP_READY, prove the GMC and Opel sequences and surface changes on screen, then extend the converter for scripted people. Multi-weight meshes still fall back to a static pose, so actor rendering remains open. The finish is a GameCube-budgeted mission where the retail script drives the camera, vehicle, actors, audio, and transitions, all proven in one capture.
+
+SLIDE 9 - Evidence ledger
+I want to close by making the evidence easy to audit. The Day of Defeat fork, the Xash3D and OpenMoHAA lineage references, the gameplay and tag-motion captures, and the current cutscene status and build logs are all documented. Together they show where the port came from, what runs today, and the memory gate still standing before the opening ride is visible. Thank you.

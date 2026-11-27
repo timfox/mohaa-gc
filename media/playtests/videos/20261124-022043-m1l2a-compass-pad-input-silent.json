@@ -1,0 +1,15 @@
+{
+  "file": "20261124-022043-m1l2a-compass-pad-input-silent.mp4",
+  "date": "2026-11-24T02:20:43",
+  "commit": "43fa234",
+  "engine_commit": "db73d0d126",
+  "route": "m1l2a-compass-pad-input",
+  "disc": "/tmp/mohaa-hud-refine/out/mohaa-compass-pad-input.iso",
+  "duration_s": 49.5,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 0.1,
+  "project": "mohaa-gc",
+  "audio": "silent screen capture (forced or PulseAudio unavailable)"
+}

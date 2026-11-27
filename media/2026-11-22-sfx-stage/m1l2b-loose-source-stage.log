@@ -1,0 +1,39 @@
+sources: /home/tim/Desktop/mohaa-gc/retail/main
+writing: /tmp/mohaa-sfx-source-complete-20261122/xash3d/mohaa
+== sounds
+sounds sources: /tmp/mohaa-sfx-loose-20261122/main
+6441 aliases defined
+m1l2b: 20 aliases, 29 samples, 31 scripts read, 0 unresolved
+converted 29 samples, skipped 0
+== sounds: 30 files, 3.5 MB
+   xash3d/mohaa/maps/m1l2b.snd
+   xash3d/mohaa/sound/mohaa/dialogue/m5l3/a/dfr_m5l2_526h.wav
+   xash3d/mohaa/sound/mohaa/dialogue/m5l3/a/dfr_m5l2_527h.wav
+   xash3d/mohaa/sound/mohaa/dialogue/m5l3/a/dfr_m5l2_529h.wav
+   xash3d/mohaa/sound/mohaa/dialogue/m5l3/a/dfr_m5l2_530h.wav
+   xash3d/mohaa/sound/mohaa/dialogue/m5l3/a/dfr_m5l2_531h.wav
+   xash3d/mohaa/sound/mohaa/dialogue/m5l3/a/dfr_m5l2_532h.wav
+   xash3d/mohaa/sound/mohaa/dialogue/m5l3/a/dfr_m5l2_533h.wav
+   xash3d/mohaa/sound/mohaa/dialogue/m5l3/a/dfr_m5l2_540h.wav
+   xash3d/mohaa/sound/mohaa/dialogue/m5l3/a/dfr_m5l2_541h.wav
+   xash3d/mohaa/sound/mohaa/items/item_timer_01.wav
+   xash3d/mohaa/sound/mohaa/items/radiobomb.wav
+   xash3d/mohaa/sound/mohaa/mechanics/damage_vehicle_2.wav
+   xash3d/mohaa/sound/mohaa/mechanics/doormetallocked_02.wav
+   xash3d/mohaa/sound/mohaa/mechanics/doorwoodlocked_02.wav
+   xash3d/mohaa/sound/mohaa/mechanics/gate_metal_locked.wav
+   xash3d/mohaa/sound/mohaa/mechanics/m1l2b_disabletruck01.wav
+   xash3d/mohaa/sound/mohaa/mechanics/shortwave1.wav
+   xash3d/mohaa/sound/mohaa/mechanics/shortwave2.wav
+   xash3d/mohaa/sound/mohaa/mechanics/static1.wav
+   xash3d/mohaa/sound/mohaa/mechanics/wood_fence_locked.wav
+   xash3d/mohaa/sound/mohaa/weapons/explo/explo_metalmed1.wav
+   xash3d/mohaa/sound/mohaa/weapons/explo/explo_metalmed2.wav
+   xash3d/mohaa/sound/mohaa/weapons/explo/explo_metalmed3.wav
+   xash3d/mohaa/sound/mohaa/weapons/explo/explo_metalmed4.wav
+   xash3d/mohaa/sound/mohaa/weapons/explo/explo_metalmed5.wav
+   xash3d/mohaa/sound/mohaa/weapons/explo/explo_searchlight1.wav
+   xash3d/mohaa/sound/mohaa/weapons/explo/explo_searchlight2.wav
+   xash3d/mohaa/sound/mohaa/weapons/explo/explo_stonelarge1.wav
+   xash3d/mohaa/sound/mohaa/weapons/explo/explo_stonelarge2.wav
+done: 3.5 MB new under /tmp/mohaa-sfx-source-complete-20261122/xash3d/mohaa

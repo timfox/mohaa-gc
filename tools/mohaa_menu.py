@@ -18,7 +18,20 @@ The result goes where the GameCube main menu (mainui BackgroundBitmap) looks fir
                                             150 KiB of texture memory for the whole sheet
     resource/gc_menu/background.tga/.bmp    the whole sheet at 320x240 (single-sheet path, host tools)
 
-These are the same files and sizes the disc build bakes from DoD's own splash, so on the SD card they
+It also writes the retail menu's working parts, which mainui turns into MOHAA's main menu:
+
+    resource/gc_menu/mohaa_main.txt         the layout: sign rect, spots (action, rect, lit image, sign),
+                                            buttons (Quit, Back to game) and click sounds
+    resource/gc_menu/mohaa/*.tga            each spot's rect of the room with its hover art drawn in (opaque,
+                                            loaded only while lit), its sign, the Quit / Back to game art
+    sound/mohaa/menu/*.wav                  sound/menu/apply.wav and back.wav as 22 kHz mono PCM
+
+and the retail pages after it (PAGES): the options desk, the game type cards and the Free-For-All
+Create Server form, each as resource/gc_menu/mohaa_<page>.txt, its picture in four quadrants
+(bg_<page>_<r>_<c>.cmp) and its parts under resource/gc_menu/mohaa/<page>/. The form also lists its
+fields ("field <name> x y w h r g b"): where the GameCube form writes the server name, map and players.
+
+The background files are the same files and sizes the disc build bakes from DoD's own splash, so on the SD card they
 take the place of the disc's copies; without them the disc's DoD background shows as before.
 The output is retail data: write it outside the repository and never commit it.
 """
@@ -51,19 +64,48 @@ def strip_comments(text):
     return re.sub(r"//[^\n]*", "", text)
 
 
+# The resource keys a urc writes; a resource written on one line ("resource Label { rect 0 0 512 512
+# shader x }") is split before each of them so it reads like the usual one key per line.
+URC_KEYS = {"name", "rect", "fgcolor", "bgcolor", "borderstyle", "shader", "hovershader", "selectshader",
+            "clicksound", "stuffcommand", "hovercommand", "enabledcvar", "linkcvar", "linkcvartoshader",
+            "font", "title", "textalign", "ordernumber", "checked_shader", "unchecked_shader"}
+RAW_TOKEN = re.compile(r'"[^"]*"|[{}]|[^\s{}]+')
+
+
+def urc_lines(text):
+    """The urc's lines, with braces on lines of their own and one-line resources split by key."""
+    out = []
+    for line in strip_comments(text).splitlines():
+        cur = []
+        for tok in RAW_TOKEN.findall(line):
+            if tok in ("{", "}") or (cur and tok.lower() in URC_KEYS and not cur[0] in ("menu",)):
+                if cur:
+                    out.append(" ".join(cur))
+                cur = []
+                if tok in ("{", "}"):
+                    out.append(tok)
+                    continue
+            cur.append(tok)
+        if cur:
+            out.append(" ".join(cur))
+    return out
+
+
 def parse_urc(text):
     """(width, height, [resource]) of a urc menu; each resource is {"type": ..., key: [args]}."""
     width, height = SHEET
     items, cur, depth, rtype, pending = [], None, 0, None, False
-    for line in strip_comments(text).splitlines():
+    for line in urc_lines(text):
         t = tokens(line)
         if not t:
             continue
         if cur is None:
             if t[0].lower() == "menu" and len(t) >= 4:
-                width, height = int(t[2]) + 1, int(t[3]) + 1   # "menu main 639 479": inclusive extents
+                # "menu main 639 479" gives inclusive extents, "menu options_main 640 480" the size
+                width, height = int(t[2]), int(t[3])
+                width, height = width + width % 2, height + height % 2
             elif t[0].lower() == "resource":
-                pending, rtype = True, None
+                pending, rtype = True, (t[1] if len(t) > 1 else None)
             elif pending and t[0] != "{":
                 rtype = t[0]
             if pending and "{" in t:
@@ -139,14 +181,29 @@ def room_pieces(items):
     return pieces
 
 
+INCLUDE = re.compile(r'^[ \t]*include[ \t]+"?([^"\s]+)"?[ \t]*$', re.I | re.M)
+
+
+def urc_text(files, urc, depth=0):
+    """A urc's text with its include "ui/x.inc" lines replaced by those files (ui/serverback.inc)."""
+    text = read(files[urc]).decode("latin-1").replace("\r\n", "\n").replace("\r", "\n")   # retail urcs are CRLF
+    if depth > 4:
+        return text
+
+    def inc(m):
+        name = m.group(1).lower().replace("\\", "/")
+        return urc_text(files, name, depth + 1) if name in files else ""
+    return INCLUDE.sub(inc, strip_comments(text))
+
+
 def compose(inputs, urc=URC):
     """The MOHAA main menu room as a 640x480 RGB PIL image, or None when the paks have no menu."""
     from PIL import Image
 
-    files = collect(inputs, (".urc", ".shader") + IMAGE_EXTS)
+    files = collect(inputs, (".urc", ".inc", ".shader") + IMAGE_EXTS)
     if urc not in files:
         return None
-    width, height, items = parse_urc(read(files[urc]).decode("latin-1"))
+    width, height, items = parse_urc(urc_text(files, urc))
     shaders = {}
     for path in sorted(p for p in files if p.startswith("scripts/") and p.endswith(".shader")):
         for k, v in parse_shaders(read(files[path]).decode("latin-1")).items():
@@ -171,6 +228,370 @@ def compose(inputs, urc=URC):
     if sheet.size != SHEET:
         sheet = sheet.resize(SHEET, Image.LANCZOS)
     return sheet
+
+
+# What each retail main menu button does, by its stuffcommand, as a GameCube main menu action.
+ACTIONS = (
+    (re.compile(r"pushmenu\s+briefingroom", re.I), "newgame"),
+    (re.compile(r"pushmenu\s+multiplayer", re.I), "multiplayer"),
+    (re.compile(r"pushmenu\s+options", re.I), "options"),
+    (re.compile(r"pushmenu\s+war_records", re.I), "records"),
+    (re.compile(r"spmap\s+credits", re.I), "credits"),
+    (re.compile(r"^\s*quit\b", re.I), "quit"),
+    (re.compile(r"popmenu", re.I), "resume"),
+)
+SIGN = re.compile(r"set\s+ui_signshader\s+(\S+)", re.I)
+# The menu's click sounds (clicksound) by the mainui sound they stand in for.
+SOUNDS = (("launch", "sound/menu/apply.wav"), ("out", "sound/menu/back.wav"))
+ROOM = OUT + "/mohaa"
+LAYOUT = OUT + "/mohaa_main.txt"
+
+
+def action_of(cmd):
+    for pat, name in ACTIONS:
+        if pat.search(cmd):
+            return name
+    return None
+
+
+def room_menu(inputs, urc=URC):
+    """The retail main menu's working parts, or None: {"sheet": the room (PIL RGB 640x480), "sign": rect,
+    "spots": [(action, rect, hover PIL image of the whole rect, sign PIL image or None)],
+    "buttons": [(action, rect, normal, focus)], "sounds": [(mainui sound, game path, bytes)]}.
+
+    A spot is a part of the room that lights up under the cursor (the map, the doors, the projector);
+    its hover image is the room under the rect with the hover art drawn in, so it can be drawn opaque."""
+    from PIL import Image
+
+    files = collect(inputs, (".urc", ".shader", ".wav") + IMAGE_EXTS)
+    if urc not in files:
+        return None
+    sheet = compose(inputs, urc)
+    if sheet is None:
+        return None
+    width, height, items = parse_urc(read(files[urc]).decode("latin-1"))
+    shaders = {}
+    for path in sorted(p for p in files if p.startswith("scripts/") and p.endswith(".shader")):
+        for k, v in parse_shaders(read(files[path]).decode("latin-1")).items():
+            shaders.setdefault(k, v)
+    sx, sy = SHEET[0] / float(width), SHEET[1] / float(height)
+
+    def image(shader):
+        path = find_image(files, shaders.get(shader.lower(), shader))
+        return Image.open(io.BytesIO(read(files[path]))).convert("RGBA") if path else None
+
+    menu = {"sheet": sheet, "sign": None, "spots": [], "buttons": [], "sounds": []}
+    for it in items:
+        rect = tuple(int(float(v)) for v in it.get("rect", [])[:4])
+        if len(rect) < 4:
+            continue
+        rect = (round(rect[0] * sx), round(rect[1] * sy), round(rect[2] * sx), round(rect[3] * sy))
+        if it["type"].lower() == "label" and "linkcvartoshader" in it and it.get("name", [""])[0].lower() == "sign":
+            menu["sign"] = rect
+            continue
+        if it["type"].lower() != "button" or "enabledcvar" in it:
+            continue
+        action = action_of(" ".join(it.get("stuffcommand", [])))
+        if not action:
+            continue
+        hover = image(it["hovershader"][0]) if "hovershader" in it else None
+        x, y, w, h = rect
+        sign = SIGN.search(" ".join(it.get("hovercommand", [])))
+        if action in ("quit", "resume"):
+            normal = image(it["shader"][0]) if "shader" in it else None
+            if normal is not None and hover is not None:
+                menu["buttons"].append((action, rect, normal.resize((w, h), Image.LANCZOS).convert("RGB"),
+                                        hover.resize((w, h), Image.LANCZOS).convert("RGB")))
+            continue
+        if hover is None:
+            continue
+        lit = sheet.convert("RGBA").crop((x, y, x + w, y + h))
+        lit.alpha_composite(hover.resize((w, h), Image.LANCZOS))
+        menu["spots"].append((action, rect, lit.convert("RGB"),
+                              image(sign.group(1)).convert("RGB") if sign and image(sign.group(1)) else None))
+    menu["spots"].sort(key=lambda s: (s[1][0] + s[1][2] / 2.0, s[1][1]))   # left to right across the room
+    for name, path in SOUNDS:
+        if path in files:
+            menu["sounds"].append((name, path, read(files[path])))
+    return menu
+
+
+def write_room_menu(menu, game_root):
+    """Write the retail main menu's parts and resource/gc_menu/mohaa_main.txt under game_root (the
+    GameCube main menu draws the room menu when that file is there); returns the written paths."""
+    import ubersound
+
+    room = os.path.join(game_root, *ROOM.split("/"))
+    os.makedirs(room, exist_ok=True)
+    written = []
+
+    def save(img, name):
+        p = os.path.join(room, name)
+        img.save(p, format="TGA")
+        written.append(p)
+        return ROOM + "/" + name
+
+    lines = ["// The retail MOHAA main menu for the GameCube main menu (mainui), written by",
+             "// mohaa-gc tools/mohaa_menu.py from the player's own ui/main.urc. Rects are x y w h on a",
+             "// 640x480 screen. spot: a part of the room that lights up (hover image) and names itself on the",
+             "// sign; button: a picture button (normal, focus). The action is what A / Enter opens.",
+             "screen %d %d" % SHEET]
+    if menu["sign"]:
+        lines.append("sign %d %d %d %d" % menu["sign"])
+    for i, (action, rect, lit, sign) in enumerate(menu["spots"]):
+        hover = save(lit, "spot%d_%s.tga" % (i, action))
+        signp = save(sign, "sign%d_%s.tga" % (i, action)) if sign is not None else "-"
+        lines.append("spot %s %d %d %d %d %s %s" % ((action,) + rect + (hover, signp)))
+    for action, rect, normal, focus in menu["buttons"]:
+        lines.append("button %s %d %d %d %d %s %s" % ((action,) + rect + (
+            save(normal, "%s.tga" % action), save(focus, "%s_h.tga" % action))))
+    for name, path, data in menu["sounds"]:
+        rel = "sound/mohaa/" + path[len("sound/"):]
+        dest = os.path.join(game_root, *rel.split("/"))
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        if ubersound.convert_wav(data, dest) is None:
+            written.append(dest)
+            lines.append("sound %s %s" % (name, rel))
+    p = os.path.join(game_root, *LAYOUT.split("/"))
+    with open(p, "w", newline="\n") as fh:
+        fh.write("\n".join(lines) + "\n")
+    written.append(p)
+    return written
+
+
+# The retail pages after the war room that mainui draws as retail does (menus/MohaaPage.cpp): the urc
+# whose picture is the page, and what each button does there, by its stuffcommand.
+PAGES = {
+    "options": ("ui/options_main.urc", (
+        (re.compile(r"pushmenu\s+advancedoptions", re.I), "advanced"),
+        (re.compile(r"pushmenu\s+audio_options", re.I), "audio"),
+        (re.compile(r"pushmenu\s+controls", re.I), "controls"),
+        (re.compile(r"pushmenu\s+video_options", re.I), "video"),
+        (re.compile(r"popmenu", re.I), "back"),
+    )),
+    "gametype": ("ui/multiplayerstart.urc", (
+        (re.compile(r"pushmenu\s+multiplayerstart_ffa", re.I), "ffa"),
+        (re.compile(r"pushmenu\s+multiplayerstart_team", re.I), "team"),
+        (re.compile(r"pushmenu\s+multiplayerstart_round", re.I), "round"),
+        (re.compile(r"pushmenu\s+multiplayerstart_obj", re.I), "obj"),
+        (re.compile(r"popmenu", re.I), "back"),
+    )),
+    # Create Server: the Free-For-All form (mainui CreateGame.cpp puts its fields on the picture)
+    "server": ("ui/multiplayerstart_ffa.urc", (
+        (re.compile(r"dmmapselect", re.I), "map"),
+        (re.compile(r"ui_startdmmap", re.I), "start"),
+        (re.compile(r"popmenu", re.I), "back"),
+    )),
+}
+# The cvars a form shows in its Field and Label rects, by the name the GameCube form knows them by.
+PAGE_FIELDS = {"ui_hostname": "hostname", "ui_maxclients": "maxplayers", "ui_dmmap": "map",
+               "ui_fraglimit": "fraglimit", "ui_timelimit": "timelimit"}
+PAGE_STANDIN = (64, 48)   # a page quadrant's .tga stand-in for its 320x240 .cmp
+PAGE_SIGN = re.compile(r"set\s+ui_\w*shader\s+(\S+)", re.I)
+ADDITIVE = ("alphaadd", "add", "gl_one gl_one", "gl_src_alpha gl_one")
+
+
+def parse_stages(text):
+    """{shader name: {"map": path or "$whiteimage", "blend": blendfunc text, "alpha": constant or None}}
+    of each shader's first stage (the menu glows are $whiteimage added at a constant alpha)."""
+    out = {}
+    depth, name, stage = 0, None, None
+    for line in strip_comments(text).splitlines():
+        t = tokens(line)
+        if not t:
+            continue
+        if t[0] == "{":
+            depth += 1
+            if depth == 2 and name and name not in out:
+                stage = {"map": None, "blend": "", "alpha": None}
+            continue
+        if t[0] == "}":
+            if depth == 2 and stage is not None:
+                out[name] = stage
+                stage = None
+            depth = max(0, depth - 1)
+            if depth == 0:
+                name = None
+            continue
+        if depth == 0:
+            name = t[0].lower()
+            continue
+        if stage is None:
+            continue
+        key = t[0].lower()
+        if key in ("map", "clampmap") and len(t) > 1:
+            stage["map"] = t[1]
+        elif key == "animmap" and len(t) > 2:
+            stage["map"] = t[2]
+        elif key == "blendfunc":
+            stage["blend"] = " ".join(t[1:]).lower()
+        elif key == "alphagen" and len(t) > 2 and t[1].lower() == "constant":
+            stage["alpha"] = float(t[2])
+    return out
+
+
+def lit_image(files, stages, sheet, shader, rect):
+    """The page under rect with the hover shader drawn over it, as retail draws it: added (the
+    menu_button_glow family, a constant-alpha white or mask) or blended (plain hover art). RGB, or None."""
+    import numpy as np
+    from PIL import Image
+
+    x, y, w, h = rect
+    base = np.asarray(sheet.convert("RGB").crop((x, y, x + w, y + h)), dtype=np.float32)
+    st = stages.get(shader.lower(), {"map": shader, "blend": "", "alpha": None})
+    src = st["map"] or shader
+    if src.startswith("$"):
+        art = np.full((h, w, 4), 255.0, dtype=np.float32)
+    else:
+        path = find_image(files, src)
+        if not path:
+            return None
+        im = Image.open(io.BytesIO(read(files[path]))).convert("RGBA").resize((w, h), Image.LANCZOS)
+        art = np.asarray(im, dtype=np.float32)
+    alpha = art[..., 3:4] / 255.0
+    if st["alpha"] is not None:
+        alpha = alpha * st["alpha"]
+    if st["blend"] in ADDITIVE:
+        out = base + art[..., :3] * alpha
+    else:
+        out = base * (1.0 - alpha) + art[..., :3] * alpha
+    return Image.fromarray(np.clip(out + 0.5, 0, 255).astype(np.uint8), "RGB")
+
+
+def page_menu(inputs, page):
+    """A retail page's working parts, or None: {"sheet": the page (PIL RGB 640x480), "sign": rect,
+    "spots": [(action, rect, lit, sign or None)], "buttons": [(action, rect, normal, focus)],
+    "fields": [(name, rect, ink)]}: a form's Field and Label rects that show a cvar (PAGE_FIELDS), with
+    the ink that reads on the picture under them (black on paper, white on a dark board)."""
+    from PIL import Image, ImageStat
+
+    urc, actions = PAGES[page]
+    files = collect(inputs, (".urc", ".inc", ".shader") + IMAGE_EXTS)
+    if urc not in files:
+        return None
+    sheet = compose(inputs, urc)
+    if sheet is None:
+        return None
+    width, height, items = parse_urc(urc_text(files, urc))
+    shaders, stages = {}, {}
+    for path in sorted(p for p in files if p.startswith("scripts/") and p.endswith(".shader")):
+        text = read(files[path]).decode("latin-1")
+        for k, v in parse_shaders(text).items():
+            shaders.setdefault(k, v)
+        for k, v in parse_stages(text).items():
+            stages.setdefault(k, v)
+    sx, sy = SHEET[0] / float(width), SHEET[1] / float(height)
+
+    def image(shader):
+        path = find_image(files, shaders.get(shader.lower(), shader))
+        return Image.open(io.BytesIO(read(files[path]))).convert("RGBA") if path else None
+
+    def act(cmd):
+        for pat, name in actions:
+            if pat.search(cmd):
+                return name
+        return None
+
+    menu = {"sheet": sheet, "sign": None, "spots": [], "buttons": [], "fields": []}
+    taken = set()
+    for it in items:
+        rect = tuple(int(float(v)) for v in it.get("rect", [])[:4])
+        if len(rect) < 4:
+            continue
+        rect = (round(rect[0] * sx), round(rect[1] * sy), round(rect[2] * sx), round(rect[3] * sy))
+        if it["type"].lower() == "label" and "linkcvartoshader" in it:
+            menu["sign"] = rect
+            continue
+        if it["type"].lower() in ("field", "label") and "linkcvar" in it and "enabledcvar" not in it:
+            name = PAGE_FIELDS.get(it["linkcvar"][0].lower())
+            if name and name not in [f[0] for f in menu["fields"]]:
+                x, y, w, h = rect
+                lum = ImageStat.Stat(sheet.convert("L").crop((x, y, x + w, y + h))).mean[0]
+                menu["fields"].append((name, rect, (0, 0, 0) if lum >= 128 else (255, 255, 255)))
+            continue
+        if it["type"].lower() != "button" or "enabledcvar" in it or "hovershader" not in it:
+            continue
+        action = act(" ".join(it.get("stuffcommand", [])))
+        if not action or action in taken:
+            continue
+        x, y, w, h = rect
+        if action == "back":
+            normal, focus = image(it["shader"][0]) if "shader" in it else None, image(it["hovershader"][0])
+            if normal is not None and focus is not None:
+                menu["buttons"].append((action, rect, normal.resize((w, h), Image.LANCZOS).convert("RGB"),
+                                        focus.resize((w, h), Image.LANCZOS).convert("RGB")))
+                taken.add(action)
+            continue
+        lit = lit_image(files, stages, sheet, it["hovershader"][0], rect)
+        if lit is None:
+            continue
+        sign = PAGE_SIGN.search(" ".join(it.get("hovercommand", [])))
+        signim = image(sign.group(1)) if sign else None
+        menu["spots"].append((action, rect, lit, signim.convert("RGB") if signim is not None else None))
+        taken.add(action)
+    if not menu["spots"]:
+        return None
+    menu["spots"].sort(key=lambda s: (s[1][1], s[1][0]))   # top to bottom: the D-pad's order
+    return menu
+
+
+def write_page(menu, game_root, page):
+    """Write a retail page under game_root: its picture as four quadrants (resource/gc_menu/bg_<page>_<r>_<c>
+    .cmp, 320x240 GX CMPR, which the GameCube draws, and a 64x48 .tga stand-in), its parts under
+    resource/gc_menu/mohaa/<page>/ and resource/gc_menu/mohaa_<page>.txt; returns the written paths."""
+    from PIL import Image
+    import numpy as np
+
+    out = os.path.join(game_root, *OUT.split("/"))
+    parts = os.path.join(game_root, *ROOM.split("/"), page)
+    os.makedirs(parts, exist_ok=True)
+    written = []
+
+    def save(img, name):
+        p = os.path.join(parts, name)
+        img.save(p, format="TGA")
+        written.append(p)
+        return "%s/%s/%s" % (ROOM, page, name)
+
+    sheet = menu["sheet"]
+    fw, fh = SHEET[0] // 2, SHEET[1] // 2
+    quads = []
+    for row in range(2):
+        for col in range(2):
+            name = "bg_%s_%d_%d" % (page, row, col)
+            quad = sheet.crop((col * fw, row * fh, (col + 1) * fw, (row + 1) * fh))
+            p = os.path.join(out, name + ".tga")
+            # The GameCube draws the .cmp; this .tga only stands in for it (and shows if the .cmp
+            # cannot load). Kept small: a 160x120 quadrant took a 75 KiB decode buffer from the
+            # 131 KiB image pool, and a second page's quadrants no longer fit.
+            quad.resize(PAGE_STANDIN, Image.LANCZOS).save(p, format="TGA")
+            written.append(p)
+            p = os.path.join(out, name + ".cmp")
+            with open(p, "wb") as fh_out:
+                fh_out.write(b"GCMP" + struct.pack(">HH", fw, fh) + bytes(24) + cmpr_encode(np.asarray(quad)))
+            written.append(p)
+            quads.append("%s/%s.tga" % (OUT, name))
+    lines = ["// The retail MOHAA %s page for the GameCube menu (mainui MohaaPage.cpp), written by" % page,
+             "// mohaa-gc tools/mohaa_menu.py from the player's own %s. Rects are x y w h on a" % PAGES[page][0],
+             "// 640x480 screen; the background is the page in four quadrants (tl tr bl br).",
+             "screen %d %d" % SHEET,
+             "background " + " ".join(quads)]
+    if menu["sign"]:
+        lines.append("sign %d %d %d %d" % menu["sign"])
+    for i, (action, rect, lit, sign) in enumerate(menu["spots"]):
+        hover = save(lit, "spot%d_%s.tga" % (i, action))
+        signp = save(sign, "sign%d_%s.tga" % (i, action)) if sign is not None else "-"
+        lines.append("spot %s %d %d %d %d %s %s" % ((action,) + rect + (hover, signp)))
+    for action, rect, normal, focus in menu["buttons"]:
+        lines.append("button %s %d %d %d %d %s %s" % ((action,) + rect + (
+            save(normal, "%s.tga" % action), save(focus, "%s_h.tga" % action))))
+    for name, rect, ink in menu.get("fields", []):
+        lines.append("field %s %d %d %d %d %d %d %d" % ((name,) + rect + ink))
+    p = os.path.join(out, "mohaa_%s.txt" % page)
+    with open(p, "w", newline="\n") as fh_out:
+        fh_out.write("\n".join(lines) + "\n")
+    written.append(p)
+    return written
 
 
 def cmpr_encode(rgb):
@@ -291,6 +712,15 @@ def main(argv=None):
     if a.out:
         for p in write_gc_menu(sheet, a.out):
             print("wrote %s" % p)
+        menu = room_menu(a.inputs)
+        if menu:
+            for p in write_room_menu(menu, a.out):
+                print("wrote %s" % p)
+        for page in PAGES:
+            pm = page_menu(a.inputs, page)
+            if pm:
+                for p in write_page(pm, a.out, page):
+                    print("wrote %s" % p)
     return 0
 
 

@@ -200,6 +200,22 @@ class TextureNamer:
 		self.by_shader = {}
 		self.used = set()
 		self.special_used = set()  # sky / !water / AAATRIGGER need WAD entries too
+		self.water_by_shader = {}  # a water surface's shader -> "!name": GoldSrc warps "!" textures as water
+		self.water_sides = {}  # shader -> sides that use it ("!water" takes the most used one's image)
+
+	def water_name(self, shader: str) -> str:
+		"""The "!" texture a water brush shows: the MOHAA water shader's own image, warped like GoldSrc water."""
+		self.water_sides[shader] = self.water_sides.get(shader, 0) + 1
+		if shader in self.water_by_shader:
+			return self.water_by_shader[shader]
+		base = shader.replace("\\", "/").rsplit("/", 1)[-1].lower()
+		base = "".join(ch if ch.isalnum() or ch == "_" else "_" for ch in base) or "water"
+		cand = "!" + base[:14]
+		if cand in self.used or cand.lower() == "!water":
+			cand = "!" + base[:9] + "_" + hashlib.md5(shader.encode()).hexdigest()[:4]
+		self.used.add(cand)
+		self.water_by_shader[shader] = cand
+		return cand
 
 	def name(self, shader: str) -> str:
 		if shader in self.by_shader:
@@ -229,7 +245,12 @@ def _side_texture(sh: b19.Shader, namer: TextureNamer, brush_class: str) -> str:
 	if brush_class == "trigger":
 		return "AAATRIGGER"
 	if brush_class == "water":
-		return "!water"
+		# the surface's own water image, warped as GoldSrc water (m2l2a's harbour showed a placeholder checker).
+		# The sides MOHAA doesn't draw (nodraw, waterskip: most of a water brush) stay "!water": every side of a
+		# GoldSrc water brush has to be water for its contents, and the WAD gives "!water" the map's water image.
+		if not sh.name or sh.surface_flags & b19.SURF_NODRAW or "caulk" in low or "nodraw" in low or "skip" in low:
+			return "!water"
+		return namer.water_name(sh.name)
 	if sh.surface_flags & b19.SURF_SKY or "/sky" in low:
 		return "sky"
 	if sh.surface_flags & b19.SURF_NODRAW or "caulk" in low or "nodraw" in low:
@@ -286,6 +307,7 @@ TRIGGER_CLASS_MAP = {
 # target, 259 of them on m5l2b. They merge per set (and fly as one piece, at the first one's target)
 # so the map fits GoldSrc's 512 models.
 TARGET_FREE_NAMES = {"exploderchunk"}
+MOHAA_TRIGGER_DAMAGE = 16  # a trigger set off by damage (a shot or blast), not by touch
 TRIGGER_KEYS = ("targetname", "target", "wait", "delay", "dmg", "speed", "angle", "angles")
 # MOHAA brush entities that are volumes, not walls: no player/bullet collision.
 NONSOLID_BRUSH = {"func_rain": "func_illusionary"}
@@ -684,8 +706,19 @@ def seal_box_brushes(bsp, scale, stats, margin=256.0, wall=16.0):
 	gaps we can't find: the space between the map and the box counts as inside, so
 	outward faces are kept and VIS has more to chew on, but hull 0 seals."""
 	m = bsp.models[0]
-	lo = [max(-WORLD_LIMIT + wall, m.mins[i] * scale - margin) for i in range(3)]
-	hi = [min(WORLD_LIMIT - wall, m.maxs[i] * scale + margin) for i in range(3)]
+	lo = [m.mins[i] * scale for i in range(3)]
+	hi = [m.maxs[i] * scale for i in range(3)]
+	# Brush-model bounds omit named points that sit above or outside the shell
+	# (m3l2 has a live info_target above its highest brush). Enclose in-world
+	# entity origins too, but ignore MOHAA's out-of-world placeholder sentinels.
+	for entity in bsp.entities[1:]:
+		point = tuple(c * scale for c in parse_vec(entity.get("origin", "")))
+		if any(abs(c) > WORLD_LIMIT - wall - margin for c in point):
+			continue
+		lo = [min(lo[i], point[i]) for i in range(3)]
+		hi = [max(hi[i], point[i]) for i in range(3)]
+	lo = [max(-WORLD_LIMIT + wall, c - margin) for c in lo]
+	hi = [min(WORLD_LIMIT - wall, c + margin) for c in hi]
 	out = []
 	for ax in range(3):
 		for side in (0, 1):
@@ -739,7 +772,30 @@ class ReachIndex:
 
 
 PATH_NODES = ("info_pathnode", "info_grav_pathnode")
+# Invisible named points the game can hold without an edict: they only carry a place, a facing, a name, a target and
+# "#" keys. With points=[...], convert() leaves them out of the .map for the <map>.points sidecar (m3l1a writes 1326
+# named points and its edict budget kept 187, so $shingle_objective and the boats' spots were NULL).
+SCRIPT_POINTS = ("script_origin", "info_waypoint", "info_splinepath", "info_vehiclepoint", "info_notnull", "info_null")
+
+
+def point_line(e, scale):
+	"""One line of the <map>.points sidecar: x y z pitch yaw roll classname targetname target [#key=value ...]."""
+	x, y, z = (c * scale for c in parse_vec(e.get("origin", "")))
+	if "angles" in e:
+		p, yw, r = parse_vec(e["angles"])
+	else:
+		p, yw, r = 0.0, float(e.get("angle", "0") or 0), 0.0
+	esc = lambda v: v.replace("%", "%25").replace(" ", "%20") or "-"  # noqa: E731
+	extra = "".join(f" {esc(k)}={esc(v)}" for k, v in hash_keys(e).items())
+	return (f"{_f(x)} {_f(y)} {_f(z)} {_f(p)} {_f(yw)} {_f(r)} {e.get('classname', '').lower()} "
+	        f"{esc(e['targetname'].strip())} {esc(e.get('target', '').strip())}{extra}")
 ACTOR_KEYS = ("targetname", "target", "angle", "angles", "model", "health", "spawnflags")
+# Retail actor settings and script fields ("$find_name" reads as find_name): written as "#" script variables, which
+# dod-gc's binding applies to the soldier (sight, type_disguise, ...) or keeps for the scripts
+# (alarm_system.scr's find_guy looks soldiers up by .find_name).
+ACTOR_SCRIPT_KEYS = ("find_name", "type_idle", "patrolpath", "alarmnode", "alarmthread", "type_attack",
+                     "type_disguise", "disguise_range", "disguise_period", "disguise_level", "sight", "hearing",
+                     "fov", "leash", "mindist", "maxdist", "gun", "accuracy", "ammo_grenade")
 
 
 def hash_keys(e):
@@ -909,7 +965,8 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
             detail_walls: bool = False, wall_cell: float = THIN_WALL_CELL,
             collision_aabb: float = 0.0, collision_reach: float = 0.0, collision_exact: float = 0.0,
             mesh=None, mesh_terrain: bool = False, mesh_patch_tol: float = 0.0, mesh_angled: bool = True,
-            merge_static_models: bool = False, script_words: set | None = None, texture_fit=None):
+            merge_static_models: bool = False, script_words: set | None = None, texture_fit=None, points: list | None = None,
+            skyname: str | None = None):
 	"""mesh: a mesh_collision.Collision that angled detail (mesh_angled, under
 	simplify_collision), terrain heightfields (mesh_terrain) and solid world patches
 	(mesh_patch_tol > 0) are added to.
@@ -925,6 +982,10 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 	ws_keys = {"classname": "worldspawn", "mapversion": "220"}
 	if wad_name:
 		ws_keys["wad"] = wad_name
+	if skyname:
+		if not re.fullmatch(r"[A-Za-z0-9_-]+", skyname):
+			raise ValueError(f"invalid skyname {skyname!r}")
+		ws_keys["skyname"] = skyname
 	if "message" in world:
 		ws_keys["message"] = world["message"]
 	# MOHAA's far plane: fog to farplane_color and nothing drawn past it. Retail's dense
@@ -1061,14 +1122,37 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 
 	script_points = []  # named points scripts reach by $name, written right after worldspawn
 
+	def built_name(name):
+		"""True when a script can build name from its string pieces around a number:
+		$("bunker_" + local.i) reaches bunker_1, bunker_2 ..., and
+		$("higgins" + local.m + "_move") reaches higgins2_move (m3l1a's boats were dropped)."""
+		low = name.lower()
+		for m in re.finditer(r"\d+", low):
+			prefix, suffix = low[:m.start()], low[m.end():]
+			if len(prefix) >= 3 and prefix in script_words and (not suffix or suffix in script_words):
+				return True
+		return False
+
 	def unused_name(e):
 		"""e's targetname, when nothing can ever look it up."""
 		name = e.get("targetname")
 		if not name or script_words is None or name in script_words or name in targeted:
 			return False
-		# scripts build numbered names: $("bunker_" + local.i) reaches bunker_1, bunker_2 ...
-		stem = name.rstrip("0123456789")
-		return not (stem != name and len(stem) >= 3 and stem in script_words)
+		return not built_name(name)
+
+	# A few retail maps park duplicate script_model placeholders at MOHAA's
+	# 99999-unit sentinel. They are outside GoldSrc's world and make SDHLT
+	# report a leak, even when a real in-map instance with the same targetname
+	# exists. Keep the valid instance and omit only those unusable duplicates.
+	valid_target_points = set()
+	for entity in bsp.entities[1:]:
+		name = entity.get("targetname")
+		if not name or entity.get("model", "").startswith("*") or entity.get("classname", "").lower() not in (
+				"script_model", "script_origin", "script_object"):
+			continue
+		origin = parse_vec(entity.get("origin", ""))
+		if max(abs(c * scale) for c in origin) <= WORLD_LIMIT:
+			valid_target_points.add(name)
 
 	for e in bsp.entities[1:]:
 		cn = e.get("classname", "")
@@ -1076,6 +1160,12 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 		if merge_static_models and unused_name(e):
 			e = {k: v for k, v in e.items() if k != "targetname"}
 			stats["targetnames_unused"] += 1
+		name = e.get("targetname")
+		if (name in valid_target_points and not model.startswith("*")
+				and cn.lower() in ("script_model", "script_origin", "script_object")
+				and max(abs(c * scale) for c in parse_vec(e.get("origin", ""))) > WORLD_LIMIT):
+			stats["script_points_oob_duplicate_dropped"] += 1
+			continue
 		if model.startswith("*"):
 			try:
 				mi = int(model[1:])
@@ -1098,6 +1188,15 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 				keys.update(hash_keys(e))
 				if e.get("setthread"):
 					keys["netname"] = e["setthread"].strip()
+				try:
+					mflags = int(e.get("spawnflags", "0"))
+				except ValueError:
+					mflags = 0
+				if mflags & MOHAA_TRIGGER_DAMAGE and keys["classname"] in ("trigger_multiple", "trigger_once"):
+					# shot, not walked into (m1l1's bazooka target ends the opening ride): GoldSrc's "no clients"
+					# flag keeps touch from firing it, and dod-gc fires it from scripted shots and blasts
+					keys["spawnflags"] = "2"
+					stats["damage_triggers"] += 1
 				if keys["classname"] == "trigger_multiple" and "wait" not in keys:
 					keys["wait"] = "0.2"  # MOHAA re-arms a multiple trigger quickly; GoldSrc's default is 0.2 too
 				if merge_static_models and "targetname" not in keys and keys["classname"] != "trigger_once":
@@ -1113,6 +1212,20 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 			o = parse_vec(e.get("origin", ""))
 			brushes = [t for _, t, _ in model_brushes(bsp, mi, scale, o, namer, stats)]
 			if not brushes:
+				if e.get("targetname") and not unused_name(e):
+					# a named model with nothing solid or drawn (m2l2a's 8 "alarmcorona" glows): scripts still
+					# read its origin, hide it or index it ($alarmcorona[i]), so it stays as a point at its centre
+					m = bsp.models[mi]
+					c = [(m.mins[k] + m.maxs[k]) * 0.5 * scale + o[k] * scale for k in range(3)]
+					keys = {"classname": "info_target", "mohaa_classname": cn, "targetname": e["targetname"],
+					        "origin": f"{_f(c[0])} {_f(c[1])} {_f(c[2])}"}
+					for k in ("target", "angle", "angles"):
+						if k in e:
+							keys[k] = e[k]
+					keys.update(hash_keys(e))
+					blocks.append(kv_block(keys))
+					stats["named_empty_models_as_points"] += 1
+					continue
 				skipped[cn + " (no brushes)"] += 1
 				continue
 			if merge_static_models and gcn == "func_wall" and cn not in NONSOLID_BRUSH \
@@ -1175,6 +1288,9 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 			for k in ACTOR_KEYS:
 				if k in e:
 					keys[k] = e[k]
+			for k in ACTOR_SCRIPT_KEYS:
+				if k in e and e[k] != "":
+					keys["#" + k] = e[k]
 			keys.update(hash_keys(e))
 			if "model" not in keys and cn.lower() != "actor":
 				keys["model"] = cn
@@ -1183,6 +1299,10 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 			continue
 		if cn.lower() in PATH_NODES:
 			stats["path_nodes_to_sidecar"] += 1
+			continue
+		if points is not None and e.get("targetname") and not model and cn.lower() in SCRIPT_POINTS and not unused_name(e):
+			points.append(point_line(e, scale))
+			stats["script_points_to_sidecar"] += 1
 			continue
 		if e.get("targetname") and not unused_name(e) and not cn.lower().startswith("light"):
 			# a named script_origin / script_model / script_object ...: scripts move it, hide it, read its
@@ -1195,8 +1315,9 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 					keys[k] = e[k]
 			keys.update(hash_keys(e))
 			name = e["targetname"]
-			stem = name.rstrip("0123456789")
-			if script_words is not None and (name in script_words or (stem != name and len(stem) >= 3 and stem in script_words)):
+			if cn.lower().startswith("turretweapon") or script_words is not None and (
+					name in script_words or built_name(name)):
+				# (a turretweapon is the gun its crew mans: m1l2a's t736 and t738 fell past the edict budget)
 				# scripts look these up by $name: they go first, since the engine keeps only as many
 				# info_targets as its edict budget allows, in file order (m5l2b's $flak88_2 came 164th)
 				script_points.append(kv_block(keys))
@@ -1415,6 +1536,7 @@ def main(argv=None) -> int:
 	ap.add_argument("--scripts", action="append", metavar="PATH",
 	                help="MOHAA main directory or pk3 (repeatable): targetnames the level's scripts never use "
 	                     "are dropped, so those brush models and triggers merge too")
+	ap.add_argument("--skyname", help="GameCube cubemap root from MOHAA's skyParms shader (set by the SD stager)")
 	args = ap.parse_args(argv)
 
 	mesh = mesh_collision.Collision()
@@ -1437,6 +1559,7 @@ def main(argv=None) -> int:
 		        and "/common/" not in bsp.shaders[sh].name.lower()}
 		cap, tex_bytes = fit.plan(used, args.texture_budget * 1024 if args.texture_budget else world_textures.TEXDATA_BUDGET)
 		print(f"{name}: textures at most {cap} texels a side, {tex_bytes // 1024} KB")
+	points = []
 	text, namer, stats, skipped = convert(bsp, args.scale, wad_key, args.terrain_brushes, args.terrain_tol, args.terrain_tex,
 	                                         not args.no_terrain_seal, args.detail_world, args.seal_box,
 	                                         args.simplify_collision,
@@ -1444,8 +1567,14 @@ def main(argv=None) -> int:
 	                                         not args.thin_detail_in_world, args.detail_walls, args.wall_cell,
 	                                         args.collision_aabb, args.collision_reach, args.collision_exact,
 	                                         mesh, not args.no_mesh_terrain, args.mesh_patch_tol, args.mesh_collision,
-	                                         not args.keep_brush_models, words, texture_fit=fit)
+	                                         not args.keep_brush_models, words, texture_fit=fit, skyname=args.skyname,
+	                                         points=points)
 	args.out.write_text(text)
+	if points:
+		spath = args.out.with_suffix(".points")
+		spath.write_text("# mohaa script points: x y z pitch yaw roll classname targetname target [#key=value ...]"
+		                 " (- empty, spaces as %20)\n" + "\n".join(points) + "\n")
+		print(f"{name}: wrote {spath} ({len(points)} script points, {spath.stat().st_size} bytes)")
 	ntext, nnodes = path_nodes(bsp, args.scale)
 	if nnodes:
 		npath = args.out.with_suffix(".nodes")
@@ -1469,19 +1598,29 @@ def main(argv=None) -> int:
 				body = images.miptex(shader, wname)
 				real += body is not None
 				lumps.append((wname, body or placeholder_lump(wname)))
-			lumps += [(n, placeholder_lump(n)) for n in sorted(namer.special_used)]
+			for shader, wname in sorted(namer.water_by_shader.items(), key=lambda kv: kv[1]):
+				body = images.miptex(shader, wname)
+				real += body is not None
+				lumps.append((wname, body or placeholder_lump(wname)))
+			first_water = max(namer.water_sides, key=lambda sh: (namer.water_sides[sh], sh)) \
+				if namer.water_sides else None
+			for n in sorted(namer.special_used):
+				body = images.miptex(first_water, n) if n == "!water" and first_water else None
+				lumps.append((n, body or placeholder_lump(n)))
 			world_textures.write_wad(args.wad, lumps)
 			print(f"{name}: {real} of {len(namer.by_shader)} textures from MOHAA's images; "
 			      f"{fit.stats['sides_fitted']} sides on MOHAA's texture axes, {fit.stats['sides_projected']} projected")
 		else:
-			write_wad(args.wad, list(namer.by_shader.values()) + sorted(namer.special_used))
+			write_wad(args.wad, list(namer.by_shader.values()) + sorted(namer.water_by_shader.values())
+			          + sorted(namer.special_used))
 	print(f"{name}: wrote {args.out}")
 	for k in sorted(stats):
 		print(f"  {k:<28} {stats[k]}")
 	print(f"  textures                     {len(namer.by_shader)}")
 	if args.scripts and words is not None:
 		wanted, assigned = script_entity_names(args.scripts, mapname)
-		missing, lost, spawned = name_report(bsp, text, wanted, assigned)
+		missing, lost, spawned = name_report(bsp, text + "".join(
+			'"targetname" "%s"' % ln.split(" ")[7].replace("%20", " ").replace("%25", "%") for ln in points), wanted, assigned)
 		if spawned:
 			print(f"  $names the scripts spawn themselves: {len(spawned)}: " + " ".join(spawned))
 		if missing:

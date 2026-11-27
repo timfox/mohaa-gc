@@ -4,6 +4,8 @@
 #include "parsemsg.h"
 #include "ammohistory.h"
 
+#include <math.h>
+
 int __MsgFunc_DodHud( const char *pszName, int iSize, void *pbuf )
 {
 	return gHUD.m_Dod.MsgFunc_DodHud( pszName, iSize, pbuf );
@@ -24,9 +26,14 @@ int __MsgFunc_DodBoard( const char *pszName, int iSize, void *pbuf )
 	return gHUD.m_Dod.MsgFunc_DodBoard( pszName, iSize, pbuf );
 }
 
-int __MsgFunc_MohaaHint( const char *pszName, int iSize, void *pbuf )
+int __MsgFunc_MohaaHudDraw( const char *pszName, int iSize, void *pbuf )
 {
-	return gHUD.m_Dod.MsgFunc_MohaaHint( pszName, iSize, pbuf );
+	return gHUD.m_Dod.MsgFunc_MohaaHudDraw( pszName, iSize, pbuf );
+}
+
+int __MsgFunc_MohaaCompass( const char *pszName, int iSize, void *pbuf )
+{
+	return gHUD.m_Dod.MsgFunc_MohaaCompass( pszName, iSize, pbuf );
 }
 
 void CHudDod::InitState( void )
@@ -36,6 +43,17 @@ void CHudDod::InitState( void )
 	if( m_pCvar )
 		return;	/* Init after InitState: already registered */
 	memset( &m_state, 0, sizeof( m_state ) );
+	memset( m_mohaaHud, 0, sizeof( m_mohaaHud ) );
+	memset( m_hMohaaHudShader, 0, sizeof( m_hMohaaHudShader ) );
+	memset( m_mohaaHudShaderTried, 0, sizeof( m_mohaaHudShaderTried ) );
+	memset( m_mohaaCompassTarget, 0, sizeof( m_mohaaCompassTarget ) );
+	m_mohaaCompassHasTarget = 0;
+	m_mohaaCompassTried = 0;
+	m_flMohaaHintUntil = 0.0f;
+	m_hMohaaCompassBack = m_hMohaaCompassFace = m_hMohaaCompassNeedle = m_hMohaaCompassObjective = 0;
+	memset( m_hMohaaVitals, 0, sizeof( m_hMohaaVitals ) );
+	m_mohaaVitalsTried = 0;
+	memset( m_szMohaaHudShader, 0, sizeof( m_szMohaaHudShader ) );
 	m_flLastUpdate = 0.0f;
 	m_flTimerBase = 0.0f;
 	m_fHaveState = 0;
@@ -48,7 +66,13 @@ void CHudDod::InitState( void )
 	/* A `set cl_dodhud 0` from a config that ran before the HUD came up must survive: reuse the cvar when it exists. */
 	m_pCvar = gEngfuncs.pfnGetCvarPointer( "cl_dodhud" );
 	if( !m_pCvar )
-		m_pCvar = gEngfuncs.pfnRegisterVariable( "cl_dodhud", "1", FCVAR_ARCHIVE );
+	{
+		/* MOHAA shares this client DLL but must use its own HUD path. Default
+		 * the DoD retail overlay on only for the DoD game directory; an explicit
+		 * cl_dodhud value in a user config still takes precedence above. */
+		const char *default_value = HUD_IsGame( "dod" ) ? "1" : "0";
+		m_pCvar = gEngfuncs.pfnRegisterVariable( "cl_dodhud", default_value, FCVAR_ARCHIVE );
+	}
 	/* The engine's lean/probe route (CapFaces, vid_gamecube.c) paints its own TEAM / HP / AMMO bars; it checks this flag so it
 	 * does not draw a second ammo readout over the retail one. */
 	if( !gEngfuncs.pfnGetCvarPointer( "gc_hud_retail" ))
@@ -57,7 +81,8 @@ void CHudDod::InitState( void )
 	HOOK_MESSAGE( DodBoard );
 	HOOK_MESSAGE( DodVoice );
 	HOOK_MESSAGE( DodKill );
-	HOOK_MESSAGE( MohaaHint );
+	HOOK_MESSAGE( MohaaHudDraw );
+	HOOK_MESSAGE( MohaaCompass );
 	m_nKills = 0;
 	m_fChatting = 0;
 	m_szVoice[0] = 0;
@@ -67,8 +92,6 @@ void CHudDod::InitState( void )
 	m_szBoard[0] = 0;
 	m_flBoardTime = 0.0f;
 	m_fBoardShown = 0;
-	m_szMohaaHint[0] = 0;
-	m_flMohaaHintTime = 0.0f;
 }
 
 int CHudDod::Init( void )
@@ -88,6 +111,61 @@ int CHudDod::VidInit( void )
 		m_hSheets[i] = 0;
 	m_fSheetsTried = 0;
 	m_fSheetTried = 0;
+	m_mohaaCompassTried = 0;
+	m_hMohaaCompassBack = m_hMohaaCompassFace = m_hMohaaCompassNeedle = m_hMohaaCompassObjective = 0;
+	memset( m_hMohaaVitals, 0, sizeof( m_hMohaaVitals ) );
+	m_mohaaVitalsTried = 0;
+	memset( m_hMohaaHudShader, 0, sizeof( m_hMohaaHudShader ) );
+	memset( m_mohaaHudShaderTried, 0, sizeof( m_mohaaHudShaderTried ) );
+	return 1;
+}
+
+int CHudDod::MsgFunc_MohaaHudDraw( const char *pszName, int iSize, void *pbuf )
+{
+	DodMohaaHudDraw *d;
+	int index;
+	const char *text, *shader;
+	(void)pszName;
+	BEGIN_READ( pbuf, iSize );
+	index = READ_BYTE();
+	if( index == 255 ) {
+		memset( m_mohaaHud, 0, sizeof( m_mohaaHud ) );
+		memset( m_mohaaHudShaderTried, 0, sizeof( m_mohaaHudShaderTried ) );
+		memset( m_szMohaaHudShader, 0, sizeof( m_szMohaaHudShader ) );
+		return 1;
+	}
+	if( index < 0 || index >= DOD_MOHAA_HUD_DRAW_COUNT )
+		return 1;
+	d = &m_mohaaHud[index];
+	d->x = READ_COORD(); d->y = READ_COORD(); d->w = READ_COORD(); d->h = READ_COORD();
+	d->r = READ_BYTE() / 255.0f; d->g = READ_BYTE() / 255.0f;
+	d->b = READ_BYTE() / 255.0f; d->a = READ_BYTE() / 255.0f;
+	d->align_x = READ_BYTE(); d->align_y = READ_BYTE(); d->virtual_size = READ_BYTE();
+	text = READ_STRING();
+	strncpy( d->text, text ? text : "", sizeof( d->text ) - 1 );
+	d->text[sizeof( d->text ) - 1] = 0;
+	shader = READ_STRING();
+	strncpy( d->shader, shader ? shader : "", sizeof( d->shader ) - 1 );
+	d->shader[sizeof( d->shader ) - 1] = 0;
+	if( index == DOD_MOHAA_HUD_HINT_INDEX )
+		m_flMohaaHintUntil = d->text[0] && d->a > 0.0f ? gHUD.m_flTime + 5.0f : 0.0f;
+	if( strcmp( m_szMohaaHudShader[index], d->shader )) {
+		strncpy( m_szMohaaHudShader[index], d->shader, sizeof( m_szMohaaHudShader[index] ) - 1 );
+		m_szMohaaHudShader[index][sizeof( m_szMohaaHudShader[index] ) - 1] = 0;
+		m_mohaaHudShaderTried[index] = 0;
+		m_hMohaaHudShader[index] = 0;
+	}
+	return 1;
+}
+
+int CHudDod::MsgFunc_MohaaCompass( const char *pszName, int iSize, void *pbuf )
+{
+	(void)pszName;
+	BEGIN_READ( pbuf, iSize );
+	m_mohaaCompassHasTarget = READ_BYTE() != 0;
+	m_mohaaCompassTarget[0] = READ_COORD();
+	m_mohaaCompassTarget[1] = READ_COORD();
+	m_mohaaCompassTarget[2] = READ_COORD();
 	return 1;
 }
 
@@ -133,34 +211,6 @@ int CHudDod::MsgFunc_DodBoard( const char *pszName, int iSize, void *pbuf )
 	m_flBoardTime = gEngfuncs.GetClientTime();
 	m_fBoardShown = show && m_szBoard[0];
 	return 1;
-}
-
-/* MOHAA iprintlnbold: the retail tip sits immediately below the compass and expires after a few seconds. */
-int CHudDod::MsgFunc_MohaaHint( const char *pszName, int iSize, void *pbuf )
-{
-	const char *text;
-	BEGIN_READ( pbuf, iSize );
-	text = READ_STRING();
-	strncpy( m_szMohaaHint, text ? text : "", sizeof( m_szMohaaHint ) - 1 );
-	m_szMohaaHint[sizeof( m_szMohaaHint ) - 1] = 0;
-	m_flMohaaHintTime = gEngfuncs.GetClientTime();
-	return 1;
-}
-
-static void DrawMohaaHint( const char *text )
-{
-	const int w = ScreenWidth > 0 ? ScreenWidth : 640;
-	const int h = ScreenHeight > 0 ? ScreenHeight : 480;
-	const int x = (int)( 8.0f * w / 640.0f + 0.5f );
-	const int y = (int)( 90.0f * h / 480.0f + 0.5f );
-	gHUD.DrawHudString( x, y, w - x, text, 255, 255, 255 );
-}
-
-void CHudDod::DrawMohaa( float flTime )
-{
-	(void)flTime;
-	if( m_szMohaaHint[0] && gEngfuncs.GetClientTime() - m_flMohaaHintTime <= 6.0f )
-		DrawMohaaHint( m_szMohaaHint );
 }
 
 /* The kill feed: killer, victim, weapon; the last five are kept and each shows for 6 seconds. */
@@ -433,7 +483,6 @@ void CHudDod::DrawBoard( void )
 int CHudDod::DrawRetail( float flTime )
 {
 	gEngfuncs.Cvar_SetValue( "gc_hud_retail", 0.0f );
-	DrawMohaa( flTime );
 	DodRetailInput in;
 	DodRetailDraw draws[DOD_RETAIL_MAX_DRAWS];
 	DodRetailText spare;
@@ -468,6 +517,12 @@ int CHudDod::DrawRetail( float flTime )
 	}
 	if( !m_hSheets[DOD_SHEET_LAYOUT] )
 		return 0;	/* no retail sheets on this disc: let the caller draw */
+	if( gHUD.m_iHideHUDDisplay & HIDEHUD_ALL )
+	{
+		/* a MOHAA cutscene's "drawhud 0": nothing, and nothing else may draw health or ammo either */
+		gEngfuncs.Cvar_SetValue( "gc_hud_retail", 1.0f );
+		return 1;
+	}
 
 	/* Retail lays the 640-res art out 1:1 on a 640x480 screen. The GameCube
 	 * HUD space is 320x240 (shown at 2x), so lay out at 640x480 and scale
@@ -493,7 +548,10 @@ int CHudDod::DrawRetail( float flTime )
 	in.spectating = g_iUser1 != 0;
 	in.dead = in.health <= 0;
 	in.show_reinforcements = 0;
-	in.crosshair = 1;
+	/* a MOHAA scripted ride (player locked): no crosshair or ammo, as retail shows none there */
+	in.crosshair = ( gHUD.m_iHideHUDDisplay & HIDEHUD_WEAPONS ) ? 0 : 1;
+	if( gHUD.m_iHideHUDDisplay & HIDEHUD_WEAPONS )
+		in.hide_bottom = 1;
 	in.crosshair_gap = 4;
 	/* The server sends the clock a couple of times a second; count down
 	 * between messages, and hide it when the messages stop. */
@@ -608,8 +666,355 @@ int CHudDod::DrawRetail( float flTime )
 	return 1;
 }
 
+static int mohaa_frame16( float degrees )
+{
+	int frame = (int)( degrees * ( 16.0f / 360.0f ) + ( degrees >= 0.0f ? 0.5f : -0.5f ));
+	frame %= 16;
+	if( frame < 0 ) frame += 16;
+	return frame;
+}
+
+static float mohaa_clamp01( float value )
+{
+	if( value < 0.0f ) return 0.0f;
+	if( value > 1.0f ) return 1.0f;
+	return value;
+}
+
+static void mohaa_draw_compass_layer( HSPRITE sprite, int frame, int x, int y, int width, int height )
+{
+	int source_width, source_height;
+	wrect_t source;
+	if( !sprite )
+		return;
+	source_width = SPR_Width( sprite, frame );
+	source_height = SPR_Height( sprite, frame );
+	if( source_width <= 0 || source_height <= 0 )
+		return;
+	source.left = source.top = 0;
+	source.right = source_width;
+	source.bottom = source_height;
+	SPR_Set( sprite, 255, 255, 255 );
+	gEngfuncs.pfnSPR_DrawGeneric( frame, x, y, &source, 0, 0, width, height );
+}
+
+/* iprintlnbold has no explicit width. Wrap at the active client font's pixel
+ * widths so long retail tips stay inside the visible GameCube viewport. */
+static void mohaa_wrap_hint( char *text, int max_width )
+{
+	char *line = text;
+	while( *line )
+	{
+		char *p = line, *last_space = NULL;
+		int width = 0;
+		while( *p && *p != '\n' )
+		{
+			char glyph[2] = { *p, 0 };
+			int char_width = 0;
+			gEngfuncs.pfnDrawConsoleStringLen( glyph, &char_width, NULL );
+			if( width + char_width > max_width )
+				break;
+			if( *p == ' ' )
+				last_space = p;
+			width += char_width;
+			p++;
+		}
+		if( *p == '\n' )
+			line = p + 1;
+		else if( *p )
+		{
+			if( last_space )
+			{
+				*last_space = '\n';
+				line = last_space + 1;
+			}
+			else
+				line = p + 1;
+		}
+		else
+			break;
+	}
+}
+
+int CHudDod::DrawMohaa( float flTime )
+{
+	const int screen_w = ScreenWidth > 0 ? ScreenWidth : 320;
+	const int screen_h = ScreenHeight > 0 ? ScreenHeight : 240;
+	const int line_h = gHUD.m_scrinfo.iCharHeight > 0 ? gHUD.m_scrinfo.iCharHeight : 10;
+	float view[3] = {0, 0, 0};
+	float yaw = 0.0f;
+	int i;
+	int hint_line_h = line_h;
+	(void)flTime;
+	if( !HUD_IsGame( "mohaa" ) )
+		return 0;
+	if( gHUD.m_iHideHUDDisplay & HIDEHUD_ALL )
+		return 1;
+	if( !m_mohaaCompassTried )
+	{
+		m_mohaaCompassTried = 1;
+		m_hMohaaCompassBack = SPR_Load( "sprites/mohaa/compassback.spr" );
+		m_hMohaaCompassFace = SPR_Load( "sprites/mohaa/compassface.spr" );
+		m_hMohaaCompassNeedle = SPR_Load( "sprites/mohaa/compassneedle.spr" );
+		m_hMohaaCompassObjective = SPR_Load( "sprites/mohaa/compassobjarrow.spr" );
+	}
+	gEngfuncs.GetViewAngles( view );
+	yaw = view[1];
+	while( yaw < 0.0f ) yaw += 360.0f;
+	while( yaw >= 360.0f ) yaw -= 360.0f;
+	{
+		const int x = -(int)( 24.0f * screen_w / 320.0f + 0.5f );
+		const int y = (int)( 3.0f * screen_h / 240.0f + 0.5f );
+		const int width = (int)( 55.0f * screen_w / 320.0f + 0.5f );
+		const int height = (int)( 55.0f * screen_h / 240.0f + 0.5f );
+		mohaa_draw_compass_layer( m_hMohaaCompassBack, 0, x, y, width, height );
+		mohaa_draw_compass_layer( m_hMohaaCompassFace, mohaa_frame16( yaw ), x, y, width, height );
+		if( m_hMohaaCompassObjective && m_mohaaCompassHasTarget )
+		{
+			cl_entity_t *player = gEngfuncs.GetLocalPlayer();
+			if( player )
+			{
+				const float dx = m_mohaaCompassTarget[0] - player->origin[0];
+				const float dy = m_mohaaCompassTarget[1] - player->origin[1];
+				const float target_yaw = (float)( atan2( dy, dx ) * ( 180.0 / 3.14159265358979323846 ));
+				mohaa_draw_compass_layer( m_hMohaaCompassObjective,
+					mohaa_frame16( yaw - target_yaw ), x, y, width, height );
+			}
+		}
+		mohaa_draw_compass_layer( m_hMohaaCompassNeedle, 0, x, y, width, height );
+	}
+
+	/* Scripted shader cards (the gas-mask overlay, for example) sit above the compass. */
+	for( i = 0; i < DOD_MOHAA_HUD_DRAW_COUNT; i++ )
+	{
+		DodMohaaHudDraw *d = &m_mohaaHud[i];
+		if( !d->shader[0] || d->a <= 0.0f )
+			continue;
+		if( !m_mohaaHudShaderTried[i] )
+		{
+			char sprite[96], stem[64];
+			const char *base = strrchr( d->shader, '/' );
+			const char *ext;
+			base = base ? base + 1 : d->shader;
+			strncpy( stem, base, sizeof( stem ) - 1 ); stem[sizeof( stem ) - 1] = 0;
+			ext = strrchr( stem, '.' ); if( ext ) ((char *)ext)[0] = 0;
+			snprintf( sprite, sizeof( sprite ), "sprites/mohaa/%s.spr", stem );
+			m_hMohaaHudShader[i] = SPR_Load( sprite );
+			m_mohaaHudShaderTried[i] = 1;
+		}
+		if( m_hMohaaHudShader[i] )
+		{
+			const float sx = d->virtual_size ? screen_w / 640.0f : 1.0f;
+			const float sy = d->virtual_size ? screen_h / 480.0f : 1.0f;
+			const int sw = SPR_Width( m_hMohaaHudShader[i], 0 ), sh = SPR_Height( m_hMohaaHudShader[i], 0 );
+			const int w = d->w > 0.0f ? (int)( d->w * sx + 0.5f ) : sw;
+			const int h = d->h > 0.0f ? (int)( d->h * sy + 0.5f ) : sh;
+			int x = (int)( d->x * sx + 0.5f ), y = (int)( d->y * sy + 0.5f );
+			wrect_t rc = {0, 0, sw, sh};
+			if( d->align_x == DOD_MOHAA_HUD_ALIGN_CENTER ) x += screen_w / 2 - w / 2;
+			else if( d->align_x == DOD_MOHAA_HUD_ALIGN_RIGHT ) x += screen_w - w;
+			if( d->align_y == DOD_MOHAA_HUD_ALIGN_MIDDLE ) y += screen_h / 2 - h / 2;
+			else if( d->align_y == DOD_MOHAA_HUD_ALIGN_BOTTOM ) y += screen_h - h;
+			SPR_Set( m_hMohaaHudShader[i], (int)( d->r * d->a * 255.0f ),
+				(int)( d->g * d->a * 255.0f ), (int)( d->b * d->a * 255.0f ) );
+			gEngfuncs.pfnSPR_DrawGeneric( 0, x, y, &rc, 0, 0, w, h );
+		}
+	}
+
+	/* Retail huddraw text supports independent slots, alignment, RGB and fade alpha. */
+	for( i = 0; i < DOD_MOHAA_HUD_DRAW_COUNT; i++ )
+	{
+		DodMohaaHudDraw *d = &m_mohaaHud[i];
+		char text[DOD_MOHAA_HUD_TEXT];
+		char *line;
+		const float sx = d->virtual_size ? screen_w / 640.0f : 1.0f;
+		const float sy = d->virtual_size ? screen_h / 480.0f : 1.0f;
+		int y_anchor, y, line_no = 0;
+		float draw_alpha = d->a;
+		int cr, cg, cb;
+		if( !d->text[0] || d->a <= 0.0f )
+			continue;
+		if( i == DOD_MOHAA_HUD_HINT_INDEX )
+		{
+			const float remaining = m_flMohaaHintUntil - flTime;
+			if( remaining <= 0.0f )
+				continue;
+			if( remaining < 0.5f )
+				draw_alpha *= remaining / 0.5f;
+		}
+		cr = (int)( mohaa_clamp01( d->r * draw_alpha ) * 255.0f + 0.5f );
+		cg = (int)( mohaa_clamp01( d->g * draw_alpha ) * 255.0f + 0.5f );
+		cb = (int)( mohaa_clamp01( d->b * draw_alpha ) * 255.0f + 0.5f );
+		strncpy( text, d->text, sizeof( text ) - 1 ); text[sizeof( text ) - 1] = 0;
+		if( i == DOD_MOHAA_HUD_HINT_INDEX )
+		{
+			const int left = (int)( d->x * sx + 0.5f );
+			const int right_margin = 8;
+			/* Ensure the engine's one-shot scale cvar exists before setting it. */
+			gEngfuncs.pfnDrawConsoleStringLen( "M", NULL, &hint_line_h );
+			gEngfuncs.Cvar_SetValue( "gc_mohaa_hint_draw", 1.0f );
+			gEngfuncs.pfnDrawConsoleStringLen( "M", NULL, &hint_line_h );
+			if( hint_line_h < 1 ) hint_line_h = line_h;
+			mohaa_wrap_hint( text, screen_w > left + right_margin ? screen_w - left - right_margin : screen_w );
+		}
+		for( line = text; *line; line++ ) if( *line == '\n' ) line_no++;
+		line_no++;
+		y_anchor = (int)( d->y * sy + 0.5f );
+		if( d->align_y == DOD_MOHAA_HUD_ALIGN_MIDDLE ) y_anchor = screen_h / 2 + y_anchor;
+		else if( d->align_y == DOD_MOHAA_HUD_ALIGN_BOTTOM ) y_anchor = screen_h - y_anchor;
+		if( d->align_y == DOD_MOHAA_HUD_ALIGN_MIDDLE ) y_anchor -= ( line_no * ( i == DOD_MOHAA_HUD_HINT_INDEX ? hint_line_h : line_h )) / 2;
+		else if( d->align_y == DOD_MOHAA_HUD_ALIGN_BOTTOM ) y_anchor -= line_no * ( i == DOD_MOHAA_HUD_HINT_INDEX ? hint_line_h : line_h );
+		y = y_anchor;
+		line = text;
+		while( line )
+		{
+			char *next = strchr( line, '\n' );
+			int width, x_anchor, x;
+			if( next ) *next = 0;
+			width = gHUD.DrawHudStringLen( line );
+			x_anchor = (int)( d->x * sx + 0.5f );
+			if( d->align_x == DOD_MOHAA_HUD_ALIGN_CENTER ) x_anchor += screen_w / 2;
+			else if( d->align_x == DOD_MOHAA_HUD_ALIGN_RIGHT ) x_anchor += screen_w;
+			x = x_anchor;
+			if( d->align_x == DOD_MOHAA_HUD_ALIGN_CENTER ) x -= width / 2;
+			else if( d->align_x == DOD_MOHAA_HUD_ALIGN_RIGHT ) x -= width;
+			if( i == DOD_MOHAA_HUD_HINT_INDEX )
+			{
+				/* Retail tips use a compact scale of the credits face. */
+				char draw_line[ DOD_MOHAA_HUD_TEXT ];
+				strncpy( draw_line, line, sizeof( draw_line ) - 1 );
+				draw_line[ sizeof( draw_line ) - 1 ] = 0;
+				gEngfuncs.pfnDrawSetTextColor( 24.0f / 255.0f, 18.0f / 255.0f, 12.0f / 255.0f );
+				gEngfuncs.pfnDrawConsoleString( x + 1, y + 1, draw_line );
+				gEngfuncs.pfnDrawSetTextColor( cr / 255.0f, cg / 255.0f, cb / 255.0f );
+				gEngfuncs.pfnDrawConsoleString( x, y, draw_line );
+			}
+			else
+				gHUD.DrawHudString( x, y, screen_w, line, cr, cg, cb );
+			y += i == DOD_MOHAA_HUD_HINT_INDEX ? hint_line_h : line_h;
+			line = next ? next + 1 : NULL;
+		}
+		if( i == DOD_MOHAA_HUD_HINT_INDEX )
+			gEngfuncs.Cvar_SetValue( "gc_mohaa_hint_draw", 0.0f );
+	}
+	return 1;
+}
+
+/* The retail MOHAA health and ammo HUD, drawn from the converted textures/hud
+ * sprites (tools/mohaa_hud.py) at their own pixel size on a 320x240 virtual HUD
+ * screen. This is the layout of Codex's GC_DrawMohaaHud (ceres hlsdk-portable
+ * 1b8549e..e0c6c5b), which matched retail in the m1l1 GameCube captures:
+ * the health gauge bottom-left with the needle beside it and the value under
+ * it, the two ammo arm pieces and the ammo bar bottom-right with the clip
+ * count, and the crosshair centred. Returns 1 when the health art is resident. */
+enum { MOHAA_HEALTHBACK, MOHAA_HEALTHMETER, MOHAA_HEALTHNEEDLE, MOHAA_AMMOTOP, MOHAA_AMMOBOT, MOHAA_AMMOBAR, MOHAA_CROSSHAIR };
+static const char *const s_mohaaVitalSprites[7] = {
+	"sprites/mohaa/healthback.spr", "sprites/mohaa/healthmeter.spr", "sprites/mohaa/healthneedle.spr",
+	"sprites/mohaa/ammotoparm.spr", "sprites/mohaa/ammobotmarm.spr", "sprites/mohaa/ammotoparmbar.spr",
+	"sprites/mohaa/crosshair.spr",
+};
+
+/* The layout is Codex's 320x240 one; the lean HUD screen can be 160x120 (WorldDL route) or 640x480,
+ * so every position and size goes through this scale. */
+static float s_mohaaHudScale = 1.0f;
+static int mohaa_px( float v ) { return (int)( v * s_mohaaHudScale + 0.5f ); }
+
+static void mohaa_draw_sprite( HSPRITE sprite, int x, int y, const wrect_t *rc )
+{
+	wrect_t full;
+	int sw, sh;
+	if( !sprite )
+		return;
+	sw = SPR_Width( sprite, 0 );
+	sh = SPR_Height( sprite, 0 );
+	if( sw <= 0 || sh <= 0 )
+		return;
+	if( !rc )
+	{
+		full.left = 0; full.top = 0; full.right = sw; full.bottom = sh;
+		rc = &full;
+	}
+	SPR_Set( sprite, 255, 255, 255 );
+	gEngfuncs.pfnSPR_DrawGeneric( 0, x, y, rc, 0, 0,
+		mohaa_px( (float)( rc->right - rc->left )), mohaa_px( (float)( rc->bottom - rc->top )));
+}
+
+static void mohaa_draw_number( int x, int y, int value )
+{
+	char text[12];
+	snprintf( text, sizeof( text ), "%d", value );
+	gEngfuncs.pfnDrawSetTextColor( 240.0f / 255.0f, 230.0f / 255.0f, 210.0f / 255.0f );
+	gEngfuncs.pfnDrawConsoleString( x, y, text );
+}
+
+int CHudDod::DrawMohaaVitals( int health, int clip )
+{
+	const int screen_w = ScreenWidth > 0 ? ScreenWidth : 320;
+	const int screen_h = ScreenHeight > 0 ? ScreenHeight : 240;
+	int i;
+	if( !HUD_IsGame( "mohaa" ) )
+		return 0;
+	if( !m_mohaaVitalsTried )
+	{
+		m_mohaaVitalsTried = 1;
+		for( i = 0; i < 7; i++ )
+			m_hMohaaVitals[i] = SPR_Load( s_mohaaVitalSprites[i] );
+	}
+	if( !m_hMohaaVitals[MOHAA_HEALTHBACK] )
+		return 0;
+	if( gHUD.m_iHideHUDDisplay & HIDEHUD_ALL )
+		return 1;
+	s_mohaaHudScale = screen_h / 240.0f;
+	if( !( gHUD.m_iHideHUDDisplay & HIDEHUD_HEALTH ) )
+	{
+		HSPRITE back = m_hMohaaVitals[MOHAA_HEALTHBACK], meter = m_hMohaaVitals[MOHAA_HEALTHMETER];
+		const int bw = SPR_Width( back, 0 ) > 0 ? SPR_Width( back, 0 ) : 16;
+		const int bh = SPR_Height( back, 0 ) > 0 ? SPR_Height( back, 0 ) : 64;
+		const int x = mohaa_px( 8.0f );
+		int y = screen_h - mohaa_px( (float)bh + 8.0f );
+		if( health < 0 ) health = 0;
+		if( health > 100 ) health = 100;
+		if( y < 0 ) y = 0;
+		/* The red backing shows through from the top as health is lost. */
+		mohaa_draw_sprite( back, x, y, NULL );
+		if( meter )
+		{
+			const int mw = SPR_Width( meter, 0 ) > 0 ? SPR_Width( meter, 0 ) : bw;
+			const int mh = SPR_Height( meter, 0 ) > 0 ? SPR_Height( meter, 0 ) : bh;
+			const int fill = ( mh * health + 99 ) / 100;
+			if( fill > 0 )
+			{
+				wrect_t rc;
+				rc.left = 0; rc.right = mw; rc.top = mh - fill; rc.bottom = mh;
+				mohaa_draw_sprite( meter, x, y + mohaa_px( (float)rc.top ), &rc );
+			}
+		}
+		mohaa_draw_sprite( m_hMohaaVitals[MOHAA_HEALTHNEEDLE], x + mohaa_px( (float)bw ), y, NULL );
+		mohaa_draw_number( x + mohaa_px( 4.0f ), y + mohaa_px( (float)bh + 4.0f ), health );
+	}
+	if( !( gHUD.m_iHideHUDDisplay & HIDEHUD_WEAPONS ) )
+	{
+		/* The two retail arm pieces frame the lower-right ammunition display. */
+		mohaa_draw_sprite( m_hMohaaVitals[MOHAA_AMMOTOP], screen_w - mohaa_px( 64.0f ), screen_h - mohaa_px( 64.0f ), NULL );
+		mohaa_draw_sprite( m_hMohaaVitals[MOHAA_AMMOBOT], screen_w - mohaa_px( 64.0f ), screen_h - mohaa_px( 32.0f ), NULL );
+		mohaa_draw_sprite( m_hMohaaVitals[MOHAA_AMMOBAR], screen_w - mohaa_px( 72.0f ), screen_h - mohaa_px( 68.0f ), NULL );
+		if( clip >= 0 )
+			mohaa_draw_number( screen_w - mohaa_px( 28.0f ), screen_h - mohaa_px( 20.0f ), clip );
+		if( m_hMohaaVitals[MOHAA_CROSSHAIR] )
+		{
+			HSPRITE ch = m_hMohaaVitals[MOHAA_CROSSHAIR];
+			mohaa_draw_sprite( ch, ( screen_w - mohaa_px( (float)SPR_Width( ch, 0 ))) / 2,
+				( screen_h - mohaa_px( (float)SPR_Height( ch, 0 ))) / 2, NULL );
+		}
+	}
+	return 1;
+}
+
 int CHudDod::Draw( float flTime )
 {
-	DrawRetail( flTime );
+	if( HUD_IsGame( "mohaa" ) )
+		DrawMohaa( flTime );
+	else
+		DrawRetail( flTime );
 	return 1;
 }

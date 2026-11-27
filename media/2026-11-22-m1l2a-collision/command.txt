@@ -1,0 +1,7 @@
+Build command (run from /home/tim/Desktop/mohaa-gc/cutscene-20261122/mohaa-gc/dod-gc):
+scripts/build-lean-iso.sh --skip-stage --intro-only --skip-startup-vids --listen m1l2a --full-map --world-render
+
+Probe command (run from the same repo):
+scripts/probe-playtest.sh --route mohaa-m1l2a-collision --duration 25 --skip-video --ready-regex 'MAP_READY m1l2a|newgame world render ready'
+
+Environment: DODGC_DOLPHIN_BIN=/home/tim/.local/xash3d-gc-baseline/3rdparty/dolphin/build/Binaries/dolphin-emu; output, profile, shots, logs, and XDG directories were redirected under /tmp/mohaa-m1l2a-stage. Probe was launched with permission to access the headless desktop runtime.

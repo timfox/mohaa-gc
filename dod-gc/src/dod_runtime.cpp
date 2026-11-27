@@ -563,6 +563,45 @@ void DodGC_RegisterPmLayout( void )
 	CVAR_REGISTER( &gc_pm_layout_dll );
 }
 
+/* MOHAA's campaign is single player: the menu's New Game sets deathmatch 0, so InstallGameRules builds
+ * CHalfLifeRules and the DoD rules below never start the level. Without this the mission script
+ * (maps/<map>.scr), the soldiers it places (mohaa_actor, the grunt pool) and m1l1's opening ride never ran:
+ * the player stood where the map put them and every map soldier failed to spawn, since the grunt bodies
+ * come from the side body cvars the DoD rules register. The single-player rules call these two. */
+static int DodGC_IsMohaaGame( void )
+{
+	const char *gamedir = CVAR_GET_STRING( "gamedir" );
+	return gamedir && !strcmp( gamedir, "mohaa" );
+}
+
+void DodGC_SinglePlayerLevelInit( void )
+{
+	if( !DodGC_IsMohaaGame() )
+		return;
+	Dod_CvarRegisterKeep( &dod_allies_body );
+	Dod_CvarRegisterKeep( &dod_axis_body );
+	Dod_GameInit();
+	Dod_SetAlliesCountry( Dod_AlliesCountryForMap( STRING( gpGlobals->mapname ) ) );
+	DodGrunts_Init();
+	ALERT( at_console, "mohaa: single-player level start on %s\n", STRING( gpGlobals->mapname ) );
+}
+
+void DodGC_SinglePlayerThink( void )
+{
+	if( !DodGC_IsMohaaGame() )
+		return;
+	/* DoD's player movement clamps to pev->maxspeed, which only the DoD rules' class pick sets: on the
+	 * single-player rules it stayed 0 and the campaign player could not walk (the stick reached the usercmd,
+	 * the server moved nothing). Give a player with none the DoD rifleman's speed, as the bots get. */
+	for( int i = 1; i <= gpGlobals->maxClients; i++ ) {
+		CBaseEntity *pe = UTIL_PlayerByIndex( i );
+		if( pe && pe->IsPlayer() && pe->pev->maxspeed <= 0.0f )
+			pe->pev->maxspeed = 220.0f;
+	}
+	DodGrunts_Think();
+	DodGC_MohaaThink();
+}
+
 CHalfLifeDoD::CHalfLifeDoD()
 {
 	DodBots_Init();
@@ -606,7 +645,6 @@ CHalfLifeDoD::CHalfLifeDoD()
 	}
 	DodGrunts_Init();
 	DodFilm_Init();	/* after the country and paratroopers: they pick the actors' bodies */
-	/* MOHAA level scripts start from ServerActivate after each map's entities have spawned. */
 	Dod_ClearObjectives();
 	round_seconds = CVAR_GET_FLOAT( "mp_timelimit" ) * 60.0f;
 	if( round_seconds <= 0.0f )

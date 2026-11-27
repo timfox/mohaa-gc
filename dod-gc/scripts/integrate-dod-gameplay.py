@@ -56,6 +56,26 @@ def integrate_static_edict_gate(sv_game: Path) -> None:
 	sv_game.write_text(text[:start] + canonical + text[end:])
 
 
+def integrate_mohaa_listen_frame(sv_main: Path) -> None:
+	"""Keep MOHAA mission scripts ticking on the lean WorldDL listen route."""
+	old = ('\t\t/* A film shot still needs the game\'s frame: its rules Think moves the\n'
+		'\t\t * scripted actors and fires the shot\'s effects (StartFrame only, not\n'
+		'\t\t * the entity walk). */\n'
+		'\t\tif( CL_CineActive() || Sys_CheckParm( "-gccapture" ))')
+	new = ('\t\t/* Film shots and MOHAA mission scripts need the game\'s frame.\n'
+		'\t\t * StartFrame runs their rules Think without the entity walk. */\n'
+		'\t\tif( CL_CineActive() || Sys_CheckParm( "-gccapture" )\n'
+		'\t\t\t|| !Q_stricmp( GI->gamefolder, "mohaa" ))')
+	text = sv_main.read_text()
+	if new not in text:
+		if text.count(old) != 1:
+			raise SystemExit(f"WorldDL listen StartFrame gate not found exactly once in {sv_main}")
+		text = text.replace(old, new, 1)
+	text = text.replace('WorldDL listen StartFrame for film time=',
+		'WorldDL listen StartFrame for mission/film time=')
+	sv_main.write_text(text)
+
+
 def integrate_heap_tip_gate(sv_game: Path) -> None:
 	"""Lower the entity heap-tip threshold to 2 KiB on dod_ maps.
 
@@ -163,8 +183,11 @@ def integrate_gc_hud(client: Path) -> None:
 		'\t\t\tif( menubuf[0] >= \'1\' && menubuf[0] <= \'9\' && menubuf[1] == \'.\'\n'
 		'\t\t\t\t&& menubuf[0] - \'0\' == m_iGCSelectedSlot )\n'
 		'\t\t\t{ draw_r = 96; draw_g = 255; draw_b = 128; }\n'
-			'\t\t\tif( menu_ralign )\n',
-			'\t\t\tint draw_r = menu_r, draw_g = menu_g, draw_b = menu_b;\n')
+		'\t\t\tif( menu_ralign )\n',
+		'\t\t\tint draw_r = menu_r, draw_g = menu_g, draw_b = menu_b;\n'
+		'\t\t\tif( menubuf[0] >= \'1\' && menubuf[0] <= \'9\' && menubuf[1] == \'.\'\n'
+		'\t\t\t\t&& menubuf[0] - \'0\' == m_iGCSelectedSlot )\n'
+		'\t\t\t{ draw_r = 96; draw_g = 255; draw_b = 128; }\n')
 	menu_text = menu_cpp.read_text()
 	menu_text = menu_text.replace(
 		'\t\t\t\tmenu_x = gHUD.DrawHudStringReverse( menu_x, y, 0, menubuf, menu_r, menu_g, menu_b );\n'
@@ -174,9 +197,9 @@ def integrate_gc_hud(client: Path) -> None:
 	# The team/class menu used to sit on the world: draw it on a retail-palette panel (ViewportBG 55 43 29, ClassMenuLight
 	# 175 127 1 border) laid out by dod_hud_geom.h: inside the 5% safe area, under the objective row, above the status
 	# panel, as wide as its widest line. Text is clipped to the screen (it was clipped at x 320).
-	if 'static int g_iGCMenuLeft = 20, g_iGCMenuBottom = 1 << 20;\n' not in menu_text:
-		menu_text = menu_text.replace('static int menu_r, menu_g, menu_b, menu_x, menu_ralign;\n',
-			'static int menu_r, menu_g, menu_b, menu_x, menu_ralign;\nstatic int g_iGCMenuLeft = 20, g_iGCMenuBottom = 1 << 20;\n', 1)
+	menu_text = menu_text.replace('static int menu_r, menu_g, menu_b, menu_x, menu_ralign;\n',
+		'static int menu_r, menu_g, menu_b, menu_x, menu_ralign;\nstatic int g_iGCMenuLeft = 20, g_iGCMenuBottom = 1 << 20;\n',
+		1 if 'static int g_iGCMenuLeft' not in menu_text else 0)
 	menu_text = menu_text.replace(
 		'\tmenu_r\t\t= 255;\n\tmenu_g\t\t= 255;\n\tmenu_b\t\t= 255;\n',
 		'\t{\n'
@@ -213,7 +236,8 @@ def integrate_gc_hud(client: Path) -> None:
 		'\t\tg_iGCMenuLeft = px + (int)( DOD_HUD_PANEL_PAD * gsx + 0.5f );\n'
 		'\t\tg_iGCMenuBottom = py + ph - (int)( DOD_HUD_PANEL_PAD * gsy + 0.5f );\n'
 		'\t}\n'
-		'\tmenu_r\t\t= 255;\n\tmenu_g\t\t= 255;\n\tmenu_b\t\t= 255;\n', 1)
+		'\tmenu_r\t\t= 255;\n\tmenu_g\t\t= 255;\n\tmenu_b\t\t= 255;\n',
+		1 if 'pr = Dod_HudMenuPanel( lines' not in menu_text else 0)
 	menu_text = menu_text.replace('\tmenu_x\t\t= 20;\n', '\tmenu_x\t\t= g_iGCMenuLeft;\n', 1)
 	menu_text = menu_text.replace('\t\t\tmenu_x \t\t= 20;\n', '\t\t\tmenu_x \t\t= g_iGCMenuLeft;\n', 1)
 	menu_text = menu_text.replace('menu_x = gHUD.DrawHudString( menu_x, y, 320, menubuf,', 'menu_x = gHUD.DrawHudString( menu_x, y, ScreenWidth, menubuf,')
@@ -222,9 +246,7 @@ def integrate_gc_hud(client: Path) -> None:
 		'\t\t\tif( y + nFontHeight > g_iGCMenuBottom )\n\t\t\t\t;\t// a line that no longer fits the panel is not drawn\n\t\t\telse if( menu_ralign )\n\t\t\t\t// IMPORTANT', 1)
 	menu_cpp.write_text(menu_text)
 
-	# The retail New Game route can render before HUD_Init registers hud_draw.
-	# Keep the GameCube lean HUD path running; only gate the normal HUD list
-	# until its cvar exists.
+	# The lean GameCube HUD can render before HUD_Init registers hud_draw.
 	replace_once(client / "hud_redraw.cpp",
 		'\tif( m_pCvarDraw->value )\n',
 		'\tif( m_pCvarDraw && m_pCvarDraw->value )\n')
@@ -318,7 +340,15 @@ def integrate_film_actors(dlls: Path) -> None:
 	replace_once(dlls / "client.cpp",
 		'\t\t\t// env_sky is visible always\n\t\t\tif( !FClassnameIs( ent, "env_sky" ) )\n',
 		'\t\t\t// env_sky is visible always, and so are film actors (seen from the film camera, not the player)\n'
-		'\t\t\tif( !FClassnameIs( ent, "env_sky" ) && !FClassnameIs( ent, "film_actor" ) )\n')
+		'\t\t\tif( !FClassnameIs( ent, "env_sky" ) && !FClassnameIs( ent, "film_actor" ) )\n',
+		done='// env_sky is visible always, and so are film actors')
+	# MOHAA script models (m1l1's trucks) are moved by the mission every frame and carry placeholder bounds that
+	# link into no leaf the player can see, so the PVS test dropped them and the opening ride showed no trucks.
+	# Send them like film actors; tag carriers have no model and are skipped earlier.
+	replace_once(dlls / "client.cpp",
+		'\t\t\tif( !FClassnameIs( ent, "env_sky" ) && !FClassnameIs( ent, "film_actor" ) )\n',
+		'\t\t\tif( !FClassnameIs( ent, "env_sky" ) && !FClassnameIs( ent, "film_actor" )\n'
+		'\t\t\t\t&& !FClassnameIs( ent, "mohaa_script_model" ) )\n')
 
 
 def integrate_mohaa_trigger_event(dlls: Path) -> None:
@@ -344,7 +374,14 @@ def integrate_mohaa_entity_keys(dlls: Path) -> None:
 		'\tif( pkvd->szKeyName && pkvd->szKeyName[0] == \'#\' && pkvd->szValue ) {\n'
 		'\t\tDodGC_MohaaEntityKey( pentKeyvalue, pkvd->szKeyName, pkvd->szValue );\n'
 		'\t\tpkvd->fHandled = TRUE;\n\t\treturn;\n\t}\n'
-		'\tEntvarsKeyvalue( VARS( pentKeyvalue ), pkvd );\n')
+		'\tEntvarsKeyvalue( VARS( pentKeyvalue ), pkvd );\n', done='DodGC_MohaaEntityKey( pentKeyvalue')
+	# The converter's mohaa_classname marks turretweapons (MG42 nests): the binding keeps those. Not handled, so the
+	# entity still sees the key as before.
+	replace_once(cbase,
+		'\tif( pkvd->szKeyName && pkvd->szKeyName[0] == \'#\' && pkvd->szValue ) {\n',
+		'\tif( pkvd->szKeyName && pkvd->szValue && !strcmp( pkvd->szKeyName, "mohaa_classname" ) )\n'
+		'\t\tDodGC_MohaaEntityKey( pentKeyvalue, pkvd->szKeyName, pkvd->szValue );\n'
+		'\tif( pkvd->szKeyName && pkvd->szKeyName[0] == \'#\' && pkvd->szValue ) {\n')
 
 
 def integrate_doddetect(dlls: Path) -> None:
@@ -367,41 +404,35 @@ def integrate_pm_layout_hook(dlls: Path) -> None:
 
 
 def integrate_precache_bodies_hook(dlls: Path) -> None:
-	"""Run per-map MOHAA initialization and precache bodies after the map entities spawn."""
+	"""ServerActivate initializes MOHAA scripts and precaches models after map entities spawn."""
+	replace_once(dlls / "world.cpp",
+		"void CWorld::Spawn( void )\n{\n",
+		"void CWorld::Spawn( void )\n{\n"
+		"\textern void DodGC_MohaaResetActors( void );\n"
+		"\tDodGC_MohaaResetActors();\n")
 	client = dlls / "client.cpp"
-	mohaa_ents = dlls / "dod_mohaa_ents.cpp"
-	has_mohaa_model_precache = mohaa_ents.is_file() and "DodGC_MohaaPrecacheModels" in mohaa_ents.read_text()
 	text = client.read_text()
-	# The shared HLSDK may carry a ServerActivate hook from a newer MOHAA branch.
-	# Remove that optional call when syncing an older game source without the implementation.
-	if not has_mohaa_model_precache and "DodGC_MohaaPrecacheModels" in text:
-		text = text.replace("void DodGC_MohaaPrecacheModels( void );\n", "")
-		text = text.replace("\tDodGC_MohaaPrecacheModels();\n", "")
-		client.write_text(text)
-	declarations = ""
-	if "void DodGC_PrecacheTeamBodies( void );" not in text:
-		declarations += "void DodGC_PrecacheTeamBodies( void );\n"
-	if "void DodGC_MohaaLevelInit( void );" not in text:
-		declarations += "void DodGC_MohaaLevelInit( void );\n"
-	if declarations:
+	decls = []
+	if "DodGC_MohaaLevelInit" not in text:
+		decls.append("void DodGC_MohaaLevelInit( void );")
+	if "DodGC_PrecacheTeamBodies" not in text:
+		decls.append("void DodGC_PrecacheTeamBodies( void );")
+	if "DodGC_MohaaPrecacheModels" not in text:
+		decls.append("void DodGC_MohaaPrecacheModels( void );")
+	if decls:
 		replace_once(client, "void ServerActivate( edict_t *pEdictList, int edictCount, int clientMax )\n{\n",
-			declarations + "void ServerActivate( edict_t *pEdictList, int edictCount, int clientMax )\n{\n")
+			"\n".join(decls) + "\nvoid ServerActivate( edict_t *pEdictList, int edictCount, int clientMax )\n{\n")
 	text = client.read_text()
+	call = "\tg_serveractive = 1;\n#ifdef __GAMECUBE__\n"
 	if "DodGC_MohaaLevelInit();" not in text:
-		if "DodGC_PrecacheTeamBodies();" in text:
-			replace_once(client, "\tDodGC_PrecacheTeamBodies();\n",
-				"\tDodGC_PrecacheTeamBodies();\n\tDodGC_MohaaLevelInit();\n")
-		else:
-			replace_once(client, "\tg_serveractive = 1;\n",
-				"\tg_serveractive = 1;\n#ifdef __GAMECUBE__\n\tDodGC_PrecacheTeamBodies();\n\tDodGC_MohaaLevelInit();\n#endif\n")
-	text = client.read_text()
+		call += "\tDodGC_MohaaLevelInit();\n"
 	if "DodGC_PrecacheTeamBodies();" not in text:
-		if "DodGC_MohaaLevelInit();" in text:
-			replace_once(client, "\tDodGC_MohaaLevelInit();\n",
-				"\tDodGC_PrecacheTeamBodies();\n\tDodGC_MohaaLevelInit();\n")
-		else:
-			replace_once(client, "\tg_serveractive = 1;\n",
-				"\tg_serveractive = 1;\n#ifdef __GAMECUBE__\n\tDodGC_PrecacheTeamBodies();\n#endif\n")
+		call += "\tDodGC_PrecacheTeamBodies();\n"
+	if "DodGC_MohaaPrecacheModels();" not in text:
+		call += "\tDodGC_MohaaPrecacheModels();\n"
+	call += "#endif\n"
+	if "DodGC_MohaaLevelInit();" not in text or "DodGC_PrecacheTeamBodies();" not in text or "DodGC_MohaaPrecacheModels();" not in text:
+		replace_once(client, "\tg_serveractive = 1;\n", call)
 
 
 def integrate_weaponbox_null_check(dlls: Path) -> None:
@@ -720,7 +751,7 @@ DOD_DLL_SOURCES = (
 	"dod_film.c", "dod_film.h", "dod_film_actor.cpp",
 	"dod_achievements.c", "dod_achievements.h",
 	"dod_grunts.c", "dod_grunts.h", "dod_grunt.cpp",
-	"dod_mohaa.c", "dod_mohaa.h", "dod_mohaa_paths.h", "dod_mohaa_pool.h", "dod_mohaa_ents.cpp", "dod_mohaa_ents.h",
+	"dod_mohaa.c", "dod_mohaa.h", "dod_mohaa_hud.h", "dod_mohaa_paths.h", "dod_mohaa_pool.h", "dod_mohaa_tags.h", "dod_mohaa_ents.cpp", "dod_mohaa_ents.h",
 )
 # The MOHAA script VM (src/mohaa/, vendored from timfox/mohaa-gc), copied flat into dlls/.
 MOHAA_VM_SOURCES = ("morpheus.h", "ms_internal.h", "ms_value.c", "ms_compile.c", "ms_vm.c", "ms_builtins.c")
@@ -814,7 +845,32 @@ def integrate_dod_hud(client: Path) -> None:
 		'\t\t\t\tif( m_Menu.m_fMenuDisplayed )\n'
 		'\t\t\t\t\tm_Menu.Draw( flTime );\n'
 		'\t\t\t\treturn 1;\n'
-		'\t\t\t}\n')
+		'\t\t\t}\n',
+		done='\t\t\tif( m_Dod.DrawRetail( flTime ) )\n')
+	# MOHAA always runs the lean HUD tier: the stock full HUD's battery and
+	# sprite sheets are not on a MOHAA card (the old route crashed in CHudBattery::Draw).
+	replace_once(client / "hud.cpp",
+		'\tint value = quality ? quality->value : 1;\n',
+		'\tint value = HUD_IsGame( "mohaa" ) ? 0 : ( quality ? quality->value : 1 );\n')
+	replace_once(client / "hud_redraw.cpp",
+		'\t\tconst int q = quality ? (int)quality->value : 1;\n',
+		'\t\tconst int q = HUD_IsGame( "mohaa" ) ? 0 : ( quality ? (int)quality->value : 1 );\n')
+	# MOHAA's lean HUD: the retail health meter, ammo arm and crosshair
+	# (CHudDod::DrawMohaaVitals) plus the scripted compass and tips (DrawMohaa),
+	# drawn before the DoD retail HUD and returning before the HL sprite list.
+	# The published SDK has no MOHAA hook, so the whole block is added here.
+	replace_once(client / "hud_redraw.cpp",
+		'\t\t\t/* Day of Defeat: the retail HUD replaces the HL lean sprites. */\n',
+		'\t\t\t/* MOHAA draws its own retail HUD art, compass and script tips. */\n'
+		'\t\t\tif( m_Dod.DrawMohaaVitals( m_Health.m_iHealth, m_Ammo.GetLeanClip() ) )\n'
+		'\t\t\t{\n'
+		'\t\t\t\tm_Dod.DrawMohaa( flTime );\n'
+		'\t\t\t\tif( m_Menu.m_fMenuDisplayed )\n'
+		'\t\t\t\t\tm_Menu.Draw( flTime );\n'
+		'\t\t\t\treturn 1;\n'
+		'\t\t\t}\n'
+		'\n'
+		'\t\t\t/* Day of Defeat: the retail HUD replaces the HL lean sprites. */\n')
 
 
 def integrate_spectator_camera(client: Path) -> None:
@@ -1028,6 +1084,7 @@ def main() -> int:
 			'\t\tbytes = 8u * 1024u;\n',
 		)
 		integrate_static_edict_gate(sv_game)
+		integrate_mohaa_listen_frame(args.engine_dir / "engine/server/sv_main.c")
 		model = args.engine_dir / "engine/common/model.c"
 		# Already deferred (empty promote) — nothing to patch.
 		model_text = model.read_text()
@@ -1175,6 +1232,35 @@ def main() -> int:
 		dlls / "gamerules.cpp",
 		'\tif( !stricmp( gameleaf, "dod" ) && gpGlobals->deathmatch )\n',
 		'\tif(( !stricmp( gameleaf, "dod" ) || !stricmp( gameleaf, "mohaa" )) && gpGlobals->deathmatch )\n',
+	)
+	# MOHAA "press USE here" triggers: a fresh USE press reaches the nearest trigger_use / trigger_multiple brush
+	# (DodGC_MohaaPlayerUse; nothing outside the mohaa game folder).
+	player_cpp = dlls / "player.cpp"
+	if '#include "dod_mohaa_ents.h"' not in player_cpp.read_text():
+		replace_once(player_cpp, '#include "gamerules.h"\n', '#include "gamerules.h"\n#include "dod_mohaa_ents.h"\n')
+	replace_once(
+		dlls / "player.cpp",
+		'\t// Was use pressed or released?\n\tif( !( ( pev->button | m_afButtonPressed | m_afButtonReleased) & IN_USE ) )\n\t\treturn;\n',
+		'\t// Was use pressed or released?\n\tif( !( ( pev->button | m_afButtonPressed | m_afButtonReleased) & IN_USE ) )\n\t\treturn;\n'
+		'\tif( DodGC_MohaaPlayerUse( this ) )\n\t\treturn;\n',
+	)
+	# MOHAA's campaign is single player (the menu's New Game sets deathmatch 0), so its levels run under
+	# CHalfLifeRules. Start and think the MOHAA level there too: the mission script, its soldiers and the
+	# m1l1 opening ride (DodGC_SinglePlayerLevelInit / DodGC_SinglePlayerThink do nothing outside mohaa).
+	replace_once(
+		dlls / "singleplay_gamerules.cpp",
+		'#include\t"items.h"\n',
+		'#include\t"items.h"\n#include\t"dod_runtime.h"\n',
+	)
+	replace_once(
+		dlls / "singleplay_gamerules.cpp",
+		'\tSERVER_COMMAND( "exec spserver.cfg\\n" );\n\tRefreshSkillData();\n}\n',
+		'\tSERVER_COMMAND( "exec spserver.cfg\\n" );\n\tRefreshSkillData();\n\tDodGC_SinglePlayerLevelInit();\n}\n',
+	)
+	replace_once(
+		dlls / "singleplay_gamerules.cpp",
+		'void CHalfLifeRules::Think( void )\n{\n}\n',
+		'void CHalfLifeRules::Think( void )\n{\n\tDodGC_SinglePlayerThink();\n}\n',
 	)
 	# Mounted guns (func_tank): the stock Half-Life tank aims at and fires on the first client in its view with no team check
 	# (CFuncTank::FindTarget returns the player), so an active func_tank killed the Axis bots at their own spawn on avalanche

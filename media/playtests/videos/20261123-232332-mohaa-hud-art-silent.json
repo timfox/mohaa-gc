@@ -1,0 +1,15 @@
+{
+  "file": "20261123-232332-mohaa-hud-art-silent.mp4",
+  "date": "2026-11-23T23:23:32",
+  "commit": "6be6ce53a9",
+  "engine_commit": "db73d0d126",
+  "route": "mohaa-hud-art",
+  "disc": "/tmp/mohaa-hud-visual/mohaa-m1l1-hud-visual.iso",
+  "duration_s": 59.2,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 0.1,
+  "project": "mohaa-gc",
+  "audio": "silent screen capture (forced or PulseAudio unavailable)"
+}

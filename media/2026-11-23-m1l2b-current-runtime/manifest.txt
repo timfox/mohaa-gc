@@ -1,0 +1,11 @@
+Local capture: 2026-11-23 16:11:34 PT (2026-11-24 00:11:34 UTC)
+MOHAA repository revision: db38fd986caaa9e0147e6442abc206955ecea852
+Engine source copy: db73d0d126 (scratch copy; provenance limited to local build handoff)
+DOL: /tmp/mohaa-actor-build/engine-out/bin/mohaagc.dol
+DOL SHA-256: f7e8411d10934868690a6ef2c1c9b4883943306b6f0f80ef654714375b502aa2
+ISO: /tmp/mohaa-actor-build/out/mohaa-m1l2b-actor-code.iso
+ISO SHA-256: 4a7ccf24398edafb16ca5d6212a5013daf895c153b9d1b7de5fd9ad5d54096f4
+Dolphin revision: 7c9d49d63d37
+Backend: OpenGL
+CPU: Interpreter, CPU thread on, MMU and accurate CPU cache on, DSP HLE
+Capture: 640x480; 45-second bounded GUI probe; isolated user profile under /tmp

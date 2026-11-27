@@ -1,0 +1,15 @@
+{
+  "file": "20261123-215710-m1l1-final-skybox-silent.mp4",
+  "date": "2026-11-23T21:57:10",
+  "commit": "4410a88aa7",
+  "engine_commit": "db73d0d126",
+  "route": "m1l1-final-skybox",
+  "disc": "/tmp/mohaa-m1l1-sky-final/out/m1l1-final-skybox.iso",
+  "duration_s": 49.2,
+  "streams": [
+    "video:h264"
+  ],
+  "size_mb": 0.8,
+  "project": "mohaa-gc",
+  "audio": "silent screen capture (forced or PulseAudio unavailable)"
+}

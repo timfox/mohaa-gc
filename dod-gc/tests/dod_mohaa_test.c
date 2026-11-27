@@ -21,6 +21,7 @@ typedef struct Ent {
 #define NENTS 16
 static Ent ents[NENTS];
 static const char *files[8][2];
+static size_t file_len[8];	/* nonzero: a binary file of this many bytes (it may hold NULs) */
 static char log_buf[4096];
 
 static void logf_(const char *s)
@@ -42,6 +43,12 @@ static char *m_load(const char *path, size_t *len)
 {
 	int i;
 	for (i = 0; i < 8 && files[i][0]; i++) {
+		if (!strcmp(files[i][0], path) && file_len[i]) {
+			char *s = malloc(file_len[i]);
+			memcpy(s, files[i][1], file_len[i]);
+			*len = file_len[i];
+			return s;
+		}
 		if (!strcmp(files[i][0], path)) {
 			char *s = strdup(files[i][1]);
 			*len = strlen(s);
@@ -164,7 +171,8 @@ static void m_fade(float t, float r, float g, float b, float a, int out)
 
 static int m_actor(uint32_t id, int order, const float pos[3])
 {
-	static const char *names[] = {"ai_on", "ai_off", "attack", "walkto", "runto", "turnto", "stop"};
+	static const char *names[] = {"ai_on", "ai_off", "attack", "walkto", "runto", "turnto", "stop",
+		"sight", "hearing", "fov", "leash", "tether", "mindist", "maxdist", "gun", "style", "patrolto", "disguise", "turret", "accuracy"};
 	char line[96];
 	Ent *e = ent(id);
 	if (!e || strcmp(e->classname, "actor"))
@@ -182,6 +190,29 @@ static void m_music(const char *intro, const char *loop)
 	else
 		snprintf(buf, sizeof(buf), "<music %s | %s>\n", intro, loop);
 	logf_(buf);
+}
+
+/* cutscene backend: the held player, where they were put, their view and HUD, shots */
+static int locked, places, place_eye;
+static float place_pos[3], view_abs[3], view_add;
+static int hud_bits = -1;
+static void m_lock(uint32_t id, int on) { (void)id; locked = on; }
+static void m_place(uint32_t id, const float p[3], int eye) { (void)id; places++; place_eye = eye; memcpy(place_pos, p, 12); }
+static void m_view(uint32_t id, const float a[3], int add)
+{
+	(void)id;
+	if (add)
+		view_add += a[1];
+	else
+		memcpy(view_abs, a, 12);
+}
+static void m_hud(int bits) { hud_bits = bits; }
+static void m_damage_at(uint32_t attacker, const float p[3], float radius, float dmg)
+{
+	char line[128];
+	snprintf(line, sizeof(line), "<damage %s %.1f %.1f %.1f r%.1f d%.0f>\n", attacker ? ent(attacker)->targetname : "world",
+		p[0], p[1], p[2], radius, dmg);
+	logf_(line);
 }
 
 static DodMohaaBackend backend(void)
@@ -212,6 +243,11 @@ static DodMohaaBackend backend(void)
 	b.set_cvar = m_set_cvar;
 	b.precache_sound = m_precache;
 	b.music = m_music;
+	b.player_lock = m_lock;
+	b.place_player = m_place;
+	b.view = m_view;
+	b.hud = m_hud;
+	b.damage_at = m_damage_at;
 	return b;
 }
 
@@ -220,6 +256,7 @@ static void reset(void)
 	Dod_MohaaShutdown();
 	memset(ents, 0, sizeof(ents));
 	memset(files, 0, sizeof(files));
+	memset(file_len, 0, sizeof(file_len));
 	log_buf[0] = 0;
 	precached[0] = 0;
 }
@@ -242,6 +279,217 @@ static void test_no_script_no_vm(void)
 	Dod_MohaaThink(1.0f);
 	Dod_MohaaGetStats(&st);
 	assert(!st.active && st.memory == 0);
+}
+
+/* m1l2b's printhints: an unbound key reads NIL (so the script prints its own "NOT BOUND"), a pad-bound one its
+   button, and loc_convert_string passes the text through (it printed "NILNOT BOUNDNIL" before both were bound) */
+static void test_bound_keys_and_loc_strings(void)
+{
+	DodMohaaBackend b = backend();
+	reset();
+	files[0][0] = "maps/keys.scr";
+	files[0][1] =
+		"main:\n"
+		"\tlocal.k = getboundkey1 \"+scores\"\n"
+		"\tif (local.k == NIL)\n"
+		"\t\tlocal.k = \"NOT BOUND\"\n"
+		"\tprintln ((loc_convert_string \"Press ( \") + local.k + (loc_convert_string \" ) now\"))\n"
+		"\tprintln (\"use=\" + (getboundkey1 \"+use\"))\n"
+		"\tif ((getboundkey2 \"+use\") == NIL)\n"
+		"\t\tprintln \"second none\"\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "keys", 0, 0));
+	run(0.05f, 0.2f);
+	assert(strstr(log_buf, "Press ( NOT BOUND ) now"));
+	assert(strstr(log_buf, "use=B"));
+	assert(strstr(log_buf, "second none"));
+	assert(!strstr(log_buf, "not bound yet"));
+}
+
+/* the actor settings reach the backend in GoldSrc units (fov in degrees, tether as the entity's spot) */
+static void test_actor_settings(void)
+{
+	DodMohaaBackend b = backend();
+	int guy, post;
+	reset();
+	guy = add("guy", "actor", 0, 0, 0);
+	post = add("post", "info_target", 940, 0, 0);
+	(void)guy; (void)post;
+	files[0][0] = "maps/ai.scr";
+	files[0][1] =
+		"main:\n"
+		"\t$guy sight 1880\n"
+		"\t$guy hearing 940\n"
+		"\t$guy fov 90\n"
+		"\t$guy leash 470\n"
+		"\t$guy fixedleash 1\n"
+		"\t$guy tether $post\n"
+		"\t$guy mindist 128\n"
+		"\t$guy maxdist 1024\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "ai", 0, 0));
+	run(0.05f, 0.2f);
+	assert(strstr(log_buf, "<guy sight 1440.0"));
+	assert(strstr(log_buf, "<guy hearing 720.0"));
+	assert(strstr(log_buf, "<guy fov 90.0"));
+	assert(strstr(log_buf, "<guy leash 360.0"));
+	assert(strstr(log_buf, "<guy tether 940.0"));
+	assert(strstr(log_buf, "<guy maxdist 784.3"));
+	assert(!strstr(log_buf, "not bound yet"));
+}
+
+/* cover: the nearest free node flagged cover/duck/crate/concealment that keeps a fighting distance from the enemy,
+   one soldier per node */
+static void test_cover_spot(void)
+{
+	DodMohaaBackend b = backend();
+	float from[3] = {0, 0, 0}, enemy[3] = {1000, 0, 0}, out[3];
+	b.walkable = NULL;
+	reset();
+	files[1][0] = "maps/c.nodes";
+	files[1][1] = "# x y z grav spawnflags targetname\n"
+		"100 0 0 0 0 -\n"		/* plain node: no cover */
+		"150 40 0 0 4 -\n"		/* cover, nearest */
+		"300 -60 0 0 32 -\n"		/* crate */
+		"900 0 0 0 4 -\n"		/* cover, but on top of the enemy */
+		"-700 0 0 0 4 -\n"		/* cover, too far back */
+		"120 0 300 0 4 -\n";		/* cover, a floor up */
+	files[0][0] = "maps/c.scr";
+	files[0][1] = "main:\nend\n";
+	assert(Dod_MohaaLevelInit(&b, "c", 0, 0));
+	run(0.05f, 0.1f);
+	assert(Dod_MohaaCoverSpot(1, from, enemy, out) && out[0] == 150.0f && out[1] == 40.0f);
+	assert(Dod_MohaaCoverSpot(2, from, enemy, out) && out[0] == 300.0f);	/* the first is taken */
+	assert(Dod_MohaaCoverSpot(1, from, enemy, out) && out[0] == 150.0f);	/* its own claim is still its */
+	assert(!Dod_MohaaCoverSpot(3, from, enemy, out));
+}
+
+/* gun names map to DoD weapons (none: unarmed), type_attack runandshoot charges, startfiring/stopfiring flip it,
+   and ".weapon =" picks the gun too */
+static void test_actor_weapons(void)
+{
+	DodMohaaBackend b = backend();
+	reset();
+	add("guy", "actor", 0, 0, 0);
+	add("mg", "func_wall", 0, 0, 0);
+	files[0][0] = "maps/w.scr";
+	files[0][1] =
+		"main:\n"
+		"\t$guy gun \"MP40\"\n"
+		"\t$guy gun \"none\"\n"
+		"\t$guy gun \"Flamethrower\"\n"
+		"\t$guy.weapon = \"Mauser KAR 98K\"\n"
+		"\t$guy type_attack \"runandshoot\"\n"
+		"\t$guy type_attack \"turret\"\n"
+		"\t$guy startFiring\n"
+		"\t$guy stopfiring\n"
+		"\t$mg startfiring\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "w", 0, 0));
+	run(0.05f, 0.2f);
+	assert(strstr(log_buf, "<guy gun 10.0"));	/* DOD_WEAPON_MP40 */
+	assert(strstr(log_buf, "<guy gun -1.0"));
+	assert(strstr(log_buf, "<guy gun 0.0"));
+	assert(strstr(log_buf, "<guy gun 8.0"));	/* DOD_WEAPON_K98 */
+	assert(strstr(log_buf, "<guy style 1.0") && strstr(log_buf, "<guy style 0.0"));
+	assert(strstr(log_buf, "<guy turret 0.0"));	/* type_attack "turret" asks for a gun to man */
+	assert(!strstr(log_buf, "not bound yet") && !strstr(log_buf, "not an actor"));
+}
+
+/* patrol: type_idle patrol + patrolpath walks the info_waypoint chain target by target; an alerted soldier stops,
+   runs its alarmthread and heads for its alarmnode */
+static void test_patrol_and_alarm(void)
+{
+	DodMohaaBackend b = backend();
+	int guy, wp1, wp2, wp3, post;
+	reset();
+	guy = add("guy", "actor", 0, 0, 0);
+	wp1 = add("wp1", "info_target", 94, 0, 0);
+	wp2 = add("wp2", "info_target", 94, 94, 0);
+	wp3 = add("wp3", "info_target", 0, 94, 0);
+	post = add("post", "info_target", 188, 188, 0);
+	snprintf(ents[wp1].target, sizeof(ents[wp1].target), "wp2");
+	snprintf(ents[wp2].target, sizeof(ents[wp2].target), "wp3");
+	(void)wp3; (void)post;
+	files[0][0] = "maps/p.scr";
+	files[0][1] =
+		"main:\n"
+		"\t$guy type_idle \"patrol\"\n"
+		"\t$guy patrolpath $wp1\n"
+		"\t$guy alarmthread alarmed\n"
+		"\t$guy alarmnode $post\n"
+		"end\n"
+		"alarmed:\n"
+		"\tprintln \"alarm raised\"\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "p", 0, 0));
+	run(0.05f, 0.2f);
+	assert(strstr(log_buf, "<guy patrolto 94.0 0.0"));	/* wp1 (GoldSrc units, as the backend gives them) */
+	Dod_MohaaNotify(make_id(guy), "movedone");
+	run(0.25f, 0.4f);
+	assert(strstr(log_buf, "<guy patrolto 94.0 94.0"));	/* wp2 */
+	Dod_MohaaActorAlerted(make_id(guy));
+	run(0.45f, 0.6f);
+	assert(strstr(log_buf, "<guy runto 188.0 188.0"));	/* its alarmnode */
+	assert(strstr(log_buf, "alarm raised"));
+	assert(!strstr(log_buf, "not bound yet"));
+}
+
+/* disguise: "$player.has_disguise" reaches the game and reads back; type_disguise and the .type_disguise field tell a
+   soldier whether to heed it */
+static int g_disguised;
+static void m_disguise(uint32_t id, int on) { (void)id; g_disguised = on; }
+static int m_get_disguise(uint32_t id) { (void)id; return g_disguised; }
+static void test_disguise(void)
+{
+	DodMohaaBackend b = backend();
+	b.disguise = m_disguise;
+	b.get_disguise = m_get_disguise;
+	reset();
+	g_disguised = 0;
+	add("player", "player", 0, 0, 0);
+	add("guy", "actor", 0, 0, 0);
+	files[0][0] = "maps/d.scr";
+	files[0][1] =
+		"main:\n"
+		"\t$player.has_disguise = 1\n"
+		"\tif ($player.has_disguise == 1)\n"
+		"\t\tprintln \"in disguise\"\n"
+		"\t$guy type_disguise \"none\"\n"
+		"\t$guy.type_disguise = \"salute\"\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "d", 0, 0));
+	run(0.05f, 0.2f);
+	assert(g_disguised == 1 && strstr(log_buf, "in disguise"));
+	assert(strstr(log_buf, "<guy disguise 0.0") && strstr(log_buf, "<guy disguise 1.0"));
+	assert(!strstr(log_buf, "not bound yet"));
+}
+
+/* "$name thread label" on a name several entities share: each runs it (m1l2a's door hint watches every
+   door_locked trigger, and the second one fired the hint) */
+static void test_thread_on_shared_name(void)
+{
+	DodMohaaBackend b = backend();
+	int d1, d2;
+	reset();
+	d1 = add("door", "trigger_multiple", 0, 0, 0);
+	d2 = add("door", "trigger_multiple", 100, 0, 0);
+	(void)d1;
+	files[0][0] = "maps/t2.scr";
+	files[0][1] =
+		"main:\n"
+		"\t$door thread watch\n"
+		"end\n"
+		"watch:\n"
+		"\tself waittill trigger\n"
+		"\tprintln \"door hit\"\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "t2", 0, 0));
+	run(0.05f, 0.2f);
+	Dod_MohaaNotify(make_id(d2), "trigger");
+	run(0.25f, 0.4f);
+	if (!strstr(log_buf, "door hit")) fprintf(stderr, "LOG:\n%s\n", log_buf);
+	assert(strstr(log_buf, "door hit"));
 }
 
 static void test_level_flow_and_movers(void)
@@ -492,8 +740,8 @@ static void test_music(void)
 	files[2][0] = "music/other.mood";
 	files[2][1] = "normal mohaa/music/other.wav 1.00 1 0.0\n";
 	assert(Dod_MohaaLevelInit(&b, "m", 0, 0));
-	/* the map's own soundtrack starts on normal */
-	assert(!strncmp(log_buf, "<music sound/mohaa/music/calm.wav | sound/mohaa/music/calm.wav>\n", 62));
+	/* the map's own soundtrack starts on normal (after any path-node notice for this node-less test map) */
+	assert(strstr(log_buf, "<music sound/mohaa/music/calm.wav | sound/mohaa/music/calm.wav>\n"));
 	run(0.05f, 0.3f);
 	assert(strstr(log_buf,
 		"<music sound/mohaa/music/fight.wav | sound/mohaa/music/calm.wav>\n"	/* once, then back to normal */
@@ -925,12 +1173,535 @@ static void test_vehicle_drive(void)
 	Dod_MohaaShutdown();
 }
 
+/* maps/<map>.tags in the layout mohaa-gc tools/mohaa_tags.py writes */
+static size_t put_name(unsigned char *o, const char *s)
+{
+	o[0] = (unsigned char)strlen(s);
+	memcpy(o + 1, s, strlen(s));
+	return 1 + strlen(s);
+}
+static size_t put_u32(unsigned char *o, uint32_t v) { o[0] = v; o[1] = v >> 8; o[2] = v >> 16; o[3] = v >> 24; return 4; }
+static size_t put_f32(unsigned char *o, float f) { uint32_t u; memcpy(&u, &f, 4); return put_u32(o, u); }
+static size_t put_i16(unsigned char *o, int v) { o[0] = (unsigned char)(v & 0xff); o[1] = (unsigned char)((v >> 8) & 0xff); return 2; }
+
+static size_t make_tags(unsigned char *o)
+{
+	/* one model, one tag, "idle" of 2 frames 2 s apart: (100 0 0) facing +x, then (100 200 0) turned 90 left */
+	static const int frames[2][7] = {{100, 0, 0, 0, 0, 0, 32767}, {100, 200, 0, 0, 0, 23170, 23170}};
+	size_t n = 0;
+	int f, k;
+	memcpy(o, "MTAG", 4);
+	n = 4;
+	n += put_u32(o + n, 1);
+	n += put_u32(o + n, 1);
+	n += put_name(o + n, "driver_getvisa");
+	n += put_f32(o + n, 5.0f);
+	n += put_u32(o + n, 1);
+	n += put_name(o + n, "vehicles/path.tik");
+	o[n++] = 1;
+	n += put_name(o + n, "tag_camera");
+	o[n++] = 1;
+	n += put_name(o + n, "idle");
+	n += put_f32(o + n, 2.0f);
+	o[n++] = 2; o[n++] = 0;
+	n += put_f32(o + n, 1.0f);
+	for (f = 0; f < 2; f++)
+		for (k = 0; k < 7; k++)
+			n += put_i16(o + n, frames[f][k]);
+	return n;
+}
+
+static int read_vec(const char *key, float v[3])
+{
+	const char *p = strstr(log_buf, key);
+	return p && sscanf(p + strlen(key), " (%f %f %f)", &v[0], &v[1], &v[2]) == 3;
+}
+
+static void test_cutscene(void)
+{
+	static unsigned char tags[256];
+	DodMohaaBackend b = backend();
+	float v[3];
+	int player, turret, org;
+	reset();
+	locked = places = 0;
+	view_add = 0;
+	hud_bits = -1;
+	add("path", "info_target", 0, 0, 0);
+	add("guard", "actor", 0, 0, 0);
+	add("extra", "actor", 0, 0, 0);
+	add("bazooka", "actor", 0, 0, 0);
+	add("target", "info_target", 94, 0, 0);
+	player = add("player", "player", 0, 0, 0);
+	turret = add("turret", "info_target", 0, 0, 0);
+	org = add("truckorg", "info_target", 0, 0, 0);
+	files[0][0] = "maps/c.tags";
+	files[0][1] = (const char *)tags;
+	file_len[0] = make_tags(tags);
+	files[1][0] = "maps/c.scr";
+	files[1][1] =
+		"main:\n"
+		"\tlevel waittill spawn\n"
+		"\t$path model \"models/vehicles/path.tik\"\n"
+		"\t$path.angles = (0 90 0)\n"
+		"\t$path anim idle\n"
+		"\t$guard thread watch\n"
+		"\t$guard anim_scripted driver_getvisa\n"
+		"\t$extra thread watch\n"
+		"\t$extra anim nobody_baked_this\n"
+		"\t$turret doUse $player\n"
+		"\t$turret glue $truckorg\n"
+		"\t$player physics_off\n"
+		"\t$turret.viewangles = (10 180 0)\n"
+		"\tthread follow\n"
+		"\twait 1\n"
+		"\tprintln (\"half \" + ($path gettagposition \"tag_camera\") + \" \" + ($path gettagangles \"TAG_CAMERA\"))\n"
+		"\tdrawhud 0\n"
+		"\twait 1.5\n"
+		"\tprintln (\"end \" + ($path gettagposition \"tag_camera\") + \" \" + ($path gettagangles \"tag_camera\"))\n"
+		"\tprintln (\"plain \" + ($path gettagposition \"no_such_tag\"))\n"
+		"\tlevel.ride = 0\n"
+		"\t$turret doUse $player\n"
+		"\t$player physics_on\n"
+		"\tdrawhud 1\n"
+		"\t$bazooka aimat $target\n"
+		"\t$bazooka animscript anim/shoot.scr\n"
+		"\tradiusdamage (94 0 0) 100 94\n"
+		"end\n"
+		"follow:\n"
+		"\tlevel.ride = 1\n"
+		"\twhile (level.ride) {\n"
+		"\t\t$truckorg.origin = $path gettagposition \"tag_camera\"\n"
+		"\t\t$turret.viewangles = (10 (180 + level.time * 10) 0)\n"
+		"\t\twaitframe\n"
+		"\t}\n"
+		"end\n"
+		"watch:\n"
+		"\tself waittill animdone\n"
+		"\tprintln (\"animdone \" + self.targetname + \" \" + level.time)\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "c", 0, 0));
+	assert(strstr(log_buf, "1 models with tags, 1 animation lengths"));
+	run(0.05f, 0.5f);
+	/* on the turret: locked, weapon HUD gone, eyes at the turret, which is glued onto the camera tag */
+	assert(locked && hud_bits == DOD_MOHAA_HUD_WEAPON);
+	assert(places > 0 && place_eye == 1);
+	assert(near(view_abs[0], 10.0f) && view_abs[1] >= 180.0f && view_abs[1] < 182.0f);
+	assert(fabsf(ents[turret].origin[0] - ents[org].origin[0]) < 0.01f);
+	run(0.55f, 1.3f);
+	/* halfway: (100 100 0) turned 45 left in the path, then the path's own 90: (-100 100 0) facing 135 */
+	assert(read_vec("half ", v));
+	assert(fabsf(v[0] + 100.0f) < 6.0f && fabsf(v[1] - 100.0f) < 6.0f && fabsf(v[2]) < 0.01f);
+	assert(strstr(log_buf, "animdone extra 1.1"));	/* no baked length: a second */
+	assert(!strstr(log_buf, "animdone guard"));
+	assert(hud_bits == (DOD_MOHAA_HUD_ALL | DOD_MOHAA_HUD_WEAPON));
+	run(1.35f, 6.0f);
+	{
+		const char *h = strstr(log_buf, "half ");
+		float a[3];
+		assert(h && sscanf(strchr(h + 6, ')') + 1, " (%f %f %f)", &a[0], &a[1], &a[2]) == 3);
+		assert(fabsf(a[1] - 135.0f) < 3.0f && fabsf(a[0]) < 0.01f && fabsf(a[2]) < 0.01f);
+	}
+	/* past the last frame the tag holds there: (100 200 0) -> (-200 100 0), facing 180 */
+	assert(read_vec("end ", v));
+	assert(fabsf(v[0] + 200.0f) < 0.1f && fabsf(v[1] - 100.0f) < 0.1f);
+	assert(strstr(log_buf, "plain (0.000 0.000 0.000)"));
+	assert(strstr(log_buf, "animdone guard 5.1"));	/* driver_getvisa's baked 5 s */
+	/* the view followed the turret's turns (10 degrees a second for ~2.4 s) */
+	assert(view_add > 20.0f && view_add < 26.0f);
+	/* off the turret: free again, HUD back */
+	assert(!locked && hud_bits == 0);
+	assert(strstr(log_buf, "<damage bazooka 94.0 0.0 0.0 r48.0 d200>"));
+	assert(strstr(log_buf, "<damage world 72.0 0.0 0.0 r72.0 d100>"));
+	(void)player;
+	Dod_MohaaShutdown();
+}
+
 /* one line per test, so a run reads as a list (tools/capture_run.py records it) */
 #define RUN(t) do { t(); printf("  %-40s ok\n", #t); fflush(stdout); } while (0)
+
+/* ".gun = <targetname>" (spotlight.scr's "self.spotter.gun = self.spotter.target") points at that entity, so
+   "self.gun.targetname" and "self.gun startfiring" reach the MG42; a weapon name stays the actor's weapon */
+static void test_gun_field_names_turret(void)
+{
+	DodMohaaBackend b = backend();
+	reset();
+	add("gunner", "actor", 0, 0, 0);
+	add("t9", "info_target", 10, 0, 0);
+	files[0][0] = "maps/g.scr";
+	files[0][1] =
+		"main:\n"
+		"\t$gunner.gun = \"t9\"\n"
+		"\tprintln (\"gun=\" + $gunner.gun.targetname)\n"
+		"\t$gunner.turret = \"t9\"\n"
+		"\tprintln (\"turret=\" + $gunner.turret.targetname)\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "g", 0, 0));
+	run(0.05f, 0.2f);
+	assert(strstr(log_buf, "gun=t9"));
+	assert(strstr(log_buf, "turret=t9"));
+}
+
+/* type_disguise "papers": a disguised player within disguise_range is asked for papers; USE shows them (level 1 papers
+   pass a level 1 soldier), no papers blow the disguise and alert him, and so does waiting out disguise_period.
+   "salute" turns to the player. The other bindings of the list (triggerable, resetleash, ...) are bound. */
+/* the papers card (DOD_MOHAA_HUD_PAPERS_INDEX): last shader and alpha sent */
+static char g_card_shader[64];
+static float g_card_alpha = -1.0f;
+static void m_hud_draw_card(int index, const DodMohaaHudDraw *d)
+{
+	if (index != DOD_MOHAA_HUD_PAPERS_INDEX || !d)
+		return;
+	snprintf(g_card_shader, sizeof(g_card_shader), "%s", d->shader);
+	g_card_alpha = d->a;
+}
+
+static void test_disguise_papers_and_salute(void)
+{
+	DodMohaaBackend b = backend();
+	b.hud_draw = m_hud_draw_card;
+	uint32_t player_id = 0;
+	int guard, saluter, pl;
+	b.disguise = m_disguise;
+	b.get_disguise = m_get_disguise;
+	reset();
+	g_disguised = 0;
+	pl = add("player", "player", 300, 0, 0);
+	guard = add("guard", "actor", 0, 0, 0);
+	saluter = add("officer", "actor", 0, 400, 0);
+	add("trig", "trigger_multiple", 0, 0, 0);
+	ents[guard].health = ents[saluter].health = ents[pl].health = 100;
+	files[0][0] = "maps/p.scr";
+	files[0][1] =
+		"main:\n"
+		"\t$player.has_disguise = 1\n"
+		"\t$guard type_disguise \"papers\"\n"
+		"\t$guard disguise_range 128\n"
+		"\t$guard.disguise_period = 2\n"
+		"\t$guard disguise_level 1\n"
+		"\tprintln (\"range=\" + $guard.disguise_range)\n"
+		"\t$officer type_disguise \"salute\"\n"
+		"\t$trig nottriggerable\n"
+		"\t$trig triggerable\n"
+		"\t$guard resetleash\n"
+		"\tlocal.a = $guard getwalkanim\n"
+		"\tprintln (\"walk=\" + local.a)\n"
+		"\t$guard german\n"
+		"\t$guard immune bullet\n"
+		"\t$guard setcollisionentity $trig\n"
+		"\tthread givepapers\n"
+		"end\n"
+		"givepapers:\n"
+		"\twait 1.5\n"
+		"\t$player item models/items/papers.tik\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "p", 0, 0));
+	run(0.05f, 0.5f);
+	assert(strstr(log_buf, "range=128") && strstr(log_buf, "walk=walk"));
+	assert(strstr(log_buf, "<guard leash -1.0"));
+	assert(!strstr(log_buf, "not bound yet"));
+	assert(!strstr(log_buf, "asks for papers"));	/* 300 units away, outside 128 */
+	assert(b.find("player", &player_id, 1) >= 1);
+	assert(!Dod_MohaaShowPapers(player_id));	/* nobody is asking */
+	/* walk up: he asks; no papers on the player: shown, the disguise is blown */
+	ents[pl].origin[0] = 60.0f;
+	run(0.55f, 0.9f);
+	assert(strstr(log_buf, "guard asks for papers") && strstr(log_buf, "<guard turnto"));
+	assert(Dod_MohaaShowPapers(player_id));
+	assert(g_disguised == 0 && strstr(log_buf, "disguise blown"));
+	/* papers in hand: back in disguise, he asks again and lets the player pass */
+	log_buf[0] = 0;
+	ents[pl].origin[0] = 1000.0f;
+	run(0.95f, 1.3f);
+	g_disguised = 1;
+	ents[pl].origin[0] = 60.0f;
+	run(1.35f, 1.7f);
+	assert(strstr(log_buf, "guard asks for papers"));
+	/* the script gave level 1 papers at 1.5 s ($player item models/items/papers.tik) */
+	assert(Dod_MohaaShowPapers(player_id));
+	assert(g_disguised == 1 && strstr(log_buf, "they pass"));
+	/* held up on screen: the level 1 papers' card, gone 3 s later */
+	assert(!strcmp(g_card_shader, "textures/hud/item_papers1") && g_card_alpha == 1.0f);
+	/* the officer salutes when the player comes near */
+	ents[pl].origin[0] = 0.0f;
+	ents[pl].origin[1] = 350.0f;
+	run(1.75f, 2.1f);
+	assert(strstr(log_buf, "officer salutes"));
+	/* waiting out the period blows it */
+	log_buf[0] = 0;
+	ents[pl].origin[0] = 1000.0f; ents[pl].origin[1] = 0.0f;
+	run(2.15f, 2.5f);
+	ents[pl].origin[0] = 60.0f;
+	run(2.55f, 5.0f);
+	assert(strstr(log_buf, "got no papers: disguise blown") && g_disguised == 0);
+	assert(g_card_alpha == 0.0f);	/* the card went down 3 s after it was held up */
+}
+
+/* a turretweapon's own commands reach the game: setaimtarget/clearaimtarget, burstfiresettings, maxyawoffset and
+   startfiring/stopfiring (not the actor path) */
+static int m_turret(uint32_t id, int what, uint32_t target, const float v[4])
+{
+	static const char *w[] = {"aim", "start", "stop", "burst", "yawcap"};
+	char line[128];
+	Ent *e = ent(id);
+	if (!e || strcmp(e->classname, "turret"))
+		return 0;
+	snprintf(line, sizeof(line), "<turret %s %s %s %.1f %.1f %.1f %.1f>\n", e->targetname, w[what],
+		target && ent(target) ? ent(target)->targetname : "-", v ? v[0] : 0, v ? v[1] : 0, v ? v[2] : 0, v ? v[3] : 0);
+	logf_(line);
+	return 1;
+}
+
+static void test_turret_commands(void)
+{
+	DodMohaaBackend b = backend();
+	b.turret = m_turret;
+	reset();
+	add("player", "player", 0, 0, 0);
+	add("mg", "turret", 0, 0, 0);
+	files[0][0] = "maps/t.scr";
+	files[0][1] =
+		"main:\n"
+		"\t$mg setaimtarget $player\n"
+		"\t$mg burstfiresettings 1 2 3 4\n"
+		"\t$mg maxyawoffset 45\n"
+		"\t$mg startfiring\n"
+		"\t$mg stopfiring\n"
+		"\t$mg clearaimtarget\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "t", 0, 0));
+	run(0.05f, 0.2f);
+	assert(strstr(log_buf, "<turret mg aim player"));
+	assert(strstr(log_buf, "<turret mg burst - 1.0 2.0 3.0 4.0>"));
+	assert(strstr(log_buf, "<turret mg yawcap - 45.0"));
+	assert(strstr(log_buf, "<turret mg start") && strstr(log_buf, "<turret mg stop"));
+	assert(strstr(log_buf, "<turret mg aim -"));
+	assert(!strstr(log_buf, "not bound yet"));
+}
+
+/* A map soldier's retail settings arrive as "#" keys on its placeholder (the converter writes "sight", "type_disguise"
+   ... that way) and apply when it gets its body, as on "spawn"; "#find_name" stays a field for alarm_system.scr */
+static void test_map_actor_keys(void)
+{
+	DodMohaaBackend b = backend();
+	int holder, grunt;
+	reset();
+	files[0][0] = "maps/k.scr";
+	files[0][1] =
+		"main:\n"
+		"\twait 0.1\n"
+		"\tprintln (\"find \" + $officer1.find_name)\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "k", 0, 0));
+	holder = add("", "mohaa_actor", 0, 0, 0);
+	Dod_MohaaEntityKey(make_id(holder), "#find_name", "officer1");
+	Dod_MohaaEntityKey(make_id(holder), "#sight", "3072");
+	Dod_MohaaEntityKey(make_id(holder), "#type_disguise", "salute");
+	Dod_MohaaEntityKey(make_id(holder), "#disguise_range", "300");
+	Dod_MohaaEntityKey(make_id(holder), "#type_attack", "runandshoot");
+	Dod_MohaaEntityKey(make_id(holder), "#accuracy", "20");
+	grunt = add("officer1", "actor", 0, 0, 0);
+	Dod_MohaaEntityMoved(make_id(holder), make_id(grunt));
+	run(0.05f, 0.3f);
+	assert(strstr(log_buf, "find officer1"));
+	assert(strstr(log_buf, "<officer1 sight 2353."));	/* 3072 MOHAA units */
+	assert(strstr(log_buf, "<officer1 disguise 1.0"));
+	assert(strstr(log_buf, "<officer1 style 1.0"));
+	assert(strstr(log_buf, "<officer1 accuracy 20.0"));
+}
+
+/* The sweep's unbound commands: speed paces a move, sighttrace / istouching answer, earthquake shakes, doactivate
+   fires the trigger's targets, targetname renames, and the rest are accepted quietly */
+static int g_shook;
+static int m_trace_clear(const float a[3], const float b[3], int pass) { (void)a; (void)b; return pass ? 1 : 0; }
+static int m_touching(uint32_t a, uint32_t b) { (void)a; (void)b; return 1; }
+static void m_shake(float s, float m) { (void)s; (void)m; g_shook = 1; }
+static void test_sweep_commands(void)
+{
+	DodMohaaBackend b = backend();
+	b.trace_clear = m_trace_clear;
+	b.touching = m_touching;
+	b.shake = m_shake;
+	reset();
+	g_shook = 0;
+	add("box", "script_object", 0, 0, 0);
+	add("other", "script_object", 10, 0, 0);
+	files[0][0] = "maps/u.scr";
+	files[0][1] =
+		"main:\n"
+		"\tprintln (\"clear=\" + (sighttrace (0 0 0) (100 0 0) 1) + \" blocked=\" + (sighttrace (0 0 0) (100 0 0) 0))\n"
+		"\tprintln (\"touch=\" + ($box istouching $other))\n"
+		"\tearthquake 1 2\n"
+		"\t$other targetname renamed\n"
+		"\tprintln (\"name=\" + $renamed.targetname)\n"
+		"\t$box type_grenade grenade\n"
+		"\t$box perferredweapon \"kar98\"\n"
+		"\t$box speed 94\n"
+		"\t$box moveto (94 0 0)\n"
+		"\t$box move\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "u", 0, 0));
+	run(0.05f, 0.2f);
+	assert(strstr(log_buf, "clear=1 blocked=0"));
+	assert(strstr(log_buf, "touch=1"));
+	assert(strstr(log_buf, "name=renamed"));
+	assert(g_shook);
+	assert(!strstr(log_buf, "not bound yet"));
+}
+
+/* A string used as a listener is the entity of that targetname, as in retail (cabinet.scr hands spawner_create a
+   soldier's .target string): fields read and set through it, commands reach the entity */
+static void test_string_as_listener(void)
+{
+	DodMohaaBackend b = backend();
+	reset();
+	add("crate", "script_object", 94, 0, 0);
+	files[0][0] = "maps/s.scr";
+	files[0][1] =
+		"main:\n"
+		"\tlocal.name = \"crate\"\n"
+		"\tlocal.name.mark = 7\n"
+		"\tprintln (\"mark=\" + $crate.mark + \" x=\" + local.name.origin[0])\n"
+		"\tlocal.name hide\n"
+		"\tlocal.none = \"nothing_here\"\n"
+		"\tprintln (\"none=\" + local.none.origin)\n"
+		"\tlocal.ent = $crate\n"
+		"\tprintln (\"same=\" + ($(local.ent) == $crate))\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "s", 0, 0));
+	run(0.05f, 0.2f);
+	assert(strstr(log_buf, "mark=7 x=122."));	/* 94 GoldSrc units */
+	assert(ents[0].hidden);
+	assert(strstr(log_buf, "field 'origin' applied to string"));	/* no such entity: still an error */
+	assert(strstr(log_buf, "same=1"));	/* $(entity) is the entity (spotlight.scr) */
+}
+
+/* cansee: a clear line, inside the fov cone; droptofloor reaches the game */
+static int g_dropped;
+static int m_trace_ok(const float a[3], const float b[3], int pass) { (void)a; (void)b; (void)pass; return 1; }
+static void m_drop(uint32_t id) { (void)id; g_dropped++; }
+static void test_cansee_droptofloor(void)
+{
+	DodMohaaBackend b = backend();
+	b.trace_clear = m_trace_ok;
+	b.drop_to_floor = m_drop;
+	reset();
+	g_dropped = 0;
+	add("watcher", "actor", 0, 0, 0);	/* faces yaw 0: +x */
+	add("ahead", "actor", 200, 0, 0);
+	add("behind", "actor", -200, 0, 0);
+	files[0][0] = "maps/c.scr";
+	files[0][1] =
+		"main:\n"
+		"\tprintln (\"ahead=\" + ($watcher cansee $ahead 90) + \" behind=\" + ($watcher cansee $behind 90) + \" any=\" + ($watcher cansee $behind))\n"
+		"\t$ahead droptofloor\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "c", 0, 0));
+	run(0.05f, 0.2f);
+	assert(strstr(log_buf, "ahead=1 behind=0 any=1"));
+	assert(g_dropped == 1);
+	assert(!strstr(log_buf, "not bound yet"));
+}
+
+/* "$world farplane / farplane_color": kept on the world for the script to read back (weather.scr) */
+static void test_world_farplane(void)
+{
+	DodMohaaBackend b = backend();
+	reset();
+	add("world", "info_target", 0, 0, 0);
+	files[0][0] = "maps/w2.scr";
+	files[0][1] =
+		"main:\n"
+		"\t$world farplane 4000\n"
+		"\t$world farplane_color (0.5 0.5 0.6)\n"
+		"\tprintln (\"fp=\" + $world.farplane)\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "w2", 0, 0));
+	run(0.05f, 0.2f);
+	assert(strstr(log_buf, "fp=4000"));
+	assert(!strstr(log_buf, "not bound yet") && !strstr(log_buf, "script error"));
+}
+
+/* script points (maps/<map>.points) answer as entities without an edict: found by name (also as arrays),
+   their origin, angles, target and # keys read back, movers and bind move them, remove deletes them */
+static void test_script_points(void)
+{
+	DodMohaaBackend b = backend();
+	reset();
+	add("boat", "info_target", 0, 0, 0);
+	files[1][0] = "maps/sp.points";
+	files[1][1] = "# mohaa script points: x y z pitch yaw roll classname targetname target\n"
+		"10 20 30 0 90 0 script_origin spot -\n"
+		"1 0 0 0 0 0 script_origin aim - #set=1\n"
+		"2 0 0 0 0 0 script_origin aim - #set=2\n"
+		"5 5 5 0 0 0 info_waypoint wp_1 wp_2\n"
+		"6 6 6 0 0 0 info_waypoint wp_2 -\n"
+		"0 0 0 0 0 0 script_origin my%20spot -\n";
+	files[0][0] = "maps/sp.scr";
+	files[0][1] =
+		"main:\n"
+		"\tprintln (\"o=\" + $spot.origin + \" a=\" + $spot.angles)\n"
+		"\tprintln (\"n=\" + $aim.size + \" s=\" + $aim[2].set)\n"
+		"\tprintln (\"t=\" + $wp_1.target + \" c=\" + $wp_1.classname)\n"
+		"\t$spot.origin = (40 50 60)\n"
+		"\tprintln (\"m=\" + $spot.origin)\n"
+		"\t$wp_2 remove\n"
+		"\twait .1\n"
+		"\tif ($wp_2 == NULL) println \"gone\"\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "sp", 0, 0));
+	run(0.05f, 0.5f);
+	assert(strstr(log_buf, "mohaa: 6 script points from maps/sp.points"));
+	assert(strstr(log_buf, "a=(0.000 90.000 0.000)"));	/* origins read in MOHAA units */
+	assert(strstr(log_buf, "m=(40.000 50.000 60.000)"));
+	assert(strstr(log_buf, "n=2 s=2"));
+	assert(strstr(log_buf, "t=wp_2 c=info_waypoint"));
+	assert(strstr(log_buf, "gone"));
+	assert(!strstr(log_buf, "script error"));
+}
+
+/* a bound entity's angles are local to its parent (spotlight.scr pitches the bulb on a base that yaws) */
+static void test_bound_local_angles(void)
+{
+	DodMohaaBackend b = backend();
+	reset();
+	add("base", "script_model", 0, 0, 0);
+	add("bulb", "script_model", 0, 0, 20);
+	files[0][0] = "maps/bl.scr";
+	files[0][1] =
+		"main:\n"
+		"\t$bulb bind $base\n"
+		"\t$base.angles = (0 90 0)\n"
+		"\t$bulb.angles = (30 0 0)\n"
+		"\twait .2\n"
+		"\tprintln (\"bulb=\" + $bulb.angles)\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "bl", 0, 0));
+	run(0.05f, 0.5f);
+	assert(fabsf(ents[1].angles[0] - 30.0f) < 0.5f);
+	assert(fabsf(ents[1].angles[1] - 90.0f) < 0.5f);	/* the base's yaw, the bulb's own pitch */
+	assert(!strstr(log_buf, "script error"));
+}
 
 int main(void)
 {
 	RUN(test_no_script_no_vm);
+	RUN(test_bound_keys_and_loc_strings);
+	RUN(test_actor_settings);
+	RUN(test_cover_spot);
+	RUN(test_actor_weapons);
+	RUN(test_patrol_and_alarm);
+	RUN(test_disguise);
+	RUN(test_world_farplane);
+	RUN(test_bound_local_angles);
+	RUN(test_script_points);
+	RUN(test_cansee_droptofloor);
+	RUN(test_string_as_listener);
+	RUN(test_sweep_commands);
+	RUN(test_turret_commands);
+	RUN(test_map_actor_keys);
+	RUN(test_disguise_papers_and_salute);
+	RUN(test_thread_on_shared_name);
 	RUN(test_level_flow_and_movers);
 	RUN(test_waittill_trigger_and_freed);
 	RUN(test_budget_refuses_cleanly);
@@ -943,8 +1714,10 @@ int main(void)
 	RUN(test_pool_allocator);
 	RUN(test_pool_backend);
 	RUN(test_vehicle_drive);
+	RUN(test_cutscene);
 	Dod_MohaaShutdown();
 	assert(Dod_MohaaPathNodes(NULL) == 0);
 	printf("dod_mohaa_test: ok\n");
+	test_gun_field_names_turret();
 	return 0;
 }
