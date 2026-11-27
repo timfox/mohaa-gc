@@ -1,0 +1,12 @@
+m5l3: :49:36] Xash3D GameCube: using compact clipnodes count=21500
+m5l3: :49:36] Xash3D GameCube: world hull0 using static normalized reserve 104.53 Kb
+m5l3: :49:38] Xash3D GameCube: MAP_READY m5l3
+m6l1c: :53:26] Xash3D GameCube: using compact clipnodes count=11738
+m6l1c: :53:26] Xash3D GameCube: world hull0 (17082 nodes) using the static clipnode table tail 133.45 Kb
+m6l1c: :53:27] Xash3D GameCube: MAP_READY m6l1c
+m6l3a: :41:33] Xash3D GameCube: using compact clipnodes count=15086
+m6l3a: :41:33] Xash3D GameCube: world hull0 (16767 nodes) using the static clipnode table tail 130.99 Kb
+m6l3a: :41:34] Xash3D GameCube: MAP_READY m6l3a
+m6l3c: :45:19] Xash3D GameCube: using compact clipnodes count=13015
+m6l3c: :45:19] Xash3D GameCube: world hull0 (16387 nodes) using the static clipnode table tail 128.02 Kb
+m6l3c: :45:20] Xash3D GameCube: MAP_READY m6l3c
