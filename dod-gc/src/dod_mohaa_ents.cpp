@@ -92,6 +92,8 @@ static void M_Print( int channel, const char *text )
 	}
 }
 
+static edict_t *ActorWakeByName( const char *name );
+
 static int M_Find( const char *name, uint32_t *ids, int max )
 {
 	int n = 0;
@@ -101,6 +103,18 @@ static int M_Find( const char *name, uint32_t *ids, int max )
 		if( n < max )
 			ids[n] = IdFor( e );
 		n++;
+	}
+	/* A map soldier still waiting for a pool slot answers to its name too: the script needs it now (m5l1b's
+	 * cabinet.scr turns its hidden soldiers into spawners at the start), so it comes in, taking an unnamed soldier's
+	 * slot if it must. */
+	if( !n && name && name[0] && strcmp( name, "player" ) )
+	{
+		edict_t *in = ActorWakeByName( name );
+		if( in ) {
+			if( max > 0 )
+				ids[0] = IdFor( in );
+			n = 1;
+		}
 	}
 	/* MOHAA's "$player" is the (first) player, who has no targetname in GoldSrc */
 	if( !n && !strcmp( name, "player" ) )
@@ -592,6 +606,9 @@ static string_t TikName( const char *model )
 
 /* Make room for a soldier the script needs now: the living soldier with no name farthest from every player goes back
  * to the waiting list (scripts cannot address it, so nothing notices) and gives up its slot. 0: none to move. */
+static int g_make_room_named;	/* ActorWakeByName: a named soldier far away may give way too */
+static void ActorWaitKeepTarget( string_t target );
+
 static int ActorMakeRoom( void )
 {
 	int best = -1;
@@ -611,10 +628,36 @@ static int ActorMakeRoom( void )
 			best_d = nearest;
 		}
 	}
+	/* A script asked for a waiting soldier by name and no unnamed one can give way: the named soldier farthest from
+	 * every player (at least 2500 units off, nowhere near the fight) goes back to the waiting list instead, keeping
+	 * its name, keys and target; asking for it by name brings it back the same way. */
+	if( best < 0 && g_make_room_named ) {
+		for( int k = 0; k < 64; k++ ) {
+			edict_t *e = g_actors[k].id ? EdictFor( g_actors[k].id ) : NULL;
+			if( !e || !e->v.targetname || e->v.health <= 0 )
+				continue;
+			float nearest = 1e9f;
+			for( int p = 1; p <= gpGlobals->maxClients; p++ ) {
+				edict_t *pe = INDEXENT( p );
+				if( pe && !pe->free && ( pe->v.flags & FL_CLIENT ) )
+					nearest = fminf( nearest, ( pe->v.origin - e->v.origin ).Length() );
+			}
+			if( nearest >= 2500.0f && nearest > best_d ) {
+				best = k;
+				best_d = nearest;
+			}
+		}
+	}
 	if( best < 0 )
 		return 0;
 	edict_t *e = EdictFor( g_actors[best].id );
-	ActorWait( g_actors[best].team, e->v.origin - Vector( 0, 0, 36 ), e->v.angles.y, NULL, g_actors[best].id, g_actors[best].tik );
+	const char *name = e->v.targetname ? STRING( e->v.targetname ) : NULL;
+	const string_t target = e->v.target;
+	ActorWait( g_actors[best].team, e->v.origin - Vector( 0, 0, 36 ), e->v.angles.y, name, g_actors[best].id, g_actors[best].tik );
+	if( name ) {
+		ActorWaitKeepTarget( target );
+		ALERT( at_console, "mohaa_actor %s: back to the waiting list to make room\n", name );
+	}
 	g_actors[best].id = 0;
 	return DodGrunts_ScriptRemove( e );
 }
@@ -670,6 +713,13 @@ static uint32_t SpawnActor( const char *classname, const char *const *keys, cons
 #define MOHAA_CORPSE_SECONDS 20.0f
 static struct { int team; Vector origin; float yaw; string_t name; uint32_t park; string_t tik; string_t target; } g_waiting[MOHAA_WAITING_MAX];
 static int g_nwaiting;
+
+/* the soldier ActorWait just parked keeps its map target */
+static void ActorWaitKeepTarget( string_t target )
+{
+	if( g_nwaiting > 0 )
+		g_waiting[g_nwaiting - 1].target = target;
+}
 static uint32_t g_park_serial;
 
 /* An id no entity has (edict index 0 is the world, never a soldier), to hold a waiting soldier's script variables
@@ -717,6 +767,26 @@ static void ActorDied( edict_t *e )
 }
 
 /* Twice a second while soldiers wait: free old corpses' slots, then bring in the waiting soldier nearest a player. */
+/* Waiting soldier w gets a body (must: a script asked for it by name, so an unnamed soldier gives up its slot). */
+static edict_t *ActorBringIn( int w, int must )
+{
+	const char *name = g_waiting[w].name ? STRING( g_waiting[w].name ) : NULL;
+	edict_t *in = SpawnActorAt( g_waiting[w].team, g_waiting[w].origin, g_waiting[w].yaw, name, g_waiting[w].tik, must );
+	if( !in )
+		return NULL;	/* still full */
+	if( g_waiting[w].target ) {
+		/* a map soldier that waited keeps its map target: an MG42's crew still mans its gun */
+		in->v.target = g_waiting[w].target;
+		CrewWait( in, g_waiting[w].target );
+	}
+	if( g_waiting[w].park )
+		Dod_MohaaEntityMoved( g_waiting[w].park, IdFor( in ) );
+	ALERT( at_console, "mohaa_actor %s: in from the waiting list%s (%d left)\n", name ? name : "",
+		must ? ", asked for by name" : "", g_nwaiting - 1 );
+	g_waiting[w] = g_waiting[--g_nwaiting];
+	return in;
+}
+
 static void ActorsWaitingThink( void )
 {
 	if( !g_nwaiting || gpGlobals->time < g_next_waiting_check )
@@ -749,19 +819,19 @@ static void ActorsWaitingThink( void )
 	}
 	if( best < 0 )
 		return;
-	const char *name = g_waiting[best].name ? STRING( g_waiting[best].name ) : NULL;
-	edict_t *in = SpawnActorAt( g_waiting[best].team, g_waiting[best].origin, g_waiting[best].yaw, name, g_waiting[best].tik );
-	if( !in )
-		return;	/* still full */
-	if( g_waiting[best].target ) {
-		/* a map soldier that waited keeps its map target: an MG42's crew still mans its gun */
-		in->v.target = g_waiting[best].target;
-		CrewWait( in, g_waiting[best].target );
-	}
-	if( g_waiting[best].park )
-		Dod_MohaaEntityMoved( g_waiting[best].park, IdFor( in ) );
-	ALERT( at_console, "mohaa_actor %s: in from the waiting list (%d left)\n", name ? name : "", g_nwaiting - 1 );
-	g_waiting[best] = g_waiting[--g_nwaiting];
+	ActorBringIn( best, 0 );
+}
+
+static edict_t *ActorWakeByName( const char *name )
+{
+	for( int w = 0; w < g_nwaiting; w++ )
+		if( g_waiting[w].name && !strcmp( STRING( g_waiting[w].name ), name ) ) {
+			g_make_room_named = 1;
+			edict_t *in = ActorBringIn( w, 1 );
+			g_make_room_named = 0;
+			return in;
+		}
+	return NULL;
 }
 
 /* A soldier placed in the map: mohaa-gc's converter writes MOHAA actors as mohaa_actor (origin at the feet, angle,
