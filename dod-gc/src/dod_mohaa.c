@@ -295,6 +295,30 @@ typedef struct {
 } DodDisguiser;
 static DodDisguiser g_disguisers[DOD_MOHAA_DISGUISERS];
 static int g_papers;	/* the papers the player carries: 0 none, 1 level 1 (papers.tik), 2 level 2 (papers2.tik) */
+static float g_papers_card_until;	/* the papers are on screen until then (0: not shown) */
+
+/* Retail raises the papers in the player's hand while a soldier reads them; here the papers' own card is drawn in
+   the lower middle of the screen (the item icon items.scr uses, sprites/mohaa/item_papers1/2.spr) */
+static void papers_card(int level)
+{
+	DodMohaaHudDraw d;
+	if (!S.be.hud_draw)
+		return;
+	memset(&d, 0, sizeof(d));
+	d.w = 128.0f;
+	d.h = 128.0f;
+	d.y = -96.0f;
+	d.r = d.g = d.b = 1.0f;
+	d.a = level > 0 ? 1.0f : 0.0f;
+	d.align_x = DOD_MOHAA_HUD_ALIGN_CENTER;
+	d.align_y = DOD_MOHAA_HUD_ALIGN_BOTTOM;
+	d.virtual_size = 1;
+	d.initialized = 1;
+	if (level > 0)
+		snprintf(d.shader, sizeof(d.shader), "textures/hud/item_papers%d", level > 1 ? 2 : 1);
+	S.be.hud_draw(DOD_MOHAA_HUD_PAPERS_INDEX, &d);
+	g_papers_card_until = level > 0 ? S.now + 3.0f : 0.0f;
+}
 static float g_next_disguise_think;
 static DodDisguiser *disguiser_for(uint32_t id, int make);
 static void set_disguise_type(uint32_t id, const char *t);
@@ -1757,7 +1781,9 @@ static void set_disguise_type(uint32_t id, const char *t)
 	DodDisguiser *d = disguiser_for(id, 1);
 	if (!d)
 		return;
-	d->type = t && !strcmp(t, "salute") ? DISG_SALUTE : t && !strcmp(t, "papers") ? DISG_PAPERS : DISG_PASS;
+	/* retail's sentries and officers ask for papers (m2l2a's checkpoint "goatsbutt", its officers) */
+	d->type = t && !strcmp(t, "salute") ? DISG_SALUTE
+		: t && (!strcmp(t, "papers") || !strcmp(t, "sentry") || !strcmp(t, "officer")) ? DISG_PAPERS : DISG_PASS;
 	d->state = DISG_IDLE;
 }
 
@@ -1872,6 +1898,11 @@ static void disguisers_think(void)
 	}
 }
 
+void Dod_MohaaProbeGivePapers(int level)
+{
+	g_papers = level < 0 ? 0 : (level > 2 ? 2 : level);
+}
+
 int Dod_MohaaShowPapers(uint32_t player)
 {
 	float pp[3];
@@ -1890,6 +1921,8 @@ int Dod_MohaaShowPapers(uint32_t player)
 		r = d->range * DOD_MOHAA_SCALE * 1.5f;
 		if (dx * dx + dy * dy > r * r)
 			continue;
+		if (!any && g_papers)
+			papers_card(g_papers);	/* held up, whether they pass or not */
 		any = 1;
 		if (g_papers >= d->level) {
 			d->state = DISG_PASSED;
@@ -3795,6 +3828,7 @@ void Dod_MohaaShutdown(void)
 	memset(g_patrols, 0, sizeof(g_patrols));
 	memset(g_disguisers, 0, sizeof(g_disguisers));
 	g_papers = 0;
+	g_papers_card_until = 0.0f;
 	g_next_disguise_think = 0.0f;
 	memset(S.movers, 0, sizeof(S.movers));
 	S.nunknown = 0;
@@ -4207,6 +4241,8 @@ void Dod_MohaaThink(float now)
 		points_load(name);
 	}
 	start_main();
+	if (g_papers_card_until > 0.0f && now >= g_papers_card_until)
+		papers_card(0);
 	patrols_think();
 	disguisers_think();
 	/* MOHAA level scripts wait for these before touching the world */

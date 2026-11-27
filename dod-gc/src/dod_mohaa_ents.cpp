@@ -29,6 +29,7 @@ static cvar_t mohaa_script_kb = { "mohaa_script_kb", "384", FCVAR_SERVER };
 static cvar_t mohaa_probe_goto = { "mohaa_probe_goto", "", FCVAR_SERVER };
 static int g_probe_goto_done;
 static float g_probe_fire_from, g_probe_fire_until;
+static float g_probe_papers_from, g_probe_papers_until, g_probe_papers_next;
 static int g_mohaa_cvar_registered;
 static int gmsgMohaaHudDraw;
 static int gmsgMohaaCompass;
@@ -1338,6 +1339,7 @@ void DodGC_MohaaLevelInit( void )
 {
 	g_probe_goto_done = 0;
 	g_probe_fire_from = g_probe_fire_until = 0.0f;
+	g_probe_papers_from = g_probe_papers_until = g_probe_papers_next = 0.0f;
 	memset( g_untriggerable, 0, sizeof( g_untriggerable ) );
 	DodGC_MohaaRegisterHudMessages();
 	if( !g_mohaa_cvar_registered )
@@ -1665,6 +1667,9 @@ static void ProbeGotoThink( void )
 	const int mid = strstr( name, " mid" ) != NULL;
 	/* "squad": then bring the Allied soldiers (awake ones) round the player, facing what the player faces */
 	const int squad = strstr( name, " squad" ) != NULL;
+	/* "papers": the player gets level 1 papers and holds them up (USE) once a second from 3 s to 15 s, for
+	 * whichever soldier asks */
+	const int papers = strstr( name, " papers" ) != NULL;
 	/* "brawl": also six German soldiers in front of the player, across the open ground (a staged fight) */
 	const int brawl = strstr( name, " brawl" ) != NULL;
 	/* "nade": then drop a live grenade (the player's) at the entity's feet, in view: its blast, and soldiers running */
@@ -1697,6 +1702,13 @@ static void ProbeGotoThink( void )
 	pe->v.fixangle = 1;
 	ALERT( at_console, "mohaa_probe_goto: player at %.0f %.0f %.0f %s %s\n", to.x, to.y, to.z,
 		behind ? "behind" : "facing", target );
+	if( papers ) {
+		Dod_MohaaProbeGivePapers( 1 );
+		g_probe_papers_from = gpGlobals->time + 3.0f;
+		g_probe_papers_until = g_probe_papers_from + 12.0f;
+		g_probe_papers_next = g_probe_papers_from;
+		ALERT( at_console, "mohaa_probe_goto: the player carries level 1 papers\n" );
+	}
 	if( squad ) {
 		const float at[3] = { to.x, to.y, to.z };
 		ALERT( at_console, "mohaa_probe_goto: %d Allied soldiers brought to the player\n",
@@ -2039,6 +2051,13 @@ void DodGC_MohaaEntityKey( edict_t *e, const char *key, const char *value )
 
 void DodGC_MohaaThink( void )
 {
+	if( g_probe_papers_until > 0.0f && gpGlobals->time >= g_probe_papers_next && gpGlobals->time < g_probe_papers_until ) {
+		/* probe aid "papers": the player presses USE once a second (PlayerUse only runs while USE is down) */
+		edict_t *pe = INDEXENT( 1 );
+		g_probe_papers_next = gpGlobals->time + 1.0f;
+		if( pe && !pe->free && Dod_MohaaShowPapers( IdFor( pe ) ) )
+			ALERT( at_console, "mohaa_probe_goto: papers held up\n" );
+	}
 	Dod_MohaaThink( gpGlobals->time );
 	CutsceneThink();
 	MusicSend();

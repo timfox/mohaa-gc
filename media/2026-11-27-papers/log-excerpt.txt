@@ -1,0 +1,11 @@
+[00:01:44] Xash3D GameCube: MAP_READY m2l2a
+Xash3D GameCube: MAP_READY m2l2a
+[00:01:50] mohaa: player disguise on
+[00:01:51] mohaa_probe_goto: player at -3151 -4491 -356 facing ai_alarm
+[00:01:51] mohaa_probe_goto: the player carries level 1 papers
+[00:01:51] mohaa: sound 'den_disguise_057d1' is not in this map's sound table
+[00:01:51] mohaa: ai_alarm asks for papers
+[00:01:54] mohaa: ai_alarm checks the papers: they pass
+[00:01:54] mohaa_probe_goto: papers held up
+[00:01:54] Xash3D GameCube: G290 HUD sprite decode-buffer read sprites/mohaa/item_papers1.spr size=16.05 Kb
+[00:01:54] Xash3D GameCube: HUD hi-res #HUD/sprites/mohaa/item_papers1(frame:00).spr 64x64 RGBA refused (sheet -1)
