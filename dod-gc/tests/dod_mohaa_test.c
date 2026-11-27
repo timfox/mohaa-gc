@@ -172,7 +172,7 @@ static void m_fade(float t, float r, float g, float b, float a, int out)
 static int m_actor(uint32_t id, int order, const float pos[3])
 {
 	static const char *names[] = {"ai_on", "ai_off", "attack", "walkto", "runto", "turnto", "stop",
-		"sight", "hearing", "fov", "leash", "tether", "mindist", "maxdist", "gun", "style", "patrolto", "disguise", "turret"};
+		"sight", "hearing", "fov", "leash", "tether", "mindist", "maxdist", "gun", "style", "patrolto", "disguise", "turret", "accuracy"};
 	char line[96];
 	Ent *e = ent(id);
 	if (!e || strcmp(e->classname, "actor"))
@@ -1484,6 +1484,7 @@ static void test_map_actor_keys(void)
 	Dod_MohaaEntityKey(make_id(holder), "#type_disguise", "salute");
 	Dod_MohaaEntityKey(make_id(holder), "#disguise_range", "300");
 	Dod_MohaaEntityKey(make_id(holder), "#type_attack", "runandshoot");
+	Dod_MohaaEntityKey(make_id(holder), "#accuracy", "20");
 	grunt = add("officer1", "actor", 0, 0, 0);
 	Dod_MohaaEntityMoved(make_id(holder), make_id(grunt));
 	run(0.05f, 0.3f);
@@ -1491,6 +1492,7 @@ static void test_map_actor_keys(void)
 	assert(strstr(log_buf, "<officer1 sight 2353."));	/* 3072 MOHAA units */
 	assert(strstr(log_buf, "<officer1 disguise 1.0"));
 	assert(strstr(log_buf, "<officer1 style 1.0"));
+	assert(strstr(log_buf, "<officer1 accuracy 20.0"));
 }
 
 /* The sweep's unbound commands: speed paces a move, sighttrace / istouching answer, earthquake shakes, doactivate

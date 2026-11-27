@@ -1398,6 +1398,11 @@ static void spawn_actor_keys(uint32_t id, const char *const *keys, const char *c
 				ms_release(S.vm, name);
 			} else if (p)
 				snprintf(p->alarm_thread, sizeof(p->alarm_thread), "%s", vals[i]);
+		} else if (!strcmp(keys[i], "accuracy")) {
+			float acc[3] = {0, 0, 0};
+			acc[0] = f;
+			if (S.be.actor)
+				S.be.actor(id, DOD_MOHAA_ACCURACY, acc);
 		} else if (!strcmp(keys[i], "sight"))
 			order = DOD_MOHAA_SIGHT;
 		else if (!strcmp(keys[i], "hearing"))
@@ -2350,6 +2355,17 @@ static int c_targetname_cmd(ms_call *c)
 	return 0;
 }
 
+/* "$guy accuracy 60": how often its shots hit, 0..100 */
+static int c_accuracy(ms_call *c)
+{
+	float pos[3] = {0, 0, 0};
+	if (!S.be.actor || !is_actor_id(target_id(c)))
+		return 0;	/* a turret's "accuracy" (mg42.scr) has no grunt behind it */
+	pos[0] = ms_arg_float(c, 0);
+	S.be.actor(target_id(c), DOD_MOHAA_ACCURACY, pos);
+	return 0;
+}
+
 static int c_ignored(ms_call *c)
 {
 	(void)c;
@@ -3088,6 +3104,7 @@ void Dod_MohaaEntityKey(uint32_t id, const char *key, const char *value)
 static const char *const MAP_ACTOR_KEYS[] = {
 	"type_idle", "patrolpath", "alarmnode", "alarmthread", "type_attack", "type_disguise", "disguise_range",
 	"disguise_period", "disguise_level", "sight", "hearing", "fov", "leash", "mindist", "maxdist", "gun",
+	"accuracy",
 };
 
 static void apply_map_actor_keys(uint32_t id)
@@ -3374,7 +3391,7 @@ static void register_commands(ms_vm *vm)
 		{"triggereffect", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"setaimtarget", MS_ON_ENTITY | MS_ON_THREAD, c_turret_cmd},
 		{"clearaimtarget", MS_ON_ENTITY | MS_ON_THREAD, c_turret_cmd},
-		{"accuracy", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
+		{"accuracy", MS_ON_ENTITY | MS_ON_THREAD, c_accuracy},
 		{"bulletdamage", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"firedelay", MS_ON_ENTITY | MS_ON_THREAD, c_ignored},
 		{"maxyawoffset", MS_ON_ENTITY | MS_ON_THREAD, c_turret_cmd},

@@ -80,6 +80,7 @@ void DodGrunt_Spawn(DodGruntPool *p, int i, int team, float x, float y, float z,
 	p->fov[i] = 0;
 	p->cover[i] = DOD_GRUNT_COVER_NONE;
 	p->gun[i] = 0;
+	p->accuracy[i] = 0;
 	p->state[i] = rush ? DOD_GRUNT_ADVANCE : DOD_GRUNT_WANDER;
 	if (i >= p->cap)
 		p->cap = i + 1;
@@ -534,4 +535,13 @@ void DodGrunt_ManTurret(DodGruntPool *p, int i, float gun_yaw, float arc_half, i
 float DodGrunt_LookYaw(const DodGruntPool *p, int i)
 {
 	return (p->script[i] & DOD_GRUNT_TURRET) ? p->heading[i] : p->yaw[i];
+}
+
+float DodGrunt_AccuracyScale(const DodGruntPool *p, int i)
+{
+	float f;
+	if (!p->accuracy[i])
+		return 1.0f;
+	f = (float)(p->accuracy[i] - 1) / 50.0f;
+	return f < 0.2f ? 0.2f : (f > 2.0f ? 2.0f : f);
 }

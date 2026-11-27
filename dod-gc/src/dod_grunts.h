@@ -108,6 +108,7 @@ typedef struct DodGruntPool {
 	unsigned char fov[DOD_GRUNT_MAX];	/* field of view in degrees / 2 (0: default 140) */
 	unsigned char cover[DOD_GRUNT_MAX];	/* DOD_GRUNT_COVER_*: a script actor taking or holding cover */
 	unsigned char gun[DOD_GRUNT_MAX];	/* MOHAA "gun": 0 its side's rifle, DOD_GRUNT_GUN_NONE unarmed, else weapon id + 1 */
+	unsigned char accuracy[DOD_GRUNT_MAX];	/* MOHAA "accuracy" 0..100 + 1 (0: the default curve) */
 	float order_best[DOD_GRUNT_MAX];	/* nearest it has come to the order point */
 	float order_stall_at[DOD_GRUNT_MAX];	/* when a stalled order gives up and arrives; < 0 not started */
 	unsigned rng;
@@ -116,6 +117,9 @@ typedef struct DodGruntPool {
 } DodGruntPool;
 
 #define DOD_GRUNT_MEMORY 4.0f
+
+/* MOHAA "accuracy" (0..100, retail soldiers mostly 20..100): a factor on the hit chance, 1 at 50 or when unset */
+float DodGrunt_AccuracyScale(const DodGruntPool *p, int i);
 
 /* Bytes one grunt costs in the pool (arrays only; the prop's edict is on top). */
 int DodGrunt_RowBytes(void);

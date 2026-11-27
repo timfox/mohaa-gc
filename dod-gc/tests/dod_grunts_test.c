@@ -337,6 +337,24 @@ static void test_reset_leash(void)
 	assert(p.leash_r[i] == 256 && p.leash_x[i] == 10);
 }
 
+/* MOHAA accuracy scales the hit chance: unset 1, 50 is 1, 100 doubles, 0 floors at 0.2 */
+static void test_accuracy_scale(void)
+{
+	DodGruntPool p;
+	DodGrunt_Init(&p, 5);
+	p.cap = 2;
+	DodGrunt_SpawnScripted(&p, 1, DOD_TEAM_AXIS, 0, 0, 0, 0, 1.0f);
+	assert(DodGrunt_AccuracyScale(&p, 1) == 1.0f);
+	p.accuracy[1] = 51;
+	assert(fabsf(DodGrunt_AccuracyScale(&p, 1) - 1.0f) < 0.001f);
+	p.accuracy[1] = 101;
+	assert(fabsf(DodGrunt_AccuracyScale(&p, 1) - 2.0f) < 0.001f);
+	p.accuracy[1] = 1;
+	assert(fabsf(DodGrunt_AccuracyScale(&p, 1) - 0.2f) < 0.001f);
+	DodGrunt_SpawnScripted(&p, 1, DOD_TEAM_AXIS, 0, 0, 0, 0, 1.0f);
+	assert(p.accuracy[1] == 0);
+}
+
 int main(void)
 {
 	test_count();
@@ -353,6 +371,7 @@ int main(void)
 	test_actor_settings();
 	test_script_actor();
 	test_turret_gunner();
+	test_accuracy_scale();
 	test_reset_leash();
 	printf("dod_grunts_test: ok (row %d bytes, pool %d bytes)\n", DodGrunt_RowBytes(), (int)sizeof(DodGruntPool));
 	return 0;
