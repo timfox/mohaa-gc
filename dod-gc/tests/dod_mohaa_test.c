@@ -1345,9 +1345,21 @@ static void test_gun_field_names_turret(void)
 /* type_disguise "papers": a disguised player within disguise_range is asked for papers; USE shows them (level 1 papers
    pass a level 1 soldier), no papers blow the disguise and alert him, and so does waiting out disguise_period.
    "salute" turns to the player. The other bindings of the list (triggerable, resetleash, ...) are bound. */
+/* the papers card (DOD_MOHAA_HUD_PAPERS_INDEX): last shader and alpha sent */
+static char g_card_shader[64];
+static float g_card_alpha = -1.0f;
+static void m_hud_draw_card(int index, const DodMohaaHudDraw *d)
+{
+	if (index != DOD_MOHAA_HUD_PAPERS_INDEX || !d)
+		return;
+	snprintf(g_card_shader, sizeof(g_card_shader), "%s", d->shader);
+	g_card_alpha = d->a;
+}
+
 static void test_disguise_papers_and_salute(void)
 {
 	DodMohaaBackend b = backend();
+	b.hud_draw = m_hud_draw_card;
 	uint32_t player_id = 0;
 	int guard, saluter, pl;
 	b.disguise = m_disguise;
@@ -1408,6 +1420,8 @@ static void test_disguise_papers_and_salute(void)
 	/* the script gave level 1 papers at 1.5 s ($player item models/items/papers.tik) */
 	assert(Dod_MohaaShowPapers(player_id));
 	assert(g_disguised == 1 && strstr(log_buf, "they pass"));
+	/* held up on screen: the level 1 papers' card, gone 3 s later */
+	assert(!strcmp(g_card_shader, "textures/hud/item_papers1") && g_card_alpha == 1.0f);
 	/* the officer salutes when the player comes near */
 	ents[pl].origin[0] = 0.0f;
 	ents[pl].origin[1] = 350.0f;
@@ -1420,6 +1434,7 @@ static void test_disguise_papers_and_salute(void)
 	ents[pl].origin[0] = 60.0f;
 	run(2.55f, 5.0f);
 	assert(strstr(log_buf, "got no papers: disguise blown") && g_disguised == 0);
+	assert(g_card_alpha == 0.0f);	/* the card went down 3 s after it was held up */
 }
 
 /* a turretweapon's own commands reach the game: setaimtarget/clearaimtarget, burstfiresettings, maxyawoffset and

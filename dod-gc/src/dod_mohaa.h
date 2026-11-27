@@ -190,6 +190,8 @@ void Dod_MohaaEntityKey(uint32_t id, const char *key, const char *value);
 /* The player pressed USE: a soldier asking a disguised player for papers (type_disguise "papers") within reach checks
    them. 1 when one did, so the press does nothing else. */
 int Dod_MohaaShowPapers(uint32_t player);
+/* Probe aid: the player carries papers of this level (as items.scr's add_item would give) */
+void Dod_MohaaProbeGivePapers(int level);
 /* The backend replaced entity from with to (a mohaa_actor placeholder became a grunt): to keeps from's script
  * variables, map keys included. from may be an id no entity has, to park them meanwhile. */
 void Dod_MohaaEntityMoved(uint32_t from, uint32_t to);

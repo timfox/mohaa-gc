@@ -4,6 +4,7 @@
 
 #define DOD_MOHAA_HUD_DRAW_COUNT 255 /* wire index 255 is the clear-all marker */
 #define DOD_MOHAA_HUD_HINT_INDEX 254 /* reserved for retail iprintlnbold hints */
+#define DOD_MOHAA_HUD_PAPERS_INDEX 253 /* the papers held up to a soldier who asks (retail raises them in hand) */
 #define DOD_MOHAA_HUD_TEXT 128
 #define DOD_MOHAA_HUD_SHADER 64
 
