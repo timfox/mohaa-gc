@@ -229,6 +229,10 @@ if [[ "$DODGC_GAME" == mohaa ]]; then
 	mkdir -p "$GDATA/media" "$GDATA/maps"
 	python3 -c 'import sys; sys.path.insert(0, sys.argv[1]); import mohaa_sd; mohaa_sd.write_gameinfo(sys.argv[2], "mohaa")' \
 		"$DODGC_ROOT/../tools" "$GDATA" >/dev/null
+	# The bootstrap pk3 is built from this folder, and the engine reads delta.lst from it: without it a
+	# map load on mohaa dies with "Delta_InitFields: couldn't load file delta.lst" (the DoD copy in dod/
+	# is found, but its DIR read fails for memory at that point).
+	cp -f "$LEAN/delta.lst" "$GDATA/delta.lst"
 	# GCube_HasGameAssets wants liblist.gam and a maps/ folder in the game folder.
 	printf 'MOHAA maps are read from sd:/xash3d/mohaa/maps/ (tools/mohaa_sd.py).\n' > "$GDATA/maps/README.txt"
 	[[ ! -f "$LEAN/media/StartupVids.txt" ]] || cp -f "$LEAN/media/StartupVids.txt" "$GDATA/media/StartupVids.txt"
