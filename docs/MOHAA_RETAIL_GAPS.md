@@ -6,7 +6,7 @@ This is a running list, updated with each PR. Each entry says what retail does t
 
 Every retail mission was converted with `tools/mohaa_sd.py` (stages scripts, tags, scriptmodels, maps, worlddl, props, sounds, loading) from main f4daf3c, put on a smoke disc (`build-gamecube-disc.py --probe-menu-newgame --world-render`, `XASH_GC_PROBE_STARTMAP=<map>`), and booted headless in Dolphin for 130 s (MAP_READY plus about 60 to 100 s). Script errors and unbound commands are counted over the whole run. The heap column is the lowest `heap_free` the engine logged during the load and after MAP_READY. Stills are in `media/2026-11-26-campaign-sweep/`.
 
-**29 of 34 maps boot.** m5l3, m6l1c, m6l2a, m6l3a and m6l3c run out of MEM1 while loading the world: m6l1c, m6l2a, m6l3a and m6l3c have more than the 16384 hull-0 nodes the engine's static reserve holds (16796 to 19127), so hull 0 falls back to the heap (131 to 149 KB, not there); m5l3's 50647 clipnodes (396 KB) fail to reload from disc.
+**33 of 34 maps boot** (29 on the sweep; m5l3, m6l1c, m6l3a and m6l3c since round 2 item 2). Those four ran out of MEM1 loading the world. m6l1c, m6l3a and m6l3c have more than the 16384 hull-0 nodes the engine's static reserve holds; hull 0 now goes into the unused tail of the static clipnode table (xash3d-gc claude/mohaa-hull0-tail), and coarser collision in `tools/map_flags.txt` (`--simplify-collision --collision-grid 64 --mesh-collision`) leaves the room: clipnodes 30307 → 11738 (m6l1c), 25251 → 15086 (m6l3a), 21203 → 13015 (m6l3c). m5l3's 50647 clipnodes (396 KB) failed to reload; at grid 32 with mesh collision it has 21500 and fits the static table. Rows for these four come from runs one at a time with the round 2 DOL (two Dolphins started in the same second mix their run folders). **m6l2a still runs out of memory**: 19127 nodes, and its clipnodes (19856, 22447 at grid 128) don't leave a tail big enough; a `--detail-world` build is being tried.
 
 | Map | Boots to MAP_READY | Script errors | Unbound commands | Lowest free heap: load / after MAP_READY | Host error | Still |
 |---|---|---|---|---|---|---|
@@ -33,15 +33,15 @@ Every retail mission was converted with `tools/mohaa_sd.py` (stages scripts, tag
 | m5l1b | yes | 100 | `noticescale`, `ammo_grenade` | 8.7 / 307.9 KB |  | [still](../media/2026-11-26-campaign-sweep/m5l1b.jpg) |
 | m5l2a | yes | 0 |  | 8.7 / 47.2 KB |  | [still](../media/2026-11-26-campaign-sweep/m5l2a.jpg) |
 | m5l2b | yes | 0 |  | 8.7 / 32.3 KB |  | [still](../media/2026-11-26-campaign-sweep/m5l2b.jpg) |
-| m5l3 | **no**: out of memory | 0 |  | ? | _Mem_Alloc 395.68 KB (clipnodes reload, mod_bmodel.c:10818) | [still](../media/2026-11-26-campaign-sweep/m5l3.jpg) |
+| m5l3 | yes | 1 | `istouching` | 7.2 / 386.2 KB |  | [still](../media/2026-11-26-campaign-sweep/m5l3.jpg) |
 | m6l1a | yes | 0 |  | 8.7 / 465.4 KB |  | [still](../media/2026-11-26-campaign-sweep/m6l1a.jpg) |
 | m6l1b | yes | 0 |  | 8.7 / 466.0 KB |  | [still](../media/2026-11-26-campaign-sweep/m6l1b.jpg) |
-| m6l1c | **no**: out of memory | 0 |  | ? | _Mem_Alloc 133.52 KB (hull 0, 17090 nodes) | [still](../media/2026-11-26-campaign-sweep/m6l1c.jpg) |
+| m6l1c | yes | 30 | `type_grenade`, `turret` | 7.2 / 314.5 KB |  | [still](../media/2026-11-26-campaign-sweep/m6l1c.jpg) |
 | m6l2a | **no**: out of memory | 0 |  | ? | _Mem_Alloc 149.43 KB (hull 0, 19127 nodes) | [still](../media/2026-11-26-campaign-sweep/m6l2a.jpg) |
 | m6l2b | yes | 13 | `type_grenade` | 8.7 / 31.7 KB |  | [still](../media/2026-11-26-campaign-sweep/m6l2b.jpg) |
-| m6l3a | **no**: out of memory | 0 |  | ? | _Mem_Alloc 132.04 KB (hull 0, 16901 nodes) | [still](../media/2026-11-26-campaign-sweep/m6l3a.jpg) |
+| m6l3a | yes | 8 | `speed` | 7.2 / 275.2 KB |  | [still](../media/2026-11-26-campaign-sweep/m6l3a.jpg) |
 | m6l3b | yes | 0 |  | 8.7 / 328.5 KB |  | [still](../media/2026-11-26-campaign-sweep/m6l3b.jpg) |
-| m6l3c | **no**: out of memory | 0 |  | ? | _Mem_Alloc 131.22 KB (hull 0, 16796 nodes) | [still](../media/2026-11-26-campaign-sweep/m6l3c.jpg) |
+| m6l3c | yes | 25 |  | 7.2 / 328.6 KB |  | [still](../media/2026-11-26-campaign-sweep/m6l3c.jpg) |
 | m6l3d | yes | 6 | `stopsound`, `stopwatch`, `bsptransition`, `targetname` | 8.7 / 438.5 KB |  | [still](../media/2026-11-26-campaign-sweep/m6l3d.jpg) |
 | m6l3e | yes | 42 | `volumedamage`, `earthquake`, `istouching` | 8.7 / 453.5 KB |  | [still](../media/2026-11-26-campaign-sweep/m6l3e.jpg) |
 
