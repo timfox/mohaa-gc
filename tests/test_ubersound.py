@@ -49,6 +49,12 @@ def stereo_wav(path, rate, frames):
 
 
 class UbersoundTest(unittest.TestCase):
+    def test_entity_aliases(self):
+        # a map that places an MG42 turretweapon gets the gun's fire alias; one that does not, nothing
+        self.assertEqual(ubersound.entity_aliases(b'{\n"classname" "turretweapon_german_mg42"\n}'),
+                         {"mg42_gun_snd_fire"})
+        self.assertEqual(ubersound.entity_aliases(b'{\n"classname" "turretweapon_german_88mmflakturret"\n}'), set())
+
     def test_parse(self):
         a = ubersound.parse_aliases(UBER)
         self.assertEqual(sorted(a), ["alarm", "door_open1", "door_open2", "door_open3", "unused"])

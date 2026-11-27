@@ -667,7 +667,7 @@ static uint32_t SpawnActor( const char *classname, const char *const *keys, cons
  * any wait. */
 #define MOHAA_WAITING_MAX 64
 #define MOHAA_CORPSE_SECONDS 20.0f
-static struct { int team; Vector origin; float yaw; string_t name; uint32_t park; string_t tik; } g_waiting[MOHAA_WAITING_MAX];
+static struct { int team; Vector origin; float yaw; string_t name; uint32_t park; string_t tik; string_t target; } g_waiting[MOHAA_WAITING_MAX];
 static int g_nwaiting;
 static uint32_t g_park_serial;
 
@@ -700,6 +700,7 @@ static void ActorWait( int team, const Vector &origin, float yaw, const char *na
 	g_waiting[g_nwaiting].yaw = yaw;
 	g_waiting[g_nwaiting].name = name && name[0] ? ALLOC_STRING( name ) : 0;
 	g_waiting[g_nwaiting].tik = tik;
+	g_waiting[g_nwaiting].target = 0;
 	g_nwaiting++;
 }
 
@@ -751,6 +752,11 @@ static void ActorsWaitingThink( void )
 	edict_t *in = SpawnActorAt( g_waiting[best].team, g_waiting[best].origin, g_waiting[best].yaw, name, g_waiting[best].tik );
 	if( !in )
 		return;	/* still full */
+	if( g_waiting[best].target ) {
+		/* a map soldier that waited keeps its map target: an MG42's crew still mans its gun */
+		in->v.target = g_waiting[best].target;
+		CrewWait( in, g_waiting[best].target );
+	}
 	if( g_waiting[best].park )
 		Dod_MohaaEntityMoved( g_waiting[best].park, IdFor( in ) );
 	ALERT( at_console, "mohaa_actor %s: in from the waiting list (%d left)\n", name ? name : "", g_nwaiting - 1 );
@@ -783,7 +789,11 @@ public:
 		if( grunt )
 			Dod_MohaaEntityMoved( IdFor( edict() ), IdFor( grunt ) );
 		else
+		{
 			ActorWait( team, pev->origin, pev->angles.y, name, IdFor( edict() ), tik );
+			if( g_nwaiting > 0 && pev->target )
+				g_waiting[g_nwaiting - 1].target = pev->target;
+		}
 		pev->targetname = 0;	/* the grunt answers to the name now */
 		UTIL_Remove( this );
 	}
@@ -993,6 +1003,8 @@ static void M_DamageAt( uint32_t attacker, const float point[3], float radius, f
 		DodGC_MohaaTrigger( e, by );
 	}
 }
+
+static int M_Turret( uint32_t id, int what, uint32_t target, const float v[4] );
 
 static int M_Actor( uint32_t id, int order, const float pos[3] )
 {
@@ -1228,6 +1240,7 @@ void DodGC_MohaaLevelInit( void )
 	b.set_model = M_SetModel;
 	b.set_animation = M_SetAnimation;
 	b.actor = M_Actor;
+	b.turret = M_Turret;
 	b.music = M_Music;
 	if( g_music_intro[0] )
 		M_Music( NULL, NULL );	/* the last map's music stops unless this map starts its own */
@@ -1357,11 +1370,22 @@ void DodGC_MohaaTrigger( edict_t *e, edict_t *activator )
  * ones get crews: an actor whose map target names the gun, or one told type_attack "turret" beside it. */
 #define MOHAA_TURRETS 16
 #define MOHAA_MG42_MODEL "models/statweapons/mg42_gun.mdl"
-static struct { uint32_t id; float arc; unsigned char mg, modelled; } g_turrets[MOHAA_TURRETS];
+static struct {
+	uint32_t id;
+	float arc;
+	unsigned char mg, modelled;
+	unsigned char firing;	/* startfiring: the gun fires at its aim target in bursts */
+	unsigned char burst_on;
+	uint32_t crew;		/* the soldier on the gun, 0 none */
+	uint32_t aim;		/* setaimtarget, 0 none */
+	float base_yaw;		/* the map's yaw: the arc's centre */
+	float burst[4];		/* burstfiresettings: on min, on max, off min, off max (seconds) */
+	float burst_until, next_shot;
+} g_turrets[MOHAA_TURRETS];
 static int g_nturrets;
 /* map actors waiting for their gun to spawn (keys arrive before the turret entities do) */
 #define MOHAA_CREWS 16
-static struct { uint32_t actor; string_t gun; } g_crews[MOHAA_CREWS];
+static struct { uint32_t actor; string_t gun; float actor_added_at; } g_crews[MOHAA_CREWS];
 static int g_ncrews;
 
 static void TurretsReset( void );
@@ -1384,6 +1408,12 @@ static int TurretRow( edict_t *e, int make )
 	g_turrets[g_nturrets].arc = 0.0f;
 	g_turrets[g_nturrets].mg = 0;
 	g_turrets[g_nturrets].modelled = 0;
+	g_turrets[g_nturrets].firing = g_turrets[g_nturrets].burst_on = 0;
+	g_turrets[g_nturrets].crew = g_turrets[g_nturrets].aim = 0;
+	g_turrets[g_nturrets].base_yaw = 0.0f;
+	g_turrets[g_nturrets].burst[0] = 0.5f; g_turrets[g_nturrets].burst[1] = 1.5f;	/* retail-like defaults */
+	g_turrets[g_nturrets].burst[2] = 0.5f; g_turrets[g_nturrets].burst[3] = 1.0f;
+	g_turrets[g_nturrets].burst_until = g_turrets[g_nturrets].next_shot = 0.0f;
 	return g_nturrets++;
 }
 
@@ -1393,7 +1423,7 @@ static void TurretsReset( void )
 	g_ncrews = 0;
 }
 
-int DodGC_MohaaTurretNear( const float from[3], float radius, float gun[4] )
+int DodGC_MohaaTurretNear( const float from[3], float radius, float gun[4], edict_t *crew )
 {
 	int best = -1;
 	float best_d2 = radius * radius;
@@ -1414,6 +1444,8 @@ int DodGC_MohaaTurretNear( const float from[3], float radius, float gun[4] )
 	gun[1] = t->v.origin.y;
 	gun[2] = t->v.angles.y;
 	gun[3] = g_turrets[best].arc;
+	if( crew )
+		g_turrets[best].crew = IdFor( crew );
 	return 1;
 }
 
@@ -1427,6 +1459,7 @@ static void CrewWait( edict_t *actor, string_t gun )
 		return;
 	g_crews[g_ncrews].actor = IdFor( actor );
 	g_crews[g_ncrews].gun = gun;
+	g_crews[g_ncrews].actor_added_at = gpGlobals->time;
 	g_ncrews++;
 }
 
@@ -1477,6 +1510,68 @@ static void ProbeGotoThink( void )
 	ALERT( at_console, "mohaa_probe_goto: player at %.0f %.0f %.0f facing %s\n", to.x, to.y, to.z, name );
 }
 
+static float WrapYaw( float a )
+{
+	while( a > 180.0f ) a -= 360.0f;
+	while( a < -180.0f ) a += 360.0f;
+	return a;
+}
+
+static float RandIn( float lo, float hi )
+{
+	return hi > lo ? RANDOM_FLOAT( lo, hi ) : lo;
+}
+
+/* The gun turns with its aim: toward its setaimtarget, else the way its crew faces, inside the arc either side of the
+ * map's yaw. With startfiring and an aim target it fires on its own in bursts (burstfiresettings): the MG42's retail
+ * sound each shot, and a hit on a player in plain sight now and then. */
+static void TurretAimAndFire( int k )
+{
+	edict_t *t = g_turrets[k].mg && g_turrets[k].modelled ? EdictFor( g_turrets[k].id ) : NULL;
+	if( !t )
+		return;
+	edict_t *aim = g_turrets[k].aim ? EdictFor( g_turrets[k].aim ) : NULL;
+	edict_t *crew = g_turrets[k].crew ? EdictFor( g_turrets[k].crew ) : NULL;
+	if( crew && crew->v.health <= 0 )
+		crew = NULL;
+	float want = g_turrets[k].base_yaw;
+	if( aim )
+		want = UTIL_VecToAngles( aim->v.origin - t->v.origin ).y;
+	else if( crew )
+		want = crew->v.angles.y;
+	const float arc = g_turrets[k].arc > 0.0f ? g_turrets[k].arc : DOD_GRUNT_TURRET_ARC;
+	float off = WrapYaw( want - g_turrets[k].base_yaw );
+	if( off > arc ) off = arc;
+	if( off < -arc ) off = -arc;
+	t->v.angles.y = g_turrets[k].base_yaw + off;
+	if( !g_turrets[k].firing || !aim )
+		return;
+	const float now = gpGlobals->time;
+	if( now >= g_turrets[k].burst_until ) {
+		g_turrets[k].burst_on = !g_turrets[k].burst_on;
+		g_turrets[k].burst_until = now + ( g_turrets[k].burst_on ? RandIn( g_turrets[k].burst[0], g_turrets[k].burst[1] )
+			: RandIn( g_turrets[k].burst[2], g_turrets[k].burst[3] ) );
+	}
+	if( !g_turrets[k].burst_on || now < g_turrets[k].next_shot )
+		return;
+	g_turrets[k].next_shot = now + 0.12f;	/* the MG42's 0.06 s fire delay, every other round */
+	if( !Dod_MohaaEntitySound( g_turrets[k].id, "mg42_gun_snd_fire" ) )
+		;	/* no retail alias staged: silent, as before */
+	if( !( aim->v.flags & FL_CLIENT ) || aim->v.health <= 0 || RANDOM_FLOAT( 0.0f, 1.0f ) > 0.15f )
+		return;
+	TraceResult tr;
+	const Vector from = t->v.origin + Vector( 0, 0, 8 );
+	UTIL_TraceLine( from, aim->v.origin + aim->v.view_ofs * 0.5f, dont_ignore_monsters, t, &tr );
+	if( tr.pHit != aim )
+		return;
+	CBaseEntity *victim = CBaseEntity::Instance( aim );
+	if( victim ) {
+		ClearMultiDamage();
+		victim->TraceAttack( VARS( t ), 8.0f, ( aim->v.origin - from ).Normalize(), &tr, DMG_BULLET | DMG_NEVERGIB );
+		ApplyMultiDamage( VARS( t ), VARS( t ) );
+	}
+}
+
 /* Once the map's entities are in: each MG gets its model, each waiting crew mans its gun. */
 static void TurretsThink( void )
 {
@@ -1494,6 +1589,7 @@ static void TurretsThink( void )
 		if( !t || !g_turrets[k].mg || g_turrets[k].modelled )
 			continue;
 		g_turrets[k].modelled = 1;
+		g_turrets[k].base_yaw = t->v.angles.y;
 		if( ScriptModelPrecached( MOHAA_MG42_MODEL ) ) {
 			SET_MODEL( t, MOHAA_MG42_MODEL );
 			t->v.solid = SOLID_NOT;
@@ -1504,21 +1600,55 @@ static void TurretsThink( void )
 	for( int c = 0; c < g_ncrews; ) {
 		edict_t *actor = EdictFor( g_crews[c].actor );
 		int done = !actor;
+		if( !actor )
+			ALERT( at_console, "mohaa: the crew of %s is gone before it reached the gun\n", STRING( g_crews[c].gun ) );
 		for( int k = 0; !done && k < g_nturrets; k++ ) {
 			edict_t *t = g_turrets[k].mg ? EdictFor( g_turrets[k].id ) : NULL;
 			if( t && t->v.targetname && !strcmp( STRING( t->v.targetname ), STRING( g_crews[c].gun ) ) ) {
-				if( DodGrunts_ManTurret( actor, t->v.angles.y, g_turrets[k].arc ) )
+				if( !DodGrunts_ManTurret( actor, t->v.angles.y, g_turrets[k].arc ) )
+					ALERT( at_console, "mohaa: %s cannot man the MG42 %s (not a script soldier)\n",
+						actor->v.targetname ? STRING( actor->v.targetname ) : "actor", STRING( g_crews[c].gun ) );
+				else if( ( g_turrets[k].crew = IdFor( actor ) ) )
 					ALERT( at_console, "mohaa: %s mans the MG42 %s\n",
 						actor->v.targetname ? STRING( actor->v.targetname ) : "actor", STRING( g_crews[c].gun ) );
 				done = 1;
 			}
 		}
-		if( done || gpGlobals->time > 10.0f ) {
+		if( !done && gpGlobals->time > 10.0f && g_crews[c].actor_added_at + 10.0f < gpGlobals->time )
+			ALERT( at_console, "mohaa: no turretweapon %s for its crew\n", STRING( g_crews[c].gun ) );
+		if( done || g_crews[c].actor_added_at + 10.0f < gpGlobals->time ) {
 			g_crews[c] = g_crews[--g_ncrews];
 			continue;
 		}
 		c++;
 	}
+	for( int k = 0; k < g_nturrets; k++ )
+		TurretAimAndFire( k );
+}
+
+static int M_Turret( uint32_t id, int what, uint32_t target, const float v[4] )
+{
+	edict_t *e = EdictFor( id );
+	const int k = e && g_turrets_map == gpGlobals->mapname ? TurretRow( e, 0 ) : -1;
+	if( k < 0 )
+		return 0;
+	switch( what ) {
+	case DOD_MOHAA_TURRET_AIM: g_turrets[k].aim = target; break;
+	case DOD_MOHAA_TURRET_START: g_turrets[k].firing = 1; break;
+	case DOD_MOHAA_TURRET_STOP: g_turrets[k].firing = 0; g_turrets[k].burst_on = 0; break;
+	case DOD_MOHAA_TURRET_BURST:
+		for( int i = 0; i < 4; i++ )
+			g_turrets[k].burst[i] = v && v[i] > 0.0f ? v[i] : g_turrets[k].burst[i];
+		break;
+	case DOD_MOHAA_TURRET_YAWCAP: if( v && v[0] > 0.0f ) g_turrets[k].arc = v[0]; break;
+	default: break;
+	}
+	return 1;
+}
+
+uint32_t DodGC_MohaaEntityId( edict_t *e )
+{
+	return IdFor( e );
 }
 
 void DodGC_MohaaEntityKey( edict_t *e, const char *key, const char *value )

@@ -26,9 +26,12 @@ void DodGC_MohaaActorAlerted( edict_t *e );
 class CBasePlayer;
 int DodGC_MohaaPlayerUse( CBasePlayer *player );
 /* MOHAA turretweapons (an info_target whose mohaa_classname is turretweapon_*): the nearest to from within radius.
- * gun gets its x, y, yaw and the half arc it covers (#maxyawoffset, 0 the default). 1 when one is found. */
-int DodGC_MohaaTurretNear( const float from[3], float radius, float gun[4] );
+ * gun gets its x, y, yaw and the half arc it covers (#maxyawoffset, 0 the default); crew (may be NULL) becomes the gun's
+ * crew, so the gun turns with it. 1 when one is found. */
+int DodGC_MohaaTurretNear( const float from[3], float radius, float gun[4], edict_t *crew );
 /* Make a script grunt the crew of a turret at yaw covering arc_half degrees each side. 0: not a script grunt. */
 int DodGrunts_ManTurret( edict_t *e, float yaw, float arc_half );
+/* the script binding's id of an entity (0: none), for Dod_MohaaEntitySound and the like */
+uint32_t DodGC_MohaaEntityId( edict_t *e );
 
 #endif

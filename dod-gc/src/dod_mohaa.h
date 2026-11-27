@@ -54,6 +54,11 @@ enum {
 	/* type_attack "turret": man the turretweapon nearest the actor, if one is close (the host finds it) */
 	DOD_MOHAA_TURRET
 };
+enum { DOD_MOHAA_TURRET_AIM = 0, DOD_MOHAA_TURRET_START, DOD_MOHAA_TURRET_STOP, DOD_MOHAA_TURRET_BURST,
+	DOD_MOHAA_TURRET_YAWCAP };
+/* Play a sound alias of the map's table (maps/<map>.snd) on an entity: the game's own sounds that retail ties to an
+   alias (an MG42's "mg42_gun_snd_fire"). 1 when the map has the alias. */
+int Dod_MohaaEntitySound(uint32_t id, const char *alias);
 /* HUD parts a cutscene hides: ALL is MOHAA's "drawhud 0"; WEAPON (crosshair, ammo, view model) goes while the
    player is locked into a scripted ride. */
 enum { DOD_MOHAA_HUD_ALL = 1, DOD_MOHAA_HUD_WEAPON = 2 };
@@ -135,6 +140,9 @@ typedef struct DodMohaaBackend {
 	   get_disguise reads it back (the game ends it when the player fires). May be NULL. */
 	void (*disguise)(uint32_t player, int on);
 	int (*get_disguise)(uint32_t player);
+	/* A turretweapon's own commands: DOD_MOHAA_TURRET_* (setaimtarget/clearaimtarget take target, 0 clears it;
+	   burstfiresettings takes v[4]; maxyawoffset v[0]). 0 when id is no turret. May be NULL. */
+	int (*turret)(uint32_t id, int what, uint32_t target, const float v[4]);
 	void *(*alloc)(void *ptr, size_t old_size, size_t new_size); /* NULL: pool below, else malloc */
 	/* A region the VM allocates from when alloc is NULL (dod_mohaa_pool.h), instead of the engine heap. It must
 	   stay valid until the next Dod_MohaaLevelInit or Dod_MohaaShutdown, or until Dod_MohaaDropPool says it is

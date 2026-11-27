@@ -1242,7 +1242,9 @@ def convert(bsp: b19.Bsp, scale: float = DEFAULT_SCALE, wad_name: str | None = N
 			keys.update(hash_keys(e))
 			name = e["targetname"]
 			stem = name.rstrip("0123456789")
-			if script_words is not None and (name in script_words or (stem != name and len(stem) >= 3 and stem in script_words)):
+			if cn.lower().startswith("turretweapon") or script_words is not None and (
+					name in script_words or (stem != name and len(stem) >= 3 and stem in script_words)):
+				# (a turretweapon is the gun its crew mans: m1l2a's t736 and t738 fell past the edict budget)
 				# scripts look these up by $name: they go first, since the engine keeps only as many
 				# info_targets as its edict budget allows, in file order (m5l2b's $flak88_2 came 164th)
 				script_points.append(kv_block(keys))

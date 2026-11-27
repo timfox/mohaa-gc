@@ -1422,6 +1422,48 @@ static void test_disguise_papers_and_salute(void)
 	assert(strstr(log_buf, "got no papers: disguise blown") && g_disguised == 0);
 }
 
+/* a turretweapon's own commands reach the game: setaimtarget/clearaimtarget, burstfiresettings, maxyawoffset and
+   startfiring/stopfiring (not the actor path) */
+static int m_turret(uint32_t id, int what, uint32_t target, const float v[4])
+{
+	static const char *w[] = {"aim", "start", "stop", "burst", "yawcap"};
+	char line[128];
+	Ent *e = ent(id);
+	if (!e || strcmp(e->classname, "turret"))
+		return 0;
+	snprintf(line, sizeof(line), "<turret %s %s %s %.1f %.1f %.1f %.1f>\n", e->targetname, w[what],
+		target && ent(target) ? ent(target)->targetname : "-", v ? v[0] : 0, v ? v[1] : 0, v ? v[2] : 0, v ? v[3] : 0);
+	logf_(line);
+	return 1;
+}
+
+static void test_turret_commands(void)
+{
+	DodMohaaBackend b = backend();
+	b.turret = m_turret;
+	reset();
+	add("player", "player", 0, 0, 0);
+	add("mg", "turret", 0, 0, 0);
+	files[0][0] = "maps/t.scr";
+	files[0][1] =
+		"main:\n"
+		"\t$mg setaimtarget $player\n"
+		"\t$mg burstfiresettings 1 2 3 4\n"
+		"\t$mg maxyawoffset 45\n"
+		"\t$mg startfiring\n"
+		"\t$mg stopfiring\n"
+		"\t$mg clearaimtarget\n"
+		"end\n";
+	assert(Dod_MohaaLevelInit(&b, "t", 0, 0));
+	run(0.05f, 0.2f);
+	assert(strstr(log_buf, "<turret mg aim player"));
+	assert(strstr(log_buf, "<turret mg burst - 1.0 2.0 3.0 4.0>"));
+	assert(strstr(log_buf, "<turret mg yawcap - 45.0"));
+	assert(strstr(log_buf, "<turret mg start") && strstr(log_buf, "<turret mg stop"));
+	assert(strstr(log_buf, "<turret mg aim -"));
+	assert(!strstr(log_buf, "not bound yet"));
+}
+
 int main(void)
 {
 	RUN(test_no_script_no_vm);
@@ -1431,6 +1473,7 @@ int main(void)
 	RUN(test_actor_weapons);
 	RUN(test_patrol_and_alarm);
 	RUN(test_disguise);
+	RUN(test_turret_commands);
 	RUN(test_disguise_papers_and_salute);
 	RUN(test_thread_on_shared_name);
 	RUN(test_level_flow_and_movers);
